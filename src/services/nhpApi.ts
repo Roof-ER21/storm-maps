@@ -161,27 +161,28 @@ async function queryFeatureServer(
   where: string,
   geometryEnvelope?: string,
 ): Promise<MeshSwath[]> {
-  const params = new URLSearchParams({
+  // Build params — match exact format from working field assistant
+  const paramObj: Record<string, string> = {
     where: where || '1=1',
     outFields: 'OBJECTID,Max_MESH_Value_in_the_Hailswath,Hailswath_Length,Max_width_of_swath,Start_Date_Time,End_Date_Time',
     returnGeometry: 'true',
     outSR: '4326',
     f: 'geojson',
     resultRecordCount: '500',
-  });
+  };
 
   if (geometryEnvelope) {
-    params.set('geometry', JSON.stringify({
-      xmin: parseFloat(geometryEnvelope.split(',')[0]),
-      ymin: parseFloat(geometryEnvelope.split(',')[1]),
-      xmax: parseFloat(geometryEnvelope.split(',')[2]),
-      ymax: parseFloat(geometryEnvelope.split(',')[3]),
+    const [xmin, ymin, xmax, ymax] = geometryEnvelope.split(',').map(Number);
+    paramObj.geometry = JSON.stringify({
+      xmin, ymin, xmax, ymax,
       spatialReference: { wkid: 4326 }
-    }));
-    params.set('geometryType', 'esriGeometryEnvelope');
-    params.set('spatialRel', 'esriSpatialRelIntersects');
-    params.set('inSR', '4326');
+    });
+    paramObj.geometryType = 'esriGeometryEnvelope';
+    paramObj.spatialRel = 'esriSpatialRelIntersects';
+    paramObj.inSR = '4326';
   }
+
+  const params = new URLSearchParams(paramObj);
 
   try {
     const res = await fetch(`${NHP_FEATURE_SERVER}?${params}`, { signal: AbortSignal.timeout(15000) });

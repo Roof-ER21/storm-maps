@@ -32,30 +32,23 @@ interface GoogleGeoResponse {
 }
 
 async function geocodeWithGoogle(query: string): Promise<SearchResult | null> {
-  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-  if (!apiKey || apiKey === 'your_google_maps_api_key_here') {
+  // Use the Google Maps JavaScript Geocoder (loaded via Maps JS API)
+  // This avoids CORS issues and REST API referrer restrictions
+  if (!window.google?.maps?.Geocoder) {
     return null;
   }
 
-  const params = new URLSearchParams({
-    address: query,
-    key: apiKey,
-  });
-
   try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/geocode/json?${params}`,
-    );
-    if (!res.ok) return null;
+    const geocoder = new window.google.maps.Geocoder();
+    const result = await geocoder.geocode({ address: query });
 
-    const data: GoogleGeoResponse = await res.json();
-    if (data.status !== 'OK' || data.results.length === 0) return null;
+    if (!result.results || result.results.length === 0) return null;
 
-    const first = data.results[0];
+    const first = result.results[0];
     return {
       address: first.formatted_address,
-      lat: first.geometry.location.lat,
-      lng: first.geometry.location.lng,
+      lat: first.geometry.location.lat(),
+      lng: first.geometry.location.lng(),
       placeId: first.place_id,
     };
   } catch (err) {
