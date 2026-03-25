@@ -56,30 +56,38 @@ export async function searchByCoordinates(
   const start = new Date();
   start.setMonth(start.getMonth() - months);
 
-  const startStr = formatSwdiDate(start);
-  const endStr = formatSwdiDate(end);
-
   // SWDI expects center as lon,lat (note: longitude first)
-  const url =
-    `https://www.ncei.noaa.gov/swdiws/json/nx3hail/${startStr}:${endStr}` +
-    `?center=${lng},${lat}&radius=${radius}`;
+  // SWDI can 500 on large date ranges — chunk into 3-month intervals
+  const allEvents: StormEvent[] = [];
+  const chunkMs = 90 * 24 * 60 * 60 * 1000; // 90 days
+  let chunkStart = start.getTime();
+  const endMs = end.getTime();
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      throw new Error(`SWDI API returned ${res.status}`);
+  while (chunkStart < endMs) {
+    const chunkEnd = Math.min(chunkStart + chunkMs, endMs);
+    const s = formatSwdiDate(new Date(chunkStart));
+    const e = formatSwdiDate(new Date(chunkEnd));
+
+    const url =
+      `https://www.ncei.noaa.gov/swdiws/json/nx3hail/${s}:${e}` +
+      `?center=${lng},${lat}&radius=${radius}`;
+
+    try {
+      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      if (res.ok) {
+        const data: SwdiResponse = await res.json();
+        if (data.result && Array.isArray(data.result)) {
+          allEvents.push(...data.result.map((r, idx) => parseSwdiRecord(r, allEvents.length + idx)));
+        }
+      }
+    } catch (err) {
+      console.warn(`[stormApi] SWDI chunk ${s}:${e} failed:`, err);
     }
-    const data: SwdiResponse = await res.json();
 
-    if (!data.result || !Array.isArray(data.result)) {
-      return [];
-    }
-
-    return data.result.map((r, idx) => parseSwdiRecord(r, idx));
-  } catch (err) {
-    console.error('[stormApi] SWDI fetch failed:', err);
-    return [];
+    chunkStart = chunkEnd;
   }
+
+  return allEvents;
 }
 
 function parseSwdiRecord(r: SwdiHailRecord, idx: number): StormEvent {

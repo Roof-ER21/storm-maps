@@ -76,21 +76,13 @@ export async function fetchMeshSwaths(date: string): Promise<MeshSwath[]> {
  */
 export async function fetchMeshSwathsByBounds(
   bounds: BoundingBox,
-  months = 6,
+  _months = 6,
 ): Promise<MeshSwath[]> {
-  const end = new Date();
-  const start = new Date();
-  start.setMonth(start.getMonth() - months);
-
-  const startStr = formatArcGisDate(start);
-  const endStr = formatArcGisDate(end);
-
-  const where = `Date_Occur >= '${startStr}' AND Date_Occur <= '${endStr}'`;
-
-  // ArcGIS envelope format: xmin,ymin,xmax,ymax
+  // Use spatial filter with 1=1 where clause — the FeatureServer
+  // uses Start_Date_Time as epoch ms, not a string date field
   const envelope = `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`;
 
-  return queryFeatureServer(where, envelope);
+  return queryFeatureServer('1=1', envelope);
 }
 
 /**
@@ -165,114 +157,91 @@ export async function fetchAvailableStormDates(
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-function formatArcGisDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 async function queryFeatureServer(
   where: string,
   geometryEnvelope?: string,
 ): Promise<MeshSwath[]> {
   const params = new URLSearchParams({
-    where,
-    outFields: '*',
+    where: where || '1=1',
+    outFields: 'OBJECTID,Max_MESH_Value_in_the_Hailswath,Hailswath_Length,Max_width_of_swath,Start_Date_Time,End_Date_Time',
     returnGeometry: 'true',
     outSR: '4326',
-    f: 'json',
+    f: 'geojson',
     resultRecordCount: '500',
   });
 
   if (geometryEnvelope) {
-    params.set('geometry', geometryEnvelope);
+    params.set('geometry', JSON.stringify({
+      xmin: parseFloat(geometryEnvelope.split(',')[0]),
+      ymin: parseFloat(geometryEnvelope.split(',')[1]),
+      xmax: parseFloat(geometryEnvelope.split(',')[2]),
+      ymax: parseFloat(geometryEnvelope.split(',')[3]),
+      spatialReference: { wkid: 4326 }
+    }));
     params.set('geometryType', 'esriGeometryEnvelope');
     params.set('spatialRel', 'esriSpatialRelIntersects');
     params.set('inSR', '4326');
   }
 
   try {
-    const res = await fetch(`${NHP_FEATURE_SERVER}?${params}`);
+    const res = await fetch(`${NHP_FEATURE_SERVER}?${params}`, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) throw new Error(`NHP FeatureServer returned ${res.status}`);
 
-    const data: ArcGisResponse = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
 
     if (!data.features || !Array.isArray(data.features)) {
       return [];
     }
 
-    return data.features.map(parseArcGisFeature).filter(Boolean) as MeshSwath[];
+    // GeoJSON format — parse directly
+    return data.features
+      .filter((f: any) => {
+        if (!f.geometry || !f.geometry.coordinates) return false;
+        const meshMm = f.properties?.Max_MESH_Value_in_the_Hailswath;
+        return meshMm != null && meshMm > 0;
+      })
+      .map((f: any): MeshSwath | null => {
+        const props = f.properties;
+        const meshMm = props.Max_MESH_Value_in_the_Hailswath || 0;
+        const startEpoch = props.Start_Date_Time ? Number(props.Start_Date_Time) : null;
+
+        // Local date string
+        let dateStr = '';
+        if (startEpoch) {
+          const d = new Date(startEpoch);
+          dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        }
+
+        // Convert geometry to GeoJSON polygon format
+        let geometry: GeoJsonPolygon | GeoJsonMultiPolygon | null = null;
+        if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') {
+          geometry = f.geometry;
+        } else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
+          // Lines — keep as-is, component will render as polyline
+          geometry = f.geometry;
+        }
+
+        if (!geometry) return null;
+
+        return {
+          id: String(props.OBJECTID),
+          date: dateStr,
+          maxMeshInches: meshMm / 25.4,
+          avgMeshInches: meshMm / 25.4,
+          areaSqMiles: 0,
+          statesAffected: [],
+          geometry: geometry as GeoJsonPolygon,
+        };
+      })
+      .filter(Boolean) as MeshSwath[];
   } catch (err) {
     console.error('[nhpApi] queryFeatureServer failed:', err);
     return [];
   }
 }
 
-function parseArcGisFeature(f: ArcGisFeature): MeshSwath | null {
-  const attrs = f.attributes;
-  const geom = f.geometry;
-
-  if (!geom) return null;
-
-  // Convert ArcGIS geometry to GeoJSON
-  let geometry: GeoJsonPolygon | GeoJsonMultiPolygon;
-
-  if (geom.rings) {
-    if (geom.rings.length === 1) {
-      geometry = {
-        type: 'Polygon',
-        coordinates: geom.rings,
-      };
-    } else {
-      geometry = {
-        type: 'MultiPolygon',
-        coordinates: geom.rings.map((ring) => [ring]),
-      };
-    }
-  } else if (geom.paths) {
-    // Lines — close them into polygons by duplicating first point
-    const closedRings = geom.paths.map((path) => {
-      const closed = [...path];
-      if (closed.length > 0 && (closed[0][0] !== closed[closed.length - 1][0] ||
-          closed[0][1] !== closed[closed.length - 1][1])) {
-        closed.push([...closed[0]]);
-      }
-      return closed;
-    });
-
-    if (closedRings.length === 1) {
-      geometry = { type: 'Polygon', coordinates: closedRings };
-    } else {
-      geometry = {
-        type: 'MultiPolygon',
-        coordinates: closedRings.map((ring) => [ring]),
-      };
-    }
-  } else {
-    return null;
-  }
-
-  const dateStr = (attrs.Date_Occur || attrs.DATE_OCCUR || '') as string;
-  const maxMesh = (attrs.MaxMESH || attrs.MAXMESH || 0) as number;
-  const avgMesh = (attrs.AvgMESH || attrs.AVGMESH || 0) as number;
-  const area = (attrs.Area_sqmi || attrs.AREA_SQMI || 0) as number;
-  const states = ((attrs.States || attrs.STATES || '') as string)
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  return {
-    id: `nhp-${attrs.OBJECTID}`,
-    date: dateStr,
-    geometry,
-    maxMeshInches: maxMesh,
-    avgMeshInches: avgMesh,
-    areaSqMiles: area,
-    statesAffected: states,
-  };
-}
+// parseArcGisFeature removed — using GeoJSON format directly in queryFeatureServer
 
 // Re-export for convenience — used by type-checking in other files
 export type { ArcGisRing };
