@@ -124,7 +124,7 @@ export default function Sidebar({
             </span>
           </div>
           <p className="text-sm text-red-100 font-medium">
-            {canvassingAlert.estimatedHailSize}"" hail detected nearby
+            {canvassingAlert.estimatedHailSize}" hail detected nearby
           </p>
           {canvassingAlert.talkingPoints.length > 0 && (
             <p className="text-xs text-red-200 mt-1">

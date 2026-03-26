@@ -7,7 +7,7 @@
  * This is the same data source used by HailSwathLayer in gemini-field-assistant.
  */
 
-import type { MeshSwath, BoundingBox, GeoJsonPolygon } from '../types/storm';
+import type { MeshSwath, BoundingBox } from '../types/storm';
 
 // ---------------------------------------------------------------------------
 // ArcGIS FeatureServer Configuration
@@ -223,7 +223,7 @@ async function queryFeatureServer(
           avgMeshInches: estimatedMeshInches * 0.7,
           areaSqMiles: hailLengthKm * maxWidthKm * 0.386, // km² to mi²
           statesAffected: (props.Province || props.States || '').split(',').map((s: string) => s.trim()).filter(Boolean),
-          geometry: f.geometry as GeoJsonPolygon,
+          geometry: f.geometry as MeshSwath['geometry'],
         };
       })
       .filter(Boolean) as MeshSwath[];

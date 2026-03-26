@@ -324,6 +324,8 @@ export default function StormMap({
 
   return (
     <Map
+      center={{ lat: center.lat, lng: center.lng }}
+      zoom={zoom}
       defaultCenter={{ lat: center.lat, lng: center.lng }}
       defaultZoom={zoom}
       mapId="storm-maps-main"

@@ -15,9 +15,19 @@ interface HailSwathLayerProps {
   selectedDate: string | null;
 }
 
+/** Geometry classification for rendering strategy */
+type GeometryKind = 'polygon' | 'line' | 'unknown';
+
+function classifyGeometry(geom: MeshSwath['geometry']): GeometryKind {
+  if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') return 'polygon';
+  if (geom.type === 'LineString' || geom.type === 'MultiLineString') return 'line';
+  return 'unknown';
+}
+
 /**
  * Convert GeoJSON coordinates to Google Maps LatLng paths.
  * GeoJSON is [lng, lat], Google Maps wants {lat, lng}.
+ * Handles Polygon, MultiPolygon, LineString, and MultiLineString.
  */
 function geoJsonToGooglePaths(
   swath: MeshSwath,
@@ -35,6 +45,12 @@ function geoJsonToGooglePaths(
         paths.push(ring.map(([lng, lat]) => ({ lat, lng })));
       }
     }
+  } else if (geom.type === 'LineString') {
+    paths.push(geom.coordinates.map(([lng, lat]) => ({ lat, lng })));
+  } else if (geom.type === 'MultiLineString') {
+    for (const line of geom.coordinates) {
+      paths.push(line.map(([lng, lat]) => ({ lat, lng })));
+    }
   }
 
   return paths;
@@ -45,14 +61,14 @@ export default function HailSwathLayer({
   selectedDate,
 }: HailSwathLayerProps) {
   const map = useMap();
-  const polygonsRef = useRef<google.maps.Polygon[]>([]);
+  const shapesRef = useRef<(google.maps.Polygon | google.maps.Polyline)[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
-  const clearPolygons = useCallback(() => {
-    for (const polygon of polygonsRef.current) {
-      polygon.setMap(null);
+  const clearShapes = useCallback(() => {
+    for (const shape of shapesRef.current) {
+      shape.setMap(null);
     }
-    polygonsRef.current = [];
+    shapesRef.current = [];
     if (infoWindowRef.current) {
       infoWindowRef.current.close();
     }
@@ -61,7 +77,7 @@ export default function HailSwathLayer({
   useEffect(() => {
     if (!map) return;
 
-    clearPolygons();
+    clearShapes();
 
     // Filter swaths by selected date
     const visible = selectedDate
@@ -79,20 +95,10 @@ export default function HailSwathLayer({
 
       const sizeClass = getHailSizeClass(swath.maxMeshInches);
       const color = sizeClass?.color || '#FFA500';
+      const kind = classifyGeometry(swath.geometry);
 
-      const polygon = new google.maps.Polygon({
-        paths,
-        strokeColor: color,
-        strokeOpacity: 0.9,
-        strokeWeight: 2,
-        fillColor: color,
-        fillOpacity: 0.25,
-        map,
-        zIndex: 10,
-      });
-
-      // Click handler for info
-      polygon.addListener('click', (e: google.maps.MapMouseEvent) => {
+      // Build the info window click handler (shared by both shape types)
+      const handleClick = (e: google.maps.MapMouseEvent) => {
         const severity = sizeClass
           ? `${sizeClass.label} (severity ${sizeClass.damageSeverity}/5)`
           : 'Unknown';
@@ -117,15 +123,43 @@ export default function HailSwathLayer({
           e.latLng || { lat: 0, lng: 0 },
         );
         infoWindowRef.current!.open(map);
-      });
+      };
 
-      polygonsRef.current.push(polygon);
+      if (kind === 'line') {
+        // Render LineString / MultiLineString as Polylines
+        for (const path of paths) {
+          const polyline = new google.maps.Polyline({
+            path,
+            strokeColor: color,
+            strokeOpacity: 0.9,
+            strokeWeight: 4,
+            map,
+            zIndex: 10,
+          });
+          polyline.addListener('click', handleClick);
+          shapesRef.current.push(polyline);
+        }
+      } else {
+        // Render Polygon / MultiPolygon as filled Polygons
+        const polygon = new google.maps.Polygon({
+          paths,
+          strokeColor: color,
+          strokeOpacity: 0.9,
+          strokeWeight: 2,
+          fillColor: color,
+          fillOpacity: 0.25,
+          map,
+          zIndex: 10,
+        });
+        polygon.addListener('click', handleClick);
+        shapesRef.current.push(polygon);
+      }
     }
 
     return () => {
-      clearPolygons();
+      clearShapes();
     };
-  }, [map, swaths, selectedDate, clearPolygons]);
+  }, [map, swaths, selectedDate, clearShapes]);
 
   // This component renders imperatively; no JSX output needed
   return null;

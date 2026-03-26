@@ -19,6 +19,16 @@ export interface GeoJsonMultiPolygon {
   coordinates: number[][][][];
 }
 
+export interface GeoJsonLineString {
+  type: 'LineString';
+  coordinates: number[][];
+}
+
+export interface GeoJsonMultiLineString {
+  type: 'MultiLineString';
+  coordinates: number[][][];
+}
+
 // ============================================================
 // Geographic Types
 // ============================================================
@@ -88,8 +98,8 @@ export interface MeshSwath {
   id: string;
   /** Storm date in YYYY-MM-DD format */
   date: string;
-  /** GeoJSON polygon defining the swath boundary */
-  geometry: GeoJsonPolygon | GeoJsonMultiPolygon;
+  /** GeoJSON geometry defining the swath boundary (polygon or line) */
+  geometry: GeoJsonPolygon | GeoJsonMultiPolygon | GeoJsonLineString | GeoJsonMultiLineString;
   /** Maximum Estimated Size of Hail in inches */
   maxMeshInches: number;
   /** Average MESH in inches across the swath */

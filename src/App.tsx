@@ -100,8 +100,8 @@ function App() {
       {/* Legend overlay */}
       <Legend />
 
-      {/* GPS tracking toggle */}
-      <div className="absolute bottom-6 left-4 z-10">
+      {/* GPS tracking toggle + center on me */}
+      <div className="absolute bottom-6 left-4 z-10 flex gap-2">
         <button
           onClick={isTracking ? stopTracking : startTracking}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold transition-colors ${
@@ -136,6 +136,32 @@ function App() {
             <span className="w-2 h-2 rounded-full bg-blue-300 animate-pulse" />
           )}
         </button>
+        {isTracking && gpsPosition && (
+          <button
+            onClick={() => {
+              setMapCenter({ lat: gpsPosition.lat, lng: gpsPosition.lng });
+              setMapZoom(14);
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold bg-white text-blue-600 hover:bg-blue-50 transition-colors"
+            title="Center map on your location"
+            aria-label="Center map on your location"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0013 3.06V1h-2v2.06A8.994 8.994 0 003.06 11H1v2h2.06A8.994 8.994 0 0011 20.94V23h2v-2.06A8.994 8.994 0 0020.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"
+              />
+            </svg>
+            Center
+          </button>
+        )}
       </div>
 
       {/* Canvassing alert toast */}
