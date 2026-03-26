@@ -59,7 +59,7 @@ export async function searchByCoordinates(
   // SWDI expects center as lon,lat (note: longitude first)
   // SWDI can 500 on large date ranges — chunk into 3-month intervals
   const allEvents: StormEvent[] = [];
-  const chunkMs = 90 * 24 * 60 * 60 * 1000; // 90 days
+  const chunkMs = 30 * 24 * 60 * 60 * 1000; // 30 days — SWDI 500s on larger ranges
   let chunkStart = start.getTime();
   const endMs = end.getTime();
 
