@@ -7,7 +7,7 @@
  * This is the same data source used by HailSwathLayer in gemini-field-assistant.
  */
 
-import type { MeshSwath, BoundingBox, GeoJsonPolygon, GeoJsonMultiPolygon } from '../types/storm';
+import type { MeshSwath, BoundingBox, GeoJsonPolygon } from '../types/storm';
 
 // ---------------------------------------------------------------------------
 // ArcGIS FeatureServer Configuration
@@ -164,7 +164,7 @@ async function queryFeatureServer(
   // Build params — match exact format from working field assistant
   const paramObj: Record<string, string> = {
     where: where || '1=1',
-    outFields: 'OBJECTID,Max_MESH_Value_in_the_Hailswath,Hailswath_Length,Max_width_of_swath,Start_Date_Time,End_Date_Time',
+    outFields: '*',
     returnGeometry: 'true',
     outSR: '4326',
     f: 'geojson',
@@ -197,15 +197,13 @@ async function queryFeatureServer(
 
     // GeoJSON format — parse directly
     return data.features
-      .filter((f: any) => {
-        if (!f.geometry || !f.geometry.coordinates) return false;
-        const meshMm = f.properties?.Max_MESH_Value_in_the_Hailswath;
-        return meshMm != null && meshMm > 0;
-      })
+      .filter((f: any) => f.geometry && f.geometry.coordinates)
       .map((f: any): MeshSwath | null => {
-        const props = f.properties;
-        const meshMm = props.Max_MESH_Value_in_the_Hailswath || 0;
-        const startEpoch = props.Start_Date_Time ? Number(props.Start_Date_Time) : null;
+        const props = f.properties || {};
+        // Actual NHP fields: Start_Date (epoch), HailLength, MaxWidth__, Province/Event
+        const startEpoch = props.Start_Date ? Number(props.Start_Date) : null;
+        const hailLengthKm = props.HailLength || 0;
+        const maxWidthKm = (props.MaxWidth__ || 0);
 
         // Local date string
         let dateStr = '';
@@ -214,25 +212,18 @@ async function queryFeatureServer(
           dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
-        // Convert geometry to GeoJSON polygon format
-        let geometry: GeoJsonPolygon | GeoJsonMultiPolygon | null = null;
-        if (f.geometry.type === 'Polygon' || f.geometry.type === 'MultiPolygon') {
-          geometry = f.geometry;
-        } else if (f.geometry.type === 'LineString' || f.geometry.type === 'MultiLineString') {
-          // Lines — keep as-is, component will render as polyline
-          geometry = f.geometry;
-        }
-
-        if (!geometry) return null;
+        // Estimate max MESH from swath width (wider = more severe)
+        // NHP Lines view doesn't have MESH values directly, estimate from width
+        const estimatedMeshInches = maxWidthKm > 20 ? 3.0 : maxWidthKm > 10 ? 2.0 : maxWidthKm > 5 ? 1.5 : 1.0;
 
         return {
-          id: String(props.OBJECTID),
+          id: String(props.FID || props.OBJECTID || Math.random()),
           date: dateStr,
-          maxMeshInches: meshMm / 25.4,
-          avgMeshInches: meshMm / 25.4,
-          areaSqMiles: 0,
-          statesAffected: [],
-          geometry: geometry as GeoJsonPolygon,
+          maxMeshInches: estimatedMeshInches,
+          avgMeshInches: estimatedMeshInches * 0.7,
+          areaSqMiles: hailLengthKm * maxWidthKm * 0.386, // km² to mi²
+          statesAffected: (props.Province || props.States || '').split(',').map((s: string) => s.trim()).filter(Boolean),
+          geometry: f.geometry as GeoJsonPolygon,
         };
       })
       .filter(Boolean) as MeshSwath[];

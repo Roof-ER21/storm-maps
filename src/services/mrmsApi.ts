@@ -15,7 +15,10 @@ import type { MrmsHailData } from '../types/storm';
 // Oracle Tile Server Config
 // ---------------------------------------------------------------------------
 
-const ORACLE_BASE = 'http://129.159.190.3:8080';
+// Use the field assistant's HTTPS proxy to avoid mixed-content blocking
+// Falls back to direct Oracle if proxy unavailable
+const PROXY_BASE = 'https://sa21.up.railway.app/api/mrms';
+// Direct Oracle URL (for non-HTTPS contexts): http://129.159.190.3:8080/overlays
 
 /** CONUS bounding box for the MRMS image overlays */
 export const CONUS_BOUNDS = {
@@ -50,7 +53,7 @@ interface MrmsMetadata {
  */
 export async function fetchMrmsMetadata(): Promise<MrmsMetadata | null> {
   try {
-    const res = await fetch(`${ORACLE_BASE}/overlays/mesh60.json`, {
+    const res = await fetch(`${PROXY_BASE}/mesh60.json`, {
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`MRMS metadata returned ${res.status}`);
@@ -65,14 +68,14 @@ export async function fetchMrmsMetadata(): Promise<MrmsMetadata | null> {
  * Get the MRMS MESH overlay image URL (1440-min / 24h composite).
  */
 export function getMrmsOverlayUrl(): string {
-  return `${ORACLE_BASE}/overlays/mesh1440.png`;
+  return `${PROXY_BASE}/mesh1440.png`;
 }
 
 /**
  * Get the MRMS MESH 60-min overlay image URL.
  */
 export function getMrms60MinUrl(): string {
-  return `${ORACLE_BASE}/overlays/mesh60.png`;
+  return `${PROXY_BASE}/mesh60.png`;
 }
 
 /**
@@ -89,7 +92,7 @@ export function getMrmsTileUrl(
     case 'POSH':
     case 'MHP':
       // Other products use the same Oracle endpoint pattern
-      return `${ORACLE_BASE}/overlays/${product.toLowerCase()}.png`;
+      return `${PROXY_BASE}/${product.toLowerCase()}.png`;
     default:
       return getMrmsOverlayUrl();
   }
