@@ -50,7 +50,7 @@ function App() {
   const { events, swaths, stormDates, loading, error } = useStormData({
     lat: activeLat,
     lng: activeLng,
-    months: 6,
+    months: 12,
   });
 
   // ---- Hail alert ----
