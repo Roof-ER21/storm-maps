@@ -59,7 +59,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
         {
           input,
           componentRestrictions: { country: 'us' },
-          types: ['address', 'geocode'],
+          types: ['address'],
         },
         (results, status) => {
           if (
