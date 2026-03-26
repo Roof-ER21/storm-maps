@@ -142,7 +142,7 @@ mrms-pipeline/
 
 ### Storm Maps (Railway)
 ```
-VITE_GOOGLE_MAPS_API_KEY=AIzaSyCg-jPE-gmNi2pebICkOwEb5EZC7RgNxA4
+VITE_GOOGLE_MAPS_API_KEY=*** (set in Railway dashboard)
 ```
 
 ### Field Assistant (Railway) — relevant vars
