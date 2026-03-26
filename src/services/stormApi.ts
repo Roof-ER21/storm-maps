@@ -64,7 +64,10 @@ export async function searchByCoordinates(
       radius: radius.toString(),
     });
     const res = await fetch(`${SA21_API}/hail/search?${params}`, {
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(8000),
+      // Explicit CORS mode — if the server lacks CORS headers, the catch
+      // block below will fire immediately and fall through to SWDI.
+      mode: 'cors',
       headers: { 'x-user-email': 'storm-maps@roofer21.com' },
     });
     if (res.ok) {
