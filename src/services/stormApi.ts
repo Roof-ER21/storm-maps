@@ -1,14 +1,17 @@
 /**
  * Storm Events API Service
  *
- * Fetches storm/hail data from two sources:
- * 1. NCEI SWDI (Severe Weather Data Inventory) — hail reports by lat/lng radius
- * 2. IEM (Iowa Environmental Mesonet) Local Storm Reports — GeoJSON feed
+ * Primary: Gemini Field Assistant API (sa21.up.railway.app) — proxied NOAA Storm Events
+ * Fallback: NCEI SWDI direct queries
  *
- * Both are free, no API key required.
+ * The field assistant parses NOAA's bulk CSV storm event files server-side
+ * and returns clean JSON with hail/wind events near a location.
  */
 
 import type { StormEvent, BoundingBox } from '../types/storm';
+
+// Field assistant API base
+const SA21_API = 'https://sa21.up.railway.app/api';
 
 // ---------------------------------------------------------------------------
 // NCEI SWDI Hail Reports
@@ -52,14 +55,82 @@ export async function searchByCoordinates(
   months = 6,
   radius = 50,
 ): Promise<StormEvent[]> {
+  // Primary: use field assistant API (has full NOAA Storm Events data)
+  try {
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lng: lng.toString(),
+      months: months.toString(),
+      radius: radius.toString(),
+    });
+    const res = await fetch(`${SA21_API}/hail/search?${params}`, {
+      signal: AbortSignal.timeout(15000),
+      headers: { 'x-user-email': 'storm-maps@roofer21.com' },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const events: StormEvent[] = [];
+
+      // Parse IHM/HailTrace hail events
+      if (data.events && Array.isArray(data.events)) {
+        events.push(...data.events.map((e: any, idx: number) => ({
+          id: `ihm-${e.id || idx}`,
+          eventType: 'Hail' as const,
+          state: '',
+          county: '',
+          beginDate: e.date || '',
+          endDate: e.date || '',
+          beginLat: e.latitude || 0,
+          beginLon: e.longitude || 0,
+          endLat: e.latitude || 0,
+          endLon: e.longitude || 0,
+          magnitude: e.hailSize || 0,
+          magnitudeType: 'inches',
+          damageProperty: 0,
+          source: e.source || 'Storm Database',
+          narrative: `Hail ${e.hailSize}"  - ${e.severity || 'unknown'} severity`,
+        })));
+      }
+
+      // Parse NOAA events
+      if (data.noaaEvents && Array.isArray(data.noaaEvents)) {
+        events.push(...data.noaaEvents
+          .filter((e: any) => e.eventType === 'hail')
+          .map((e: any, idx: number) => ({
+            id: `noaa-${e.id || idx}`,
+            eventType: 'Hail' as const,
+            state: e.state || '',
+            county: '',
+            beginDate: e.date || '',
+            endDate: e.date || '',
+            beginLat: e.latitude || 0,
+            beginLon: e.longitude || 0,
+            endLat: e.latitude || 0,
+            endLon: e.longitude || 0,
+            magnitude: e.magnitude || 0,
+            magnitudeType: 'inches',
+            damageProperty: 0,
+            source: e.source || 'NOAA',
+            narrative: e.narrative || `${e.eventType} - ${e.location || ''}`,
+          })));
+      }
+
+      if (events.length > 0) {
+        console.log(`[stormApi] Got ${events.length} events from field assistant API`);
+        return events;
+      }
+    }
+  } catch (err) {
+    console.warn('[stormApi] Field assistant API failed, falling back to SWDI:', err);
+  }
+
+  // Fallback: SWDI direct queries
   const end = new Date();
   const start = new Date();
   start.setMonth(start.getMonth() - months);
 
-  // SWDI expects center as lon,lat (note: longitude first)
-  // SWDI can 500 on large date ranges — chunk into 3-month intervals
   const allEvents: StormEvent[] = [];
-  const chunkMs = 30 * 24 * 60 * 60 * 1000; // 30 days — SWDI 500s on larger ranges
+  const chunkMs = 30 * 24 * 60 * 60 * 1000;
   let chunkStart = start.getTime();
   const endMs = end.getTime();
 
