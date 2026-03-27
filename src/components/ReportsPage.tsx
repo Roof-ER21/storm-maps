@@ -6,7 +6,9 @@ interface ReportsPageProps {
   selectedEvidenceCount: number;
   selectedEvidenceCountsByDate: Record<string, number>;
   generatingReport: boolean;
+  downloadingEvidencePack: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
+  onDownloadEvidencePack: (dateOfLoss: string) => Promise<void>;
   onOpenMap: () => void;
   onOpenEvidence?: () => void;
 }
@@ -17,7 +19,9 @@ export default function ReportsPage({
   selectedEvidenceCount,
   selectedEvidenceCountsByDate,
   generatingReport,
+  downloadingEvidencePack,
   onGenerateReport,
+  onDownloadEvidencePack,
   onOpenMap,
   onOpenEvidence,
 }: ReportsPageProps) {
@@ -110,16 +114,28 @@ export default function ReportsPage({
                     {(selectedEvidenceCountsByDate[stormDate.date] ?? 0) === 1 ? '' : 's'} will attach
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    void onGenerateReport(stormDate.date);
-                  }}
-                  disabled={generatingReport}
-                  className="rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
-                >
-                  {generatingReport ? 'Generating...' : 'Generate PDF'}
-                </button>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void onDownloadEvidencePack(stormDate.date);
+                    }}
+                    disabled={downloadingEvidencePack}
+                    className="rounded-2xl border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-gray-700 hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                  >
+                    {downloadingEvidencePack ? 'Packing...' : 'Evidence Pack'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void onGenerateReport(stormDate.date);
+                    }}
+                    disabled={generatingReport}
+                    className="rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                  >
+                    {generatingReport ? 'Generating...' : 'Generate PDF'}
+                  </button>
+                </div>
               </div>
             ))}
           </div>

@@ -36,6 +36,7 @@ import {
   showHailZoneNotification,
 } from './services/notificationService';
 import { generateStormReport } from './services/reportService';
+import { generateEvidencePack } from './services/evidencePackService';
 import Sidebar from './components/Sidebar';
 import StormMap from './components/StormMap';
 import SearchBar from './components/SearchBar';
@@ -111,6 +112,7 @@ function App() {
     wind: false,
   });
   const [generatingReport, setGeneratingReport] = useState(false);
+  const [downloadingEvidencePack, setDownloadingEvidencePack] = useState(false);
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(getNotificationPermission);
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
@@ -459,6 +461,45 @@ function App() {
       setGeneratingReport(false);
     }
   }, [activeRadiusMiles, evidenceItems, events, queryLocation, searchSummary]);
+
+  const handleDownloadEvidencePack = useCallback(async (dateOfLoss: string) => {
+    if (!dateOfLoss) {
+      return;
+    }
+
+    setDownloadingEvidencePack(true);
+    try {
+      const selectedEvidenceItems = evidenceItems.filter((item) => {
+        if (item.status !== 'approved' || !item.includeInReport) {
+          return false;
+        }
+
+        if (searchSummary && item.propertyLabel !== searchSummary.locationLabel) {
+          return false;
+        }
+
+        return item.stormDate === null || item.stormDate === dateOfLoss;
+      });
+
+      await generateEvidencePack({
+        address:
+          searchSummary?.locationLabel ||
+          `${queryLocation.lat.toFixed(4)}, ${queryLocation.lng.toFixed(4)}`,
+        dateOfLoss,
+        evidenceItems: selectedEvidenceItems,
+      });
+    } catch (error) {
+      console.error('[App] Failed to download evidence pack:', error);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : 'Failed to download evidence pack.',
+      );
+      throw error;
+    } finally {
+      setDownloadingEvidencePack(false);
+    }
+  }, [evidenceItems, queryLocation, searchSummary]);
 
   const selectedEvidenceCount = useMemo(() => {
     return evidenceItems.filter((item) => {
@@ -1036,7 +1077,9 @@ function App() {
             selectedEvidenceCount={selectedEvidenceCount}
             selectedEvidenceCountsByDate={selectedEvidenceCountsByDate}
             generatingReport={generatingReport}
+            downloadingEvidencePack={downloadingEvidencePack}
             onGenerateReport={handleGenerateReport}
+            onDownloadEvidencePack={handleDownloadEvidencePack}
             onOpenMap={() => setActiveView('map')}
             onOpenEvidence={() => setActiveView('evidence')}
           />
