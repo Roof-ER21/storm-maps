@@ -23,6 +23,7 @@ import type {
   PropertySearchSummary,
   EventFilterState,
   PinnedProperty,
+  EvidenceItem,
 } from './types/storm';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
@@ -43,6 +44,13 @@ import AppHeader from './components/AppHeader';
 import DashboardPage from './components/DashboardPage';
 import PinnedPropertiesPage from './components/PinnedPropertiesPage';
 import ReportsPage from './components/ReportsPage';
+import EvidencePage from './components/EvidencePage';
+import {
+  listEvidenceItems,
+  removeEvidenceItem,
+  saveEvidenceItem,
+} from './services/evidenceStorage';
+import { buildEvidenceQuerySeeds } from './services/evidenceProviders';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -94,6 +102,7 @@ function App() {
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(getNotificationPermission);
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
+  const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([]);
   const notifiedAlertsRef = useRef<Map<string, number>>(new Map());
 
   // ---- GPS ----
@@ -197,6 +206,16 @@ function App() {
       console.error('[App] Failed to save pinned properties:', error);
     }
   }, [pinnedProperties]);
+
+  useEffect(() => {
+    void listEvidenceItems()
+      .then((items) => {
+        setEvidenceItems(items);
+      })
+      .catch((error) => {
+        console.error('[App] Failed to load evidence items:', error);
+      });
+  }, []);
 
   useEffect(() => {
     if (!canvassingAlert?.inHailZone || notificationPermission !== 'granted') {
@@ -517,6 +536,103 @@ function App() {
     }));
   }, [getFallbackZoom]);
 
+  const handleUploadEvidenceFiles = useCallback(async (
+    files: FileList,
+    stormDate: string | null,
+  ) => {
+    if (!searchSummary) {
+      throw new Error('Search a property before uploading evidence.');
+    }
+
+    const savedItems = await Promise.all(
+      Array.from(files).map(async (file) => {
+        const now = new Date().toISOString();
+        const mediaType = file.type.startsWith('video/')
+          ? 'video'
+          : 'image';
+        const item: EvidenceItem = {
+          id: `upload-${crypto.randomUUID()}`,
+          kind: 'upload',
+          provider: 'upload',
+          mediaType,
+          propertyLabel: searchSummary.locationLabel,
+          stormDate,
+          title: file.name,
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          blob: file,
+          createdAt: now,
+          updatedAt: now,
+          status: 'pending',
+        };
+
+        await saveEvidenceItem(item);
+        return item;
+      }),
+    );
+
+    setEvidenceItems((current) =>
+      [...savedItems, ...current].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
+  }, [searchSummary]);
+
+  const handleSeedEvidenceQueries = useCallback(async () => {
+    if (!searchSummary) {
+      throw new Error('Search a property before seeding evidence packs.');
+    }
+
+    const seeds = buildEvidenceQuerySeeds(searchSummary, filteredStormDates);
+
+    await Promise.all(
+      seeds.map(async (seed) => {
+        const existing = evidenceItems.find((item) => item.id === seed.id);
+        const nextItem = existing
+          ? {
+              ...existing,
+              ...seed,
+              createdAt: existing.createdAt,
+            }
+          : seed;
+        await saveEvidenceItem(nextItem);
+      }),
+    );
+
+    setEvidenceItems((current) => {
+      const nextMap = new Map(current.map((item) => [item.id, item]));
+      for (const seed of seeds) {
+        const existing = nextMap.get(seed.id);
+        nextMap.set(seed.id, existing ? { ...existing, ...seed, createdAt: existing.createdAt } : seed);
+      }
+      return Array.from(nextMap.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    });
+  }, [evidenceItems, filteredStormDates, searchSummary]);
+
+  const handleRemoveEvidenceItem = useCallback(async (itemId: string) => {
+    await removeEvidenceItem(itemId);
+    setEvidenceItems((current) => current.filter((item) => item.id !== itemId));
+  }, []);
+
+  const handleToggleEvidenceStatus = useCallback(async (itemId: string) => {
+    const currentItem = evidenceItems.find((item) => item.id === itemId);
+    if (!currentItem) {
+      return;
+    }
+
+    const nextItem: EvidenceItem = {
+      ...currentItem,
+      status: currentItem.status === 'approved' ? 'pending' : 'approved',
+      updatedAt: new Date().toISOString(),
+    };
+
+    await saveEvidenceItem(nextItem);
+    setEvidenceItems((current) =>
+      current
+        .map((item) => (item.id === itemId ? nextItem : item))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
+  }, [evidenceItems]);
+
   const mapArea = (
     <main className="relative flex min-h-[55vh] flex-1 flex-col min-w-0 lg:min-h-0">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
@@ -708,6 +824,7 @@ function App() {
             pinnedProperties={pinnedProperties}
             onOpenMap={() => setActiveView('map')}
             onOpenPinned={() => setActiveView('pinned')}
+            onOpenEvidence={() => setActiveView('evidence')}
             onOpenReports={() => setActiveView('reports')}
           />
         )}
@@ -761,6 +878,21 @@ function App() {
             stormDates={filteredStormDates}
             generatingReport={generatingReport}
             onGenerateReport={handleGenerateReport}
+            onOpenMap={() => setActiveView('map')}
+            onOpenEvidence={() => setActiveView('evidence')}
+          />
+        )}
+
+        {activeView === 'evidence' && (
+          <EvidencePage
+            searchSummary={searchSummary}
+            stormDates={filteredStormDates}
+            evidenceItems={evidenceItems}
+            onUploadFiles={handleUploadEvidenceFiles}
+            onSeedProviderQueries={handleSeedEvidenceQueries}
+            onRemoveEvidenceItem={handleRemoveEvidenceItem}
+            onToggleEvidenceStatus={handleToggleEvidenceStatus}
+            onOpenReports={() => setActiveView('reports')}
             onOpenMap={() => setActiveView('map')}
           />
         )}

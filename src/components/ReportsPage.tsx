@@ -6,6 +6,7 @@ interface ReportsPageProps {
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
   onOpenMap: () => void;
+  onOpenEvidence?: () => void;
 }
 
 export default function ReportsPage({
@@ -14,6 +15,7 @@ export default function ReportsPage({
   generatingReport,
   onGenerateReport,
   onOpenMap,
+  onOpenEvidence,
 }: ReportsPageProps) {
   return (
     <section className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-950 via-gray-950 to-black px-4 py-5 lg:px-6">
@@ -30,6 +32,15 @@ export default function ReportsPage({
             of hunting through the sidebar, reps can stay focused on one property and
             trigger the NOAA-forward PDF directly from the storm-date list.
           </p>
+          {onOpenEvidence && (
+            <button
+              type="button"
+              onClick={onOpenEvidence}
+              className="mt-5 rounded-2xl border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:border-gray-700 hover:bg-gray-800"
+            >
+              Open Evidence Workspace
+            </button>
+          )}
         </div>
 
         {searchSummary ? (

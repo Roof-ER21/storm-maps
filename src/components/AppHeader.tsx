@@ -11,6 +11,7 @@ const NAV_ITEMS: Array<{ id: AppView; label: string }> = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'map', label: 'Map' },
   { id: 'pinned', label: 'Pinned' },
+  { id: 'evidence', label: 'Evidence' },
   { id: 'reports', label: 'Reports' },
 ];
 

@@ -54,7 +54,7 @@ export type SearchResultType =
 
 export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
 
-export type AppView = 'dashboard' | 'map' | 'pinned' | 'reports';
+export type AppView = 'dashboard' | 'map' | 'pinned' | 'reports' | 'evidence';
 
 // ============================================================
 // Storm Event Types
@@ -273,6 +273,30 @@ export interface PinnedProperty {
   latestMaxHailInches: number;
   createdAt: string;
   updatedAt: string;
+}
+
+export type EvidenceKind = 'upload' | 'provider-query';
+export type EvidenceProvider = 'upload' | 'youtube' | 'flickr';
+export type EvidenceMediaType = 'image' | 'video' | 'link';
+export type EvidenceStatus = 'pending' | 'approved';
+
+export interface EvidenceItem {
+  id: string;
+  kind: EvidenceKind;
+  provider: EvidenceProvider;
+  mediaType: EvidenceMediaType;
+  propertyLabel: string;
+  stormDate: string | null;
+  title: string;
+  notes?: string;
+  externalUrl?: string;
+  fileName?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  blob?: Blob;
+  createdAt: string;
+  updatedAt: string;
+  status: EvidenceStatus;
 }
 
 // ============================================================

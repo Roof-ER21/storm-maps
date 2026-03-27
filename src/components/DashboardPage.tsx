@@ -6,6 +6,7 @@ interface DashboardPageProps {
   pinnedProperties: PinnedProperty[];
   onOpenMap: () => void;
   onOpenPinned: () => void;
+  onOpenEvidence: () => void;
   onOpenReports: () => void;
 }
 
@@ -15,6 +16,7 @@ export default function DashboardPage({
   pinnedProperties,
   onOpenMap,
   onOpenPinned,
+  onOpenEvidence,
   onOpenReports,
 }: DashboardPageProps) {
   const latestStorm = stormDates[0] ?? null;
@@ -41,6 +43,7 @@ export default function DashboardPage({
           <div className="mt-5 flex flex-wrap gap-3">
             <QuickActionButton label="Open Map Workspace" onClick={onOpenMap} />
             <QuickActionButton label="Open Pinned Properties" onClick={onOpenPinned} />
+            <QuickActionButton label="Open Evidence" onClick={onOpenEvidence} />
             <QuickActionButton label="Open Reports" onClick={onOpenReports} />
           </div>
         </div>
