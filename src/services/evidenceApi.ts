@@ -1,4 +1,5 @@
 import type { EvidenceItem, PropertySearchSummary, StormDate } from '../types/storm';
+import { fetchDirectEvidenceCandidates } from './evidenceProviders';
 
 const EVIDENCE_API_BASE = 'https://sa21.up.railway.app/api/hail';
 
@@ -27,6 +28,17 @@ export async function fetchEvidenceCandidates(
   lng: number,
   stormDates: StormDate[],
 ): Promise<{ items: EvidenceItem[]; providerStatus: EvidenceSearchResponse['providerStatus'] }> {
+  const direct = await fetchDirectEvidenceCandidates(
+    searchSummary,
+    lat,
+    lng,
+    stormDates,
+  );
+
+  if (direct.items.length > 0) {
+    return direct;
+  }
+
   const params = new URLSearchParams({
     propertyLabel: searchSummary.locationLabel,
     lat: String(lat),
