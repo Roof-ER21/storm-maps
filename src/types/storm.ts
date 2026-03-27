@@ -290,6 +290,8 @@ export interface EvidenceItem {
   title: string;
   notes?: string;
   externalUrl?: string;
+  thumbnailUrl?: string | null;
+  publishedAt?: string | null;
   fileName?: string;
   mimeType?: string;
   sizeBytes?: number;

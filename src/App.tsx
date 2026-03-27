@@ -50,7 +50,7 @@ import {
   removeEvidenceItem,
   saveEvidenceItem,
 } from './services/evidenceStorage';
-import { buildEvidenceQuerySeeds } from './services/evidenceProviders';
+import { fetchEvidenceCandidates } from './services/evidenceApi';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -103,6 +103,13 @@ function App() {
     useState<NotificationPermission>(getNotificationPermission);
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([]);
+  const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
+    youtube: 'live' | 'fallback';
+    flickr: 'live' | 'fallback';
+  }>({
+    youtube: 'fallback',
+    flickr: 'fallback',
+  });
   const notifiedAlertsRef = useRef<Map<string, number>>(new Map());
 
   // ---- GPS ----
@@ -577,36 +584,45 @@ function App() {
     );
   }, [searchSummary]);
 
-  const handleSeedEvidenceQueries = useCallback(async () => {
+  const handleFetchEvidenceCandidates = useCallback(async () => {
     if (!searchSummary) {
-      throw new Error('Search a property before seeding evidence packs.');
+      throw new Error('Search a property before fetching evidence candidates.');
     }
 
-    const seeds = buildEvidenceQuerySeeds(searchSummary, filteredStormDates);
+    const result = await fetchEvidenceCandidates(
+      searchSummary,
+      queryLocation.lat,
+      queryLocation.lng,
+      filteredStormDates,
+    );
+    setEvidenceProviderStatus(result.providerStatus);
 
     await Promise.all(
-      seeds.map(async (seed) => {
-        const existing = evidenceItems.find((item) => item.id === seed.id);
+      result.items.map(async (item) => {
+        const existing = evidenceItems.find((current) => current.id === item.id);
         const nextItem = existing
           ? {
               ...existing,
-              ...seed,
+              ...item,
               createdAt: existing.createdAt,
             }
-          : seed;
+          : item;
         await saveEvidenceItem(nextItem);
       }),
     );
 
     setEvidenceItems((current) => {
       const nextMap = new Map(current.map((item) => [item.id, item]));
-      for (const seed of seeds) {
-        const existing = nextMap.get(seed.id);
-        nextMap.set(seed.id, existing ? { ...existing, ...seed, createdAt: existing.createdAt } : seed);
+      for (const item of result.items) {
+        const existing = nextMap.get(item.id);
+        nextMap.set(
+          item.id,
+          existing ? { ...existing, ...item, createdAt: existing.createdAt } : item,
+        );
       }
       return Array.from(nextMap.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     });
-  }, [evidenceItems, filteredStormDates, searchSummary]);
+  }, [evidenceItems, filteredStormDates, queryLocation.lat, queryLocation.lng, searchSummary]);
 
   const handleRemoveEvidenceItem = useCallback(async (itemId: string) => {
     await removeEvidenceItem(itemId);
@@ -889,11 +905,12 @@ function App() {
             stormDates={filteredStormDates}
             evidenceItems={evidenceItems}
             onUploadFiles={handleUploadEvidenceFiles}
-            onSeedProviderQueries={handleSeedEvidenceQueries}
+            onFetchProviderCandidates={handleFetchEvidenceCandidates}
             onRemoveEvidenceItem={handleRemoveEvidenceItem}
             onToggleEvidenceStatus={handleToggleEvidenceStatus}
             onOpenReports={() => setActiveView('reports')}
             onOpenMap={() => setActiveView('map')}
+            providerStatus={evidenceProviderStatus}
           />
         )}
       </div>

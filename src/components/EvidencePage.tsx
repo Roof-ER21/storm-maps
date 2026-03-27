@@ -6,11 +6,15 @@ interface EvidencePageProps {
   stormDates: StormDate[];
   evidenceItems: EvidenceItem[];
   onUploadFiles: (files: FileList, stormDate: string | null) => Promise<void>;
-  onSeedProviderQueries: () => Promise<void>;
+  onFetchProviderCandidates: () => Promise<void>;
   onRemoveEvidenceItem: (itemId: string) => Promise<void>;
   onToggleEvidenceStatus: (itemId: string) => Promise<void>;
   onOpenReports: () => void;
   onOpenMap: () => void;
+  providerStatus: {
+    youtube: 'live' | 'fallback';
+    flickr: 'live' | 'fallback';
+  };
 }
 
 export default function EvidencePage({
@@ -18,11 +22,12 @@ export default function EvidencePage({
   stormDates,
   evidenceItems,
   onUploadFiles,
-  onSeedProviderQueries,
+  onFetchProviderCandidates,
   onRemoveEvidenceItem,
   onToggleEvidenceStatus,
   onOpenReports,
   onOpenMap,
+  providerStatus,
 }: EvidencePageProps) {
   const [selectedStormDate, setSelectedStormDate] = useState<string>('');
   const [uploading, setUploading] = useState(false);
@@ -84,10 +89,10 @@ export default function EvidencePage({
     }
   };
 
-  const handleSeedQueries = async () => {
+  const handleFetchCandidates = async () => {
     setSeeding(true);
     try {
-      await onSeedProviderQueries();
+      await onFetchProviderCandidates();
     } finally {
       setSeeding(false);
     }
@@ -182,20 +187,23 @@ export default function EvidencePage({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
-                        Public Source Packs
+                        Public Media Candidates
                       </p>
                       <p className="mt-2 text-sm text-gray-400">
-                        Seed reusable YouTube and Flickr query packs for the current
-                        property and latest storms.
+                        Pull live candidates from the backend when provider keys exist,
+                        or source-pack fallbacks when they do not.
+                      </p>
+                      <p className="mt-2 text-xs text-gray-500">
+                        YouTube: {providerStatus.youtube} · Flickr: {providerStatus.flickr}
                       </p>
                     </div>
                     <button
                       type="button"
-                      onClick={handleSeedQueries}
+                      onClick={handleFetchCandidates}
                       disabled={seeding}
                       className="rounded-2xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
                     >
-                      {seeding ? 'Seeding...' : 'Seed Packs'}
+                      {seeding ? 'Fetching...' : 'Fetch Candidates'}
                     </button>
                   </div>
                 </div>
@@ -222,7 +230,7 @@ export default function EvidencePage({
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
                   <SummaryCard label="Uploads" value={String(uploadItems.length)} />
-                  <SummaryCard label="Source Packs" value={String(providerItems.length)} />
+                  <SummaryCard label="Public Candidates" value={String(providerItems.length)} />
                   <SummaryCard
                     label="Approved"
                     value={String(
@@ -332,8 +340,20 @@ export default function EvidencePage({
                         </div>
                         <StatusPill status={item.status} />
                       </div>
+                      {item.thumbnailUrl && (
+                        <img
+                          src={item.thumbnailUrl}
+                          alt={item.title}
+                          className="mt-3 h-36 w-full rounded-2xl object-cover"
+                        />
+                      )}
                       {item.notes && (
                         <p className="mt-3 text-sm text-gray-400">{item.notes}</p>
+                      )}
+                      {item.publishedAt && (
+                        <p className="mt-2 text-xs text-gray-500">
+                          Posted {formatPublishedAt(item.publishedAt)}
+                        </p>
                       )}
                       <div className="mt-4 flex gap-2">
                         {item.externalUrl && (
@@ -367,8 +387,8 @@ export default function EvidencePage({
 
                 {providerItems.length === 0 && (
                   <div className="mt-4 rounded-2xl border border-dashed border-gray-800 bg-black/30 p-6 text-sm text-gray-500">
-                    No source packs yet. Seed query packs to start building public-media
-                    evidence around the current property and latest storm dates.
+                    No public candidates yet. Fetch live candidates to pull YouTube and
+                    Flickr results for the current property and latest storm dates.
                   </div>
                 )}
               </section>
@@ -378,6 +398,21 @@ export default function EvidencePage({
       </div>
     </section>
   );
+}
+
+function formatPublishedAt(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  return parsed.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
 }
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
