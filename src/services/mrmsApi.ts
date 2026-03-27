@@ -10,6 +10,9 @@
  */
 
 import type { MrmsHailData } from '../types/storm';
+import type { BoundingBox } from '../types/storm';
+
+export type MrmsOverlayProduct = 'mesh60' | 'mesh1440';
 
 // ---------------------------------------------------------------------------
 // Oracle Tile Server Config
@@ -36,6 +39,12 @@ interface MrmsMetadata {
   timestamp?: string;
   generated?: string;
   product?: string;
+  ref_time?: string;
+  generated_at?: string;
+  has_hail?: boolean;
+  max_mesh_mm?: number;
+  max_mesh_inches?: number;
+  hail_pixels?: number;
   bounds?: {
     north: number;
     south: number;
@@ -44,16 +53,29 @@ interface MrmsMetadata {
   };
 }
 
+export interface HistoricalMrmsMetadata extends MrmsMetadata {
+  overlay_url?: string;
+  archive_file?: string;
+  archive_url?: string;
+  requested_bounds?: BoundingBox;
+  image_size?: {
+    width: number;
+    height: number;
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
 /**
- * Fetch MRMS MESH 60-minute overlay metadata from Oracle server.
+ * Fetch MRMS overlay metadata from the MRMS proxy.
  */
-export async function fetchMrmsMetadata(): Promise<MrmsMetadata | null> {
+export async function fetchMrmsMetadata(
+  product: MrmsOverlayProduct = 'mesh60',
+): Promise<MrmsMetadata | null> {
   try {
-    const res = await fetch(`${PROXY_BASE}/mesh60.json`, {
+    const res = await fetch(`${PROXY_BASE}/${product}.json`, {
       signal: AbortSignal.timeout(5000),
     });
     if (!res.ok) throw new Error(`MRMS metadata returned ${res.status}`);
@@ -64,18 +86,66 @@ export async function fetchMrmsMetadata(): Promise<MrmsMetadata | null> {
   }
 }
 
+interface HistoricalMrmsParams {
+  date: string;
+  bounds: BoundingBox;
+  anchorTimestamp?: string | null;
+}
+
+function toHistoricalQuery(params: HistoricalMrmsParams): string {
+  const query = new URLSearchParams({
+    date: params.date,
+    north: params.bounds.north.toString(),
+    south: params.bounds.south.toString(),
+    east: params.bounds.east.toString(),
+    west: params.bounds.west.toString(),
+  });
+
+  if (params.anchorTimestamp) {
+    query.set('anchorTimestamp', params.anchorTimestamp);
+  }
+
+  return query.toString();
+}
+
+export async function fetchHistoricalMrmsMetadata(
+  params: HistoricalMrmsParams,
+): Promise<HistoricalMrmsMetadata | null> {
+  try {
+    const res = await fetch(
+      `https://sa21.up.railway.app/api/hail/mrms-historical-meta?${toHistoricalQuery(params)}`,
+      {
+        signal: AbortSignal.timeout(45000),
+      },
+    );
+    if (!res.ok) {
+      throw new Error(`Historical MRMS metadata returned ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('[mrmsApi] Failed to fetch historical MRMS metadata:', err);
+    return null;
+  }
+}
+
+export function getHistoricalMrmsOverlayUrl(params: HistoricalMrmsParams): string {
+  return `https://sa21.up.railway.app/api/hail/mrms-historical-image?${toHistoricalQuery(params)}`;
+}
+
 /**
- * Get the MRMS MESH overlay image URL (1440-min / 24h composite).
+ * Get the MRMS overlay image URL for the given product.
  */
-export function getMrmsOverlayUrl(): string {
-  return `${PROXY_BASE}/mesh1440.png`;
+export function getMrmsOverlayUrl(
+  product: MrmsOverlayProduct = 'mesh1440',
+): string {
+  return `${PROXY_BASE}/${product}.png`;
 }
 
 /**
  * Get the MRMS MESH 60-min overlay image URL.
  */
 export function getMrms60MinUrl(): string {
-  return `${PROXY_BASE}/mesh60.png`;
+  return getMrmsOverlayUrl('mesh60');
 }
 
 /**
@@ -87,7 +157,7 @@ export function getMrmsTileUrl(
 ): string {
   switch (product) {
     case 'MESH':
-      return getMrmsOverlayUrl();
+      return getMrmsOverlayUrl('mesh1440');
     case 'SHI':
     case 'POSH':
     case 'MHP':
@@ -103,12 +173,12 @@ export function getMrmsTileUrl(
  * Returns ISO timestamp strings for available overlays.
  */
 export async function fetchMrmsTimestamps(): Promise<string[]> {
-  const meta = await fetchMrmsMetadata();
-  if (meta?.timestamp) {
-    return [meta.timestamp];
+  const meta = await fetchMrmsMetadata('mesh60');
+  if (meta?.timestamp || meta?.ref_time) {
+    return [meta.timestamp || meta.ref_time || ''];
   }
-  if (meta?.generated) {
-    return [meta.generated];
+  if (meta?.generated || meta?.generated_at) {
+    return [meta.generated || meta.generated_at || ''];
   }
   return [];
 }
@@ -117,12 +187,17 @@ export async function fetchMrmsTimestamps(): Promise<string[]> {
  * Build MrmsHailData object for the current MESH overlay.
  */
 export async function getCurrentMeshOverlay(): Promise<MrmsHailData | null> {
-  const meta = await fetchMrmsMetadata();
+  const meta = await fetchMrmsMetadata('mesh1440');
 
   return {
     product: 'MESH',
-    timestamp: meta?.timestamp || meta?.generated || new Date().toISOString(),
-    tileUrl: getMrmsOverlayUrl(),
+    timestamp:
+      meta?.timestamp ||
+      meta?.ref_time ||
+      meta?.generated ||
+      meta?.generated_at ||
+      new Date().toISOString(),
+    tileUrl: getMrmsOverlayUrl('mesh1440'),
     opacity: 0.6,
   };
 }

@@ -1,8 +1,9 @@
 /**
- * HailSwathLayer -- Renders NHP MESH swath polygons on Google Maps.
+ * HailSwathLayer -- Renders hail swaths on Google Maps.
  *
- * Uses the useMap() hook to draw polygons directly via the Google Maps
- * JS API. Severity-colored polygons with click handlers for info windows.
+ * This layer only fills true polygon geometry. If the upstream dataset only
+ * provides a centerline, it is rendered as a track instead of inventing a
+ * symmetric footprint that was not present in the source data.
  */
 
 import { useEffect, useRef, useCallback } from 'react';
@@ -13,10 +14,11 @@ import { getHailSizeClass } from '../types/storm';
 interface HailSwathLayerProps {
   swaths: MeshSwath[];
   selectedDate: string | null;
+  highlightSelected?: boolean;
 }
 
-/** Geometry classification for rendering strategy */
 type GeometryKind = 'polygon' | 'line' | 'unknown';
+type ShapeInstance = google.maps.Polygon | google.maps.Polyline;
 
 function classifyGeometry(geom: MeshSwath['geometry']): GeometryKind {
   if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') return 'polygon';
@@ -24,14 +26,7 @@ function classifyGeometry(geom: MeshSwath['geometry']): GeometryKind {
   return 'unknown';
 }
 
-/**
- * Convert GeoJSON coordinates to Google Maps LatLng paths.
- * GeoJSON is [lng, lat], Google Maps wants {lat, lng}.
- * Handles Polygon, MultiPolygon, LineString, and MultiLineString.
- */
-function geoJsonToGooglePaths(
-  swath: MeshSwath,
-): google.maps.LatLngLiteral[][] {
+function geoJsonToGooglePaths(swath: MeshSwath): google.maps.LatLngLiteral[][] {
   const geom = swath.geometry;
   const paths: google.maps.LatLngLiteral[][] = [];
 
@@ -55,13 +50,101 @@ function geoJsonToGooglePaths(
 
   return paths;
 }
+function getPolygonStyle(
+  isFocused: boolean,
+  highlightSelected: boolean,
+) {
+  if (highlightSelected) {
+    return {
+      fillOpacity: 0.3,
+      strokeOpacity: 0.88,
+      strokeWeight: 3,
+    };
+  }
+
+  if (isFocused) {
+    return {
+      fillOpacity: 0.24,
+      strokeOpacity: 0.76,
+      strokeWeight: 2.5,
+    };
+  }
+
+  return {
+    fillOpacity: 0.18,
+    strokeOpacity: 0.58,
+    strokeWeight: 2,
+  };
+}
+
+function getLineStyle(
+  isFocused: boolean,
+  highlightSelected: boolean,
+) {
+  if (highlightSelected) {
+    return { strokeOpacity: 1, strokeWeight: 5 };
+  }
+
+  if (isFocused) {
+    return { strokeOpacity: 0.92, strokeWeight: 4 };
+  }
+
+  return { strokeOpacity: 0.8, strokeWeight: 3 };
+}
+
+function createInfoContent(swath: MeshSwath, color: string): string {
+  const sizeClass = getHailSizeClass(swath.maxMeshInches);
+  const severity = sizeClass
+    ? `${sizeClass.label} (severity ${sizeClass.damageSeverity}/5)`
+    : 'Unknown';
+
+  return `
+    <div style="font-family: system-ui, sans-serif; padding: 4px; max-width: 300px;">
+      <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: ${color};">
+        Hail Swath
+      </div>
+      <div style="font-size: 12px; color: #374151; line-height: 1.5;">
+        <div><strong>Date:</strong> ${swath.date}</div>
+        <div><strong>Estimated Hail:</strong> ${swath.maxMeshInches}" ${severity}</div>
+        ${
+          swath.maxWidthKm
+            ? `<div><strong>Max Width:</strong> ${swath.maxWidthKm.toFixed(1)} km</div>`
+            : ''
+        }
+        ${
+          swath.hailLengthKm
+            ? `<div><strong>Length:</strong> ${swath.hailLengthKm.toFixed(1)} km</div>`
+            : ''
+        }
+        ${
+          swath.areaSqMiles > 0
+            ? `<div><strong>Approx. Area:</strong> ${swath.areaSqMiles.toFixed(1)} sq mi</div>`
+            : ''
+        }
+        ${
+          swath.statesAffected.length > 0
+            ? `<div><strong>States:</strong> ${swath.statesAffected.join(', ')}</div>`
+            : ''
+        }
+        <div style="margin-top: 6px; color: #6b7280;">
+          ${
+            classifyGeometry(swath.geometry) === 'line'
+              ? 'Rendered from National Hail Project storm-track geometry. No synthetic footprint fill is added when only a track is available.'
+              : 'Rendered from hail-area geometry supplied by the upstream source.'
+          }
+        </div>
+      </div>
+    </div>
+  `;
+}
 
 export default function HailSwathLayer({
   swaths,
   selectedDate,
+  highlightSelected = false,
 }: HailSwathLayerProps) {
   const map = useMap();
-  const shapesRef = useRef<(google.maps.Polygon | google.maps.Polyline)[]>([]);
+  const shapesRef = useRef<ShapeInstance[]>([]);
   const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
 
   const clearShapes = useCallback(() => {
@@ -69,9 +152,7 @@ export default function HailSwathLayer({
       shape.setMap(null);
     }
     shapesRef.current = [];
-    if (infoWindowRef.current) {
-      infoWindowRef.current.close();
-    }
+    infoWindowRef.current?.close();
   }, []);
 
   useEffect(() => {
@@ -79,12 +160,10 @@ export default function HailSwathLayer({
 
     clearShapes();
 
-    // Filter swaths by selected date
     const visible = selectedDate
-      ? swaths.filter((s) => s.date === selectedDate)
+      ? swaths.filter((swath) => swath.date === selectedDate)
       : swaths;
 
-    // Create info window once
     if (!infoWindowRef.current) {
       infoWindowRef.current = new google.maps.InfoWindow();
     }
@@ -94,73 +173,55 @@ export default function HailSwathLayer({
       if (paths.length === 0) continue;
 
       const sizeClass = getHailSizeClass(swath.maxMeshInches);
-      const color = sizeClass?.color || '#FFA500';
+      const color = sizeClass?.color || '#f97316';
       const kind = classifyGeometry(swath.geometry);
+      const isFocused = Boolean(selectedDate);
+      const isEmphasized = isFocused && highlightSelected;
+      const infoContent = createInfoContent(swath, color);
 
-      // Build the info window click handler (shared by both shape types)
-      const handleClick = (e: google.maps.MapMouseEvent) => {
-        const severity = sizeClass
-          ? `${sizeClass.label} (severity ${sizeClass.damageSeverity}/5)`
-          : 'Unknown';
-
-        const content = `
-          <div style="font-family: system-ui, sans-serif; padding: 4px; max-width: 280px;">
-            <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: ${color};">
-              MESH Hail Swath
-            </div>
-            <div style="font-size: 12px; color: #374151; line-height: 1.5;">
-              <div><strong>Date:</strong> ${swath.date}</div>
-              <div><strong>Max MESH:</strong> ${swath.maxMeshInches}" ${severity}</div>
-              <div><strong>Avg MESH:</strong> ${swath.avgMeshInches}"</div>
-              ${swath.areaSqMiles > 0 ? `<div><strong>Area:</strong> ${swath.areaSqMiles.toFixed(1)} sq mi</div>` : ''}
-              ${swath.statesAffected.length > 0 ? `<div><strong>States:</strong> ${swath.statesAffected.join(', ')}</div>` : ''}
-            </div>
-          </div>
-        `;
-
-        infoWindowRef.current!.setContent(content);
-        infoWindowRef.current!.setPosition(
-          e.latLng || { lat: 0, lng: 0 },
-        );
+      const handleClick = (event: google.maps.MapMouseEvent) => {
+        infoWindowRef.current!.setContent(infoContent);
+        infoWindowRef.current!.setPosition(event.latLng || paths[0][0]);
         infoWindowRef.current!.open(map);
       };
 
       if (kind === 'line') {
-        // Render LineString / MultiLineString as Polylines
+        const lineStyle = getLineStyle(isFocused, isEmphasized);
         for (const path of paths) {
-          const polyline = new google.maps.Polyline({
+          const coreLine = new google.maps.Polyline({
             path,
             strokeColor: color,
-            strokeOpacity: 0.9,
-            strokeWeight: 4,
+            strokeOpacity: lineStyle.strokeOpacity,
+            strokeWeight: lineStyle.strokeWeight,
             map,
-            zIndex: 10,
+            zIndex: isEmphasized ? 19 : isFocused ? 15 : 11,
           });
-          polyline.addListener('click', handleClick);
-          shapesRef.current.push(polyline);
+          coreLine.addListener('click', handleClick);
+          shapesRef.current.push(coreLine);
         }
-      } else {
-        // Render Polygon / MultiPolygon as filled Polygons
-        const polygon = new google.maps.Polygon({
-          paths,
-          strokeColor: color,
-          strokeOpacity: 0.9,
-          strokeWeight: 2,
-          fillColor: color,
-          fillOpacity: 0.25,
-          map,
-          zIndex: 10,
-        });
-        polygon.addListener('click', handleClick);
-        shapesRef.current.push(polygon);
+
+        continue;
       }
+
+      const polygonStyle = getPolygonStyle(isFocused, isEmphasized);
+      const polygon = new google.maps.Polygon({
+        paths,
+        strokeColor: color,
+        strokeOpacity: polygonStyle.strokeOpacity,
+        strokeWeight: polygonStyle.strokeWeight,
+        fillColor: color,
+        fillOpacity: polygonStyle.fillOpacity,
+        map,
+        zIndex: isEmphasized ? 18 : isFocused ? 14 : 10,
+      });
+      polygon.addListener('click', handleClick);
+      shapesRef.current.push(polygon);
     }
 
     return () => {
       clearShapes();
     };
-  }, [map, swaths, selectedDate, clearShapes]);
+  }, [map, swaths, selectedDate, highlightSelected, clearShapes]);
 
-  // This component renders imperatively; no JSX output needed
   return null;
 }

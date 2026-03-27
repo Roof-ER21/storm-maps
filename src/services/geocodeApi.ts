@@ -9,7 +9,7 @@
  * and sufficient for a roofing-focused app.
  */
 
-import type { SearchResult } from '../types/storm';
+import type { BoundingBox, SearchResult, SearchResultType } from '../types/storm';
 
 // ---------------------------------------------------------------------------
 // Google Maps Geocoding
@@ -18,11 +18,13 @@ import type { SearchResult } from '../types/storm';
 interface GoogleGeoResult {
   formatted_address: string;
   place_id: string;
+  types?: string[];
   geometry: {
     location: {
       lat: number;
       lng: number;
     };
+    viewport?: google.maps.LatLngBounds;
   };
 }
 
@@ -45,11 +47,22 @@ async function geocodeWithGoogle(query: string): Promise<SearchResult | null> {
     if (!result.results || result.results.length === 0) return null;
 
     const first = result.results[0];
+    const viewport = first.geometry.viewport?.toJSON();
+
     return {
       address: first.formatted_address,
       lat: first.geometry.location.lat(),
       lng: first.geometry.location.lng(),
       placeId: first.place_id,
+      viewport: viewport
+        ? {
+            north: viewport.north,
+            south: viewport.south,
+            east: viewport.east,
+            west: viewport.west,
+          }
+        : null,
+      resultType: getGoogleResultType(first.types),
     };
   } catch (err) {
     console.error('[geocodeApi] Google geocode failed:', err);
@@ -100,6 +113,8 @@ async function geocodeWithCensus(query: string): Promise<SearchResult | null> {
       lat: first.coordinates.y,
       lng: first.coordinates.x,
       placeId: `census-${first.coordinates.y}-${first.coordinates.x}`,
+      viewport: inferCensusViewport(first.coordinates.y, first.coordinates.x, query),
+      resultType: isZipCode(query) ? 'postal_code' : 'address',
     };
   } catch (err) {
     console.error('[geocodeApi] Census geocode failed:', err);
@@ -116,6 +131,62 @@ async function geocodeWithCensus(query: string): Promise<SearchResult | null> {
  */
 function isZipCode(query: string): boolean {
   return /^\d{5}(-\d{4})?$/.test(query.trim());
+}
+
+function getGoogleResultType(types?: string[]): SearchResultType {
+  if (!types || types.length === 0) {
+    return 'unknown';
+  }
+
+  if (
+    types.includes('street_address') ||
+    types.includes('premise') ||
+    types.includes('subpremise') ||
+    types.includes('route')
+  ) {
+    return 'address';
+  }
+  if (types.includes('postal_code')) {
+    return 'postal_code';
+  }
+  if (
+    types.includes('locality') ||
+    types.includes('neighborhood') ||
+    types.includes('sublocality')
+  ) {
+    return 'locality';
+  }
+  if (types.some((type) => type.startsWith('administrative_area_level_'))) {
+    return 'administrative_area';
+  }
+
+  return 'unknown';
+}
+
+function inferCensusViewport(
+  lat: number,
+  lng: number,
+  query: string,
+): BoundingBox | null {
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+
+  if (isZipCode(query)) {
+    return {
+      north: lat + 0.08,
+      south: lat - 0.08,
+      east: lng + 0.08,
+      west: lng - 0.08,
+    };
+  }
+
+  return {
+    north: lat + 0.01,
+    south: lat - 0.01,
+    east: lng + 0.01,
+    west: lng - 0.01,
+  };
 }
 
 // ---------------------------------------------------------------------------

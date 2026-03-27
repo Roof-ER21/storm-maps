@@ -12,6 +12,33 @@ import type { StormEvent, BoundingBox } from '../types/storm';
 
 // Field assistant API base
 const SA21_API = 'https://sa21.up.railway.app/api';
+const SWDI_FALLBACK_MAX_MONTHS = 24;
+
+function appendEvents(target: StormEvent[], next: StormEvent[]): void {
+  for (const event of next) {
+    target.push(event);
+  }
+}
+
+function getFieldAssistantTimeoutMs(months: number): number {
+  if (months >= 120) return 45000;
+  if (months >= 60) return 30000;
+  if (months >= 24) return 20000;
+  return 10000;
+}
+
+function shouldUseSwdiFallback(months: number): boolean {
+  return months <= SWDI_FALLBACK_MAX_MONTHS;
+}
+
+function getTimeoutSignal(
+  timeoutMs: number,
+  signal?: AbortSignal,
+): AbortSignal {
+  return signal
+    ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs);
+}
 
 // ---------------------------------------------------------------------------
 // NCEI SWDI Hail Reports
@@ -29,6 +56,45 @@ interface SwdiHailRecord {
 
 interface SwdiResponse {
   result?: SwdiHailRecord[];
+}
+
+interface Sa21HailEvent {
+  id?: string | number;
+  date?: string;
+  latitude?: number;
+  longitude?: number;
+  hailSize?: number;
+  severity?: string;
+  source?: string;
+}
+
+interface Sa21NoaaEvent {
+  id?: string | number;
+  eventType?: string;
+  date?: string;
+  latitude?: number;
+  longitude?: number;
+  magnitude?: number;
+  state?: string;
+  source?: string;
+  narrative?: string;
+  location?: string;
+}
+
+interface Sa21SearchResponse {
+  events?: Sa21HailEvent[];
+  noaaEvents?: Sa21NoaaEvent[];
+}
+
+function mapSa21NoaaEventType(
+  rawType?: string,
+): StormEvent['eventType'] | null {
+  const normalized = rawType?.toLowerCase().trim();
+  if (normalized === 'hail') return 'Hail';
+  if (normalized === 'wind' || normalized === 'thunderstorm wind') {
+    return 'Thunderstorm Wind';
+  }
+  return null;
 }
 
 /**
@@ -54,9 +120,11 @@ export async function searchByCoordinates(
   lng: number,
   months = 6,
   radius = 50,
+  signal?: AbortSignal,
 ): Promise<StormEvent[]> {
   // Primary: use field assistant API (has full NOAA Storm Events data)
   try {
+    const timeoutMs = getFieldAssistantTimeoutMs(months);
     const params = new URLSearchParams({
       lat: lat.toString(),
       lng: lng.toString(),
@@ -64,45 +132,24 @@ export async function searchByCoordinates(
       radius: radius.toString(),
     });
     const res = await fetch(`${SA21_API}/hail/search?${params}`, {
-      signal: AbortSignal.timeout(8000),
+      signal: getTimeoutSignal(timeoutMs, signal),
       // Explicit CORS mode — if the server lacks CORS headers, the catch
       // block below will fire immediately and fall through to SWDI.
       mode: 'cors',
       headers: { 'x-user-email': 'storm-maps@roofer21.com' },
     });
     if (res.ok) {
-      const data = await res.json();
+      const data: Sa21SearchResponse = await res.json();
       const events: StormEvent[] = [];
 
       // Parse IHM/HailTrace hail events
       if (data.events && Array.isArray(data.events)) {
-        events.push(...data.events.map((e: any, idx: number) => ({
-          id: `ihm-${e.id || idx}`,
-          eventType: 'Hail' as const,
-          state: '',
-          county: '',
-          beginDate: e.date || '',
-          endDate: e.date || '',
-          beginLat: e.latitude || 0,
-          beginLon: e.longitude || 0,
-          endLat: e.latitude || 0,
-          endLon: e.longitude || 0,
-          magnitude: e.hailSize || 0,
-          magnitudeType: 'inches',
-          damageProperty: 0,
-          source: e.source || 'Storm Database',
-          narrative: `Hail ${e.hailSize}"  - ${e.severity || 'unknown'} severity`,
-        })));
-      }
-
-      // Parse NOAA events
-      if (data.noaaEvents && Array.isArray(data.noaaEvents)) {
-        events.push(...data.noaaEvents
-          .filter((e: any) => e.eventType === 'hail')
-          .map((e: any, idx: number) => ({
-            id: `noaa-${e.id || idx}`,
+        appendEvents(
+          events,
+          data.events.map((e, idx: number) => ({
+            id: `ihm-${e.id || idx}`,
             eventType: 'Hail' as const,
-            state: e.state || '',
+            state: '',
             county: '',
             beginDate: e.date || '',
             endDate: e.date || '',
@@ -110,20 +157,65 @@ export async function searchByCoordinates(
             beginLon: e.longitude || 0,
             endLat: e.latitude || 0,
             endLon: e.longitude || 0,
-            magnitude: e.magnitude || 0,
+            magnitude: e.hailSize || 0,
             magnitudeType: 'inches',
             damageProperty: 0,
-            source: e.source || 'NOAA',
-            narrative: e.narrative || `${e.eventType} - ${e.location || ''}`,
-          })));
+            source: e.source || 'Storm Database',
+            narrative: `Hail ${e.hailSize}"  - ${e.severity || 'unknown'} severity`,
+          })),
+        );
+      }
+
+      // Parse NOAA events
+      if (data.noaaEvents && Array.isArray(data.noaaEvents)) {
+        appendEvents(
+          events,
+          data.noaaEvents
+            .map((e, idx: number) => {
+              const eventType = mapSa21NoaaEventType(e.eventType);
+              if (!eventType) {
+                return null;
+              }
+
+              return {
+                id: `noaa-${e.id || idx}`,
+                eventType,
+                state: e.state || '',
+                county: '',
+                beginDate: e.date || '',
+                endDate: e.date || '',
+                beginLat: e.latitude || 0,
+                beginLon: e.longitude || 0,
+                endLat: e.latitude || 0,
+                endLon: e.longitude || 0,
+                magnitude: e.magnitude || 0,
+                magnitudeType: eventType === 'Thunderstorm Wind' ? 'mph' : 'inches',
+                damageProperty: 0,
+                source: e.source || 'NOAA',
+                narrative: e.narrative || `${e.eventType} - ${e.location || ''}`,
+              };
+            })
+            .filter((event): event is StormEvent => Boolean(event)),
+        );
       }
 
       if (events.length > 0) {
-        console.log(`[stormApi] Got ${events.length} events from field assistant API`);
         return events;
       }
     }
   } catch (err) {
+    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+      return [];
+    }
+
+    if (!shouldUseSwdiFallback(months)) {
+      console.warn(
+        `[stormApi] Field assistant API failed for ${months}-month search; skipping SWDI fallback for long-range query:`,
+        err,
+      );
+      return [];
+    }
+
     console.warn('[stormApi] Field assistant API failed, falling back to SWDI:', err);
   }
 
@@ -147,14 +239,25 @@ export async function searchByCoordinates(
       `?center=${lng},${lat}&radius=${radius}`;
 
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      const res = await fetch(url, {
+        signal: getTimeoutSignal(15000, signal),
+      });
+      if (signal?.aborted) {
+        return allEvents;
+      }
       if (res.ok) {
         const data: SwdiResponse = await res.json();
         if (data.result && Array.isArray(data.result)) {
-          allEvents.push(...data.result.map((r, idx) => parseSwdiRecord(r, allEvents.length + idx)));
+          appendEvents(
+            allEvents,
+            data.result.map((r, idx) => parseSwdiRecord(r, allEvents.length + idx)),
+          );
         }
       }
     } catch (err) {
+      if (signal?.aborted) {
+        return allEvents;
+      }
       console.warn(`[stormApi] SWDI chunk ${s}:${e} failed:`, err);
     }
 
@@ -235,11 +338,13 @@ interface LsrGeoJson {
  * Fetch IEM Local Storm Reports as GeoJSON.
  * Default window: last 24 hours.
  */
-export async function fetchLocalStormReports(): Promise<StormEvent[]> {
+export async function fetchLocalStormReports(
+  signal?: AbortSignal,
+): Promise<StormEvent[]> {
   const url = 'https://mesonet.agron.iastate.edu/geojson/lsr.geojson';
 
   try {
-    const res = await fetch(url);
+    const res = await fetch(url, { signal: getTimeoutSignal(10000, signal) });
     if (!res.ok) {
       throw new Error(`IEM LSR API returned ${res.status}`);
     }
@@ -250,9 +355,15 @@ export async function fetchLocalStormReports(): Promise<StormEvent[]> {
     }
 
     return data.features
-      .filter((f) => f.properties.type === 'H') // hail only
+      .filter((f) =>
+        f.properties.type === 'H' ||
+        mapLsrTypeToEvent(f.properties.typetext) === 'Thunderstorm Wind',
+      )
       .map((f, idx) => parseLsrFeature(f, idx));
   } catch (err) {
+    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+      return [];
+    }
     console.error('[stormApi] IEM LSR fetch failed:', err);
     return [];
   }
@@ -283,7 +394,8 @@ function parseLsrFeature(f: LsrFeature, idx: number): StormEvent {
     endLat: lat,
     endLon: lon,
     magnitude: p.magnitude || 0,
-    magnitudeType: 'inches',
+    magnitudeType:
+      mapLsrTypeToEvent(p.typetext) === 'Thunderstorm Wind' ? 'mph' : 'inches',
     damageProperty: 0,
     source: p.source || 'LSR',
     narrative: p.remark || `${p.typetext} reported near ${p.city}, ${p.state}`,

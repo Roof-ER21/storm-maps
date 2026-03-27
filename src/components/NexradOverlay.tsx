@@ -1,106 +1,161 @@
 /**
- * NexradOverlay -- NEXRAD radar tiles on Google Maps.
+ * NexradOverlay -- Time-aware NEXRAD radar tiles on Google Maps.
  *
- * Uses Iowa Environmental Mesonet (IEM) WMS as a tile overlay.
- * The overlay renders NEXRAD base reflectivity (n0r) data.
+ * Uses the IEM WMS-T endpoint so the radar layer can follow a selected storm
+ * date instead of always showing "right now". Historical mode also uses map
+ * tiles instead of stretching a single image across the storm bounds.
  */
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMap } from '@vis.gl/react-google-maps';
+import type { BoundingBox } from '../types/storm';
 
 interface NexradOverlayProps {
   visible: boolean;
+  timestamp: string;
+  opacity?: number;
+  focusBounds?: BoundingBox | null;
+  historicalTimestamps?: string[];
 }
 
-export default function NexradOverlay({ visible }: NexradOverlayProps) {
+function roundToFiveMinuteIso(timestamp: string): string {
+  const parsed = new Date(timestamp);
+  if (Number.isNaN(parsed.getTime())) {
+    return new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  }
+
+  parsed.setMinutes(Math.round(parsed.getMinutes() / 5) * 5, 0, 0);
+  return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
+}
+
+function intersectsBounds(a: BoundingBox, b: BoundingBox): boolean {
+  return !(
+    a.east < b.west ||
+    a.west > b.east ||
+    a.north < b.south ||
+    a.south > b.north
+  );
+}
+
+export default function NexradOverlay({
+  visible,
+  timestamp,
+  opacity = 0.72,
+  focusBounds,
+  historicalTimestamps = [],
+}: NexradOverlayProps) {
   const map = useMap();
-  const overlayRef = useRef<google.maps.ImageMapType | null>(null);
+  const overlayRefs = useRef<google.maps.ImageMapType[]>([]);
+
+  const clearOverlays = useCallback((): void => {
+    if (!map) return;
+
+    const overlays = map.overlayMapTypes;
+    for (const overlay of overlayRefs.current) {
+      for (let i = overlays.getLength() - 1; i >= 0; i -= 1) {
+        if (overlays.getAt(i) === overlay) {
+          overlays.removeAt(i);
+        }
+      }
+    }
+    overlayRefs.current = [];
+  }, [map]);
 
   useEffect(() => {
     if (!map) return;
+    if (!visible) {
+      clearOverlays();
+      return;
+    }
 
-    // Create the IEM NEXRAD tile overlay once
-    if (!overlayRef.current) {
-      overlayRef.current = new google.maps.ImageMapType({
+    const rawTimes =
+      historicalTimestamps.length > 0
+        ? historicalTimestamps
+        : [timestamp];
+    const effectiveTimes = rawTimes.map(roundToFiveMinuteIso);
+    const perFrameOpacity =
+      effectiveTimes.length === 1
+        ? opacity
+        : Math.max(0.18, Math.min(0.32, opacity / Math.min(effectiveTimes.length, 3)));
+
+    clearOverlays();
+
+    for (const effectiveTime of effectiveTimes) {
+      const overlay = new google.maps.ImageMapType({
         getTileUrl: (coord, zoom) => {
-          // IEM WMS nexrad composite reflectivity tile URL
-          // Uses TMS-style tile addressing via WMS bbox calculation
-          const proj = map.getProjection();
-          if (!proj) return '';
+          const projection = map.getProjection();
+          if (!projection) return '';
 
           const tileSize = 256;
-          const s = Math.pow(2, zoom);
+          const scale = 2 ** zoom;
 
-          // Calculate bounding box for this tile
-          const swPoint = proj.fromPointToLatLng(
+          const southWest = projection.fromPointToLatLng(
             new google.maps.Point(
-              (coord.x * tileSize) / s,
-              ((coord.y + 1) * tileSize) / s,
+              (coord.x * tileSize) / scale,
+              ((coord.y + 1) * tileSize) / scale,
             ),
           );
-          const nePoint = proj.fromPointToLatLng(
+          const northEast = projection.fromPointToLatLng(
             new google.maps.Point(
-              ((coord.x + 1) * tileSize) / s,
-              (coord.y * tileSize) / s,
+              ((coord.x + 1) * tileSize) / scale,
+              (coord.y * tileSize) / scale,
             ),
           );
 
-          if (!swPoint || !nePoint) return '';
+          if (!southWest || !northEast) return '';
 
-          const bbox = `${swPoint.lng()},${swPoint.lat()},${nePoint.lng()},${nePoint.lat()}`;
+          const tileBounds = {
+            north: northEast.lat(),
+            south: southWest.lat(),
+            east: northEast.lng(),
+            west: southWest.lng(),
+          };
+
+          if (focusBounds && !intersectsBounds(tileBounds, focusBounds)) {
+            return '';
+          }
+
+          const bbox = `${tileBounds.west},${tileBounds.south},${tileBounds.east},${tileBounds.north}`;
 
           return (
-            `https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r.cgi?` +
-            `SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&` +
-            `FORMAT=image/png&TRANSPARENT=true&` +
-            `LAYERS=nexrad-n0r&` +
-            `SRS=EPSG:4326&` +
+            'https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi?' +
+            'SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&' +
+            'FORMAT=image/png&TRANSPARENT=true&' +
+            'LAYERS=nexrad-n0r-wmst&' +
+            'SRS=EPSG:4326&' +
+            `TIME=${encodeURIComponent(effectiveTime)}&` +
             `WIDTH=${tileSize}&HEIGHT=${tileSize}&` +
             `BBOX=${bbox}`
           );
         },
         tileSize: new google.maps.Size(256, 256),
-        opacity: 0.6,
+        opacity: perFrameOpacity,
         name: 'NEXRAD',
-        maxZoom: 18,
+        maxZoom: 19,
         minZoom: 3,
       });
+
+      overlayRefs.current.push(overlay);
     }
 
     if (visible) {
-      // Add overlay if not already present
-      const overlays = map.overlayMapTypes;
-      let found = false;
-      for (let i = 0; i < overlays.getLength(); i++) {
-        if (overlays.getAt(i) === overlayRef.current) {
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        overlays.push(overlayRef.current);
-      }
-    } else {
-      // Remove overlay
-      const overlays = map.overlayMapTypes;
-      for (let i = overlays.getLength() - 1; i >= 0; i--) {
-        if (overlays.getAt(i) === overlayRef.current) {
-          overlays.removeAt(i);
-        }
+      for (const overlay of overlayRefs.current) {
+        map.overlayMapTypes.push(overlay);
       }
     }
 
     return () => {
-      if (overlayRef.current) {
-        const overlays = map.overlayMapTypes;
-        for (let i = overlays.getLength() - 1; i >= 0; i--) {
-          if (overlays.getAt(i) === overlayRef.current) {
-            overlays.removeAt(i);
-          }
-        }
-      }
+      clearOverlays();
     };
-  }, [map, visible]);
+  }, [
+    clearOverlays,
+    focusBounds,
+    historicalTimestamps,
+    map,
+    opacity,
+    timestamp,
+    visible,
+  ]);
 
   return null;
 }

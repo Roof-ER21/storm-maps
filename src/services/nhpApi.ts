@@ -16,6 +16,15 @@ import type { MeshSwath, BoundingBox } from '../types/storm';
 const NHP_FEATURE_SERVER =
   'https://services.arcgis.com/rGKxabTU9mcXMw7k/arcgis/rest/services/HailSwathMESH_Lines_view/FeatureServer/0/query';
 
+function getTimeoutSignal(
+  timeoutMs: number,
+  signal?: AbortSignal,
+): AbortSignal {
+  return signal
+    ? AbortSignal.any([signal, AbortSignal.timeout(timeoutMs)])
+    : AbortSignal.timeout(timeoutMs);
+}
+
 // ---------------------------------------------------------------------------
 // ArcGIS Response Types
 // ---------------------------------------------------------------------------
@@ -54,6 +63,30 @@ interface ArcGisResponse {
   error?: { message: string };
 }
 
+interface NhpGeoJsonProperties {
+  Start_Date?: number | string;
+  HailLength?: number;
+  MaxWidth__?: number;
+  MaxWidth_S?: number;
+  MaxWidth_1?: number;
+  MaxWidth_2?: number;
+  MaxWidth_3?: number;
+  Province?: string;
+  States?: string;
+  FID?: number;
+  OBJECTID?: number;
+}
+
+interface NhpGeoJsonFeature {
+  properties?: NhpGeoJsonProperties;
+  geometry?: MeshSwath['geometry'];
+}
+
+interface NhpGeoJsonResponse {
+  features?: NhpGeoJsonFeature[];
+  error?: { message?: string };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -76,13 +109,14 @@ export async function fetchMeshSwaths(date: string): Promise<MeshSwath[]> {
  */
 export async function fetchMeshSwathsByBounds(
   bounds: BoundingBox,
-  _months = 6,
+  months = 6,
+  sinceDate?: string | null,
+  signal?: AbortSignal,
 ): Promise<MeshSwath[]> {
-  // Use spatial filter with 1=1 where clause — the FeatureServer
-  // uses Start_Date_Time as epoch ms, not a string date field
   const envelope = `${bounds.west},${bounds.south},${bounds.east},${bounds.north}`;
+  const where = buildDateWindowWhere(months, sinceDate);
 
-  return queryFeatureServer('1=1', envelope);
+  return queryFeatureServer(where, envelope, signal);
 }
 
 /**
@@ -98,6 +132,8 @@ export async function fetchMeshSwathsByLocation(
   lng: number,
   months = 6,
   radiusMiles = 50,
+  sinceDate?: string | null,
+  signal?: AbortSignal,
 ): Promise<MeshSwath[]> {
   // Convert radius from miles to approximate degrees
   const radiusDeg = radiusMiles / 69;
@@ -109,7 +145,7 @@ export async function fetchMeshSwathsByLocation(
     west: lng - radiusDeg / Math.cos((lat * Math.PI) / 180),
   };
 
-  return fetchMeshSwathsByBounds(bounds, months);
+  return fetchMeshSwathsByBounds(bounds, months, sinceDate, signal);
 }
 
 /**
@@ -160,6 +196,7 @@ export async function fetchAvailableStormDates(
 async function queryFeatureServer(
   where: string,
   geometryEnvelope?: string,
+  signal?: AbortSignal,
 ): Promise<MeshSwath[]> {
   // Build params — match exact format from working field assistant
   const paramObj: Record<string, string> = {
@@ -185,10 +222,12 @@ async function queryFeatureServer(
   const params = new URLSearchParams(paramObj);
 
   try {
-    const res = await fetch(`${NHP_FEATURE_SERVER}?${params}`, { signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`${NHP_FEATURE_SERVER}?${params}`, {
+      signal: getTimeoutSignal(15000, signal),
+    });
     if (!res.ok) throw new Error(`NHP FeatureServer returned ${res.status}`);
 
-    const data = await res.json();
+    const data: NhpGeoJsonResponse = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
 
     if (!data.features || !Array.isArray(data.features)) {
@@ -197,13 +236,25 @@ async function queryFeatureServer(
 
     // GeoJSON format — parse directly
     return data.features
-      .filter((f: any) => f.geometry && f.geometry.coordinates)
-      .map((f: any): MeshSwath | null => {
-        const props = f.properties || {};
+      .filter((feature): feature is NhpGeoJsonFeature & { geometry: MeshSwath['geometry'] } =>
+        Boolean(feature.geometry),
+      )
+      .map((feature): MeshSwath => {
+        const props = feature.properties || {};
         // Actual NHP fields: Start_Date (epoch), HailLength, MaxWidth__, Province/Event
         const startEpoch = props.Start_Date ? Number(props.Start_Date) : null;
         const hailLengthKm = props.HailLength || 0;
-        const maxWidthKm = (props.MaxWidth__ || 0);
+        const maxWidthKm = props.MaxWidth__ || 0;
+        const maxWidthLine =
+          props.MaxWidth_S !== undefined &&
+          props.MaxWidth_1 !== undefined &&
+          props.MaxWidth_2 !== undefined &&
+          props.MaxWidth_3 !== undefined
+            ? [
+                { lat: props.MaxWidth_S, lng: props.MaxWidth_1 },
+                { lat: props.MaxWidth_2, lng: props.MaxWidth_3 },
+              ] as [{ lat: number; lng: number }, { lat: number; lng: number }]
+            : null;
 
         // Local date string
         let dateStr = '';
@@ -212,25 +263,59 @@ async function queryFeatureServer(
           dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
-        // Estimate max MESH from swath width (wider = more severe)
-        // NHP Lines view doesn't have MESH values directly, estimate from width
-        const estimatedMeshInches = maxWidthKm > 20 ? 3.0 : maxWidthKm > 10 ? 2.0 : maxWidthKm > 5 ? 1.5 : 1.0;
+        const estimatedMeshInches = estimateMeshInchesFromWidth(maxWidthKm);
 
         return {
           id: String(props.FID || props.OBJECTID || Math.random()),
           date: dateStr,
+          sourceGeometryType:
+            feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon'
+              ? 'polygon'
+              : 'line',
           maxMeshInches: estimatedMeshInches,
-          avgMeshInches: estimatedMeshInches * 0.7,
+          avgMeshInches: Math.max(0.5, estimatedMeshInches * 0.72),
           areaSqMiles: hailLengthKm * maxWidthKm * 0.386, // km² to mi²
+          hailLengthKm,
+          maxWidthKm,
+          maxWidthLine,
           statesAffected: (props.Province || props.States || '').split(',').map((s: string) => s.trim()).filter(Boolean),
-          geometry: f.geometry as MeshSwath['geometry'],
+          geometry: feature.geometry,
         };
       })
-      .filter(Boolean) as MeshSwath[];
+      .filter(Boolean);
   } catch (err) {
+    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+      return [];
+    }
     console.error('[nhpApi] queryFeatureServer failed:', err);
     return [];
   }
+}
+
+function estimateMeshInchesFromWidth(maxWidthKm: number): number {
+  if (maxWidthKm >= 30) return 3.5;
+  if (maxWidthKm >= 22) return 2.75;
+  if (maxWidthKm >= 15) return 2.0;
+  if (maxWidthKm >= 10) return 1.75;
+  if (maxWidthKm >= 6) return 1.5;
+  if (maxWidthKm >= 3) return 1.0;
+  return 0.75;
+}
+
+function buildDateWindowWhere(
+  months: number,
+  sinceDate?: string | null,
+): string {
+  const startDate = sinceDate
+    ? new Date(`${sinceDate}T00:00:00Z`)
+    : new Date(new Date().setMonth(new Date().getMonth() - months));
+
+  if (Number.isNaN(startDate.getTime())) {
+    return '1=1';
+  }
+
+  const isoDate = startDate.toISOString().slice(0, 10);
+  return `Start_Date >= DATE '${isoDate} 00:00:00'`;
 }
 
 // parseArcGisFeature removed — using GeoJSON format directly in queryFeatureServer

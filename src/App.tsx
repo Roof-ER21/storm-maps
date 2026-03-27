@@ -9,13 +9,30 @@
  * share the same Google Maps context.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
-import type { StormDate, LatLng, SearchResult, StormEvent } from './types/storm';
+import type {
+  StormDate,
+  LatLng,
+  SearchResult,
+  StormEvent,
+  BoundingBox,
+  SearchResultType,
+  HistoryRangePreset,
+  PropertySearchSummary,
+  EventFilterState,
+} from './types/storm';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
 import { geocodeAddress } from './services/geocodeApi';
+import {
+  getNotificationPermission,
+  isNotificationSupported,
+  requestNotificationPermission,
+  showHailZoneNotification,
+} from './services/notificationService';
+import { generateStormReport } from './services/reportService';
 import Sidebar from './components/Sidebar';
 import StormMap from './components/StormMap';
 import SearchBar from './components/SearchBar';
@@ -23,16 +40,52 @@ import Legend from './components/Legend';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
+const ALERT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
 
 /** Default center: DMV area */
 const DEFAULT_CENTER: LatLng = { lat: 39.0, lng: -77.0 };
 const DEFAULT_ZOOM = 8;
+const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
+
+interface MapCameraState {
+  center: LatLng;
+  zoom: number;
+  bounds: BoundingBox | null;
+}
+
+interface FitBoundsRequest {
+  id: number;
+  bounds: BoundingBox;
+  padding: number;
+  maxZoom: number;
+}
 
 function App() {
+  const notificationsSupported = isNotificationSupported();
+
   // ---- Location state ----
-  const [mapCenter, setMapCenter] = useState<LatLng>(DEFAULT_CENTER);
-  const [mapZoom, setMapZoom] = useState(DEFAULT_ZOOM);
+  const [camera, setCamera] = useState<MapCameraState>({
+    center: DEFAULT_CENTER,
+    zoom: DEFAULT_ZOOM,
+    bounds: null,
+  });
+  const [queryLocation, setQueryLocation] = useState<LatLng>(DEFAULT_CENTER);
   const [selectedDate, setSelectedDate] = useState<StormDate | null>(null);
+  const [fitBoundsRequest, setFitBoundsRequest] =
+    useState<FitBoundsRequest | null>(null);
+  const [historyRange, setHistoryRange] =
+    useState<HistoryRangePreset>(DEFAULT_HISTORY_RANGE);
+  const [sinceDate, setSinceDate] = useState<string>('');
+  const [searchSummary, setSearchSummary] =
+    useState<PropertySearchSummary | null>(null);
+  const [eventFilters, setEventFilters] = useState<EventFilterState>({
+    hail: true,
+    wind: false,
+  });
+  const [generatingReport, setGeneratingReport] = useState(false);
+  const [notificationPermission, setNotificationPermission] =
+    useState<NotificationPermission>(getNotificationPermission);
+  const notifiedAlertsRef = useRef<Map<string, number>>(new Map());
 
   // ---- GPS ----
   const {
@@ -42,15 +95,26 @@ function App() {
     stopTracking,
   } = useGeolocation();
 
-  // Use mapCenter for data queries (updates on search)
-  const activeLat = mapCenter.lat;
-  const activeLng = mapCenter.lng;
+  const activeLat = queryLocation.lat;
+  const activeLng = queryLocation.lng;
+  const effectiveSinceDate = historyRange === 'since' && sinceDate ? sinceDate : null;
+  const historyMonths =
+    historyRange === '10y'
+      ? 120
+      : historyRange === '2y'
+        ? 24
+      : historyRange === '5y'
+        ? 60
+        : 12;
+  const activeRadiusMiles = searchSummary?.radiusMiles ?? 35;
 
   // ---- Storm data ----
   const { events, swaths, stormDates, loading, error } = useStormData({
     lat: activeLat,
     lng: activeLng,
-    months: 12,
+    months: historyMonths,
+    radiusMiles: activeRadiusMiles,
+    sinceDate: effectiveSinceDate,
   });
 
   // ---- Hail alert ----
@@ -59,27 +123,253 @@ function App() {
     events,
   });
 
+  const filteredEvents = useMemo(
+    () =>
+      events.filter((event) => {
+        if (event.eventType === 'Hail') {
+          return eventFilters.hail;
+        }
+        if (event.eventType === 'Thunderstorm Wind') {
+          return eventFilters.wind;
+        }
+        return false;
+      }),
+    [eventFilters, events],
+  );
+
+  const filteredSwaths = useMemo(
+    () => (eventFilters.hail ? swaths : []),
+    [eventFilters.hail, swaths],
+  );
+
+  const filteredStormDates = useMemo(() => {
+    const sourceDates = new Map(stormDates.map((stormDate) => [stormDate.date, stormDate]));
+    const visibleDateKeys = new Set<string>();
+
+    for (const event of filteredEvents) {
+      visibleDateKeys.add(event.beginDate.slice(0, 10));
+    }
+
+    if (eventFilters.hail) {
+      for (const swath of swaths) {
+        visibleDateKeys.add(swath.date);
+      }
+    }
+
+    return Array.from(visibleDateKeys)
+      .map((date) => sourceDates.get(date))
+      .filter((stormDate): stormDate is StormDate => Boolean(stormDate))
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [eventFilters.hail, filteredEvents, stormDates, swaths]);
+
+  useEffect(() => {
+    if (!canvassingAlert?.inHailZone || notificationPermission !== 'granted') {
+      return;
+    }
+
+    const stormDate = canvassingAlert.stormDate ?? 'hail-zone';
+    const hailSize = canvassingAlert.estimatedHailSize ?? 0;
+    const notificationTag = `hail-zone-${stormDate}-${hailSize}`;
+    const lastNotifiedAt = notifiedAlertsRef.current.get(notificationTag) ?? 0;
+
+    if (Date.now() - lastNotifiedAt < ALERT_NOTIFICATION_COOLDOWN_MS) {
+      return;
+    }
+
+    notifiedAlertsRef.current.set(notificationTag, Date.now());
+
+    const body = `${
+      hailSize > 0 ? `${hailSize}" hail detected` : 'Hail activity detected'
+    }${stormDate ? ` from ${stormDate}` : ''}. Open Storm Maps for nearby reports.`;
+
+    void showHailZoneNotification({
+      title: 'Hail Zone Alert',
+      body,
+      tag: notificationTag,
+    });
+  }, [canvassingAlert, notificationPermission]);
+
   // ---- Search handler (Places Autocomplete) ----
-  const handleSearchResult = useCallback((result: SearchResult) => {
-    setMapCenter({ lat: result.lat, lng: result.lng });
-    setMapZoom(11);
+  const getSearchMaxZoom = useCallback((resultType: SearchResultType) => {
+    switch (resultType) {
+      case 'address':
+        return 17;
+      case 'postal_code':
+        return 13;
+      case 'locality':
+        return 11;
+      case 'administrative_area':
+        return 9;
+      default:
+        return 15;
+    }
   }, []);
+
+  const getFallbackZoom = useCallback((resultType: SearchResultType) => {
+    switch (resultType) {
+      case 'address':
+        return 16;
+      case 'postal_code':
+        return 12;
+      case 'locality':
+        return 10;
+      case 'administrative_area':
+        return 8;
+      default:
+        return 14;
+    }
+  }, []);
+
+  const getSearchRadiusMiles = useCallback((resultType: SearchResultType) => {
+    switch (resultType) {
+      case 'address':
+        return 15;
+      case 'postal_code':
+        return 20;
+      case 'locality':
+        return 30;
+      case 'administrative_area':
+        return 60;
+      default:
+        return 25;
+    }
+  }, []);
+
+  const applySearchResult = useCallback(
+    (result: SearchResult) => {
+      const radiusMiles = getSearchRadiusMiles(result.resultType);
+
+      setSelectedDate(null);
+      setQueryLocation({ lat: result.lat, lng: result.lng });
+      setCamera((prev) => ({
+        ...prev,
+        center: { lat: result.lat, lng: result.lng },
+        zoom: getFallbackZoom(result.resultType),
+      }));
+      setSearchSummary({
+        locationLabel: result.address,
+        resultType: result.resultType,
+        radiusMiles,
+        historyPreset: historyRange,
+        sinceDate: historyRange === 'since' && sinceDate ? sinceDate : null,
+      });
+
+      if (result.viewport) {
+        setFitBoundsRequest({
+          id: Date.now(),
+          bounds: result.viewport,
+          padding: 48,
+          maxZoom: getSearchMaxZoom(result.resultType),
+        });
+        return;
+      }
+
+      setFitBoundsRequest(null);
+    },
+    [
+      getFallbackZoom,
+      getSearchMaxZoom,
+      getSearchRadiusMiles,
+      historyRange,
+      sinceDate,
+    ],
+  );
+
+  const handleSearchResult = useCallback((result: SearchResult) => {
+    applySearchResult(result);
+  }, [applySearchResult]);
 
   // ---- Sidebar search (manual geocoding) ----
   const handleSidebarSearch = useCallback((query: string) => {
     geocodeAddress(query).then((result) => {
       if (result) {
-        setMapCenter({ lat: result.lat, lng: result.lng });
-        setMapZoom(11);
+        applySearchResult(result);
       }
     });
-  }, []);
+  }, [applySearchResult]);
 
   // ---- Map click handler ----
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleMapClick = useCallback((_event: StormEvent | null) => {
-    // Could expand to highlight the event in the sidebar
+  const handleMapClick = useCallback((event: StormEvent | null) => {
+    if (!event) {
+      return;
+    }
+
+    const clickedDate = event.beginDate.slice(0, 10);
+    const matchingStormDate =
+      filteredStormDates.find((stormDate) => stormDate.date === clickedDate) ?? null;
+    setSelectedDate(matchingStormDate);
+  }, [filteredStormDates]);
+
+  const handleEnableNotifications = useCallback(async () => {
+    const permission = await requestNotificationPermission();
+    setNotificationPermission(permission);
   }, []);
+
+  const handleHistoryRangeChange = useCallback((nextRange: HistoryRangePreset) => {
+    setSelectedDate(null);
+    setHistoryRange(nextRange);
+    setSearchSummary((current) =>
+      current
+        ? {
+            ...current,
+            historyPreset: nextRange,
+            sinceDate: nextRange === 'since' && sinceDate ? sinceDate : null,
+          }
+        : current,
+    );
+  }, [sinceDate]);
+
+  const handleSinceDateChange = useCallback((nextSinceDate: string) => {
+    setSelectedDate(null);
+    setSinceDate(nextSinceDate);
+    setSearchSummary((current) =>
+      current
+        ? {
+            ...current,
+            sinceDate: nextSinceDate || null,
+          }
+        : current,
+    );
+  }, []);
+
+  const handleCameraChanged = useCallback((nextCamera: MapCameraState) => {
+    setCamera(nextCamera);
+  }, []);
+
+  const handleFilterChange = useCallback((nextFilters: EventFilterState) => {
+    setSelectedDate(null);
+    setEventFilters(nextFilters);
+  }, []);
+
+  const handleGenerateReport = useCallback(async (dateOfLoss: string) => {
+    if (!dateOfLoss) {
+      return;
+    }
+
+    setGeneratingReport(true);
+    try {
+      await generateStormReport({
+        address:
+          searchSummary?.locationLabel ||
+          `${queryLocation.lat.toFixed(4)}, ${queryLocation.lng.toFixed(4)}`,
+        lat: queryLocation.lat,
+        lng: queryLocation.lng,
+        radiusMiles: searchSummary?.radiusMiles ?? activeRadiusMiles,
+        events,
+        dateOfLoss,
+      });
+    } catch (error) {
+      console.error('[App] Failed to generate report:', error);
+      window.alert(
+        error instanceof Error
+          ? error.message
+          : 'Failed to generate report.',
+      );
+      throw error;
+    } finally {
+      setGeneratingReport(false);
+    }
+  }, [activeRadiusMiles, events, queryLocation, searchSummary]);
 
   const mapArea = (
     <main className="flex-1 relative flex flex-col min-w-0">
@@ -88,12 +378,15 @@ function App() {
 
       {/* Map */}
       <StormMap
-        center={mapCenter}
-        zoom={mapZoom}
-        events={events}
-        swaths={swaths}
+        center={camera.center}
+        zoom={camera.zoom}
+        bounds={camera.bounds}
+        events={filteredEvents}
+        swaths={filteredSwaths}
         gpsPosition={gpsPosition}
         selectedDate={selectedDate?.date ?? null}
+        fitBoundsRequest={fitBoundsRequest}
+        onCameraChanged={handleCameraChanged}
         onMapClick={handleMapClick}
       />
 
@@ -139,8 +432,15 @@ function App() {
         {isTracking && gpsPosition && (
           <button
             onClick={() => {
-              setMapCenter({ lat: gpsPosition.lat, lng: gpsPosition.lng });
-              setMapZoom(14);
+              setSelectedDate(null);
+              setFitBoundsRequest(null);
+              setSearchSummary(null);
+              setQueryLocation({ lat: gpsPosition.lat, lng: gpsPosition.lng });
+              setCamera((prev) => ({
+                ...prev,
+                center: { lat: gpsPosition.lat, lng: gpsPosition.lng },
+                zoom: 14,
+              }));
             }}
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold bg-white text-blue-600 hover:bg-blue-50 transition-colors"
             title="Center map on your location"
@@ -160,6 +460,46 @@ function App() {
               />
             </svg>
             Center
+          </button>
+        )}
+        {notificationsSupported && (
+          <button
+            onClick={handleEnableNotifications}
+            disabled={notificationPermission !== 'default'}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold transition-colors ${
+              notificationPermission === 'granted'
+                ? 'bg-emerald-600 text-white'
+                : notificationPermission === 'denied'
+                  ? 'bg-gray-800 text-gray-300 cursor-not-allowed'
+                  : 'bg-amber-500 text-gray-950 hover:bg-amber-400'
+            }`}
+            title={
+              notificationPermission === 'granted'
+                ? 'Hail alerts are enabled'
+                : notificationPermission === 'denied'
+                  ? 'Notifications are blocked in browser settings'
+                  : 'Enable hail zone notifications'
+            }
+            aria-label="Enable hail alerts"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0a3 3 0 11-6 0m6 0H9"
+              />
+            </svg>
+            {notificationPermission === 'granted'
+              ? 'Alerts On'
+              : notificationPermission === 'denied'
+                ? 'Alerts Blocked'
+                : 'Enable Alerts'}
           </button>
         )}
       </div>
@@ -209,14 +549,24 @@ function App() {
     <div className="h-full flex">
       {/* Left sidebar */}
       <Sidebar
-        stormDates={stormDates}
-        events={events}
+        stormDates={filteredStormDates}
+        events={filteredEvents}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
         loading={loading}
         error={error}
         canvassingAlert={canvassingAlert}
         onSearch={handleSidebarSearch}
+        activeSearchLabel={searchSummary?.locationLabel ?? null}
+        historyRange={historyRange}
+        sinceDate={sinceDate}
+        onHistoryRangeChange={handleHistoryRangeChange}
+        onSinceDateChange={handleSinceDateChange}
+        searchSummary={searchSummary}
+        eventFilters={eventFilters}
+        onFilterChange={handleFilterChange}
+        generatingReport={generatingReport}
+        onGenerateReport={handleGenerateReport}
       />
 
       {/* Wrap map area with APIProvider so SearchBar + StormMap share context */}

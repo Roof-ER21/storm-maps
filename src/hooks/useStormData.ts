@@ -11,10 +11,18 @@ import { searchByCoordinates, fetchLocalStormReports } from '../services/stormAp
 import { fetchMeshSwathsByLocation } from '../services/nhpApi';
 import { getHailSizeClass } from '../types/storm';
 
+function appendStormEvents(target: StormEvent[], next: StormEvent[]): void {
+  for (const event of next) {
+    target.push(event);
+  }
+}
+
 interface UseStormDataParams {
   lat: number | null;
   lng: number | null;
   months?: number;
+  radiusMiles?: number;
+  sinceDate?: string | null;
 }
 
 interface UseStormDataReturn {
@@ -33,8 +41,7 @@ function groupEventsByDate(events: StormEvent[]): StormDate[] {
   const dateMap = new Map<string, { events: StormEvent[]; states: Set<string> }>();
 
   for (const event of events) {
-    // Extract YYYY-MM-DD from the date string
-    const dateKey = event.beginDate.slice(0, 10);
+    const dateKey = getStormDateKey(event.beginDate);
     if (!dateKey) continue;
 
     if (!dateMap.has(dateKey)) {
@@ -48,12 +55,24 @@ function groupEventsByDate(events: StormEvent[]): StormDate[] {
 
   return Array.from(dateMap.entries())
     .map(([date, { events: evts, states }]) => {
-      const maxHail = Math.max(0, ...evts.map((e) => e.magnitude));
+      const maxHail = Math.max(
+        0,
+        ...evts
+          .filter((event) => event.eventType === 'Hail')
+          .map((event) => event.magnitude),
+      );
+      const maxWind = Math.max(
+        0,
+        ...evts
+          .filter((event) => event.eventType === 'Thunderstorm Wind')
+          .map((event) => event.magnitude),
+      );
       return {
         date,
         label: formatDateLabel(date),
         eventCount: evts.length,
         maxHailInches: maxHail,
+        maxWindMph: maxWind,
         statesAffected: [...states],
       };
     })
@@ -61,24 +80,27 @@ function groupEventsByDate(events: StormEvent[]): StormDate[] {
 }
 
 function formatDateLabel(dateStr: string): string {
-  try {
-    const d = new Date(dateStr + 'T12:00:00Z');
-    return d.toLocaleDateString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      timeZone: 'UTC',
-    });
-  } catch {
+  const dateKey = getStormDateKey(dateStr);
+  if (!dateKey) {
     return dateStr;
   }
+
+  const d = new Date(`${dateKey}T12:00:00Z`);
+  return d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
 }
 
 export function useStormData({
   lat,
   lng,
   months = 6,
+  radiusMiles = 50,
+  sinceDate = null,
 }: UseStormDataParams): UseStormDataReturn {
   const [events, setEvents] = useState<StormEvent[]>([]);
   const [swaths, setSwaths] = useState<MeshSwath[]>([]);
@@ -99,11 +121,26 @@ export function useStormData({
     setError(null);
 
     try {
+      const effectiveMonths = getEffectiveMonths(months, sinceDate);
+
       // Fetch SWDI hail reports, IEM LSR, and NHP swaths in parallel
       const [swdiEvents, lsrEvents, nhpSwaths] = await Promise.allSettled([
-        searchByCoordinates(lat, lng, months, 75),
-        fetchLocalStormReports(),
-        fetchMeshSwathsByLocation(lat, lng, months, 75),
+        searchByCoordinates(
+          lat,
+          lng,
+          effectiveMonths,
+          radiusMiles,
+          controller.signal,
+        ),
+        fetchLocalStormReports(controller.signal),
+        fetchMeshSwathsByLocation(
+          lat,
+          lng,
+          effectiveMonths,
+          radiusMiles,
+          sinceDate,
+          controller.signal,
+        ),
       ]);
 
       if (controller.signal.aborted) return;
@@ -111,17 +148,23 @@ export function useStormData({
       // Merge events from both sources
       const allEvents: StormEvent[] = [];
       if (swdiEvents.status === 'fulfilled') {
-        allEvents.push(...swdiEvents.value);
+        appendStormEvents(allEvents, swdiEvents.value);
       }
       if (lsrEvents.status === 'fulfilled') {
-        allEvents.push(...lsrEvents.value);
+        appendStormEvents(
+          allEvents,
+          filterEventsByRadius(lsrEvents.value, lat, lng, radiusMiles),
+        );
       }
 
       // Deduplicate by proximity: if two events are within 0.01 deg and same date, keep the one with more detail
-      const dedupedEvents = deduplicateEvents(allEvents);
+      const sanitizedEvents = sanitizeEvents(allEvents, sinceDate);
+      const dedupedEvents = deduplicateEvents(sanitizedEvents);
 
       const resolvedSwaths =
-        nhpSwaths.status === 'fulfilled' ? nhpSwaths.value : [];
+        nhpSwaths.status === 'fulfilled'
+          ? nhpSwaths.value.filter((swath) => isDateInRange(swath.date, sinceDate))
+          : [];
 
       // Also generate StormDate entries from swaths that may not have matching events
       const swathDates = resolvedSwaths.map((s) => ({
@@ -129,6 +172,7 @@ export function useStormData({
         label: formatDateLabel(s.date),
         eventCount: 0,
         maxHailInches: s.maxMeshInches,
+        maxWindMph: 0,
         statesAffected: s.statesAffected,
       }));
 
@@ -160,7 +204,7 @@ export function useStormData({
         setLoading(false);
       }
     }
-  }, [lat, lng, months]);
+  }, [lat, lng, months, radiusMiles, sinceDate]);
 
   useEffect(() => {
     fetchData();
@@ -183,7 +227,9 @@ function deduplicateEvents(events: StormEvent[]): StormEvent[] {
   const seen = new Map<string, StormEvent>();
 
   for (const event of events) {
-    const dateKey = event.beginDate.slice(0, 10);
+    const dateKey = getStormDateKey(event.beginDate);
+    if (!dateKey) continue;
+
     const latKey = Math.round(event.beginLat * 100);
     const lonKey = Math.round(event.beginLon * 100);
     const key = `${dateKey}-${latKey}-${lonKey}`;
@@ -202,6 +248,80 @@ function deduplicateEvents(events: StormEvent[]): StormEvent[] {
   return Array.from(seen.values());
 }
 
+function getEffectiveMonths(months: number, sinceDate: string | null): number {
+  if (!sinceDate) {
+    return months;
+  }
+
+  const startMs = Date.parse(`${sinceDate}T00:00:00Z`);
+  if (Number.isNaN(startMs)) {
+    return months;
+  }
+
+  const nowMs = Date.now();
+  const diffMonths = Math.ceil(
+    (nowMs - startMs) / (30 * 24 * 60 * 60 * 1000),
+  );
+
+  return Math.max(months, diffMonths, 1);
+}
+
+function isDateInRange(dateStr: string, sinceDate: string | null): boolean {
+  const dateKey = getStormDateKey(dateStr);
+  if (!dateKey) {
+    return false;
+  }
+
+  if (!sinceDate) {
+    return true;
+  }
+
+  return dateKey >= sinceDate;
+}
+
+function haversineDistanceMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const earthRadiusMiles = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function filterEventsByRadius(
+  events: StormEvent[],
+  centerLat: number,
+  centerLng: number,
+  radiusMiles: number,
+): StormEvent[] {
+  return events.filter((event) => {
+    const distance = haversineDistanceMiles(
+      centerLat,
+      centerLng,
+      event.beginLat,
+      event.beginLon,
+    );
+
+    return distance <= radiusMiles;
+  });
+}
+
+function sanitizeEvents(
+  events: StormEvent[],
+  sinceDate: string | null,
+): StormEvent[] {
+  return events.filter((event) => isDateInRange(event.beginDate, sinceDate));
+}
+
 function mergeDateLists(
   eventDates: StormDate[],
   swathDates: StormDate[],
@@ -213,17 +333,44 @@ function mergeDateLists(
   }
 
   for (const sd of swathDates) {
-    if (!sd.date) continue;
-    const existing = map.get(sd.date);
+    const dateKey = getStormDateKey(sd.date);
+    if (!dateKey) continue;
+
+    const normalizedSwathDate = { ...sd, date: dateKey, label: formatDateLabel(dateKey) };
+    const existing = map.get(dateKey);
     if (existing) {
       // Merge: take the higher hail size and combine states
-      existing.maxHailInches = Math.max(existing.maxHailInches, sd.maxHailInches);
-      const allStates = new Set([...existing.statesAffected, ...sd.statesAffected]);
+      existing.maxHailInches = Math.max(
+        existing.maxHailInches,
+        normalizedSwathDate.maxHailInches,
+      );
+      existing.maxWindMph = Math.max(
+        existing.maxWindMph,
+        normalizedSwathDate.maxWindMph,
+      );
+      const allStates = new Set([
+        ...existing.statesAffected,
+        ...normalizedSwathDate.statesAffected,
+      ]);
       existing.statesAffected = [...allStates];
     } else {
-      map.set(sd.date, { ...sd });
+      map.set(dateKey, normalizedSwathDate);
     }
   }
 
   return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+}
+
+function getStormDateKey(dateStr: string): string | null {
+  if (!dateStr) return null;
+
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (!match) return null;
+
+  const parsed = new Date(`${match[1]}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return match[1];
 }

@@ -45,6 +45,15 @@ export interface BoundingBox {
   west: number;
 }
 
+export type SearchResultType =
+  | 'address'
+  | 'postal_code'
+  | 'locality'
+  | 'administrative_area'
+  | 'unknown';
+
+export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
+
 // ============================================================
 // Storm Event Types
 // ============================================================
@@ -100,12 +109,20 @@ export interface MeshSwath {
   date: string;
   /** GeoJSON geometry defining the swath boundary (polygon or line) */
   geometry: GeoJsonPolygon | GeoJsonMultiPolygon | GeoJsonLineString | GeoJsonMultiLineString;
+  /** Source geometry kind from the upstream dataset */
+  sourceGeometryType?: 'polygon' | 'line';
   /** Maximum Estimated Size of Hail in inches */
   maxMeshInches: number;
   /** Average MESH in inches across the swath */
   avgMeshInches: number;
   /** Area of swath in square miles */
   areaSqMiles: number;
+  /** Approximate swath length in kilometers */
+  hailLengthKm?: number;
+  /** Approximate maximum swath width in kilometers */
+  maxWidthKm?: number;
+  /** Cross-section showing the widest part of the swath */
+  maxWidthLine?: [LatLng, LatLng] | null;
   /** States affected */
   statesAffected: string[];
 }
@@ -210,6 +227,7 @@ export interface StormDate {
   label: string;
   eventCount: number;
   maxHailInches: number;
+  maxWindMph: number;
   statesAffected: string[];
 }
 
@@ -222,6 +240,21 @@ export interface SearchResult {
   lat: number;
   lng: number;
   placeId: string;
+  viewport?: BoundingBox | null;
+  resultType: SearchResultType;
+}
+
+export interface PropertySearchSummary {
+  locationLabel: string;
+  resultType: SearchResultType;
+  radiusMiles: number;
+  historyPreset: HistoryRangePreset;
+  sinceDate: string | null;
+}
+
+export interface EventFilterState {
+  hail: boolean;
+  wind: boolean;
 }
 
 // ============================================================
