@@ -52,6 +52,7 @@ import {
 } from './services/evidenceStorage';
 import { fetchEvidenceCandidates } from './services/evidenceApi';
 import { buildEvidenceQuerySeeds } from './services/evidenceProviders';
+import { buildDemoEvidencePack } from './services/demoEvidence';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -707,6 +708,40 @@ function App() {
     });
   }, [evidenceItems, filteredStormDates, queryLocation.lat, queryLocation.lng, searchSummary]);
 
+  const handleSeedDemoEvidence = useCallback(async () => {
+    if (!searchSummary) {
+      throw new Error('Search a property before seeding demo evidence.');
+    }
+
+    const seededItems = buildDemoEvidencePack(searchSummary, filteredStormDates);
+
+    await Promise.all(
+      seededItems.map(async (item) => {
+        const existing = evidenceItems.find((current) => current.id === item.id);
+        const nextItem = existing
+          ? {
+              ...existing,
+              ...item,
+              createdAt: existing.createdAt,
+            }
+          : item;
+        await saveEvidenceItem(nextItem);
+      }),
+    );
+
+    setEvidenceItems((current) => {
+      const nextMap = new Map(current.map((item) => [item.id, item]));
+      for (const item of seededItems) {
+        const existing = nextMap.get(item.id);
+        nextMap.set(
+          item.id,
+          existing ? { ...existing, ...item, createdAt: existing.createdAt } : item,
+        );
+      }
+      return Array.from(nextMap.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    });
+  }, [evidenceItems, filteredStormDates, searchSummary]);
+
   const handleRemoveEvidenceItem = useCallback(async (itemId: string) => {
     await removeEvidenceItem(itemId);
     setEvidenceItems((current) => current.filter((item) => item.id !== itemId));
@@ -1014,6 +1049,7 @@ function App() {
             evidenceItems={evidenceItems}
             onUploadFiles={handleUploadEvidenceFiles}
             onFetchProviderCandidates={handleFetchEvidenceCandidates}
+            onSeedDemoEvidence={handleSeedDemoEvidence}
             onRemoveEvidenceItem={handleRemoveEvidenceItem}
             onToggleEvidenceStatus={handleToggleEvidenceStatus}
             onToggleEvidenceInReport={handleToggleEvidenceInReport}

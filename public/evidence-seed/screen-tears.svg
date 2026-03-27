@@ -1,0 +1,23 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#0B1324"/>
+  <rect x="170" y="114" width="860" height="670" rx="26" fill="#111827" stroke="#64748B" stroke-width="10"/>
+  <path d="M256 182H944" stroke="#334155" stroke-width="6"/>
+  <path d="M256 262H944" stroke="#334155" stroke-width="6"/>
+  <path d="M256 342H944" stroke="#334155" stroke-width="6"/>
+  <path d="M256 422H944" stroke="#334155" stroke-width="6"/>
+  <path d="M256 502H944" stroke="#334155" stroke-width="6"/>
+  <path d="M256 582H944" stroke="#334155" stroke-width="6"/>
+  <path d="M256 662H944" stroke="#334155" stroke-width="6"/>
+  <path d="M336 170V728" stroke="#334155" stroke-width="6"/>
+  <path d="M456 170V728" stroke="#334155" stroke-width="6"/>
+  <path d="M576 170V728" stroke="#334155" stroke-width="6"/>
+  <path d="M696 170V728" stroke="#334155" stroke-width="6"/>
+  <path d="M816 170V728" stroke="#334155" stroke-width="6"/>
+  <path d="M362 274L452 376L604 222" stroke="#FB7185" stroke-width="14" stroke-linecap="round"/>
+  <path d="M688 490L806 620L910 450" stroke="#FB7185" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="406" cy="326" r="18" fill="#F43F5E"/>
+  <circle cx="846" cy="554" r="18" fill="#F43F5E"/>
+  <text x="172" y="84" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="42" font-weight="700">Seeded Evidence</text>
+  <text x="170" y="826" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="36" font-weight="700">Screen and soft-metal impact marks</text>
+  <text x="170" y="866" fill="#94A3B8" font-family="Arial, sans-serif" font-size="24">Demo image for collateral damage beyond the roof surface</text>
+</svg>

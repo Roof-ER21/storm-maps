@@ -7,6 +7,7 @@ interface EvidencePageProps {
   evidenceItems: EvidenceItem[];
   onUploadFiles: (files: FileList, stormDate: string | null) => Promise<void>;
   onFetchProviderCandidates: () => Promise<void>;
+  onSeedDemoEvidence: () => Promise<void>;
   onRemoveEvidenceItem: (itemId: string) => Promise<void>;
   onToggleEvidenceStatus: (itemId: string) => Promise<void>;
   onToggleEvidenceInReport: (itemId: string) => Promise<void>;
@@ -24,6 +25,7 @@ export default function EvidencePage({
   evidenceItems,
   onUploadFiles,
   onFetchProviderCandidates,
+  onSeedDemoEvidence,
   onRemoveEvidenceItem,
   onToggleEvidenceStatus,
   onToggleEvidenceInReport,
@@ -34,6 +36,7 @@ export default function EvidencePage({
   const [selectedStormDate, setSelectedStormDate] = useState<string>('');
   const [uploading, setUploading] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [seedingDemo, setSeedingDemo] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -100,6 +103,15 @@ export default function EvidencePage({
       await onFetchProviderCandidates();
     } finally {
       setSeeding(false);
+    }
+  };
+
+  const handleSeedDemoPack = async () => {
+    setSeedingDemo(true);
+    try {
+      await onSeedDemoEvidence();
+    } finally {
+      setSeedingDemo(false);
     }
   };
 
@@ -186,6 +198,29 @@ export default function EvidencePage({
                       onChange={handleFileChange}
                     />
                   </label>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-gray-900 bg-black/35 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                        Standalone Demo Pack
+                      </p>
+                      <p className="mt-2 text-sm text-gray-400">
+                        Seed realistic placeholder images and one video reference for
+                        this property so reps can test approval, PDF inclusion, and
+                        report generation immediately.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSeedDemoPack}
+                      disabled={seedingDemo}
+                      className="rounded-2xl bg-amber-400 px-3 py-2 text-xs font-semibold text-gray-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                    >
+                      {seedingDemo ? 'Seeding...' : 'Seed Demo Pack'}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-gray-900 bg-black/35 p-4">

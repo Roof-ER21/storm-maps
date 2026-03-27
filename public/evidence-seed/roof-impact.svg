@@ -1,0 +1,17 @@
+<svg width="1200" height="900" viewBox="0 0 1200 900" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1200" height="900" fill="#0A0F1A"/>
+  <path d="M88 658L600 188L1112 658V798H88V658Z" fill="#1E293B" stroke="#475569" stroke-width="10"/>
+  <path d="M202 620H998" stroke="#64748B" stroke-width="14" stroke-linecap="round"/>
+  <path d="M244 548H956" stroke="#64748B" stroke-width="14" stroke-linecap="round"/>
+  <path d="M292 474H908" stroke="#64748B" stroke-width="14" stroke-linecap="round"/>
+  <path d="M350 404H850" stroke="#64748B" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="530" cy="568" r="42" fill="#111827" stroke="#F97316" stroke-width="12"/>
+  <circle cx="530" cy="568" r="16" fill="#FBBF24"/>
+  <circle cx="680" cy="488" r="54" fill="#111827" stroke="#F97316" stroke-width="12"/>
+  <circle cx="680" cy="488" r="20" fill="#FBBF24"/>
+  <circle cx="782" cy="616" r="36" fill="#111827" stroke="#F97316" stroke-width="12"/>
+  <circle cx="782" cy="616" r="14" fill="#FBBF24"/>
+  <text x="94" y="108" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="42" font-weight="700">Seeded Evidence</text>
+  <text x="94" y="764" fill="#F8FAFC" font-family="Arial, sans-serif" font-size="36" font-weight="700">Roof impact close-up</text>
+  <text x="94" y="810" fill="#94A3B8" font-family="Arial, sans-serif" font-size="24">Demo image for shingle bruising and collateral narrative</text>
+</svg>
