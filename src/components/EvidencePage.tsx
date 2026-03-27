@@ -9,6 +9,7 @@ interface EvidencePageProps {
   onFetchProviderCandidates: () => Promise<void>;
   onRemoveEvidenceItem: (itemId: string) => Promise<void>;
   onToggleEvidenceStatus: (itemId: string) => Promise<void>;
+  onToggleEvidenceInReport: (itemId: string) => Promise<void>;
   onOpenReports: () => void;
   onOpenMap: () => void;
   providerStatus: {
@@ -25,6 +26,7 @@ export default function EvidencePage({
   onFetchProviderCandidates,
   onRemoveEvidenceItem,
   onToggleEvidenceStatus,
+  onToggleEvidenceInReport,
   onOpenReports,
   onOpenMap,
   providerStatus,
@@ -72,6 +74,9 @@ export default function EvidencePage({
   const providerItems = propertyEvidence.filter(
     (item) => item.kind === 'provider-query',
   );
+  const selectedForReportCount = propertyEvidence.filter(
+    (item) => item.status === 'approved' && item.includeInReport,
+  ).length;
 
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
@@ -237,6 +242,10 @@ export default function EvidencePage({
                       propertyEvidence.filter((item) => item.status === 'approved').length,
                     )}
                   />
+                  <SummaryCard
+                    label="Selected For PDF"
+                    value={String(selectedForReportCount)}
+                  />
                 </div>
               </section>
             </div>
@@ -297,6 +306,21 @@ export default function EvidencePage({
                           >
                             {item.status === 'approved' ? 'Mark Pending' : 'Approve'}
                           </button>
+                          {item.status === 'approved' && (
+                            <button
+                              type="button"
+                              onClick={() => void onToggleEvidenceInReport(item.id)}
+                              className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                                item.includeInReport
+                                  ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                                  : 'border border-gray-800 text-gray-300 hover:border-emerald-500/30 hover:text-emerald-300'
+                              }`}
+                            >
+                              {item.includeInReport
+                                ? 'Remove From Report'
+                                : 'Include In Report'}
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => void onRemoveEvidenceItem(item.id)}
@@ -337,6 +361,11 @@ export default function EvidencePage({
                           <p className="mt-1 text-xs text-gray-500">
                             {item.provider.toUpperCase()} · {item.stormDate || 'No storm date'}
                           </p>
+                          {item.status === 'approved' && (
+                            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+                              {item.includeInReport ? 'Selected for PDF' : 'Approved only'}
+                            </p>
+                          )}
                         </div>
                         <StatusPill status={item.status} />
                       </div>
@@ -373,6 +402,21 @@ export default function EvidencePage({
                         >
                           {item.status === 'approved' ? 'Mark Pending' : 'Approve'}
                         </button>
+                        {item.status === 'approved' && (
+                          <button
+                            type="button"
+                            onClick={() => void onToggleEvidenceInReport(item.id)}
+                            className={`rounded-xl px-3 py-2 text-xs font-semibold ${
+                              item.includeInReport
+                                ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+                                : 'border border-gray-800 text-gray-300 hover:border-emerald-500/30 hover:text-emerald-300'
+                            }`}
+                          >
+                            {item.includeInReport
+                              ? 'Remove From Report'
+                              : 'Include In Report'}
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => void onRemoveEvidenceItem(item.id)}

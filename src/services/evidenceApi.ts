@@ -79,6 +79,7 @@ export async function fetchEvidenceCandidates(
       createdAt: now,
       updatedAt: now,
       status: 'pending',
+      includeInReport: false,
     })),
     providerStatus: data.providerStatus,
   };

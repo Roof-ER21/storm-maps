@@ -76,6 +76,16 @@ interface FitBoundsRequest {
   maxZoom: number;
 }
 
+function normalizeEvidenceItem(item: EvidenceItem): EvidenceItem {
+  return {
+    ...item,
+    includeInReport:
+      typeof item.includeInReport === 'boolean'
+        ? item.includeInReport
+        : item.status === 'approved',
+  };
+}
+
 function App() {
   const notificationsSupported = isNotificationSupported();
   const [activeView, setActiveView] = useState<AppView>('map');
@@ -218,7 +228,7 @@ function App() {
   useEffect(() => {
     void listEvidenceItems()
       .then((items) => {
-        setEvidenceItems(items);
+        setEvidenceItems(items.map(normalizeEvidenceItem));
       })
       .catch((error) => {
         console.error('[App] Failed to load evidence items:', error);
@@ -414,7 +424,7 @@ function App() {
     setGeneratingReport(true);
     try {
       const approvedEvidenceItems = evidenceItems.filter((item) => {
-        if (item.status !== 'approved') {
+        if (item.status !== 'approved' || !item.includeInReport) {
           return false;
         }
 
@@ -448,6 +458,40 @@ function App() {
       setGeneratingReport(false);
     }
   }, [activeRadiusMiles, evidenceItems, events, queryLocation, searchSummary]);
+
+  const selectedEvidenceCount = useMemo(() => {
+    return evidenceItems.filter((item) => {
+      if (item.status !== 'approved' || !item.includeInReport) {
+        return false;
+      }
+
+      if (searchSummary && item.propertyLabel !== searchSummary.locationLabel) {
+        return false;
+      }
+
+      return true;
+    }).length;
+  }, [evidenceItems, searchSummary]);
+
+  const selectedEvidenceCountsByDate = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    for (const stormDate of filteredStormDates) {
+      counts[stormDate.date] = evidenceItems.filter((item) => {
+        if (item.status !== 'approved' || !item.includeInReport) {
+          return false;
+        }
+
+        if (searchSummary && item.propertyLabel !== searchSummary.locationLabel) {
+          return false;
+        }
+
+        return item.stormDate === null || item.stormDate === stormDate.date;
+      }).length;
+    }
+
+    return counts;
+  }, [evidenceItems, filteredStormDates, searchSummary]);
 
   const makePinnedPropertyId = useCallback((label: string, lat: number, lng: number) => {
     return `${label.toLowerCase()}-${lat.toFixed(4)}-${lng.toFixed(4)}`
@@ -586,10 +630,11 @@ function App() {
           createdAt: now,
           updatedAt: now,
           status: 'pending',
+          includeInReport: false,
         };
 
         await saveEvidenceItem(item);
-        return item;
+        return normalizeEvidenceItem(item);
       }),
     );
 
@@ -633,14 +678,15 @@ function App() {
 
     await Promise.all(
       result.items.map(async (item) => {
+        const normalizedItem = normalizeEvidenceItem(item);
         const existing = evidenceItems.find((current) => current.id === item.id);
         const nextItem = existing
           ? {
               ...existing,
-              ...item,
+              ...normalizedItem,
               createdAt: existing.createdAt,
             }
-          : item;
+          : normalizedItem;
         await saveEvidenceItem(nextItem);
       }),
     );
@@ -648,10 +694,13 @@ function App() {
     setEvidenceItems((current) => {
       const nextMap = new Map(current.map((item) => [item.id, item]));
       for (const item of result.items) {
+        const normalizedItem = normalizeEvidenceItem(item);
         const existing = nextMap.get(item.id);
         nextMap.set(
           item.id,
-          existing ? { ...existing, ...item, createdAt: existing.createdAt } : item,
+          existing
+            ? { ...existing, ...normalizedItem, createdAt: existing.createdAt }
+            : normalizedItem,
         );
       }
       return Array.from(nextMap.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
@@ -669,9 +718,32 @@ function App() {
       return;
     }
 
+    const nextStatus = currentItem.status === 'approved' ? 'pending' : 'approved';
+
     const nextItem: EvidenceItem = {
       ...currentItem,
-      status: currentItem.status === 'approved' ? 'pending' : 'approved',
+      status: nextStatus,
+      includeInReport: nextStatus === 'approved',
+      updatedAt: new Date().toISOString(),
+    };
+
+    await saveEvidenceItem(nextItem);
+    setEvidenceItems((current) =>
+      current
+        .map((item) => (item.id === itemId ? nextItem : item))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    );
+  }, [evidenceItems]);
+
+  const handleToggleEvidenceInReport = useCallback(async (itemId: string) => {
+    const currentItem = evidenceItems.find((item) => item.id === itemId);
+    if (!currentItem || currentItem.status !== 'approved') {
+      return;
+    }
+
+    const nextItem: EvidenceItem = {
+      ...currentItem,
+      includeInReport: !currentItem.includeInReport,
       updatedAt: new Date().toISOString(),
     };
 
@@ -926,6 +998,8 @@ function App() {
           <ReportsPage
             searchSummary={searchSummary}
             stormDates={filteredStormDates}
+            selectedEvidenceCount={selectedEvidenceCount}
+            selectedEvidenceCountsByDate={selectedEvidenceCountsByDate}
             generatingReport={generatingReport}
             onGenerateReport={handleGenerateReport}
             onOpenMap={() => setActiveView('map')}
@@ -942,6 +1016,7 @@ function App() {
             onFetchProviderCandidates={handleFetchEvidenceCandidates}
             onRemoveEvidenceItem={handleRemoveEvidenceItem}
             onToggleEvidenceStatus={handleToggleEvidenceStatus}
+            onToggleEvidenceInReport={handleToggleEvidenceInReport}
             onOpenReports={() => setActiveView('reports')}
             onOpenMap={() => setActiveView('map')}
             providerStatus={evidenceProviderStatus}

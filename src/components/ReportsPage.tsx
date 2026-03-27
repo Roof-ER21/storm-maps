@@ -3,6 +3,8 @@ import type { PropertySearchSummary, StormDate } from '../types/storm';
 interface ReportsPageProps {
   searchSummary: PropertySearchSummary | null;
   stormDates: StormDate[];
+  selectedEvidenceCount: number;
+  selectedEvidenceCountsByDate: Record<string, number>;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
   onOpenMap: () => void;
@@ -12,6 +14,8 @@ interface ReportsPageProps {
 export default function ReportsPage({
   searchSummary,
   stormDates,
+  selectedEvidenceCount,
+  selectedEvidenceCountsByDate,
   generatingReport,
   onGenerateReport,
   onOpenMap,
@@ -56,6 +60,11 @@ export default function ReportsPage({
               {stormDates.length === 1 ? '' : 's'} in the current property-history
               search window.
             </p>
+            <p className="mt-2 text-sm text-gray-400">
+              {selectedEvidenceCount} approved evidence item
+              {selectedEvidenceCount === 1 ? '' : 's'} currently selected for PDF
+              attachment.
+            </p>
           </div>
         ) : (
           <div className="rounded-3xl border border-dashed border-gray-800 bg-black/30 p-8 text-center">
@@ -95,6 +104,10 @@ export default function ReportsPage({
                     {stormDate.maxWindMph > 0
                       ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
                       : 'No wind'}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                    {selectedEvidenceCountsByDate[stormDate.date] ?? 0} evidence item
+                    {(selectedEvidenceCountsByDate[stormDate.date] ?? 0) === 1 ? '' : 's'} will attach
                   </p>
                 </div>
                 <button

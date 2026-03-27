@@ -111,6 +111,7 @@ function toEvidenceItem(
     createdAt: now,
     updatedAt: now,
     status: 'pending',
+    includeInReport: false,
   };
 }
 
@@ -137,6 +138,7 @@ export function buildEvidenceQuerySeeds(
         createdAt: now,
         updatedAt: now,
         status: 'pending',
+        includeInReport: false,
       },
       {
         id: makeQueryEvidenceId('flickr', searchSummary.locationLabel, null),
@@ -152,6 +154,7 @@ export function buildEvidenceQuerySeeds(
         createdAt: now,
         updatedAt: now,
         status: 'pending',
+        includeInReport: false,
       },
     ];
   }
@@ -171,6 +174,7 @@ export function buildEvidenceQuerySeeds(
       createdAt: now,
       updatedAt: now,
       status: 'pending' as const,
+      includeInReport: false,
     },
     {
       id: makeQueryEvidenceId('flickr', searchSummary.locationLabel, stormDate.date),
@@ -186,6 +190,7 @@ export function buildEvidenceQuerySeeds(
       createdAt: now,
       updatedAt: now,
       status: 'pending' as const,
+      includeInReport: false,
     },
   ]);
 }

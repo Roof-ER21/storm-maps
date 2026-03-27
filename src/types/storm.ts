@@ -299,6 +299,7 @@ export interface EvidenceItem {
   createdAt: string;
   updatedAt: string;
   status: EvidenceStatus;
+  includeInReport: boolean;
 }
 
 export interface ReportEvidenceItem {
