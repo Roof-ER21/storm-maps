@@ -51,6 +51,7 @@ import {
   saveEvidenceItem,
 } from './services/evidenceStorage';
 import { fetchEvidenceCandidates } from './services/evidenceApi';
+import { buildEvidenceQuerySeeds } from './services/evidenceProviders';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -589,12 +590,32 @@ function App() {
       throw new Error('Search a property before fetching evidence candidates.');
     }
 
-    const result = await fetchEvidenceCandidates(
-      searchSummary,
-      queryLocation.lat,
-      queryLocation.lng,
-      filteredStormDates,
-    );
+    let result: {
+      items: EvidenceItem[];
+      providerStatus: {
+        youtube: 'live' | 'fallback';
+        flickr: 'live' | 'fallback';
+      };
+    };
+
+    try {
+      result = await fetchEvidenceCandidates(
+        searchSummary,
+        queryLocation.lat,
+        queryLocation.lng,
+        filteredStormDates,
+      );
+    } catch (error) {
+      console.error('[App] Evidence API unavailable, using fallback packs:', error);
+      result = {
+        items: buildEvidenceQuerySeeds(searchSummary, filteredStormDates),
+        providerStatus: {
+          youtube: 'fallback',
+          flickr: 'fallback',
+        },
+      };
+    }
+
     setEvidenceProviderStatus(result.providerStatus);
 
     await Promise.all(
