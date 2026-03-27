@@ -413,6 +413,18 @@ function App() {
 
     setGeneratingReport(true);
     try {
+      const approvedEvidenceItems = evidenceItems.filter((item) => {
+        if (item.status !== 'approved') {
+          return false;
+        }
+
+        if (searchSummary && item.propertyLabel !== searchSummary.locationLabel) {
+          return false;
+        }
+
+        return item.stormDate === null || item.stormDate === dateOfLoss;
+      });
+
       await generateStormReport({
         address:
           searchSummary?.locationLabel ||
@@ -422,6 +434,7 @@ function App() {
         radiusMiles: searchSummary?.radiusMiles ?? activeRadiusMiles,
         events,
         dateOfLoss,
+        evidenceItems: approvedEvidenceItems,
       });
     } catch (error) {
       console.error('[App] Failed to generate report:', error);
@@ -434,7 +447,7 @@ function App() {
     } finally {
       setGeneratingReport(false);
     }
-  }, [activeRadiusMiles, events, queryLocation, searchSummary]);
+  }, [activeRadiusMiles, evidenceItems, events, queryLocation, searchSummary]);
 
   const makePinnedPropertyId = useCallback((label: string, lat: number, lng: number) => {
     return `${label.toLowerCase()}-${lat.toFixed(4)}-${lng.toFixed(4)}`

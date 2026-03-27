@@ -301,6 +301,21 @@ export interface EvidenceItem {
   status: EvidenceStatus;
 }
 
+export interface ReportEvidenceItem {
+  id: string;
+  provider: EvidenceProvider;
+  mediaType: EvidenceMediaType;
+  title: string;
+  stormDate: string | null;
+  notes?: string;
+  externalUrl?: string;
+  thumbnailUrl?: string | null;
+  publishedAt?: string | null;
+  imageDataUrl?: string | null;
+  fileName?: string;
+  mimeType?: string;
+}
+
 // ============================================================
 // App State
 // ============================================================

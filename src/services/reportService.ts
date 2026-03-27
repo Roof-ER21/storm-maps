@@ -1,4 +1,4 @@
-import type { StormEvent } from '../types/storm';
+import type { EvidenceItem, ReportEvidenceItem, StormEvent } from '../types/storm';
 
 const REPORT_API_URL = 'https://sa21.up.railway.app/api/hail/generate-report';
 const REPORT_USER_EMAIL =
@@ -19,6 +19,7 @@ interface GenerateStormReportParams {
   radiusMiles: number;
   events: StormEvent[];
   dateOfLoss: string;
+  evidenceItems?: EvidenceItem[];
 }
 
 type RiskLevel = 'Low' | 'Moderate' | 'High' | 'Critical';
@@ -156,6 +157,15 @@ function downloadBlob(blob: Blob, filename: string): void {
   URL.revokeObjectURL(blobUrl);
 }
 
+async function blobToDataUrl(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read evidence blob.'));
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.readAsDataURL(blob);
+  });
+}
+
 export async function generateStormReport({
   address,
   lat,
@@ -163,6 +173,7 @@ export async function generateStormReport({
   radiusMiles,
   events,
   dateOfLoss,
+  evidenceItems = [],
 }: GenerateStormReportParams): Promise<void> {
   const datedEvents = events.filter(
     (event) => event.beginDate.slice(0, 10) === dateOfLoss,
@@ -171,6 +182,36 @@ export async function generateStormReport({
   if (datedEvents.length === 0) {
     throw new Error('No events are available for the selected date of loss.');
   }
+
+  const preparedEvidenceItems: ReportEvidenceItem[] = await Promise.all(
+    evidenceItems.map(async (item) => {
+      const common = {
+        id: item.id,
+        provider: item.provider,
+        mediaType: item.mediaType,
+        title: item.title,
+        stormDate: item.stormDate,
+        notes: item.notes,
+        externalUrl: item.externalUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        publishedAt: item.publishedAt,
+        fileName: item.fileName,
+        mimeType: item.mimeType,
+      };
+
+      if (item.mediaType === 'image' && item.blob) {
+        return {
+          ...common,
+          imageDataUrl: await blobToDataUrl(item.blob),
+        };
+      }
+
+      return {
+        ...common,
+        imageDataUrl: null,
+      };
+    }),
+  );
 
   const payload = {
     address,
@@ -192,6 +233,7 @@ export async function generateStormReport({
     repPhone: REPORT_REP_PHONE,
     repEmail: REPORT_REP_EMAIL,
     companyName: REPORT_COMPANY_NAME,
+    evidenceItems: preparedEvidenceItems,
   };
 
   const response = await fetch(REPORT_API_URL, {
