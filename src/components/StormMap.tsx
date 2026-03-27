@@ -575,7 +575,8 @@ function MapContent({
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
-  const [showNexrad, setShowNexrad] = useState(false);
+  // NEXRAD hidden from UI — reps use MRMS instead
+  const [showNexrad] = useState(false);
   const [showMrms, setShowMrms] = useState(false);
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite'>('roadmap');
   const [mrmsProduct, setMrmsProduct] =
@@ -1080,34 +1081,6 @@ function MapContent({
                 />
               </svg>
               {mapTypeId === 'satellite' ? 'Map' : 'Satellite'}
-            </div>
-          </button>
-
-          <button
-            onClick={() => setShowNexrad((value) => !value)}
-            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
-              showNexrad
-                ? 'bg-green-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            title="Toggle NEXRAD radar overlay"
-            aria-label="Toggle NEXRAD radar"
-          >
-            <div className="flex items-center gap-1.5">
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.348 14.651a3.75 3.75 0 010-5.303m5.304 0a3.75 3.75 0 010 5.303m-7.425 2.122a6.75 6.75 0 010-9.546m9.546 0a6.75 6.75 0 010 9.546M5.106 18.894c-3.808-3.808-3.808-9.98 0-13.789m13.788 0c3.808 3.808 3.808 9.981 0 13.789M12 12h.008v.008H12V12z"
-                />
-              </svg>
-              Radar
             </div>
           </button>
 
