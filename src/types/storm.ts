@@ -54,6 +54,8 @@ export type SearchResultType =
 
 export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
 
+export type AppView = 'dashboard' | 'map' | 'pinned' | 'reports';
+
 // ============================================================
 // Storm Event Types
 // ============================================================
@@ -255,6 +257,22 @@ export interface PropertySearchSummary {
 export interface EventFilterState {
   hail: boolean;
   wind: boolean;
+}
+
+export interface PinnedProperty {
+  id: string;
+  locationLabel: string;
+  lat: number;
+  lng: number;
+  resultType: SearchResultType;
+  radiusMiles: number;
+  historyPreset: HistoryRangePreset;
+  sinceDate: string | null;
+  stormDateCount: number;
+  latestStormDate: string | null;
+  latestMaxHailInches: number;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ============================================================

@@ -32,6 +32,9 @@ interface SidebarProps {
   onFilterChange: (filters: EventFilterState) => void;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
+  canPinProperty: boolean;
+  isPinned: boolean;
+  onPinProperty: () => void;
 }
 
 type TabId = 'recent' | 'impact';
@@ -55,6 +58,9 @@ export default function Sidebar({
   onFilterChange,
   generatingReport,
   onGenerateReport,
+  canPinProperty,
+  isPinned,
+  onPinProperty,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>('recent');
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -115,7 +121,7 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-80 bg-gray-950 text-white flex flex-col border-r border-gray-800 min-h-0">
+    <aside className="flex max-h-[48vh] w-full shrink-0 flex-col border-b border-gray-800 bg-gray-950 text-white min-h-0 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r">
       <div className="p-4 border-b border-gray-800">
         <div className="flex items-center gap-2">
           <svg
@@ -215,21 +221,37 @@ export default function Sidebar({
 
       {searchSummary && (
         <div className="border-b border-gray-800 px-3 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-            Property History
-          </p>
-          <p className="mt-1 text-sm font-semibold text-white">
-            {searchSummary.locationLabel}
-          </p>
-          <p className="mt-1 text-xs text-gray-400">
-            {loading
-              ? `Searching within ${searchSummary.radiusMiles} miles...`
-              : stormDates.length > 0
-                ? `${stormDates.length} ${getFilterSummaryLabel(eventFilters, stormDates.length)} within ${searchSummary.radiusMiles} miles for ${formatHistoryRangeLabel(historyRange, sinceDate)}.`
-                : `No ${getFilterSummaryLabel(eventFilters, 0)} found within ${searchSummary.radiusMiles} miles for ${formatHistoryRangeLabel(historyRange, sinceDate)}.`}
-          </p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Property History
+              </p>
+              <p className="mt-1 text-sm font-semibold text-white">
+                {searchSummary.locationLabel}
+              </p>
+              <p className="mt-1 text-xs text-gray-400">
+                {loading
+                  ? `Searching within ${searchSummary.radiusMiles} miles...`
+                  : stormDates.length > 0
+                    ? `${stormDates.length} ${getFilterSummaryLabel(eventFilters, stormDates.length)} within ${searchSummary.radiusMiles} miles for ${formatHistoryRangeLabel(historyRange, sinceDate)}.`
+                    : `No ${getFilterSummaryLabel(eventFilters, 0)} found within ${searchSummary.radiusMiles} miles for ${formatHistoryRangeLabel(historyRange, sinceDate)}.`}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onPinProperty}
+              disabled={!canPinProperty}
+              className={`rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${
+                isPinned
+                  ? 'bg-amber-500 text-gray-950'
+                  : 'bg-gray-900 text-white hover:bg-gray-800'
+              } disabled:cursor-not-allowed disabled:bg-gray-900 disabled:text-gray-500`}
+            >
+              {isPinned ? 'Pinned' : 'Pin'}
+            </button>
+          </div>
           {!loading && latestStorms[0] && (
-            <p className="mt-1 text-xs text-green-300">
+            <p className="mt-2 text-xs text-green-300">
               Last hit {latestStorms[0].label} with {formatStormImpactSummary(latestStorms[0])}
             </p>
           )}

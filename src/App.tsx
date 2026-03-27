@@ -12,6 +12,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import type {
+  AppView,
   StormDate,
   LatLng,
   SearchResult,
@@ -21,6 +22,7 @@ import type {
   HistoryRangePreset,
   PropertySearchSummary,
   EventFilterState,
+  PinnedProperty,
 } from './types/storm';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
@@ -37,6 +39,10 @@ import Sidebar from './components/Sidebar';
 import StormMap from './components/StormMap';
 import SearchBar from './components/SearchBar';
 import Legend from './components/Legend';
+import AppHeader from './components/AppHeader';
+import DashboardPage from './components/DashboardPage';
+import PinnedPropertiesPage from './components/PinnedPropertiesPage';
+import ReportsPage from './components/ReportsPage';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -46,6 +52,7 @@ const ALERT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
 const DEFAULT_CENTER: LatLng = { lat: 39.0, lng: -77.0 };
 const DEFAULT_ZOOM = 8;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
+const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
 
 interface MapCameraState {
   center: LatLng;
@@ -62,6 +69,7 @@ interface FitBoundsRequest {
 
 function App() {
   const notificationsSupported = isNotificationSupported();
+  const [activeView, setActiveView] = useState<AppView>('map');
 
   // ---- Location state ----
   const [camera, setCamera] = useState<MapCameraState>({
@@ -85,6 +93,7 @@ function App() {
   const [generatingReport, setGeneratingReport] = useState(false);
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(getNotificationPermission);
+  const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
   const notifiedAlertsRef = useRef<Map<string, number>>(new Map());
 
   // ---- GPS ----
@@ -161,6 +170,33 @@ function App() {
       .filter((stormDate): stormDate is StormDate => Boolean(stormDate))
       .sort((a, b) => b.date.localeCompare(a.date));
   }, [eventFilters.hail, filteredEvents, stormDates, swaths]);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(PINNED_PROPERTIES_STORAGE_KEY);
+      if (!stored) {
+        return;
+      }
+
+      const parsed = JSON.parse(stored) as PinnedProperty[];
+      if (Array.isArray(parsed)) {
+        setPinnedProperties(parsed);
+      }
+    } catch (error) {
+      console.error('[App] Failed to load pinned properties:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        PINNED_PROPERTIES_STORAGE_KEY,
+        JSON.stringify(pinnedProperties),
+      );
+    } catch (error) {
+      console.error('[App] Failed to save pinned properties:', error);
+    }
+  }, [pinnedProperties]);
 
   useEffect(() => {
     if (!canvassingAlert?.inHailZone || notificationPermission !== 'granted') {
@@ -276,6 +312,7 @@ function App() {
   );
 
   const handleSearchResult = useCallback((result: SearchResult) => {
+    setActiveView('map');
     applySearchResult(result);
   }, [applySearchResult]);
 
@@ -283,6 +320,7 @@ function App() {
   const handleSidebarSearch = useCallback((query: string) => {
     geocodeAddress(query).then((result) => {
       if (result) {
+        setActiveView('map');
         applySearchResult(result);
       }
     });
@@ -371,8 +409,116 @@ function App() {
     }
   }, [activeRadiusMiles, events, queryLocation, searchSummary]);
 
+  const makePinnedPropertyId = useCallback((label: string, lat: number, lng: number) => {
+    return `${label.toLowerCase()}-${lat.toFixed(4)}-${lng.toFixed(4)}`
+      .replace(/[^a-z0-9.-]+/g, '-')
+      .replace(/-+/g, '-');
+  }, []);
+
+  const currentPinnedId = useMemo(() => {
+    if (!searchSummary) {
+      return null;
+    }
+
+    return makePinnedPropertyId(
+      searchSummary.locationLabel,
+      queryLocation.lat,
+      queryLocation.lng,
+    );
+  }, [makePinnedPropertyId, queryLocation.lat, queryLocation.lng, searchSummary]);
+
+  const isCurrentPropertyPinned = useMemo(
+    () =>
+      currentPinnedId
+        ? pinnedProperties.some((property) => property.id === currentPinnedId)
+        : false,
+    [currentPinnedId, pinnedProperties],
+  );
+
+  const handlePinProperty = useCallback(() => {
+    if (!searchSummary) {
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const nextProperty: PinnedProperty = {
+      id: makePinnedPropertyId(
+        searchSummary.locationLabel,
+        queryLocation.lat,
+        queryLocation.lng,
+      ),
+      locationLabel: searchSummary.locationLabel,
+      lat: queryLocation.lat,
+      lng: queryLocation.lng,
+      resultType: searchSummary.resultType,
+      radiusMiles: searchSummary.radiusMiles,
+      historyPreset: historyRange,
+      sinceDate: historyRange === 'since' && sinceDate ? sinceDate : null,
+      stormDateCount: filteredStormDates.length,
+      latestStormDate: filteredStormDates[0]?.date ?? null,
+      latestMaxHailInches: filteredStormDates[0]?.maxHailInches ?? 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    setPinnedProperties((current) => {
+      const existingIndex = current.findIndex(
+        (property) => property.id === nextProperty.id,
+      );
+
+      if (existingIndex === -1) {
+        return [nextProperty, ...current];
+      }
+
+      const existing = current[existingIndex];
+      const updated = {
+        ...existing,
+        ...nextProperty,
+        createdAt: existing.createdAt,
+      };
+      const next = [...current];
+      next.splice(existingIndex, 1);
+      return [updated, ...next];
+    });
+  }, [
+    filteredStormDates,
+    historyRange,
+    makePinnedPropertyId,
+    queryLocation.lat,
+    queryLocation.lng,
+    searchSummary,
+    sinceDate,
+  ]);
+
+  const handleRemovePinnedProperty = useCallback((propertyId: string) => {
+    setPinnedProperties((current) =>
+      current.filter((property) => property.id !== propertyId),
+    );
+  }, []);
+
+  const handleOpenPinnedProperty = useCallback((property: PinnedProperty) => {
+    setActiveView('map');
+    setSelectedDate(null);
+    setHistoryRange(property.historyPreset);
+    setSinceDate(property.sinceDate ?? '');
+    setQueryLocation({ lat: property.lat, lng: property.lng });
+    setSearchSummary({
+      locationLabel: property.locationLabel,
+      resultType: property.resultType,
+      radiusMiles: property.radiusMiles,
+      historyPreset: property.historyPreset,
+      sinceDate: property.sinceDate,
+    });
+    setFitBoundsRequest(null);
+    setCamera((prev) => ({
+      ...prev,
+      center: { lat: property.lat, lng: property.lng },
+      zoom: getFallbackZoom(property.resultType),
+    }));
+  }, [getFallbackZoom]);
+
   const mapArea = (
-    <main className="flex-1 relative flex flex-col min-w-0">
+    <main className="relative flex min-h-[55vh] flex-1 flex-col min-w-0 lg:min-h-0">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 
@@ -546,35 +692,79 @@ function App() {
   );
 
   return (
-    <div className="h-full flex">
-      {/* Left sidebar */}
-      <Sidebar
-        stormDates={filteredStormDates}
-        events={filteredEvents}
-        selectedDate={selectedDate}
-        onSelectDate={setSelectedDate}
-        loading={loading}
-        error={error}
-        canvassingAlert={canvassingAlert}
-        onSearch={handleSidebarSearch}
+    <div className="flex h-full min-h-0 flex-col bg-black text-white">
+      <AppHeader
+        activeView={activeView}
+        onChangeView={setActiveView}
+        pinnedCount={pinnedProperties.length}
         activeSearchLabel={searchSummary?.locationLabel ?? null}
-        historyRange={historyRange}
-        sinceDate={sinceDate}
-        onHistoryRangeChange={handleHistoryRangeChange}
-        onSinceDateChange={handleSinceDateChange}
-        searchSummary={searchSummary}
-        eventFilters={eventFilters}
-        onFilterChange={handleFilterChange}
-        generatingReport={generatingReport}
-        onGenerateReport={handleGenerateReport}
       />
 
-      {/* Wrap map area with APIProvider so SearchBar + StormMap share context */}
-      {HAS_API_KEY ? (
-        <APIProvider apiKey={API_KEY}>{mapArea}</APIProvider>
-      ) : (
-        mapArea
-      )}
+      <div className="flex min-h-0 flex-1 flex-col">
+        {activeView === 'dashboard' && (
+          <DashboardPage
+            searchSummary={searchSummary}
+            stormDates={filteredStormDates}
+            pinnedProperties={pinnedProperties}
+            onOpenMap={() => setActiveView('map')}
+            onOpenPinned={() => setActiveView('pinned')}
+            onOpenReports={() => setActiveView('reports')}
+          />
+        )}
+
+        {activeView === 'map' && (
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <Sidebar
+              stormDates={filteredStormDates}
+              events={filteredEvents}
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              loading={loading}
+              error={error}
+              canvassingAlert={canvassingAlert}
+              onSearch={handleSidebarSearch}
+              activeSearchLabel={searchSummary?.locationLabel ?? null}
+              historyRange={historyRange}
+              sinceDate={sinceDate}
+              onHistoryRangeChange={handleHistoryRangeChange}
+              onSinceDateChange={handleSinceDateChange}
+              searchSummary={searchSummary}
+              eventFilters={eventFilters}
+              onFilterChange={handleFilterChange}
+              generatingReport={generatingReport}
+              onGenerateReport={handleGenerateReport}
+              canPinProperty={Boolean(searchSummary)}
+              isPinned={isCurrentPropertyPinned}
+              onPinProperty={handlePinProperty}
+            />
+
+            {HAS_API_KEY ? (
+              <APIProvider apiKey={API_KEY}>{mapArea}</APIProvider>
+            ) : (
+              mapArea
+            )}
+          </div>
+        )}
+
+        {activeView === 'pinned' && (
+          <PinnedPropertiesPage
+            pinnedProperties={pinnedProperties}
+            onOpenProperty={handleOpenPinnedProperty}
+            onRemoveProperty={handleRemovePinnedProperty}
+            onOpenMap={() => setActiveView('map')}
+          />
+        )}
+
+        {activeView === 'reports' && (
+          <ReportsPage
+            searchSummary={searchSummary}
+            stormDates={filteredStormDates}
+            generatingReport={generatingReport}
+            onGenerateReport={handleGenerateReport}
+            onOpenMap={() => setActiveView('map')}
+          />
+        )}
+      </div>
     </div>
   );
 }
