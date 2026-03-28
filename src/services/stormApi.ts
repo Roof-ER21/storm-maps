@@ -26,6 +26,39 @@ function appendEvents(target: StormEvent[], next: StormEvent[]): void {
   }
 }
 
+function getBoundingBoxForRadius(
+  lat: number,
+  lng: number,
+  radiusMiles: number,
+): { west: number; south: number; east: number; north: number } {
+  const radiusDeg = radiusMiles / 69;
+
+  return {
+    west: lng - radiusDeg / Math.cos((lat * Math.PI) / 180),
+    south: lat - radiusDeg,
+    east: lng + radiusDeg / Math.cos((lat * Math.PI) / 180),
+    north: lat + radiusDeg,
+  };
+}
+
+function haversineDistanceMiles(
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number,
+): number {
+  const earthRadiusMiles = 3958.8;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 function getFieldAssistantTimeoutMs(months: number): number {
   if (months >= 120) return 45000;
   if (months >= 60) return 30000;
@@ -244,6 +277,7 @@ export async function searchByCoordinates(
 
   const allEvents: StormEvent[] = [];
   const chunks: Array<{ start: number; end: number }> = [];
+  const bbox = getBoundingBoxForRadius(lat, lng, radius);
   let chunkStart = start.getTime();
   const endMs = end.getTime();
 
@@ -262,7 +296,7 @@ export async function searchByCoordinates(
         const e = formatSwdiDate(new Date(chunk.end));
         const url =
           `https://www.ncei.noaa.gov/swdiws/json/nx3hail/${s}:${e}` +
-          `?center=${lng},${lat}&radius=${radius}`;
+          `?bbox=${bbox.west},${bbox.south},${bbox.east},${bbox.north}`;
 
         const res = await fetch(url, {
           signal: getTimeoutSignal(15000, signal),
@@ -298,7 +332,16 @@ export async function searchByCoordinates(
     }
   }
 
-  return allEvents;
+  return allEvents.filter((event) => {
+    const distance = haversineDistanceMiles(
+      lat,
+      lng,
+      event.beginLat,
+      event.beginLon,
+    );
+
+    return distance <= radius;
+  });
 }
 
 function parseSwdiRecord(r: SwdiHailRecord, idx: number): StormEvent {

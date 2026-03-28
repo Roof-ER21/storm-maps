@@ -402,7 +402,7 @@ export default function Sidebar({
             <p className="text-sm text-gray-500">No storm dates found</p>
             <p className="text-xs text-gray-600 mt-1">
               {searchSummary
-                ? `Try a wider history window or a broader location than ${searchSummary.locationLabel}.`
+                ? `Try 2Y or 5Y, or search a broader nearby area than ${searchSummary.locationLabel}.`
                 : 'Search an address, city, or ZIP to load nearby hail dates.'}
             </p>
           </div>

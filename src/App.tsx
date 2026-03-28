@@ -61,10 +61,17 @@ const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
 const ALERT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
 
 /** Default center: DMV area */
-const DEFAULT_CENTER: LatLng = { lat: 39.0, lng: -77.0 };
-const DEFAULT_ZOOM = 8;
+const DEFAULT_CENTER: LatLng = { lat: 39.4196, lng: -76.7803 };
+const DEFAULT_ZOOM = 10;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
+const DEFAULT_SEARCH_SUMMARY: PropertySearchSummary = {
+  locationLabel: 'Owings Mills, MD',
+  resultType: 'locality',
+  radiusMiles: 20,
+  historyPreset: DEFAULT_HISTORY_RANGE,
+  sinceDate: null,
+};
 
 interface MapCameraState {
   center: LatLng;
@@ -108,7 +115,7 @@ function App() {
     useState<HistoryRangePreset>(DEFAULT_HISTORY_RANGE);
   const [sinceDate, setSinceDate] = useState<string>('');
   const [searchSummary, setSearchSummary] =
-    useState<PropertySearchSummary | null>(null);
+    useState<PropertySearchSummary | null>(DEFAULT_SEARCH_SUMMARY);
   const [eventFilters, setEventFilters] = useState<EventFilterState>({
     hail: true,
     wind: false,
