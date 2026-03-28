@@ -334,6 +334,7 @@ export default function Sidebar({
             emptyLabel="No evidence is attached to this selected storm date yet."
             onOpenEvidence={onOpenEvidence}
             compact
+            prioritizeIncluded
           />
         </div>
       )}

@@ -280,6 +280,7 @@ export default function DashboardPage({
                       subtitle="Attached proof for this storm date."
                       emptyLabel="No storm-date evidence attached yet."
                       compact
+                      prioritizeIncluded
                     />
                   </div>
                 </div>

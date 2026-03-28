@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { EvidenceItem, PropertySearchSummary, StormDate } from '../types/storm';
+import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface EvidencePageProps {
   searchSummary: PropertySearchSummary | null;
@@ -79,6 +80,9 @@ export default function EvidencePage({
   const uploadItems = propertyEvidence.filter((item) => item.kind === 'upload');
   const providerItems = propertyEvidence.filter(
     (item) => item.kind === 'provider-query',
+  );
+  const approvedForReportItems = propertyEvidence.filter(
+    (item) => item.status === 'approved' && item.includeInReport,
   );
   const selectedForReportCount = propertyEvidence.filter(
     (item) => item.status === 'approved' && item.includeInReport,
@@ -315,6 +319,17 @@ export default function EvidencePage({
                   <SummaryCard
                     label="Selected For PDF"
                     value={String(selectedForReportCount)}
+                  />
+                </div>
+
+                <div className="mt-4">
+                  <EvidenceThumbnailStrip
+                    items={approvedForReportItems}
+                    title="Best Report Evidence"
+                    subtitle="Top proof currently selected for the next PDF or evidence pack."
+                    emptyLabel="Approve items and mark them for report inclusion to see the best proof here."
+                    onOpenEvidence={undefined}
+                    prioritizeIncluded
                   />
                 </div>
               </section>

@@ -131,6 +131,7 @@ export default function ReportsPage({
                         subtitle="Approved evidence that will be bundled with this storm-date report."
                         emptyLabel="No approved report evidence is selected for this date yet."
                         compact
+                        prioritizeIncluded
                       />
                     </div>
                   </div>
