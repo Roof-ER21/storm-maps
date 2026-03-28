@@ -11,6 +11,7 @@
 
 import type { MrmsHailData } from '../types/storm';
 import type { BoundingBox } from '../types/storm';
+import { HAIL_YES_HAIL_API_BASE, HAIL_YES_MRMS_API_BASE } from './backendConfig';
 
 export type MrmsOverlayProduct = 'mesh60' | 'mesh1440';
 
@@ -18,10 +19,10 @@ export type MrmsOverlayProduct = 'mesh60' | 'mesh1440';
 // Oracle Tile Server Config
 // ---------------------------------------------------------------------------
 
-// Use the field assistant's HTTPS proxy to avoid mixed-content blocking
-// Falls back to direct Oracle if proxy unavailable
-const PROXY_BASE = 'https://sa21.up.railway.app/api/mrms';
-// Direct Oracle URL (for non-HTTPS contexts): http://129.159.190.3:8080/overlays
+// Hail Yes backend MRMS proxy.
+// This remains a core standalone feature because archived MRMS imagery and
+// overlay metadata need server-side handling.
+const PROXY_BASE = HAIL_YES_MRMS_API_BASE;
 
 /** CONUS bounding box for the MRMS image overlays */
 export const CONUS_BOUNDS = {
@@ -113,7 +114,7 @@ export async function fetchHistoricalMrmsMetadata(
 ): Promise<HistoricalMrmsMetadata | null> {
   try {
     const res = await fetch(
-      `https://sa21.up.railway.app/api/hail/mrms-historical-meta?${toHistoricalQuery(params)}`,
+      `${HAIL_YES_HAIL_API_BASE}/mrms-historical-meta?${toHistoricalQuery(params)}`,
       {
         signal: AbortSignal.timeout(45000),
       },
@@ -129,7 +130,7 @@ export async function fetchHistoricalMrmsMetadata(
 }
 
 export function getHistoricalMrmsOverlayUrl(params: HistoricalMrmsParams): string {
-  return `https://sa21.up.railway.app/api/hail/mrms-historical-image?${toHistoricalQuery(params)}`;
+  return `${HAIL_YES_HAIL_API_BASE}/mrms-historical-image?${toHistoricalQuery(params)}`;
 }
 
 /**

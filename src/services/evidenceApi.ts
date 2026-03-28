@@ -1,7 +1,6 @@
 import type { EvidenceItem, PropertySearchSummary, StormDate } from '../types/storm';
 import { fetchDirectEvidenceCandidates } from './evidenceProviders';
-
-const EVIDENCE_API_BASE = 'https://sa21.up.railway.app/api/hail';
+import { HAIL_YES_HAIL_API_BASE } from './backendConfig';
 
 interface EvidenceSearchResponse {
   candidates: Array<{
@@ -52,7 +51,7 @@ export async function fetchEvidenceCandidates(
   }
 
   const response = await fetch(
-    `${EVIDENCE_API_BASE}/evidence-search?${params.toString()}`,
+    `${HAIL_YES_HAIL_API_BASE}/evidence-search?${params.toString()}`,
     { signal: AbortSignal.timeout(15000) },
   );
 

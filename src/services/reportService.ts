@@ -1,6 +1,7 @@
 import type { EvidenceItem, ReportEvidenceItem, StormEvent } from '../types/storm';
+import { HAIL_YES_HAIL_API_BASE } from './backendConfig';
 
-const REPORT_API_URL = 'https://sa21.up.railway.app/api/hail/generate-report';
+const REPORT_API_URL = `${HAIL_YES_HAIL_API_BASE}/generate-report`;
 const REPORT_USER_EMAIL =
   import.meta.env.VITE_REPORT_USER_EMAIL || 'ahmed@theroofdocs.com';
 const REPORT_REP_NAME =
@@ -253,6 +254,6 @@ export async function generateStormReport({
   const safeAddress = address.replace(/[^a-zA-Z0-9]/g, '_');
   downloadBlob(
     blob,
-    `Storm_Report_${safeAddress}_${dateOfLoss}.pdf`,
+    `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`,
   );
 }
