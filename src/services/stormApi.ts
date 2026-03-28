@@ -1,17 +1,21 @@
 /**
  * Storm Events API Service
  *
- * Primary: Gemini Field Assistant API (sa21.up.railway.app) — proxied NOAA Storm Events
- * Fallback: NCEI SWDI direct queries
+ * Standalone-first behavior:
+ * - direct NCEI SWDI hail queries
+ * - direct IEM Local Storm Reports
  *
- * The field assistant parses NOAA's bulk CSV storm event files server-side
- * and returns clean JSON with hail/wind events near a location.
+ * Optional:
+ * - a separately configured JSON search backend for richer historical NOAA data
+ *
+ * The standalone app should not hard-depend on another deployed app just to
+ * render property history.
  */
 
 import type { StormEvent, BoundingBox } from '../types/storm';
 
-// Field assistant API base
-const SA21_API = 'https://sa21.up.railway.app/api';
+const OPTIONAL_STORM_SEARCH_API_BASE =
+  (import.meta.env.VITE_STORM_SEARCH_API_BASE as string | undefined)?.trim() || '';
 const SWDI_FALLBACK_MAX_MONTHS = 24;
 
 function appendEvents(target: StormEvent[], next: StormEvent[]): void {
@@ -29,6 +33,14 @@ function getFieldAssistantTimeoutMs(months: number): number {
 
 function shouldUseSwdiFallback(months: number): boolean {
   return months <= SWDI_FALLBACK_MAX_MONTHS;
+}
+
+function getOptionalSearchApiBase(): string | null {
+  if (!OPTIONAL_STORM_SEARCH_API_BASE) {
+    return null;
+  }
+
+  return OPTIONAL_STORM_SEARCH_API_BASE.replace(/\/+$/, '');
 }
 
 function getTimeoutSignal(
@@ -122,101 +134,105 @@ export async function searchByCoordinates(
   radius = 50,
   signal?: AbortSignal,
 ): Promise<StormEvent[]> {
-  // Primary: use field assistant API (has full NOAA Storm Events data)
-  try {
-    const timeoutMs = getFieldAssistantTimeoutMs(months);
-    const params = new URLSearchParams({
-      lat: lat.toString(),
-      lng: lng.toString(),
-      months: months.toString(),
-      radius: radius.toString(),
-    });
-    const res = await fetch(`${SA21_API}/hail/search?${params}`, {
-      signal: getTimeoutSignal(timeoutMs, signal),
-      // Explicit CORS mode — if the server lacks CORS headers, the catch
-      // block below will fire immediately and fall through to SWDI.
-      mode: 'cors',
-      headers: { 'x-user-email': 'storm-maps@roofer21.com' },
-    });
-    if (res.ok) {
-      const data: Sa21SearchResponse = await res.json();
-      const events: StormEvent[] = [];
+  const searchApiBase = getOptionalSearchApiBase();
 
-      // Parse IHM/HailTrace hail events
-      if (data.events && Array.isArray(data.events)) {
-        appendEvents(
-          events,
-          data.events.map((e, idx: number) => ({
-            id: `ihm-${e.id || idx}`,
-            eventType: 'Hail' as const,
-            state: '',
-            county: '',
-            beginDate: e.date || '',
-            endDate: e.date || '',
-            beginLat: e.latitude || 0,
-            beginLon: e.longitude || 0,
-            endLat: e.latitude || 0,
-            endLon: e.longitude || 0,
-            magnitude: e.hailSize || 0,
-            magnitudeType: 'inches',
-            damageProperty: 0,
-            source: e.source || 'Storm Database',
-            narrative: `Hail ${e.hailSize}"  - ${e.severity || 'unknown'} severity`,
-          })),
+  if (searchApiBase) {
+    try {
+      const timeoutMs = getFieldAssistantTimeoutMs(months);
+      const params = new URLSearchParams({
+        lat: lat.toString(),
+        lng: lng.toString(),
+        months: months.toString(),
+        radius: radius.toString(),
+      });
+      const res = await fetch(`${searchApiBase}/hail/search?${params}`, {
+        signal: getTimeoutSignal(timeoutMs, signal),
+        mode: 'cors',
+        headers: { 'x-user-email': 'storm-maps@roofer21.com' },
+      });
+      if (res.ok) {
+        const data: Sa21SearchResponse = await res.json();
+        const events: StormEvent[] = [];
+
+        if (data.events && Array.isArray(data.events)) {
+          appendEvents(
+            events,
+            data.events.map((e, idx: number) => ({
+              id: `ihm-${e.id || idx}`,
+              eventType: 'Hail' as const,
+              state: '',
+              county: '',
+              beginDate: e.date || '',
+              endDate: e.date || '',
+              beginLat: e.latitude || 0,
+              beginLon: e.longitude || 0,
+              endLat: e.latitude || 0,
+              endLon: e.longitude || 0,
+              magnitude: e.hailSize || 0,
+              magnitudeType: 'inches',
+              damageProperty: 0,
+              source: e.source || 'Storm Database',
+              narrative: `Hail ${e.hailSize}"  - ${e.severity || 'unknown'} severity`,
+            })),
+          );
+        }
+
+        if (data.noaaEvents && Array.isArray(data.noaaEvents)) {
+          appendEvents(
+            events,
+            data.noaaEvents
+              .map((e, idx: number) => {
+                const eventType = mapSa21NoaaEventType(e.eventType);
+                if (!eventType) {
+                  return null;
+                }
+
+                return {
+                  id: `noaa-${e.id || idx}`,
+                  eventType,
+                  state: e.state || '',
+                  county: '',
+                  beginDate: e.date || '',
+                  endDate: e.date || '',
+                  beginLat: e.latitude || 0,
+                  beginLon: e.longitude || 0,
+                  endLat: e.latitude || 0,
+                  endLon: e.longitude || 0,
+                  magnitude: e.magnitude || 0,
+                  magnitudeType: eventType === 'Thunderstorm Wind' ? 'mph' : 'inches',
+                  damageProperty: 0,
+                  source: e.source || 'NOAA',
+                  narrative: e.narrative || `${e.eventType} - ${e.location || ''}`,
+                };
+              })
+              .filter((event): event is StormEvent => Boolean(event)),
+          );
+        }
+
+        if (events.length > 0) {
+          return events;
+        }
+      }
+    } catch (err) {
+      if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
+        return [];
+      }
+
+      if (!shouldUseSwdiFallback(months)) {
+        console.warn(
+          `[stormApi] Optional search API failed for ${months}-month search; skipping SWDI fallback for long-range query:`,
+          err,
         );
+        return [];
       }
 
-      // Parse NOAA events
-      if (data.noaaEvents && Array.isArray(data.noaaEvents)) {
-        appendEvents(
-          events,
-          data.noaaEvents
-            .map((e, idx: number) => {
-              const eventType = mapSa21NoaaEventType(e.eventType);
-              if (!eventType) {
-                return null;
-              }
-
-              return {
-                id: `noaa-${e.id || idx}`,
-                eventType,
-                state: e.state || '',
-                county: '',
-                beginDate: e.date || '',
-                endDate: e.date || '',
-                beginLat: e.latitude || 0,
-                beginLon: e.longitude || 0,
-                endLat: e.latitude || 0,
-                endLon: e.longitude || 0,
-                magnitude: e.magnitude || 0,
-                magnitudeType: eventType === 'Thunderstorm Wind' ? 'mph' : 'inches',
-                damageProperty: 0,
-                source: e.source || 'NOAA',
-                narrative: e.narrative || `${e.eventType} - ${e.location || ''}`,
-              };
-            })
-            .filter((event): event is StormEvent => Boolean(event)),
-        );
-      }
-
-      if (events.length > 0) {
-        return events;
-      }
+      console.warn('[stormApi] Optional search API failed, falling back to SWDI:', err);
     }
-  } catch (err) {
-    if (signal?.aborted || (err instanceof Error && err.name === 'AbortError')) {
-      return [];
-    }
-
-    if (!shouldUseSwdiFallback(months)) {
-      console.warn(
-        `[stormApi] Field assistant API failed for ${months}-month search; skipping SWDI fallback for long-range query:`,
-        err,
-      );
-      return [];
-    }
-
-    console.warn('[stormApi] Field assistant API failed, falling back to SWDI:', err);
+  } else if (!shouldUseSwdiFallback(months)) {
+    console.warn(
+      `[stormApi] No standalone search backend configured for ${months}-month event search; returning direct-source results only.`,
+    );
+    return [];
   }
 
   // Fallback: SWDI direct queries
