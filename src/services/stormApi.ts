@@ -94,9 +94,10 @@ function getTimeoutSignal(
 // ---------------------------------------------------------------------------
 
 interface SwdiHailRecord {
-  ZTIME: string;       // "YYYYMMDDHHMMSS" UTC
-  LON: string;         // longitude
-  LAT: string;         // latitude
+  ZTIME: string;       // ISO timestamp or legacy "YYYYMMDDHHMMSS" UTC
+  LON?: string;        // legacy longitude
+  LAT?: string;        // legacy latitude
+  SHAPE?: string;      // "POINT (lon lat)"
   MAXSIZE: string;     // hail size in inches
   WSR_ID: string;      // radar station ID
   CELL_ID: string;     // cell identifier
@@ -358,14 +359,23 @@ export async function searchByCoordinates(
 }
 
 function parseSwdiRecord(r: SwdiHailRecord, idx: number): StormEvent {
-  const lat = parseFloat(r.LAT) || 0;
-  const lon = parseFloat(r.LON) || 0;
+  let lat = parseFloat(r.LAT || '') || 0;
+  let lon = parseFloat(r.LON || '') || 0;
   const size = parseFloat(r.MAXSIZE) || 0;
   const ztime = r.ZTIME || '';
 
-  // Parse YYYYMMDDHHMMSS into ISO string
+  if ((!lat || !lon) && r.SHAPE) {
+    const match = r.SHAPE.match(/POINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)/i);
+    if (match) {
+      lon = parseFloat(match[1]) || lon;
+      lat = parseFloat(match[2]) || lat;
+    }
+  }
+
   let isoDate = '';
-  if (ztime.length >= 8) {
+  if (/^\d{4}-\d{2}-\d{2}T/.test(ztime)) {
+    isoDate = ztime;
+  } else if (ztime.length >= 8) {
     const y = ztime.slice(0, 4);
     const m = ztime.slice(4, 6);
     const d = ztime.slice(6, 8);
