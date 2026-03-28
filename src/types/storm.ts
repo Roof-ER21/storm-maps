@@ -248,6 +248,12 @@ export type CanvassOutcome =
   | 'interested'
   | 'follow_up'
   | 'inspection_booked';
+export type LeadStage =
+  | 'new'
+  | 'contacted'
+  | 'inspection_set'
+  | 'won'
+  | 'lost';
 
 export interface CanvassRouteStop {
   id: string;
@@ -265,7 +271,9 @@ export interface CanvassRouteStop {
   priority: CanvassPriority;
   status: CanvassStopStatus;
   outcome: CanvassOutcome;
+  leadStage: LeadStage;
   notes: string;
+  reminderAt?: string | null;
   homeownerName?: string;
   homeownerPhone?: string;
   homeownerEmail?: string;

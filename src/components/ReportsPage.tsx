@@ -15,6 +15,10 @@ interface ReportsPageProps {
     string,
     { booked: number; followUp: number; interested: number }
   >;
+  routeLeadStageCountsByDate: Record<
+    string,
+    { new: number; contacted: number; inspectionSet: number; won: number; lost: number }
+  >;
   selectedEvidenceCount: number;
   selectedEvidenceCountsByDate: Record<string, number>;
   generatingReport: boolean;
@@ -31,6 +35,7 @@ export default function ReportsPage({
   evidenceItems,
   routeStops,
   routeOutcomeCountsByDate,
+  routeLeadStageCountsByDate,
   selectedEvidenceCount,
   selectedEvidenceCountsByDate,
   generatingReport,
@@ -122,6 +127,13 @@ export default function ReportsPage({
                 followUp: 0,
                 interested: 0,
               };
+              const leadStageCounts = routeLeadStageCountsByDate[stormDate.date] || {
+                new: 0,
+                contacted: 0,
+                inspectionSet: 0,
+                won: 0,
+                lost: 0,
+              };
 
               return (
                 <div
@@ -158,6 +170,13 @@ export default function ReportsPage({
                       {dateStops.length > 0 && (
                         <span>{dateStops.length} canvass stop{dateStops.length === 1 ? '' : 's'}</span>
                       )}
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-orange-200">
+                      {leadStageCounts.new > 0 && <span>{leadStageCounts.new} new</span>}
+                      {leadStageCounts.contacted > 0 && <span>{leadStageCounts.contacted} contacted</span>}
+                      {leadStageCounts.inspectionSet > 0 && <span>{leadStageCounts.inspectionSet} inspection set</span>}
+                      {leadStageCounts.won > 0 && <span>{leadStageCounts.won} won</span>}
+                      {leadStageCounts.lost > 0 && <span>{leadStageCounts.lost} lost</span>}
                     </div>
                     {bookedContacts.length > 0 && (
                       <div className="mt-3 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3">

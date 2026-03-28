@@ -17,6 +17,7 @@ import type {
   CanvassRouteArchive,
   CanvassRouteStop,
   CanvassStopStatus,
+  LeadStage,
   StormDate,
   LatLng,
   SearchResult,
@@ -164,7 +165,11 @@ function buildCanvassRouteStop(params: {
     priority,
     status: params.existingStop?.status ?? 'queued',
     outcome: params.existingStop?.outcome ?? 'none',
+    leadStage:
+      params.existingStop?.leadStage ??
+      defaultLeadStageForOutcome(params.existingStop?.outcome ?? 'none'),
     notes: params.existingStop?.notes ?? '',
+    reminderAt: params.existingStop?.reminderAt ?? null,
     homeownerName: params.existingStop?.homeownerName ?? '',
     homeownerPhone: params.existingStop?.homeownerPhone ?? '',
     homeownerEmail: params.existingStop?.homeownerEmail ?? '',
@@ -356,6 +361,33 @@ function formatOutcomeLabel(outcome: CanvassOutcome): string {
   }
 }
 
+function defaultLeadStageForOutcome(outcome: CanvassOutcome): LeadStage {
+  switch (outcome) {
+    case 'inspection_booked':
+      return 'inspection_set';
+    case 'interested':
+    case 'follow_up':
+      return 'contacted';
+    default:
+      return 'new';
+  }
+}
+
+function formatLeadStageLabel(stage: LeadStage): string {
+  switch (stage) {
+    case 'contacted':
+      return 'Contacted';
+    case 'inspection_set':
+      return 'Inspection Set';
+    case 'won':
+      return 'Won';
+    case 'lost':
+      return 'Lost';
+    default:
+      return 'New';
+  }
+}
+
 function downloadRouteSummary(params: {
   propertyLabel: string | null;
   stops: CanvassRouteStop[];
@@ -386,7 +418,8 @@ function downloadRouteSummary(params: {
       [
         `${index + 1}. ${stop.stormLabel} - ${stop.locationLabel}`,
         `   Hail: ${stop.topHailInches > 0 ? `${stop.topHailInches}"` : 'swath only'} | Reports: ${stop.reportCount} | Proof: ${stop.evidenceCount}`,
-        `   Status: ${stop.status} | Outcome: ${formatOutcomeLabel(stop.outcome)} | Source: ${stop.sourceLabel}`,
+        `   Status: ${stop.status} | Outcome: ${formatOutcomeLabel(stop.outcome)} | Stage: ${formatLeadStageLabel(stop.leadStage)} | Source: ${stop.sourceLabel}`,
+        `   Reminder: ${stop.reminderAt || 'None'}`,
         `   Homeowner: ${stop.homeownerName || 'None'} | Phone: ${stop.homeownerPhone || 'None'} | Email: ${stop.homeownerEmail || 'None'}`,
         `   Notes: ${stop.notes || 'None'}`,
       ].join('\n'),
@@ -425,6 +458,8 @@ function downloadRouteCsv(params: {
       'priority',
       'status',
       'outcome',
+      'lead_stage',
+      'reminder_at',
       'homeowner_name',
       'homeowner_phone',
       'homeowner_email',
@@ -446,6 +481,8 @@ function downloadRouteCsv(params: {
       stop.priority,
       stop.status,
       stop.outcome,
+      stop.leadStage,
+      stop.reminderAt || '',
       stop.homeownerName || '',
       stop.homeownerPhone || '',
       stop.homeownerEmail || '',
@@ -1084,6 +1121,12 @@ function App() {
           ...refreshed,
           notes: stop.notes,
           status: stop.status,
+          outcome: stop.outcome,
+          leadStage: stop.leadStage ?? defaultLeadStageForOutcome(stop.outcome),
+          reminderAt: stop.reminderAt ?? null,
+          homeownerName: stop.homeownerName ?? '',
+          homeownerPhone: stop.homeownerPhone ?? '',
+          homeownerEmail: stop.homeownerEmail ?? '',
           createdAt: stop.createdAt,
           updatedAt: stop.updatedAt,
           visitedAt: stop.visitedAt ?? null,
@@ -1179,11 +1222,65 @@ function App() {
     return counts;
   }, [routeStops]);
 
+  const routeLeadStageCountsByDate = useMemo(() => {
+    const counts: Record<
+      string,
+      { new: number; contacted: number; inspectionSet: number; won: number; lost: number }
+    > = {};
+
+    for (const stop of routeStops) {
+      const current = counts[stop.stormDate] || {
+        new: 0,
+        contacted: 0,
+        inspectionSet: 0,
+        won: 0,
+        lost: 0,
+      };
+
+      if (stop.leadStage === 'contacted') {
+        current.contacted += 1;
+      } else if (stop.leadStage === 'inspection_set') {
+        current.inspectionSet += 1;
+      } else if (stop.leadStage === 'won') {
+        current.won += 1;
+      } else if (stop.leadStage === 'lost') {
+        current.lost += 1;
+      } else {
+        current.new += 1;
+      }
+
+      counts[stop.stormDate] = current;
+    }
+
+    return counts;
+  }, [routeStops]);
+
   const routeCountsByPropertyId = useMemo(() => {
-    const counts: Record<string, { active: number; booked: number; followUp: number }> = {};
+    const counts: Record<
+      string,
+      {
+        active: number;
+        booked: number;
+        followUp: number;
+        new: number;
+        contacted: number;
+        inspectionSet: number;
+        won: number;
+        lost: number;
+      }
+    > = {};
 
     for (const property of pinnedProperties) {
-      counts[property.id] = { active: 0, booked: 0, followUp: 0 };
+      counts[property.id] = {
+        active: 0,
+        booked: 0,
+        followUp: 0,
+        new: 0,
+        contacted: 0,
+        inspectionSet: 0,
+        won: 0,
+        lost: 0,
+      };
     }
 
     for (const stop of routeStopsState) {
@@ -1202,6 +1299,17 @@ function App() {
       }
       if (stop.outcome === 'follow_up') {
         counts[property.id].followUp += 1;
+      }
+      if (stop.leadStage === 'contacted') {
+        counts[property.id].contacted += 1;
+      } else if (stop.leadStage === 'inspection_set') {
+        counts[property.id].inspectionSet += 1;
+      } else if (stop.leadStage === 'won') {
+        counts[property.id].won += 1;
+      } else if (stop.leadStage === 'lost') {
+        counts[property.id].lost += 1;
+      } else {
+        counts[property.id].new += 1;
       }
     }
 
@@ -1491,6 +1599,27 @@ function App() {
             ? {
                 ...stop,
                 outcome,
+                leadStage:
+                  stop.leadStage === 'won' || stop.leadStage === 'lost'
+                    ? stop.leadStage
+                    : defaultLeadStageForOutcome(outcome),
+                updatedAt: new Date().toISOString(),
+              }
+            : stop,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleUpdateRouteStopLeadStage = useCallback(
+    (stopId: string, leadStage: LeadStage) => {
+      setRouteStopsState((current) =>
+        current.map((stop) =>
+          stop.id === stopId
+            ? {
+                ...stop,
+                leadStage,
                 updatedAt: new Date().toISOString(),
               }
             : stop,
@@ -1534,6 +1663,20 @@ function App() {
     },
     [],
   );
+
+  const handleUpdateRouteStopReminder = useCallback((stopId: string, reminderAt: string) => {
+    setRouteStopsState((current) =>
+      current.map((stop) =>
+        stop.id === stopId
+          ? {
+              ...stop,
+              reminderAt: reminderAt || null,
+              updatedAt: new Date().toISOString(),
+            }
+          : stop,
+      ),
+    );
+  }, []);
 
   const handleAdvanceRoute = useCallback(() => {
     if (!activeRouteStop) {
@@ -2166,7 +2309,9 @@ function App() {
             }}
             onUpdateLeadStatus={handleUpdateRouteStopStatus}
             onUpdateLeadOutcome={handleUpdateRouteStopOutcome}
+            onUpdateLeadStage={handleUpdateRouteStopLeadStage}
             onUpdateLeadNotes={handleUpdateRouteStopNotes}
+            onUpdateLeadReminder={handleUpdateRouteStopReminder}
             onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
             onRestoreArchive={handleRestoreRouteArchive}
           />
@@ -2189,6 +2334,7 @@ function App() {
             evidenceItems={propertyEvidenceItems}
             routeStops={routeStops}
             routeOutcomeCountsByDate={routeOutcomeCountsByDate}
+            routeLeadStageCountsByDate={routeLeadStageCountsByDate}
             selectedEvidenceCount={selectedEvidenceCount}
             selectedEvidenceCountsByDate={selectedEvidenceCountsByDate}
             generatingReport={generatingReport}

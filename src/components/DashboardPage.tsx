@@ -48,9 +48,11 @@ export default function DashboardPage({
     0,
   );
   const activeRouteStops = routeStops.filter((stop) => stop.status !== 'completed');
-  const completedRouteStops = routeStops.filter((stop) => stop.status === 'completed');
   const bookedStops = routeStops.filter((stop) => stop.outcome === 'inspection_booked');
   const followUpStops = routeStops.filter((stop) => stop.outcome === 'follow_up');
+  const contactedStops = routeStops.filter((stop) => stop.leadStage === 'contacted');
+  const inspectionSetStops = routeStops.filter((stop) => stop.leadStage === 'inspection_set');
+  const wonStops = routeStops.filter((stop) => stop.leadStage === 'won');
 
   const stateCounts = Array.from(
     events.reduce((map, event) => {
@@ -233,33 +235,33 @@ export default function DashboardPage({
 
             <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Canvass Pipeline
+                Lead Pipeline
               </p>
               <h3 className="mt-2 text-2xl font-semibold text-white">
-                Active route performance
+                Stage movement across active route stops
               </h3>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <MetricCard
-                  label="Visited"
-                  value={String(routeStops.filter((stop) => stop.status === 'visited').length)}
+                  label="Contacted"
+                  value={String(contactedStops.length)}
                   tone="plum"
                   icon={<TrendIcon />}
-                  onClick={onOpenCanvass}
+                  onClick={onOpenLeads}
                   compact
                 />
                 <MetricCard
-                  label="Completed"
-                  value={String(completedRouteStops.length)}
+                  label="Inspection Set"
+                  value={String(inspectionSetStops.length)}
                   tone="orange"
-                  icon={<PinIcon />}
-                  onClick={onOpenCanvass}
+                  icon={<CalendarIcon />}
+                  onClick={onOpenLeads}
                   compact
                 />
                 <MetricCard
-                  label="Interested"
-                  value={String(routeStops.filter((stop) => stop.outcome === 'interested').length)}
+                  label="Won"
+                  value={String(wonStops.length)}
                   tone="violet"
-                  icon={<HailIcon />}
+                  icon={<PinIcon />}
                   onClick={onOpenLeads}
                   compact
                 />

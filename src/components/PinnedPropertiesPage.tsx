@@ -4,7 +4,16 @@ interface PinnedPropertiesPageProps {
   pinnedProperties: PinnedProperty[];
   routeCountsByPropertyId: Record<
     string,
-    { active: number; booked: number; followUp: number }
+    {
+      active: number;
+      booked: number;
+      followUp: number;
+      new: number;
+      contacted: number;
+      inspectionSet: number;
+      won: number;
+      lost: number;
+    }
   >;
   onOpenProperty: (property: PinnedProperty) => void;
   onRemoveProperty: (propertyId: string) => void;
@@ -64,6 +73,11 @@ export default function PinnedPropertiesPage({
                     active: 0,
                     booked: 0,
                     followUp: 0,
+                    new: 0,
+                    contacted: 0,
+                    inspectionSet: 0,
+                    won: 0,
+                    lost: 0,
                   };
 
                   return (
@@ -113,7 +127,12 @@ export default function PinnedPropertiesPage({
                   />
                 </div>
 
-                {(routeCounts.active > 0 || routeCounts.booked > 0 || routeCounts.followUp > 0) && (
+                {(routeCounts.active > 0 ||
+                  routeCounts.booked > 0 ||
+                  routeCounts.followUp > 0 ||
+                  routeCounts.contacted > 0 ||
+                  routeCounts.inspectionSet > 0 ||
+                  routeCounts.won > 0) && (
                   <div className="mt-4 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-200">
                       Canvass Activity
@@ -122,6 +141,9 @@ export default function PinnedPropertiesPage({
                       {routeCounts.active > 0 && <span>{routeCounts.active} active stops</span>}
                       {routeCounts.booked > 0 && <span>{routeCounts.booked} booked</span>}
                       {routeCounts.followUp > 0 && <span>{routeCounts.followUp} follow-up</span>}
+                      {routeCounts.contacted > 0 && <span>{routeCounts.contacted} contacted</span>}
+                      {routeCounts.inspectionSet > 0 && <span>{routeCounts.inspectionSet} inspection set</span>}
+                      {routeCounts.won > 0 && <span>{routeCounts.won} won</span>}
                     </div>
                   </div>
                 )}

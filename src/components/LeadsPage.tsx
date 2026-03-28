@@ -3,6 +3,7 @@ import type {
   CanvassRouteArchive,
   CanvassRouteStop,
   CanvassStopStatus,
+  LeadStage,
   PropertySearchSummary,
 } from '../types/storm';
 
@@ -15,7 +16,9 @@ interface LeadsPageProps {
   onFocusLead: (stop: CanvassRouteStop) => void;
   onUpdateLeadStatus: (stopId: string, status: CanvassStopStatus) => void;
   onUpdateLeadOutcome: (stopId: string, outcome: CanvassOutcome) => void;
+  onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
+  onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -46,14 +49,16 @@ export default function LeadsPage({
   onFocusLead,
   onUpdateLeadStatus,
   onUpdateLeadOutcome,
+  onUpdateLeadStage,
   onUpdateLeadNotes,
+  onUpdateLeadReminder,
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
   const activeLeads = routeStops
     .filter((stop) => LEAD_OUTCOMES.includes(stop.outcome))
     .slice()
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+    .sort(compareLeadPriority);
 
   const archivedLeads = routeArchives
     .flatMap((archive) =>
@@ -132,7 +137,9 @@ export default function LeadsPage({
                 onFocusLead={onFocusLead}
                 onUpdateLeadStatus={onUpdateLeadStatus}
                 onUpdateLeadOutcome={onUpdateLeadOutcome}
+                onUpdateLeadStage={onUpdateLeadStage}
                 onUpdateLeadNotes={onUpdateLeadNotes}
+                onUpdateLeadReminder={onUpdateLeadReminder}
                 onUpdateLeadHomeowner={onUpdateLeadHomeowner}
               />
               <LeadColumn
@@ -144,7 +151,9 @@ export default function LeadsPage({
                 onFocusLead={onFocusLead}
                 onUpdateLeadStatus={onUpdateLeadStatus}
                 onUpdateLeadOutcome={onUpdateLeadOutcome}
+                onUpdateLeadStage={onUpdateLeadStage}
                 onUpdateLeadNotes={onUpdateLeadNotes}
+                onUpdateLeadReminder={onUpdateLeadReminder}
                 onUpdateLeadHomeowner={onUpdateLeadHomeowner}
               />
               <LeadColumn
@@ -156,7 +165,9 @@ export default function LeadsPage({
                 onFocusLead={onFocusLead}
                 onUpdateLeadStatus={onUpdateLeadStatus}
                 onUpdateLeadOutcome={onUpdateLeadOutcome}
+                onUpdateLeadStage={onUpdateLeadStage}
                 onUpdateLeadNotes={onUpdateLeadNotes}
+                onUpdateLeadReminder={onUpdateLeadReminder}
                 onUpdateLeadHomeowner={onUpdateLeadHomeowner}
               />
             </div>
@@ -206,7 +217,9 @@ function LeadColumn({
   onFocusLead,
   onUpdateLeadStatus,
   onUpdateLeadOutcome,
+  onUpdateLeadStage,
   onUpdateLeadNotes,
+  onUpdateLeadReminder,
   onUpdateLeadHomeowner,
 }: {
   title: string;
@@ -217,7 +230,9 @@ function LeadColumn({
   onFocusLead: (stop: CanvassRouteStop) => void;
   onUpdateLeadStatus: (stopId: string, status: CanvassStopStatus) => void;
   onUpdateLeadOutcome: (stopId: string, outcome: CanvassOutcome) => void;
+  onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
+  onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -247,7 +262,9 @@ function LeadColumn({
               onFocusLead={onFocusLead}
               onUpdateLeadStatus={onUpdateLeadStatus}
               onUpdateLeadOutcome={onUpdateLeadOutcome}
+              onUpdateLeadStage={onUpdateLeadStage}
               onUpdateLeadNotes={onUpdateLeadNotes}
+              onUpdateLeadReminder={onUpdateLeadReminder}
               onUpdateLeadHomeowner={onUpdateLeadHomeowner}
             />
           ))
@@ -266,14 +283,18 @@ function LeadCard({
   onFocusLead,
   onUpdateLeadStatus,
   onUpdateLeadOutcome,
+  onUpdateLeadStage,
   onUpdateLeadNotes,
+  onUpdateLeadReminder,
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
   onFocusLead: (stop: CanvassRouteStop) => void;
   onUpdateLeadStatus: (stopId: string, status: CanvassStopStatus) => void;
   onUpdateLeadOutcome: (stopId: string, outcome: CanvassOutcome) => void;
+  onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
+  onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -301,6 +322,8 @@ function LeadCard({
         <span>{lead.topHailInches > 0 ? `${lead.topHailInches}" hail` : 'hail swath'}</span>
         <span>{lead.evidenceCount} proof</span>
         <span className="text-orange-200">{lead.priority}</span>
+        <span className="text-violet-200">{formatLeadStageLabel(lead.leadStage)}</span>
+        {lead.reminderAt && <span className="text-amber-200">Due {lead.reminderAt}</span>}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -348,6 +371,31 @@ function LeadCard({
         ))}
       </div>
 
+      <div className="mt-4 flex flex-wrap gap-2">
+        {(
+          [
+            ['new', 'New'],
+            ['contacted', 'Contacted'],
+            ['inspection_set', 'Inspection Set'],
+            ['won', 'Won'],
+            ['lost', 'Lost'],
+          ] as Array<[LeadStage, string]>
+        ).map(([leadStage, label]) => (
+          <button
+            key={`${lead.id}-${leadStage}`}
+            type="button"
+            onClick={() => onUpdateLeadStage(lead.id, leadStage)}
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+              lead.leadStage === leadStage
+                ? 'border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-100'
+                : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <input
           value={lead.homeownerName || ''}
@@ -372,6 +420,18 @@ function LeadCard({
           }
           placeholder="Email address"
           className="rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+        />
+      </div>
+
+      <div className="mt-4">
+        <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          Reminder Date
+        </label>
+        <input
+          type="date"
+          value={lead.reminderAt || ''}
+          onChange={(event) => onUpdateLeadReminder(lead.id, event.target.value)}
+          className="mt-2 rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-orange-400/40 focus:outline-none"
         />
       </div>
 
@@ -462,6 +522,44 @@ function formatOutcomeLabel(outcome: CanvassOutcome): string {
     default:
       return 'Not Set';
   }
+}
+
+function formatLeadStageLabel(stage: LeadStage): string {
+  switch (stage) {
+    case 'contacted':
+      return 'Contacted';
+    case 'inspection_set':
+      return 'Inspection Set';
+    case 'won':
+      return 'Won';
+    case 'lost':
+      return 'Lost';
+    default:
+      return 'New';
+  }
+}
+
+function compareLeadPriority(left: CanvassRouteStop, right: CanvassRouteStop): number {
+  const leftDue = left.reminderAt ? new Date(`${left.reminderAt}T12:00:00Z`).getTime() : Infinity;
+  const rightDue = right.reminderAt ? new Date(`${right.reminderAt}T12:00:00Z`).getTime() : Infinity;
+
+  if (leftDue !== rightDue) {
+    return leftDue - rightDue;
+  }
+
+  const stageRank: Record<LeadStage, number> = {
+    new: 0,
+    contacted: 1,
+    inspection_set: 2,
+    won: 3,
+    lost: 4,
+  };
+
+  if (stageRank[left.leadStage] !== stageRank[right.leadStage]) {
+    return stageRank[left.leadStage] - stageRank[right.leadStage];
+  }
+
+  return right.updatedAt.localeCompare(left.updatedAt);
 }
 
 function formatArchiveDate(value: string): string {
