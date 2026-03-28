@@ -265,10 +265,22 @@ export interface CanvassRouteStop {
   status: CanvassStopStatus;
   outcome: CanvassOutcome;
   notes: string;
+  homeownerName?: string;
+  homeownerPhone?: string;
+  homeownerEmail?: string;
   createdAt: string;
   updatedAt: string;
   visitedAt?: string | null;
   completedAt?: string | null;
+}
+
+export interface CanvassRouteArchive {
+  id: string;
+  propertyLabel: string;
+  summaryLabel: string;
+  createdAt: string;
+  archivedAt: string;
+  stops: CanvassRouteStop[];
 }
 
 // ============================================================

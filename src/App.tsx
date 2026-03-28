@@ -14,6 +14,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import type {
   AppView,
   CanvassOutcome,
+  CanvassRouteArchive,
   CanvassRouteStop,
   CanvassStopStatus,
   StormDate,
@@ -71,6 +72,7 @@ const DEFAULT_ZOOM = 10;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
 const CANVASS_ROUTE_STORAGE_KEY = 'hail-yes:canvass-route';
+const CANVASS_ARCHIVE_STORAGE_KEY = 'hail-yes:canvass-archive';
 const MAX_ROUTE_STOPS = 8;
 const DEFAULT_SEARCH_SUMMARY: PropertySearchSummary = {
   locationLabel: 'Owings Mills, MD',
@@ -162,6 +164,9 @@ function buildCanvassRouteStop(params: {
     status: params.existingStop?.status ?? 'queued',
     outcome: params.existingStop?.outcome ?? 'none',
     notes: params.existingStop?.notes ?? '',
+    homeownerName: params.existingStop?.homeownerName ?? '',
+    homeownerPhone: params.existingStop?.homeownerPhone ?? '',
+    homeownerEmail: params.existingStop?.homeownerEmail ?? '',
     createdAt: params.existingStop?.createdAt ?? now,
     updatedAt: now,
     visitedAt: params.existingStop?.visitedAt ?? null,
@@ -381,6 +386,7 @@ function downloadRouteSummary(params: {
         `${index + 1}. ${stop.stormLabel} - ${stop.locationLabel}`,
         `   Hail: ${stop.topHailInches > 0 ? `${stop.topHailInches}"` : 'swath only'} | Reports: ${stop.reportCount} | Proof: ${stop.evidenceCount}`,
         `   Status: ${stop.status} | Outcome: ${formatOutcomeLabel(stop.outcome)} | Source: ${stop.sourceLabel}`,
+        `   Homeowner: ${stop.homeownerName || 'None'} | Phone: ${stop.homeownerPhone || 'None'} | Email: ${stop.homeownerEmail || 'None'}`,
         `   Notes: ${stop.notes || 'None'}`,
       ].join('\n'),
     ),
@@ -418,6 +424,9 @@ function downloadRouteCsv(params: {
       'priority',
       'status',
       'outcome',
+      'homeowner_name',
+      'homeowner_phone',
+      'homeowner_email',
       'notes',
       'visited_at',
       'completed_at',
@@ -436,6 +445,9 @@ function downloadRouteCsv(params: {
       stop.priority,
       stop.status,
       stop.outcome,
+      stop.homeownerName || '',
+      stop.homeownerPhone || '',
+      stop.homeownerEmail || '',
       stop.notes.replaceAll('"', '""'),
       stop.visitedAt || '',
       stop.completedAt || '',
@@ -494,6 +506,7 @@ function App() {
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([]);
   const [routeStopsState, setRouteStopsState] = useState<CanvassRouteStop[]>([]);
+  const [routeArchives, setRouteArchives] = useState<CanvassRouteArchive[]>([]);
   const [activeRouteStopId, setActiveRouteStopId] = useState<string | null>(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
@@ -614,6 +627,22 @@ function App() {
 
   useEffect(() => {
     try {
+      const stored = window.localStorage.getItem(CANVASS_ARCHIVE_STORAGE_KEY);
+      if (!stored) {
+        return;
+      }
+
+      const parsed = JSON.parse(stored) as CanvassRouteArchive[];
+      if (Array.isArray(parsed)) {
+        setRouteArchives(parsed);
+      }
+    } catch (error) {
+      console.error('[App] Failed to load canvass archive:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(
         PINNED_PROPERTIES_STORAGE_KEY,
         JSON.stringify(pinnedProperties),
@@ -633,6 +662,17 @@ function App() {
       console.error('[App] Failed to save canvass route:', error);
     }
   }, [routeStopsState]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        CANVASS_ARCHIVE_STORAGE_KEY,
+        JSON.stringify(routeArchives),
+      );
+    } catch (error) {
+      console.error('[App] Failed to save canvass archive:', error);
+    }
+  }, [routeArchives]);
 
   useEffect(() => {
     void listEvidenceItems()
@@ -982,6 +1022,16 @@ function App() {
     );
   }, [routeStopsState, searchSummary]);
 
+  const currentPropertyRouteArchives = useMemo(() => {
+    if (!searchSummary) {
+      return routeArchives;
+    }
+
+    return routeArchives.filter(
+      (archive) => archive.propertyLabel === searchSummary.locationLabel,
+    );
+  }, [routeArchives, searchSummary]);
+
   const stormRouteCandidatesByDate = useMemo(() => {
     const stops = new Map<string, CanvassRouteStop[]>();
     const propertyLabel = searchSummary?.locationLabel || 'Current search area';
@@ -1100,6 +1150,62 @@ function App() {
     }
     return counts;
   }, [routeStops]);
+
+  const routeOutcomeCountsByDate = useMemo(() => {
+    const counts: Record<
+      string,
+      { booked: number; followUp: number; interested: number }
+    > = {};
+
+    for (const stop of routeStops) {
+      const current = counts[stop.stormDate] || {
+        booked: 0,
+        followUp: 0,
+        interested: 0,
+      };
+
+      if (stop.outcome === 'inspection_booked') {
+        current.booked += 1;
+      } else if (stop.outcome === 'follow_up') {
+        current.followUp += 1;
+      } else if (stop.outcome === 'interested') {
+        current.interested += 1;
+      }
+
+      counts[stop.stormDate] = current;
+    }
+
+    return counts;
+  }, [routeStops]);
+
+  const routeCountsByPropertyId = useMemo(() => {
+    const counts: Record<string, { active: number; booked: number; followUp: number }> = {};
+
+    for (const property of pinnedProperties) {
+      counts[property.id] = { active: 0, booked: 0, followUp: 0 };
+    }
+
+    for (const stop of routeStopsState) {
+      const property = pinnedProperties.find(
+        (item) => item.locationLabel === stop.propertyLabel,
+      );
+      if (!property) {
+        continue;
+      }
+
+      if (stop.status !== 'completed') {
+        counts[property.id].active += 1;
+      }
+      if (stop.outcome === 'inspection_booked') {
+        counts[property.id].booked += 1;
+      }
+      if (stop.outcome === 'follow_up') {
+        counts[property.id].followUp += 1;
+      }
+    }
+
+    return counts;
+  }, [pinnedProperties, routeStopsState]);
 
   useEffect(() => {
     if (routeStops.length === 0) {
@@ -1326,11 +1432,29 @@ function App() {
   }, []);
 
   const handleClearRoute = useCallback(() => {
-    setRouteStopsState((current) =>
-      current.filter(
-        (stop) => stop.propertyLabel !== (searchSummary?.locationLabel || 'Current search area'),
-      ),
-    );
+    setRouteStopsState((current) => {
+      const propertyLabel = searchSummary?.locationLabel || 'Current search area';
+      const currentPropertyStops = current.filter(
+        (stop) => stop.propertyLabel === propertyLabel,
+      );
+
+      if (currentPropertyStops.length > 0) {
+        const latestStormLabel =
+          currentPropertyStops[0]?.stormLabel || propertyLabel;
+        const archive: CanvassRouteArchive = {
+          id: `archive-${crypto.randomUUID()}`,
+          propertyLabel,
+          summaryLabel: `${propertyLabel} · ${latestStormLabel}`,
+          createdAt: currentPropertyStops[0]?.createdAt || new Date().toISOString(),
+          archivedAt: new Date().toISOString(),
+          stops: currentPropertyStops,
+        };
+
+        setRouteArchives((archives) => [archive, ...archives].slice(0, 12));
+      }
+
+      return current.filter((stop) => stop.propertyLabel !== propertyLabel);
+    });
     setActiveRouteStopId(null);
     setShowRoutePanel(false);
   }, [searchSummary]);
@@ -1389,6 +1513,27 @@ function App() {
     );
   }, []);
 
+  const handleUpdateRouteStopHomeowner = useCallback(
+    (
+      stopId: string,
+      field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
+      value: string,
+    ) => {
+      setRouteStopsState((current) =>
+        current.map((stop) =>
+          stop.id === stopId
+            ? {
+                ...stop,
+                [field]: value,
+                updatedAt: new Date().toISOString(),
+              }
+            : stop,
+        ),
+      );
+    },
+    [],
+  );
+
   const handleAdvanceRoute = useCallback(() => {
     if (!activeRouteStop) {
       return;
@@ -1432,6 +1577,31 @@ function App() {
       stops: orderedRouteStops,
     });
   }, [orderedRouteStops, searchSummary]);
+
+  const handleRestoreRouteArchive = useCallback((archiveId: string) => {
+    const archive = routeArchives.find((item) => item.id === archiveId);
+    if (!archive) {
+      return;
+    }
+
+    setRouteStopsState((current) => {
+      const nonPropertyStops = current.filter(
+        (stop) => stop.propertyLabel !== archive.propertyLabel,
+      );
+      return [...nonPropertyStops, ...archive.stops];
+    });
+    setActiveView('canvass');
+    setShowRoutePanel(true);
+    setActiveRouteStopId(
+      archive.stops.find((stop) => stop.status !== 'completed')?.id ??
+        archive.stops[0]?.id ??
+        null,
+    );
+  }, [routeArchives]);
+
+  const handleRemoveRouteArchive = useCallback((archiveId: string) => {
+    setRouteArchives((current) => current.filter((archive) => archive.id !== archiveId));
+  }, []);
 
   const handleUploadEvidenceFiles = useCallback(async (
     files: FileList,
@@ -1960,6 +2130,7 @@ function App() {
           <CanvassPage
             searchSummary={searchSummary}
             routeStops={orderedRouteStops}
+            routeArchives={currentPropertyRouteArchives}
             onOpenMap={() => setActiveView('map')}
             onFocusStop={(stop) => {
               focusRouteStop(stop);
@@ -1973,13 +2144,17 @@ function App() {
             onUpdateStopStatus={handleUpdateRouteStopStatus}
             onUpdateStopOutcome={handleUpdateRouteStopOutcome}
             onUpdateStopNotes={handleUpdateRouteStopNotes}
+            onUpdateStopHomeowner={handleUpdateRouteStopHomeowner}
             onRemoveStop={handleRemoveStopFromRoute}
+            onRestoreArchive={handleRestoreRouteArchive}
+            onRemoveArchive={handleRemoveRouteArchive}
           />
         )}
 
         {activeView === 'pinned' && (
           <PinnedPropertiesPage
             pinnedProperties={pinnedProperties}
+            routeCountsByPropertyId={routeCountsByPropertyId}
             onOpenProperty={handleOpenPinnedProperty}
             onRemoveProperty={handleRemovePinnedProperty}
             onOpenMap={() => setActiveView('map')}
@@ -1991,6 +2166,8 @@ function App() {
             searchSummary={searchSummary}
             stormDates={filteredStormDates}
             evidenceItems={propertyEvidenceItems}
+            routeStops={routeStops}
+            routeOutcomeCountsByDate={routeOutcomeCountsByDate}
             selectedEvidenceCount={selectedEvidenceCount}
             selectedEvidenceCountsByDate={selectedEvidenceCountsByDate}
             generatingReport={generatingReport}

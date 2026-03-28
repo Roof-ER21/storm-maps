@@ -2,6 +2,10 @@ import type { PinnedProperty } from '../types/storm';
 
 interface PinnedPropertiesPageProps {
   pinnedProperties: PinnedProperty[];
+  routeCountsByPropertyId: Record<
+    string,
+    { active: number; booked: number; followUp: number }
+  >;
   onOpenProperty: (property: PinnedProperty) => void;
   onRemoveProperty: (propertyId: string) => void;
   onOpenMap: () => void;
@@ -9,6 +13,7 @@ interface PinnedPropertiesPageProps {
 
 export default function PinnedPropertiesPage({
   pinnedProperties,
+  routeCountsByPropertyId,
   onOpenProperty,
   onRemoveProperty,
   onOpenMap,
@@ -54,6 +59,15 @@ export default function PinnedPropertiesPage({
                 key={property.id}
                 className="rounded-3xl border border-gray-900 bg-gray-950/80 p-5 shadow-xl shadow-black/20"
               >
+                {(() => {
+                  const routeCounts = routeCountsByPropertyId[property.id] || {
+                    active: 0,
+                    booked: 0,
+                    followUp: 0,
+                  };
+
+                  return (
+                    <>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-lg font-semibold text-white">
@@ -99,6 +113,19 @@ export default function PinnedPropertiesPage({
                   />
                 </div>
 
+                {(routeCounts.active > 0 || routeCounts.booked > 0 || routeCounts.followUp > 0) && (
+                  <div className="mt-4 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-200">
+                      Canvass Activity
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                      {routeCounts.active > 0 && <span>{routeCounts.active} active stops</span>}
+                      {routeCounts.booked > 0 && <span>{routeCounts.booked} booked</span>}
+                      {routeCounts.followUp > 0 && <span>{routeCounts.followUp} follow-up</span>}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mt-5 flex gap-2">
                   <button
                     type="button"
@@ -108,6 +135,9 @@ export default function PinnedPropertiesPage({
                     Open on Map
                   </button>
                 </div>
+                    </>
+                  );
+                })()}
               </article>
             ))}
           </div>

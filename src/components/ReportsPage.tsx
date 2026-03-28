@@ -1,10 +1,20 @@
-import type { EvidenceItem, PropertySearchSummary, StormDate } from '../types/storm';
+import type {
+  CanvassRouteStop,
+  PropertySearchSummary,
+  EvidenceItem,
+  StormDate,
+} from '../types/storm';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface ReportsPageProps {
   searchSummary: PropertySearchSummary | null;
   stormDates: StormDate[];
   evidenceItems: EvidenceItem[];
+  routeStops: CanvassRouteStop[];
+  routeOutcomeCountsByDate: Record<
+    string,
+    { booked: number; followUp: number; interested: number }
+  >;
   selectedEvidenceCount: number;
   selectedEvidenceCountsByDate: Record<string, number>;
   generatingReport: boolean;
@@ -19,6 +29,8 @@ export default function ReportsPage({
   searchSummary,
   stormDates,
   evidenceItems,
+  routeStops,
+  routeOutcomeCountsByDate,
   selectedEvidenceCount,
   selectedEvidenceCountsByDate,
   generatingReport,
@@ -101,6 +113,15 @@ export default function ReportsPage({
                   item.status === 'approved' &&
                   item.includeInReport,
               );
+              const dateStops = routeStops.filter((stop) => stop.stormDate === stormDate.date);
+              const bookedContacts = dateStops.filter(
+                (stop) => stop.outcome === 'inspection_booked',
+              );
+              const outcomeCounts = routeOutcomeCountsByDate[stormDate.date] || {
+                booked: 0,
+                followUp: 0,
+                interested: 0,
+              };
 
               return (
                 <div
@@ -124,6 +145,39 @@ export default function ReportsPage({
                       {selectedEvidenceCountsByDate[stormDate.date] ?? 0} evidence item
                       {(selectedEvidenceCountsByDate[stormDate.date] ?? 0) === 1 ? '' : 's'} will attach
                     </p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-violet-200">
+                      {outcomeCounts.booked > 0 && (
+                        <span>{outcomeCounts.booked} booked</span>
+                      )}
+                      {outcomeCounts.followUp > 0 && (
+                        <span>{outcomeCounts.followUp} follow-up</span>
+                      )}
+                      {outcomeCounts.interested > 0 && (
+                        <span>{outcomeCounts.interested} interested</span>
+                      )}
+                      {dateStops.length > 0 && (
+                        <span>{dateStops.length} canvass stop{dateStops.length === 1 ? '' : 's'}</span>
+                      )}
+                    </div>
+                    {bookedContacts.length > 0 && (
+                      <div className="mt-3 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-200">
+                          Booked Inspection Contacts
+                        </p>
+                        <div className="mt-2 space-y-2">
+                          {bookedContacts.slice(0, 3).map((stop) => (
+                            <div key={stop.id} className="text-xs text-slate-300">
+                              <p className="font-semibold text-white">
+                                {stop.homeownerName || stop.locationLabel}
+                              </p>
+                              <p className="mt-1 text-slate-400">
+                                {stop.homeownerPhone || 'No phone'} · {stop.homeownerEmail || 'No email'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     <div className="mt-4">
                       <EvidenceThumbnailStrip
                         items={dateEvidence}

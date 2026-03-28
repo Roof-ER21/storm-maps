@@ -1,5 +1,6 @@
 import type {
   CanvassOutcome,
+  CanvassRouteArchive,
   CanvassRouteStop,
   CanvassStopStatus,
   PropertySearchSummary,
@@ -8,6 +9,7 @@ import type {
 interface CanvassPageProps {
   searchSummary: PropertySearchSummary | null;
   routeStops: CanvassRouteStop[];
+  routeArchives: CanvassRouteArchive[];
   onOpenMap: () => void;
   onFocusStop: (stop: CanvassRouteStop) => void;
   onBuildKnockRoute: () => void;
@@ -18,12 +20,20 @@ interface CanvassPageProps {
   onUpdateStopStatus: (stopId: string, status: CanvassStopStatus) => void;
   onUpdateStopOutcome: (stopId: string, outcome: CanvassOutcome) => void;
   onUpdateStopNotes: (stopId: string, notes: string) => void;
+  onUpdateStopHomeowner: (
+    stopId: string,
+    field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
+    value: string,
+  ) => void;
   onRemoveStop: (stopId: string) => void;
+  onRestoreArchive: (archiveId: string) => void;
+  onRemoveArchive: (archiveId: string) => void;
 }
 
 export default function CanvassPage({
   searchSummary,
   routeStops,
+  routeArchives,
   onOpenMap,
   onFocusStop,
   onBuildKnockRoute,
@@ -34,7 +44,10 @@ export default function CanvassPage({
   onUpdateStopStatus,
   onUpdateStopOutcome,
   onUpdateStopNotes,
+  onUpdateStopHomeowner,
   onRemoveStop,
+  onRestoreArchive,
+  onRemoveArchive,
 }: CanvassPageProps) {
   const pendingStops = routeStops.filter((stop) => stop.status !== 'completed');
   const visitedStops = routeStops.filter((stop) => stop.status === 'visited');
@@ -233,10 +246,85 @@ export default function CanvassPage({
                       placeholder="Gate code, homeowner name, roof age, follow-up timing..."
                       className="mt-2 h-28 w-full resize-none rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
                     />
+                    {(stop.outcome === 'inspection_booked' || stop.homeownerName || stop.homeownerPhone || stop.homeownerEmail) && (
+                      <div className="mt-4 grid gap-3 md:grid-cols-3">
+                        <input
+                          value={stop.homeownerName || ''}
+                          onChange={(event) =>
+                            onUpdateStopHomeowner(stop.id, 'homeownerName', event.target.value)
+                          }
+                          placeholder="Homeowner name"
+                          className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                        />
+                        <input
+                          value={stop.homeownerPhone || ''}
+                          onChange={(event) =>
+                            onUpdateStopHomeowner(stop.id, 'homeownerPhone', event.target.value)
+                          }
+                          placeholder="Phone number"
+                          className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                        />
+                        <input
+                          value={stop.homeownerEmail || ''}
+                          onChange={(event) =>
+                            onUpdateStopHomeowner(stop.id, 'homeownerEmail', event.target.value)
+                          }
+                          placeholder="Email address"
+                          className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </article>
             ))}
+          </div>
+        )}
+
+        {routeArchives.length > 0 && (
+          <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+              Route Archive
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">
+              Reopen completed canvass days
+            </h3>
+            <div className="mt-4 grid gap-3">
+              {routeArchives.slice(0, 6).map((archive) => (
+                <div
+                  key={archive.id}
+                  className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/65 p-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-white">{archive.summaryLabel}</p>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {archive.stops.length} stop{archive.stops.length === 1 ? '' : 's'} · archived{' '}
+                      {new Date(archive.archivedAt).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => onRestoreArchive(archive.id)}
+                      className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+                    >
+                      Restore
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onRemoveArchive(archive.id)}
+                      className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
