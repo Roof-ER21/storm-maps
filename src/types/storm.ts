@@ -234,18 +234,28 @@ export interface StormDate {
 }
 
 export type CanvassPriority = 'Knock now' | 'Monitor' | 'Low';
+export type CanvassStopStatus = 'queued' | 'visited' | 'completed';
 
 export interface CanvassRouteStop {
   id: string;
+  propertyLabel: string;
   stormDate: string;
   stormLabel: string;
   lat: number;
   lng: number;
   locationLabel: string;
+  sourceEventId: string | null;
+  sourceLabel: string;
   topHailInches: number;
   reportCount: number;
   evidenceCount: number;
   priority: CanvassPriority;
+  status: CanvassStopStatus;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+  visitedAt?: string | null;
+  completedAt?: string | null;
 }
 
 // ============================================================

@@ -44,7 +44,7 @@ interface SidebarProps {
   onPinProperty: () => void;
   evidenceItems: EvidenceItem[];
   onOpenEvidence: () => void;
-  routeStormDates: string[];
+  queuedRouteCountsByDate: Record<string, number>;
   onToggleStormRoute: (stormDate: StormDate) => void;
   onBuildKnockRoute: () => void;
 }
@@ -77,7 +77,7 @@ export default function Sidebar({
   onPinProperty,
   evidenceItems,
   onOpenEvidence,
-  routeStormDates,
+  queuedRouteCountsByDate,
   onToggleStormRoute,
   onBuildKnockRoute,
 }: SidebarProps) {
@@ -485,12 +485,14 @@ export default function Sidebar({
                 type="button"
                 onClick={() => onToggleStormRoute(selectedDate)}
                 className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                  routeStormDates.includes(selectedDate.date)
+                  (queuedRouteCountsByDate[selectedDate.date] || 0) > 0
                     ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
                     : 'border-white/10 bg-black/20 text-white hover:bg-black/30'
                 }`}
               >
-                {routeStormDates.includes(selectedDate.date) ? 'Queued' : 'Add Route'}
+                {(queuedRouteCountsByDate[selectedDate.date] || 0) > 0
+                  ? `Queued ${queuedRouteCountsByDate[selectedDate.date]}`
+                  : 'Add Route'}
               </button>
             </div>
             <button
@@ -721,7 +723,7 @@ export default function Sidebar({
             generatingReport={generatingReport}
             onGenerateReport={onGenerateReport}
             onOpenEvidence={onOpenEvidence}
-            routeQueued={routeStormDates.includes(sd.date)}
+            routeQueuedCount={queuedRouteCountsByDate[sd.date] || 0}
             onToggleRoute={() => onToggleStormRoute(sd)}
             onClick={() => handleDateClick(sd)}
             onToggleExpand={(e) => toggleExpand(sd.date, e)}
@@ -1031,7 +1033,7 @@ function StormDateCard({
   generatingReport,
   onGenerateReport,
   onOpenEvidence,
-  routeQueued,
+  routeQueuedCount,
   onToggleRoute,
   onClick,
   onToggleExpand,
@@ -1045,7 +1047,7 @@ function StormDateCard({
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
   onOpenEvidence: () => void;
-  routeQueued: boolean;
+  routeQueuedCount: number;
   onToggleRoute: () => void;
   onClick: () => void;
   onToggleExpand: (e: React.MouseEvent) => void;
@@ -1186,12 +1188,12 @@ function StormDateCard({
                 onToggleRoute();
               }}
               className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                routeQueued
+                routeQueuedCount > 0
                   ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
                   : 'border-white/10 bg-black/20 text-white hover:bg-black/30'
               }`}
             >
-              {routeQueued ? 'Queued' : 'Route'}
+              {routeQueuedCount > 0 ? `Queued ${routeQueuedCount}` : 'Route'}
             </button>
             <button
               type="button"

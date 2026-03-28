@@ -14,6 +14,7 @@ import { APIProvider } from '@vis.gl/react-google-maps';
 import type {
   AppView,
   CanvassRouteStop,
+  CanvassStopStatus,
   StormDate,
   LatLng,
   SearchResult,
@@ -67,6 +68,7 @@ const DEFAULT_CENTER: LatLng = { lat: 39.4196, lng: -76.7803 };
 const DEFAULT_ZOOM = 10;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
+const CANVASS_ROUTE_STORAGE_KEY = 'hail-yes:canvass-route';
 const MAX_ROUTE_STOPS = 8;
 const DEFAULT_SEARCH_SUMMARY: PropertySearchSummary = {
   locationLabel: 'Owings Mills, MD',
@@ -128,33 +130,115 @@ function formatRouteLocationLabel(event: StormEvent | null, fallbackLabel: strin
 }
 
 function buildCanvassRouteStop(params: {
+  id: string;
+  propertyLabel: string;
   stormDate: StormDate;
-  events: StormEvent[];
+  event: StormEvent | null;
   evidenceCount: number;
   fallbackLabel: string;
   fallbackCenter: LatLng;
+  existingStop?: CanvassRouteStop | null;
 }): CanvassRouteStop {
-  const hailEvents = params.events.filter((event) => event.eventType === 'Hail');
-  const rankedEvents = (hailEvents.length > 0 ? hailEvents : params.events).slice().sort(
-    (left, right) =>
-      right.magnitude - left.magnitude ||
-      new Date(right.beginDate).getTime() - new Date(left.beginDate).getTime(),
-  );
-  const representativeEvent = rankedEvents[0] ?? null;
   const priority = getStormCanvassPriority(params.stormDate, params.evidenceCount);
+  const now = new Date().toISOString();
+  const representativeEvent = params.event;
 
   return {
-    id: params.stormDate.date,
+    id: params.id,
+    propertyLabel: params.propertyLabel,
     stormDate: params.stormDate.date,
     stormLabel: params.stormDate.label,
     lat: representativeEvent?.beginLat ?? params.fallbackCenter.lat,
     lng: representativeEvent?.beginLon ?? params.fallbackCenter.lng,
     locationLabel: formatRouteLocationLabel(representativeEvent, params.fallbackLabel),
+    sourceEventId: representativeEvent?.id ?? null,
+    sourceLabel: representativeEvent?.source ?? 'Storm date centroid',
     topHailInches: params.stormDate.maxHailInches,
     reportCount: params.stormDate.eventCount,
     evidenceCount: params.evidenceCount,
     priority,
+    status: params.existingStop?.status ?? 'queued',
+    notes: params.existingStop?.notes ?? '',
+    createdAt: params.existingStop?.createdAt ?? now,
+    updatedAt: now,
+    visitedAt: params.existingStop?.visitedAt ?? null,
+    completedAt: params.existingStop?.completedAt ?? null,
   };
+}
+
+function dedupeCandidateEvents(events: StormEvent[]): StormEvent[] {
+  const deduped: StormEvent[] = [];
+
+  for (const event of events) {
+    const isDuplicate = deduped.some((candidate) => {
+      return (
+        haversineDistanceMiles(
+          { lat: candidate.beginLat, lng: candidate.beginLon },
+          { lat: event.beginLat, lng: event.beginLon },
+        ) < 0.5
+      );
+    });
+
+    if (!isDuplicate) {
+      deduped.push(event);
+    }
+  }
+
+  return deduped;
+}
+
+function buildStormRouteCandidates(params: {
+  propertyLabel: string;
+  stormDate: StormDate;
+  events: StormEvent[];
+  evidenceCount: number;
+  fallbackLabel: string;
+  fallbackCenter: LatLng;
+  existingStops: CanvassRouteStop[];
+  maxStops?: number;
+}): CanvassRouteStop[] {
+  const hailEvents = params.events
+    .filter((event) => event.eventType === 'Hail')
+    .slice()
+    .sort(
+      (left, right) =>
+        right.magnitude - left.magnitude ||
+        new Date(right.beginDate).getTime() - new Date(left.beginDate).getTime(),
+    );
+  const dedupedCandidates = dedupeCandidateEvents(hailEvents).slice(0, params.maxStops ?? 3);
+
+  if (dedupedCandidates.length === 0) {
+    return [
+      buildCanvassRouteStop({
+        id: `${params.stormDate.date}-centroid`,
+        propertyLabel: params.propertyLabel,
+        stormDate: params.stormDate,
+        event: null,
+        evidenceCount: params.evidenceCount,
+        fallbackLabel: params.fallbackLabel,
+        fallbackCenter: params.fallbackCenter,
+        existingStop:
+          params.existingStops.find((stop) => stop.id === `${params.stormDate.date}-centroid`) ??
+          null,
+      }),
+    ];
+  }
+
+  return dedupedCandidates.map((event, index) =>
+    buildCanvassRouteStop({
+      id: `${params.stormDate.date}-${event.id || index}`,
+      propertyLabel: params.propertyLabel,
+      stormDate: params.stormDate,
+      event,
+      evidenceCount: params.evidenceCount,
+      fallbackLabel: params.fallbackLabel,
+      fallbackCenter: params.fallbackCenter,
+      existingStop:
+        params.existingStops.find((stop) => stop.sourceEventId === event.id) ??
+        params.existingStops.find((stop) => stop.id === `${params.stormDate.date}-${event.id || index}`) ??
+        null,
+    }),
+  );
 }
 
 function orderStopsByNearest(
@@ -278,7 +362,7 @@ function App() {
     useState<NotificationPermission>(getNotificationPermission);
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([]);
-  const [routeStormDates, setRouteStormDates] = useState<string[]>([]);
+  const [routeStopsState, setRouteStopsState] = useState<CanvassRouteStop[]>([]);
   const [activeRouteStopId, setActiveRouteStopId] = useState<string | null>(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
@@ -383,6 +467,22 @@ function App() {
 
   useEffect(() => {
     try {
+      const stored = window.localStorage.getItem(CANVASS_ROUTE_STORAGE_KEY);
+      if (!stored) {
+        return;
+      }
+
+      const parsed = JSON.parse(stored) as CanvassRouteStop[];
+      if (Array.isArray(parsed)) {
+        setRouteStopsState(parsed);
+      }
+    } catch (error) {
+      console.error('[App] Failed to load canvass route:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(
         PINNED_PROPERTIES_STORAGE_KEY,
         JSON.stringify(pinnedProperties),
@@ -391,6 +491,17 @@ function App() {
       console.error('[App] Failed to save pinned properties:', error);
     }
   }, [pinnedProperties]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(
+        CANVASS_ROUTE_STORAGE_KEY,
+        JSON.stringify(routeStopsState),
+      );
+    } catch (error) {
+      console.error('[App] Failed to save canvass route:', error);
+    }
+  }, [routeStopsState]);
 
   useEffect(() => {
     void listEvidenceItems()
@@ -725,32 +836,74 @@ function App() {
     return counts;
   }, [evidenceItems, filteredStormDates, searchSummary]);
 
-  const stormRouteStopsByDate = useMemo(() => {
-    const stops = new Map<string, CanvassRouteStop>();
-    const fallbackLabel = searchSummary?.locationLabel || 'Current search area';
+  const currentPropertyRouteStops = useMemo(() => {
+    if (!searchSummary) {
+      return routeStopsState;
+    }
+
+    return routeStopsState.filter(
+      (stop) => stop.propertyLabel === searchSummary.locationLabel,
+    );
+  }, [routeStopsState, searchSummary]);
+
+  const stormRouteCandidatesByDate = useMemo(() => {
+    const stops = new Map<string, CanvassRouteStop[]>();
+    const propertyLabel = searchSummary?.locationLabel || 'Current search area';
+    const fallbackLabel = propertyLabel;
 
     for (const stormDate of filteredStormDates) {
       const dateEvents = filteredEvents.filter(
         (event) => event.beginDate.slice(0, 10) === stormDate.date,
       );
-      const stop = buildCanvassRouteStop({
+      const existingStops = currentPropertyRouteStops.filter(
+        (stop) => stop.stormDate === stormDate.date,
+      );
+      const candidates = buildStormRouteCandidates({
+        propertyLabel,
         stormDate,
         events: dateEvents,
         evidenceCount: propertyEvidenceCountsByDate.get(stormDate.date) || 0,
         fallbackLabel,
         fallbackCenter: queryLocation,
+        existingStops,
       });
-      stops.set(stormDate.date, stop);
+
+      stops.set(stormDate.date, candidates);
     }
 
     return stops;
-  }, [filteredEvents, filteredStormDates, propertyEvidenceCountsByDate, queryLocation, searchSummary]);
+  }, [
+    currentPropertyRouteStops,
+    filteredEvents,
+    filteredStormDates,
+    propertyEvidenceCountsByDate,
+    queryLocation,
+    searchSummary,
+  ]);
 
   const routeStops = useMemo(() => {
-    return routeStormDates
-      .map((stormDate) => stormRouteStopsByDate.get(stormDate))
-      .filter((stop): stop is CanvassRouteStop => Boolean(stop));
-  }, [routeStormDates, stormRouteStopsByDate]);
+    return currentPropertyRouteStops
+      .filter((stop) =>
+        filteredStormDates.some((stormDate) => stormDate.date === stop.stormDate),
+      )
+      .map((stop) => {
+        const refreshed =
+          stormRouteCandidatesByDate
+            .get(stop.stormDate)
+            ?.find((candidate) => candidate.id === stop.id || candidate.sourceEventId === stop.sourceEventId) ??
+          stop;
+
+        return {
+          ...refreshed,
+          notes: stop.notes,
+          status: stop.status,
+          createdAt: stop.createdAt,
+          updatedAt: stop.updatedAt,
+          visitedAt: stop.visitedAt ?? null,
+          completedAt: stop.completedAt ?? null,
+        };
+      });
+  }, [currentPropertyRouteStops, filteredStormDates, stormRouteCandidatesByDate]);
 
   const routeOrigin = useMemo(
     () =>
@@ -765,7 +918,12 @@ function App() {
       return routeStops;
     }
 
-    return orderStopsByNearest(routeStops, routeOrigin);
+    const pendingStops = routeStops.filter((stop) => stop.status !== 'completed');
+    const completedStops = routeStops.filter((stop) => stop.status === 'completed');
+    const orderedPending =
+      pendingStops.length <= 1 ? pendingStops : orderStopsByNearest(pendingStops, routeOrigin);
+
+    return [...orderedPending, ...completedStops];
   }, [routeOrigin, routeStops]);
 
   const activeRouteStop = useMemo(() => {
@@ -774,29 +932,38 @@ function App() {
     }
 
     return (
-      orderedRouteStops.find((stop) => stop.id === activeRouteStopId) ||
+      orderedRouteStops.find(
+        (stop) => stop.id === activeRouteStopId && stop.status !== 'completed',
+      ) ||
+      orderedRouteStops.find((stop) => stop.status !== 'completed') ||
       orderedRouteStops[0]
     );
   }, [activeRouteStopId, orderedRouteStops]);
 
   const knockNowRouteCandidates = useMemo(() => {
     return filteredStormDates
-      .map((stormDate) => stormRouteStopsByDate.get(stormDate.date))
-      .filter((stop): stop is CanvassRouteStop => Boolean(stop))
+      .flatMap((stormDate) => stormRouteCandidatesByDate.get(stormDate.date) || [])
       .filter((stop) => stop.priority === 'Knock now')
       .sort(
         (left, right) =>
           right.topHailInches - left.topHailInches ||
+          right.reportCount - left.reportCount ||
           right.stormDate.localeCompare(left.stormDate),
       )
       .slice(0, MAX_ROUTE_STOPS);
-  }, [filteredStormDates, stormRouteStopsByDate]);
+  }, [filteredStormDates, stormRouteCandidatesByDate]);
 
-  useEffect(() => {
-    setRouteStormDates((current) =>
-      current.filter((stormDate) => stormRouteStopsByDate.has(stormDate)),
-    );
-  }, [stormRouteStopsByDate]);
+  const routeQueuedCountsByDate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const stop of routeStops) {
+      if (stop.status === 'completed') {
+        continue;
+      }
+
+      counts.set(stop.stormDate, (counts.get(stop.stormDate) || 0) + 1);
+    }
+    return counts;
+  }, [routeStops]);
 
   useEffect(() => {
     if (routeStops.length === 0) {
@@ -804,8 +971,13 @@ function App() {
       return;
     }
 
-    if (!activeRouteStopId || !routeStops.some((stop) => stop.id === activeRouteStopId)) {
-      setActiveRouteStopId(routeStops[0].id);
+    if (
+      !activeRouteStopId ||
+      !routeStops.some((stop) => stop.id === activeRouteStopId && stop.status !== 'completed')
+    ) {
+      setActiveRouteStopId(
+        routeStops.find((stop) => stop.status !== 'completed')?.id ?? routeStops[0].id,
+      );
     }
   }, [activeRouteStopId, routeStops]);
 
@@ -934,23 +1106,49 @@ function App() {
   }, [filteredStormDates]);
 
   const handleToggleStormRoute = useCallback((stormDate: StormDate) => {
-    const stop = stormRouteStopsByDate.get(stormDate.date);
-    if (!stop) {
+    const candidateStops = stormRouteCandidatesByDate.get(stormDate.date) || [];
+    const primaryStop = candidateStops[0];
+    if (!primaryStop) {
       window.alert('No mappable storm hit is available for this date yet.');
       return;
     }
 
-    setRouteStormDates((current) => {
-      if (current.includes(stormDate.date)) {
-        return current.filter((date) => date !== stormDate.date);
+    setRouteStopsState((current) => {
+      const hasQueuedStops = current.some(
+        (stop) =>
+          stop.propertyLabel === primaryStop.propertyLabel &&
+          stop.stormDate === stormDate.date,
+      );
+
+      if (hasQueuedStops) {
+        return current.filter(
+          (stop) =>
+            !(
+              stop.propertyLabel === primaryStop.propertyLabel &&
+              stop.stormDate === stormDate.date
+            ),
+        );
       }
 
-      return [...current, stormDate.date].slice(0, MAX_ROUTE_STOPS);
+      const next = [
+        ...current.filter((stop) => stop.propertyLabel !== primaryStop.propertyLabel),
+        ...current.filter((stop) => stop.propertyLabel === primaryStop.propertyLabel),
+        primaryStop,
+      ];
+
+      const foreignStops = next.filter(
+        (stop) => stop.propertyLabel !== primaryStop.propertyLabel,
+      );
+      const currentPropertyStops = next
+        .filter((stop) => stop.propertyLabel === primaryStop.propertyLabel)
+        .slice(0, MAX_ROUTE_STOPS);
+
+      return [...foreignStops, ...currentPropertyStops];
     });
-    setActiveRouteStopId(stormDate.date);
+    setActiveRouteStopId(primaryStop.id);
     setShowRoutePanel(true);
-    focusRouteStop(stop);
-  }, [focusRouteStop, stormRouteStopsByDate]);
+    focusRouteStop(primaryStop);
+  }, [focusRouteStop, stormRouteCandidatesByDate]);
 
   const handleBuildKnockRoute = useCallback(() => {
     if (knockNowRouteCandidates.length === 0) {
@@ -960,7 +1158,12 @@ function App() {
 
     const ordered = orderStopsByNearest(knockNowRouteCandidates, routeOrigin)
       .slice(0, MAX_ROUTE_STOPS);
-    setRouteStormDates(ordered.map((stop) => stop.stormDate));
+    setRouteStopsState((current) => [
+      ...current.filter(
+        (stop) => stop.propertyLabel !== (searchSummary?.locationLabel || 'Current search area'),
+      ),
+      ...ordered,
+    ]);
     setActiveRouteStopId(ordered[0]?.id ?? null);
     setShowRoutePanel(true);
 
@@ -979,17 +1182,58 @@ function App() {
         filteredStormDates.find((stormDate) => stormDate.date === ordered[0].stormDate) ?? null,
       );
     }
-  }, [filteredStormDates, gpsPosition, knockNowRouteCandidates, routeOrigin]);
+  }, [filteredStormDates, gpsPosition, knockNowRouteCandidates, routeOrigin, searchSummary]);
 
-  const handleRemoveStormFromRoute = useCallback((stormDate: string) => {
-    setRouteStormDates((current) => current.filter((date) => date !== stormDate));
-    setActiveRouteStopId((current) => (current === stormDate ? null : current));
+  const handleRemoveStopFromRoute = useCallback((stopId: string) => {
+    setRouteStopsState((current) => current.filter((stop) => stop.id !== stopId));
+    setActiveRouteStopId((current) => (current === stopId ? null : current));
   }, []);
 
   const handleClearRoute = useCallback(() => {
-    setRouteStormDates([]);
+    setRouteStopsState((current) =>
+      current.filter(
+        (stop) => stop.propertyLabel !== (searchSummary?.locationLabel || 'Current search area'),
+      ),
+    );
     setActiveRouteStopId(null);
     setShowRoutePanel(false);
+  }, [searchSummary]);
+
+  const handleUpdateRouteStopStatus = useCallback(
+    (stopId: string, status: CanvassStopStatus) => {
+      const now = new Date().toISOString();
+      setRouteStopsState((current) =>
+        current.map((stop) =>
+          stop.id === stopId
+            ? {
+                ...stop,
+                status,
+                updatedAt: now,
+                visitedAt:
+                  status === 'visited' || status === 'completed'
+                    ? stop.visitedAt || now
+                    : null,
+                completedAt: status === 'completed' ? now : null,
+              }
+            : stop,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleUpdateRouteStopNotes = useCallback((stopId: string, notes: string) => {
+    setRouteStopsState((current) =>
+      current.map((stop) =>
+        stop.id === stopId
+          ? {
+              ...stop,
+              notes,
+              updatedAt: new Date().toISOString(),
+            }
+          : stop,
+      ),
+    );
   }, []);
 
   const handleAdvanceRoute = useCallback(() => {
@@ -997,8 +1241,10 @@ function App() {
       return;
     }
 
-    const remainingStops = orderedRouteStops.filter((stop) => stop.id !== activeRouteStop.id);
-    setRouteStormDates(remainingStops.map((stop) => stop.stormDate));
+    handleUpdateRouteStopStatus(activeRouteStop.id, 'completed');
+    const remainingStops = orderedRouteStops.filter(
+      (stop) => stop.id !== activeRouteStop.id && stop.status !== 'completed',
+    );
     setActiveRouteStopId(remainingStops[0]?.id ?? null);
 
     if (remainingStops[0]) {
@@ -1007,10 +1253,11 @@ function App() {
     }
 
     setShowRoutePanel(false);
-  }, [activeRouteStop, focusRouteStop, orderedRouteStops]);
+  }, [activeRouteStop, focusRouteStop, handleUpdateRouteStopStatus, orderedRouteStops]);
 
   const handleOpenRouteNavigation = useCallback(() => {
-    const routeUrl = buildDirectionsUrl(orderedRouteStops, gpsPosition ? routeOrigin : null);
+    const pendingStops = orderedRouteStops.filter((stop) => stop.status !== 'completed');
+    const routeUrl = buildDirectionsUrl(pendingStops, gpsPosition ? routeOrigin : null);
     if (!routeUrl) {
       return;
     }
@@ -1278,7 +1525,9 @@ function App() {
         onToggleOpen={() => setShowRoutePanel((current) => !current)}
         onBuildKnockRoute={handleBuildKnockRoute}
         onFocusStop={focusRouteStop}
-        onRemoveStop={handleRemoveStormFromRoute}
+        onRemoveStop={handleRemoveStopFromRoute}
+        onUpdateStopStatus={handleUpdateRouteStopStatus}
+        onUpdateStopNotes={handleUpdateRouteStopNotes}
         onAdvanceRoute={handleAdvanceRoute}
         onOpenNavigation={handleOpenRouteNavigation}
         onClearRoute={handleClearRoute}
@@ -1524,7 +1773,7 @@ function App() {
               onPinProperty={handlePinProperty}
               evidenceItems={propertyEvidenceItems}
               onOpenEvidence={() => setActiveView('evidence')}
-              routeStormDates={routeStormDates}
+              queuedRouteCountsByDate={Object.fromEntries(routeQueuedCountsByDate)}
               onToggleStormRoute={handleToggleStormRoute}
               onBuildKnockRoute={handleBuildKnockRoute}
             />
@@ -1590,6 +1839,8 @@ function RouteQueuePanel({
   onBuildKnockRoute,
   onFocusStop,
   onRemoveStop,
+  onUpdateStopStatus,
+  onUpdateStopNotes,
   onAdvanceRoute,
   onOpenNavigation,
   onClearRoute,
@@ -1602,7 +1853,9 @@ function RouteQueuePanel({
   onToggleOpen: () => void;
   onBuildKnockRoute: () => void;
   onFocusStop: (stop: CanvassRouteStop) => void;
-  onRemoveStop: (stormDate: string) => void;
+  onRemoveStop: (stopId: string) => void;
+  onUpdateStopStatus: (stopId: string, status: CanvassStopStatus) => void;
+  onUpdateStopNotes: (stopId: string, notes: string) => void;
   onAdvanceRoute: () => void;
   onOpenNavigation: () => void;
   onClearRoute: () => void;
@@ -1620,6 +1873,7 @@ function RouteQueuePanel({
     : activeStop
       ? 'Ready for turn-by-turn'
       : 'Build a canvass route from top hail dates';
+  const pendingStops = stops.filter((stop) => stop.status !== 'completed');
 
   return (
     <div className="absolute right-4 top-20 z-20 w-[min(24rem,calc(100%-2rem))]">
@@ -1635,7 +1889,7 @@ function RouteQueuePanel({
             </p>
             <p className="mt-1 text-sm font-semibold text-white">
               {stops.length > 0
-                ? `${stops.length} canvass stop${stops.length === 1 ? '' : 's'}`
+                ? `${pendingStops.length} active stop${pendingStops.length === 1 ? '' : 's'}`
                 : knockNowCount > 0
                   ? `${knockNowCount} knock-now dates ready`
                   : 'No route built yet'}
@@ -1668,6 +1922,7 @@ function RouteQueuePanel({
                   <button
                     type="button"
                     onClick={onOpenNavigation}
+                    disabled={pendingStops.length === 0}
                     className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-opacity hover:opacity-95"
                   >
                     Open Turn-by-Turn
@@ -1675,6 +1930,7 @@ function RouteQueuePanel({
                   <button
                     type="button"
                     onClick={onAdvanceRoute}
+                    disabled={pendingStops.length === 0}
                     className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
                   >
                     Mark Next Done
@@ -1697,6 +1953,8 @@ function RouteQueuePanel({
                         className={`rounded-2xl border px-3 py-3 ${
                           active
                             ? 'border-orange-400/40 bg-orange-500/10'
+                            : stop.status === 'completed'
+                              ? 'border-emerald-500/20 bg-emerald-500/5'
                             : 'border-slate-800 bg-black/20'
                         }`}
                       >
@@ -1711,7 +1969,7 @@ function RouteQueuePanel({
                                   {stop.stormLabel}
                                 </p>
                                 <p className="truncate text-xs text-slate-400">
-                                  {stop.locationLabel}
+                                  {stop.locationLabel} · {stop.sourceLabel}
                                 </p>
                               </div>
                             </div>
@@ -1720,17 +1978,23 @@ function RouteQueuePanel({
                               <span>{stop.topHailInches > 0 ? `${stop.topHailInches}" hail` : 'hail swath'}</span>
                               <span>{stop.evidenceCount} proof</span>
                               <span className="text-orange-200">{stop.priority}</span>
+                              {stop.status === 'visited' && (
+                                <span className="text-sky-200">Visited</span>
+                              )}
+                              {stop.status === 'completed' && (
+                                <span className="text-emerald-200">Done</span>
+                              )}
                             </div>
                           </div>
                           <button
                             type="button"
-                            onClick={() => onRemoveStop(stop.stormDate)}
+                            onClick={() => onRemoveStop(stop.id)}
                             className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[11px] font-semibold text-slate-300 transition-colors hover:bg-black/30"
                           >
                             Remove
                           </button>
                         </div>
-                        <div className="mt-3 flex gap-2">
+                        <div className="mt-3 flex flex-wrap gap-2">
                           <button
                             type="button"
                             onClick={() => onFocusStop(stop)}
@@ -1738,11 +2002,49 @@ function RouteQueuePanel({
                           >
                             Center Stop
                           </button>
+                          {stop.status !== 'visited' && stop.status !== 'completed' && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateStopStatus(stop.id, 'visited')}
+                              className="rounded-lg border border-sky-400/30 bg-sky-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-sky-100 transition-colors hover:bg-sky-500/20"
+                            >
+                              Mark Visited
+                            </button>
+                          )}
+                          {stop.status !== 'completed' && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateStopStatus(stop.id, 'completed')}
+                              className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-2.5 py-1.5 text-[11px] font-semibold text-emerald-100 transition-colors hover:bg-emerald-500/20"
+                            >
+                              Mark Done
+                            </button>
+                          )}
+                          {stop.status === 'completed' && (
+                            <button
+                              type="button"
+                              onClick={() => onUpdateStopStatus(stop.id, 'queued')}
+                              className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-black/30"
+                            >
+                              Reopen
+                            </button>
+                          )}
                           {active && (
                             <span className="rounded-lg border border-orange-400/30 bg-orange-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-orange-100">
                               Next Stop
                             </span>
                           )}
+                        </div>
+                        <div className="mt-3">
+                          <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                            Rep Notes
+                          </label>
+                          <textarea
+                            value={stop.notes}
+                            onChange={(event) => onUpdateStopNotes(stop.id, event.target.value)}
+                            placeholder="Gate code, roof condition, homeowner callback, dog in yard..."
+                            className="mt-1 h-20 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-orange-400/50 focus:outline-none"
+                          />
                         </div>
                       </div>
                     );
