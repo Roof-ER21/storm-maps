@@ -49,6 +49,7 @@ import Legend from './components/Legend';
 import AppHeader from './components/AppHeader';
 import DashboardPage from './components/DashboardPage';
 import CanvassPage from './components/CanvassPage';
+import LeadsPage from './components/LeadsPage';
 import PinnedPropertiesPage from './components/PinnedPropertiesPage';
 import ReportsPage from './components/ReportsPage';
 import EvidencePage from './components/EvidencePage';
@@ -2087,6 +2088,7 @@ function App() {
             onOpenEvidence={() => setActiveView('evidence')}
             onOpenReports={() => setActiveView('reports')}
             onOpenCanvass={() => setActiveView('canvass')}
+            onOpenLeads={() => setActiveView('leads')}
           />
         )}
 
@@ -2148,6 +2150,25 @@ function App() {
             onRemoveStop={handleRemoveStopFromRoute}
             onRestoreArchive={handleRestoreRouteArchive}
             onRemoveArchive={handleRemoveRouteArchive}
+          />
+        )}
+
+        {activeView === 'leads' && (
+          <LeadsPage
+            searchSummary={searchSummary}
+            routeStops={routeStops}
+            routeArchives={currentPropertyRouteArchives}
+            onOpenMap={() => setActiveView('map')}
+            onOpenCanvass={() => setActiveView('canvass')}
+            onFocusLead={(stop) => {
+              focusRouteStop(stop);
+              setActiveView('map');
+            }}
+            onUpdateLeadStatus={handleUpdateRouteStopStatus}
+            onUpdateLeadOutcome={handleUpdateRouteStopOutcome}
+            onUpdateLeadNotes={handleUpdateRouteStopNotes}
+            onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
+            onRestoreArchive={handleRestoreRouteArchive}
           />
         )}
 

@@ -58,6 +58,7 @@ export type AppView =
   | 'dashboard'
   | 'map'
   | 'canvass'
+  | 'leads'
   | 'pinned'
   | 'reports'
   | 'evidence';

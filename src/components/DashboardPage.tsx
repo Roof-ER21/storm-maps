@@ -23,6 +23,7 @@ interface DashboardPageProps {
   onOpenEvidence: () => void;
   onOpenReports: () => void;
   onOpenCanvass: () => void;
+  onOpenLeads: () => void;
 }
 
 export default function DashboardPage({
@@ -39,6 +40,7 @@ export default function DashboardPage({
   onOpenEvidence,
   onOpenReports,
   onOpenCanvass,
+  onOpenLeads,
 }: DashboardPageProps) {
   const hailEvents = events.filter((event) => event.eventType === 'Hail');
   const totalDamage = events.reduce(
@@ -142,14 +144,14 @@ export default function DashboardPage({
             value={String(bookedStops.length)}
             tone="rose"
             icon={<CalendarIcon />}
-            onClick={onOpenCanvass}
+            onClick={onOpenLeads}
           />
           <MetricCard
             label="Follow Ups"
             value={String(followUpStops.length)}
             tone="amber"
             icon={<AlertIcon />}
-            onClick={onOpenCanvass}
+            onClick={onOpenLeads}
           />
         </section>
 
@@ -215,6 +217,12 @@ export default function DashboardPage({
                   icon={<HailIcon />}
                 />
                 <ActionTile
+                  title="Lead Pipeline"
+                  body="Work booked inspections, follow-ups, and homeowner contacts without losing storm context."
+                  onClick={onOpenLeads}
+                  icon={<CalendarIcon />}
+                />
+                <ActionTile
                   title="Generate Reports"
                   body="Create PDFs and evidence packs from the exact storm date you want to document."
                   onClick={onOpenReports}
@@ -252,7 +260,7 @@ export default function DashboardPage({
                   value={String(routeStops.filter((stop) => stop.outcome === 'interested').length)}
                   tone="violet"
                   icon={<HailIcon />}
-                  onClick={onOpenCanvass}
+                  onClick={onOpenLeads}
                   compact
                 />
                 <MetricCard
