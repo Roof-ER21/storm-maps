@@ -1064,6 +1064,7 @@ function App() {
           <DashboardPage
             searchSummary={searchSummary}
             stormDates={filteredStormDates}
+            events={filteredEvents}
             pinnedProperties={pinnedProperties}
             onOpenMap={() => setActiveView('map')}
             onOpenPinned={() => setActiveView('pinned')}

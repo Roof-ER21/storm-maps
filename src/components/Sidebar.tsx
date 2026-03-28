@@ -121,11 +121,11 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="flex max-h-[48vh] w-full shrink-0 flex-col border-b border-gray-800 bg-gray-950 text-white min-h-0 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r">
-      <div className="p-4 border-b border-gray-800">
+    <aside className="flex max-h-[48vh] w-full shrink-0 flex-col border-b border-slate-800 bg-slate-950 text-white min-h-0 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r">
+      <div className="border-b border-slate-800 p-4">
         <div className="flex items-center gap-2">
           <svg
-            className="w-5 h-5 text-red-500 flex-shrink-0"
+            className="h-5 w-5 flex-shrink-0 text-cyan-300"
             fill="currentColor"
             viewBox="0 0 20 20"
             aria-hidden="true"
@@ -133,19 +133,11 @@ export default function Sidebar({
             <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.547a1 1 0 01.64 1.895l-1.04.354L18 10.17V17a1 1 0 01-1 1H3a1 1 0 01-1-1v-6.83l1.847-3.563-1.04-.354a1 1 0 01.64-1.895l1.599.547L9 4.323V3a1 1 0 011-1z" />
           </svg>
           <div className="flex-1">
-            <h1 className="text-lg font-bold tracking-tight">Storm Maps</h1>
+            <h1 className="text-lg font-bold tracking-tight">HailRecon</h1>
             <p className="text-xs text-gray-400">
               Property hail history for roofing reps
             </p>
           </div>
-          <a
-            href="https://sa21.up.railway.app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 px-2.5 py-1.5 rounded-md transition-colors flex-shrink-0"
-          >
-            Field App
-          </a>
         </div>
       </div>
 
