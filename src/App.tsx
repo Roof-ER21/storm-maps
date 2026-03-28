@@ -92,6 +92,7 @@ function normalizeEvidenceItem(item: EvidenceItem): EvidenceItem {
 function App() {
   const notificationsSupported = isNotificationSupported();
   const [activeView, setActiveView] = useState<AppView>('dashboard');
+  const [mapLoadError, setMapLoadError] = useState<string | null>(null);
 
   // ---- Location state ----
   const [camera, setCamera] = useState<MapCameraState>({
@@ -1050,6 +1051,40 @@ function App() {
     </main>
   );
 
+  const mapWorkspace = mapLoadError ? (
+    <MapUnavailablePanel
+      title="Google Maps could not load"
+      body={mapLoadError}
+      host={window.location.host}
+      onOpenDashboard={() => setActiveView('dashboard')}
+    />
+  ) : HAS_API_KEY ? (
+    <APIProvider
+      apiKey={API_KEY}
+      authReferrerPolicy="origin"
+      onLoad={() => setMapLoadError(null)}
+      onError={(error) => {
+        console.error('[App] Google Maps failed to load:', error);
+
+        const message =
+          window.location.hostname === 'hailyes.up.railway.app'
+            ? 'The Google Maps key is likely not authorized for hailyes.up.railway.app yet. Add this domain to the key HTTP referrer allowlist in Google Cloud, then hard refresh.'
+            : 'The Google Maps key could not authenticate for this domain. Confirm the key and HTTP referrer allowlist in Google Cloud, then hard refresh.';
+
+        setMapLoadError(message);
+      }}
+    >
+      {mapArea}
+    </APIProvider>
+  ) : (
+    <MapUnavailablePanel
+      title="Google Maps API key missing"
+      body="This build does not have a valid Google Maps API key configured, so the map workspace cannot render."
+      host={window.location.host}
+      onOpenDashboard={() => setActiveView('dashboard')}
+    />
+  );
+
   return (
     <div className="flex h-full min-h-0 flex-col bg-black text-white">
       <AppHeader
@@ -1099,11 +1134,7 @@ function App() {
               onPinProperty={handlePinProperty}
             />
 
-            {HAS_API_KEY ? (
-              <APIProvider apiKey={API_KEY}>{mapArea}</APIProvider>
-            ) : (
-              mapArea
-            )}
+            {mapWorkspace}
           </div>
         )}
 
@@ -1150,6 +1181,79 @@ function App() {
         )}
       </div>
     </div>
+  );
+}
+
+function MapUnavailablePanel({
+  title,
+  body,
+  host,
+  onOpenDashboard,
+}: {
+  title: string;
+  body: string;
+  host: string;
+  onOpenDashboard: () => void;
+}) {
+  return (
+    <main className="relative flex min-h-[55vh] flex-1 min-w-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.16),_transparent_24%),radial-gradient(circle_at_75%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#140818_0%,_#090412_65%,_#05030a_100%)] lg:min-h-0">
+      <div className="flex flex-1 items-center justify-center p-6">
+        <div className="w-full max-w-2xl rounded-[28px] border border-orange-500/20 bg-slate-950/88 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_10px_30px_rgba(124,58,237,0.25)]">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  d="M6.5 15a3.5 3.5 0 0 1 .25-7 5.2 5.2 0 0 1 10.05 1.6A3.05 3.05 0 0 1 16.9 15H6.5Z"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M8.5 16.6 7.6 19M12 16.6 11.1 19.5M15.5 16.6 14.6 19.2"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
+                Map Workspace
+              </p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+                {title}
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">{body}</p>
+              <div className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/65 p-4 text-sm text-slate-300">
+                <p className="font-semibold text-white">Current host</p>
+                <p className="mt-1 font-mono text-xs text-violet-200">{host}</p>
+                <p className="mt-3 text-xs text-slate-400">
+                  If this is a referrer restriction issue, add this host to the Google
+                  Maps JavaScript API key allowlist in Google Cloud Credentials.
+                </p>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-opacity hover:opacity-95"
+                >
+                  Retry Map
+                </button>
+                <button
+                  type="button"
+                  onClick={onOpenDashboard}
+                  className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:bg-slate-800"
+                >
+                  Back to Dashboard
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
   );
 }
 
