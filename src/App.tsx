@@ -9,7 +9,7 @@
  * share the same Google Maps context.
  */
 
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import type {
   AppView,
@@ -18,6 +18,7 @@ import type {
   CanvassRouteStop,
   CanvassStopStatus,
   LeadStage,
+  LeadStageEntry,
   StormDate,
   LatLng,
   SearchResult,
@@ -48,12 +49,13 @@ import StormMap from './components/StormMap';
 import SearchBar from './components/SearchBar';
 import Legend from './components/Legend';
 import AppHeader from './components/AppHeader';
-import DashboardPage from './components/DashboardPage';
-import CanvassPage from './components/CanvassPage';
-import LeadsPage from './components/LeadsPage';
-import PinnedPropertiesPage from './components/PinnedPropertiesPage';
-import ReportsPage from './components/ReportsPage';
-import EvidencePage from './components/EvidencePage';
+
+const DashboardPage = lazy(() => import('./components/DashboardPage'));
+const CanvassPage = lazy(() => import('./components/CanvassPage'));
+const LeadsPage = lazy(() => import('./components/LeadsPage'));
+const PinnedPropertiesPage = lazy(() => import('./components/PinnedPropertiesPage'));
+const ReportsPage = lazy(() => import('./components/ReportsPage'));
+const EvidencePage = lazy(() => import('./components/EvidencePage'));
 import {
   listEvidenceItems,
   removeEvidenceItem,
@@ -171,6 +173,7 @@ function buildCanvassRouteStop(params: {
     notes: params.existingStop?.notes ?? '',
     reminderAt: params.existingStop?.reminderAt ?? null,
     assignedRep: params.existingStop?.assignedRep ?? '',
+    stageHistory: params.existingStop?.stageHistory ?? [{ stage: defaultLeadStageForOutcome(params.existingStop?.outcome ?? 'none'), at: now }],
     homeownerName: params.existingStop?.homeownerName ?? '',
     homeownerPhone: params.existingStop?.homeownerPhone ?? '',
     homeownerEmail: params.existingStop?.homeownerEmail ?? '',
@@ -752,6 +755,39 @@ function App() {
     });
   }, [canvassingAlert, notificationPermission]);
 
+  // ---- Lead reminder notifications ----
+  const notifiedRemindersRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (notificationPermission !== 'granted') return;
+
+    function checkReminders() {
+      const today = new Date().toISOString().slice(0, 10);
+      const dueLeads = routeStopsState.filter(
+        (stop) =>
+          stop.reminderAt &&
+          stop.reminderAt <= today &&
+          stop.leadStage !== 'won' &&
+          stop.leadStage !== 'lost' &&
+          !notifiedRemindersRef.current.has(`${stop.id}-${stop.reminderAt}`),
+      );
+
+      for (const lead of dueLeads) {
+        const tag = `lead-reminder-${lead.id}-${lead.reminderAt}`;
+        notifiedRemindersRef.current.add(`${lead.id}-${lead.reminderAt}`);
+        const overdue = lead.reminderAt! < today;
+        const title = overdue ? 'Overdue Lead Reminder' : 'Lead Reminder Due Today';
+        const name = lead.homeownerName || lead.locationLabel;
+        const body = `${name} — ${formatLeadStageLabel(lead.leadStage)}. ${lead.stormLabel}`;
+        void showHailZoneNotification({ title, body, tag });
+      }
+    }
+
+    checkReminders();
+    const interval = window.setInterval(checkReminders, 5 * 60 * 1000);
+    return () => window.clearInterval(interval);
+  }, [notificationPermission, routeStopsState]);
+
   // ---- Search handler (Places Autocomplete) ----
   const getSearchMaxZoom = useCallback((resultType: SearchResultType) => {
     switch (resultType) {
@@ -1128,6 +1164,7 @@ function App() {
           leadStage: stop.leadStage ?? defaultLeadStageForOutcome(stop.outcome),
           reminderAt: stop.reminderAt ?? null,
           assignedRep: stop.assignedRep ?? '',
+          stageHistory: stop.stageHistory ?? [],
           homeownerName: stop.homeownerName ?? '',
           homeownerPhone: stop.homeownerPhone ?? '',
           homeownerEmail: stop.homeownerEmail ?? '',
@@ -1618,16 +1655,22 @@ function App() {
 
   const handleUpdateRouteStopLeadStage = useCallback(
     (stopId: string, leadStage: LeadStage) => {
+      const now = new Date().toISOString();
       setRouteStopsState((current) =>
-        current.map((stop) =>
-          stop.id === stopId
-            ? {
-                ...stop,
-                leadStage,
-                updatedAt: new Date().toISOString(),
-              }
-            : stop,
-        ),
+        current.map((stop) => {
+          if (stop.id !== stopId) return stop;
+          const history: LeadStageEntry[] = stop.stageHistory ?? [];
+          const lastEntry = history[history.length - 1];
+          const nextHistory = lastEntry?.stage === leadStage
+            ? history
+            : [...history, { stage: leadStage, at: now }];
+          return {
+            ...stop,
+            leadStage,
+            stageHistory: nextHistory,
+            updatedAt: now,
+          };
+        }),
       );
     },
     [],
@@ -2234,6 +2277,7 @@ function App() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
+        <Suspense fallback={<PageLoader />}>
         {activeView === 'dashboard' && (
           <DashboardPage
             searchSummary={searchSummary}
@@ -2382,7 +2426,16 @@ function App() {
             providerStatus={evidenceProviderStatus}
           />
         )}
+        </Suspense>
       </div>
+    </div>
+  );
+}
+
+function PageLoader() {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
     </div>
   );
 }

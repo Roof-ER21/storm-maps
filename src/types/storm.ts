@@ -255,6 +255,11 @@ export type LeadStage =
   | 'won'
   | 'lost';
 
+export interface LeadStageEntry {
+  stage: LeadStage;
+  at: string;
+}
+
 export interface CanvassRouteStop {
   id: string;
   propertyLabel: string;
@@ -275,6 +280,7 @@ export interface CanvassRouteStop {
   notes: string;
   reminderAt?: string | null;
   assignedRep?: string;
+  stageHistory?: LeadStageEntry[];
   homeownerName?: string;
   homeownerPhone?: string;
   homeownerEmail?: string;

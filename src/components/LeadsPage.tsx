@@ -5,6 +5,7 @@ import type {
   CanvassRouteStop,
   CanvassStopStatus,
   LeadStage,
+  LeadStageEntry,
   PropertySearchSummary,
 } from '../types/storm';
 
@@ -108,6 +109,28 @@ export default function LeadsPage({
     return acc;
   }, {} as Record<LeadStage, number>);
 
+  // Conversion stats
+  const closedLeads = wonLeads.length + lostLeads.length;
+  const winRate = closedLeads > 0 ? Math.round((wonLeads.length / closedLeads) * 100) : null;
+
+  const avgDaysInPipeline = (() => {
+    const leadsWithHistory = activeLeads.filter((l) => l.stageHistory && l.stageHistory.length >= 2);
+    if (leadsWithHistory.length === 0) return null;
+    const totalDays = leadsWithHistory.reduce((sum, l) => {
+      const first = new Date(l.stageHistory![0].at).getTime();
+      const last = new Date(l.stageHistory![l.stageHistory!.length - 1].at).getTime();
+      return sum + (last - first) / (1000 * 60 * 60 * 24);
+    }, 0);
+    return Math.round(totalDays / leadsWithHistory.length);
+  })();
+
+  const repCounts = activeLeads.reduce((acc, lead) => {
+    const rep = lead.assignedRep?.trim() || 'Unassigned';
+    acc[rep] = (acc[rep] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  const topReps = Object.entries(repCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
   return (
     <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
@@ -153,6 +176,40 @@ export default function LeadsPage({
             <p className="mt-1 text-xs text-slate-500">Archived</p>
           </div>
         </div>
+
+        {/* Conversion insights */}
+        {activeLeads.length > 0 && (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
+              <p className="text-2xl font-semibold tracking-tight text-white">
+                {winRate !== null ? `${winRate}%` : '--'}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Win Rate</p>
+            </div>
+            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
+              <p className="text-2xl font-semibold tracking-tight text-white">
+                {avgDaysInPipeline !== null ? `${avgDaysInPipeline}d` : '--'}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Avg Days in Pipeline</p>
+            </div>
+            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
+              <p className="text-2xl font-semibold tracking-tight text-white">{activeLeads.length}</p>
+              <p className="mt-1 text-xs text-slate-500">Total Leads</p>
+            </div>
+            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
+              <p className="text-xs font-semibold text-slate-500 mb-2">Leads by Rep</p>
+              {topReps.map(([rep, count]) => (
+                <div key={rep} className="flex items-center justify-between text-xs mt-1">
+                  <span className="text-slate-300 truncate">{rep}</span>
+                  <span className="text-white font-semibold">{count}</span>
+                </div>
+              ))}
+              {topReps.length === 0 && (
+                <p className="text-[11px] text-slate-600">No reps assigned yet</p>
+              )}
+            </div>
+          </div>
+        )}
 
         {activeLeads.length === 0 && archivedLeads.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
@@ -420,6 +477,11 @@ function LeadCard({
         </div>
       </div>
 
+      {/* Stage history timeline */}
+      {lead.stageHistory && lead.stageHistory.length > 1 && (
+        <StageTimeline history={lead.stageHistory} />
+      )}
+
       {/* Quick actions row */}
       <div className="mt-4 flex flex-wrap gap-2">
         {(
@@ -619,6 +681,33 @@ function ArchivedLeadCard({
         </button>
       </div>
     </article>
+  );
+}
+
+function StageTimeline({ history }: { history: LeadStageEntry[] }) {
+  return (
+    <div className="mt-3 rounded-2xl border border-slate-800/60 bg-slate-950/50 px-3 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-1.5">Activity</p>
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {history.map((entry, i) => {
+          const cfg = STAGE_CONFIG[entry.stage];
+          const d = new Date(entry.at);
+          const dateStr = Number.isNaN(d.getTime())
+            ? ''
+            : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const timeStr = Number.isNaN(d.getTime())
+            ? ''
+            : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+          return (
+            <div key={`${entry.stage}-${entry.at}`} className="flex items-center gap-1.5">
+              {i > 0 && <span className="text-slate-700 text-[10px]">&rarr;</span>}
+              <span className={`text-[10px] font-bold ${cfg.color}`}>{cfg.label}</span>
+              <span className="text-[9px] text-slate-600">{dateStr} {timeStr}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
