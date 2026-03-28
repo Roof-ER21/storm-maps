@@ -75,6 +75,7 @@ export default function Sidebar({
   const [showDateOfLossModal, setShowDateOfLossModal] = useState(false);
   const [selectedDateOfLoss, setSelectedDateOfLoss] = useState('');
   const [showSelectedStormDetails, setShowSelectedStormDetails] = useState(false);
+  const [compactList, setCompactList] = useState(true);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sortedDates = [...stormDates].sort((a, b) => {
@@ -126,6 +127,14 @@ export default function Sidebar({
         .slice(0, 5),
     [selectedDateEvents],
   );
+  const evidenceCountsByDate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of evidenceItems) {
+      if (!item.stormDate) continue;
+      counts.set(item.stormDate, (counts.get(item.stormDate) || 0) + 1);
+    }
+    return counts;
+  }, [evidenceItems]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -547,20 +556,34 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="flex border-b border-gray-800">
-        <TabButton
-          active={activeTab === 'recent'}
-          onClick={() => setActiveTab('recent')}
-          label="Recent"
-        />
-        <TabButton
-          active={activeTab === 'impact'}
-          onClick={() => setActiveTab('impact')}
-          label="Impact"
-        />
-      </div>
-
       <div className="flex-1 overflow-y-auto sidebar-scroll min-h-0">
+        <div className="sticky top-0 z-10 border-b border-gray-800 bg-slate-950/96 backdrop-blur">
+          <div className="flex items-center border-b border-gray-800">
+            <TabButton
+              active={activeTab === 'recent'}
+              onClick={() => setActiveTab('recent')}
+              label="Recent"
+            />
+            <TabButton
+              active={activeTab === 'impact'}
+              onClick={() => setActiveTab('impact')}
+              label="Impact"
+            />
+          </div>
+          <div className="flex items-center justify-between px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+              Hail Dates
+            </p>
+            <button
+              type="button"
+              onClick={() => setCompactList((current) => !current)}
+              className="rounded-lg border border-gray-800 bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-gray-300 transition-colors hover:bg-gray-800"
+            >
+              {compactList ? 'Comfort' : 'Compact'}
+            </button>
+          </div>
+        </div>
+
         {loading && (
           <div className="p-4 text-center">
             <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-600 border-t-orange-400" />
@@ -591,7 +614,9 @@ export default function Sidebar({
             stormDate={sd}
             isSelected={selectedDate?.date === sd.date}
             isExpanded={expandedDate === sd.date}
+            compact={compactList}
             events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
+            evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
             onClick={() => handleDateClick(sd)}
             onToggleExpand={(e) => toggleExpand(sd.date, e)}
           />
@@ -866,23 +891,47 @@ function formatEventTime(dateStr: string): string {
   });
 }
 
+function getCanvassPriority(
+  stormDate: StormDate,
+  evidenceCount: number,
+): 'Knock now' | 'Monitor' | 'Low' {
+  if (
+    stormDate.maxHailInches >= 1.5 ||
+    stormDate.maxWindMph >= 60 ||
+    evidenceCount >= 2
+  ) {
+    return 'Knock now';
+  }
+
+  if (stormDate.maxHailInches >= 1 || stormDate.eventCount >= 5) {
+    return 'Monitor';
+  }
+
+  return 'Low';
+}
+
 function StormDateCard({
   stormDate,
   isSelected,
   isExpanded,
+  compact,
   events: dateEvents,
+  evidenceCount,
   onClick,
   onToggleExpand,
 }: {
   stormDate: StormDate;
   isSelected: boolean;
   isExpanded: boolean;
+  compact: boolean;
   events: StormEvent[];
+  evidenceCount: number;
   onClick: () => void;
   onToggleExpand: (e: React.MouseEvent) => void;
 }) {
   const sizeClass = getHailSizeClass(stormDate.maxHailInches);
   const severityColor = sizeClass?.color || HAIL_SIZE_CLASSES[0].color;
+  const canvassPriority = getCanvassPriority(stormDate, evidenceCount);
 
   return (
     <div
@@ -902,7 +951,7 @@ function StormDateCard({
         }
       }}
     >
-      <div className="p-3">
+      <div className={compact ? 'p-2.5' : 'p-3'}>
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -915,12 +964,17 @@ function StormDateCard({
                 {stormDate.label}
               </span>
             </div>
-            <div className="flex items-center gap-3 mt-1 ml-4.5">
+            <div className={`mt-1 ml-4.5 flex flex-wrap items-center ${compact ? 'gap-2' : 'gap-3'}`}>
               <span className="text-xs text-gray-400">
                 {stormDate.eventCount > 0
                   ? `${stormDate.eventCount} report${stormDate.eventCount !== 1 ? 's' : ''}`
                   : 'Swath data'}
               </span>
+              {evidenceCount > 0 && (
+                <span className="text-xs text-violet-300">
+                  {evidenceCount} proof
+                </span>
+              )}
               {stormDate.statesAffected.length > 0 && (
                 <span className="text-xs text-gray-500">
                   {stormDate.statesAffected.slice(0, 3).join(', ')}
@@ -935,6 +989,17 @@ function StormDateCard({
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
+            <span
+              className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                canvassPriority === 'Knock now'
+                  ? 'bg-orange-500/20 text-orange-200'
+                  : canvassPriority === 'Monitor'
+                    ? 'bg-violet-500/20 text-violet-200'
+                    : 'bg-gray-800 text-gray-400'
+              }`}
+            >
+              {canvassPriority}
+            </span>
             <span
               className="px-1.5 py-0.5 rounded text-xs font-bold"
               style={{
