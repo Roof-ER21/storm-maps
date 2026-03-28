@@ -1,8 +1,10 @@
-import type { PropertySearchSummary, StormDate } from '../types/storm';
+import type { EvidenceItem, PropertySearchSummary, StormDate } from '../types/storm';
+import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface ReportsPageProps {
   searchSummary: PropertySearchSummary | null;
   stormDates: StormDate[];
+  evidenceItems: EvidenceItem[];
   selectedEvidenceCount: number;
   selectedEvidenceCountsByDate: Record<string, number>;
   generatingReport: boolean;
@@ -16,6 +18,7 @@ interface ReportsPageProps {
 export default function ReportsPage({
   searchSummary,
   stormDates,
+  evidenceItems,
   selectedEvidenceCount,
   selectedEvidenceCountsByDate,
   generatingReport,
@@ -91,53 +94,71 @@ export default function ReportsPage({
 
         {searchSummary && (
           <div className="grid gap-3">
-            {stormDates.map((stormDate) => (
-              <div
-                key={stormDate.date}
-                className="flex flex-col gap-4 rounded-3xl border border-gray-900 bg-gray-950/80 p-5 md:flex-row md:items-center md:justify-between"
-              >
-                <div className="min-w-0">
-                  <p className="text-lg font-semibold text-white">{stormDate.label}</p>
-                  <p className="mt-1 text-sm text-gray-400">
-                    {stormDate.eventCount} report{stormDate.eventCount === 1 ? '' : 's'}
-                    {' · '}
-                    {stormDate.maxHailInches > 0
-                      ? `${stormDate.maxHailInches.toFixed(2)}" hail`
-                      : 'No hail'}
-                    {' · '}
-                    {stormDate.maxWindMph > 0
-                      ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
-                      : 'No wind'}
-                  </p>
-                  <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
-                    {selectedEvidenceCountsByDate[stormDate.date] ?? 0} evidence item
-                    {(selectedEvidenceCountsByDate[stormDate.date] ?? 0) === 1 ? '' : 's'} will attach
-                  </p>
+            {stormDates.map((stormDate) => {
+              const dateEvidence = evidenceItems.filter(
+                (item) =>
+                  item.stormDate === stormDate.date &&
+                  item.status === 'approved' &&
+                  item.includeInReport,
+              );
+
+              return (
+                <div
+                  key={stormDate.date}
+                  className="flex flex-col gap-4 rounded-3xl border border-gray-900 bg-gray-950/80 p-5 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-lg font-semibold text-white">{stormDate.label}</p>
+                    <p className="mt-1 text-sm text-gray-400">
+                      {stormDate.eventCount} report{stormDate.eventCount === 1 ? '' : 's'}
+                      {' · '}
+                      {stormDate.maxHailInches > 0
+                        ? `${stormDate.maxHailInches.toFixed(2)}" hail`
+                        : 'No hail'}
+                      {' · '}
+                      {stormDate.maxWindMph > 0
+                        ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
+                        : 'No wind'}
+                    </p>
+                    <p className="mt-2 text-xs font-semibold uppercase tracking-[0.16em] text-gray-500">
+                      {selectedEvidenceCountsByDate[stormDate.date] ?? 0} evidence item
+                      {(selectedEvidenceCountsByDate[stormDate.date] ?? 0) === 1 ? '' : 's'} will attach
+                    </p>
+                    <div className="mt-4">
+                      <EvidenceThumbnailStrip
+                        items={dateEvidence}
+                        title="Report Attachments"
+                        subtitle="Approved evidence that will be bundled with this storm-date report."
+                        emptyLabel="No approved report evidence is selected for this date yet."
+                        compact
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void onDownloadEvidencePack(stormDate.date);
+                      }}
+                      disabled={downloadingEvidencePack}
+                      className="rounded-2xl border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-gray-700 hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                    >
+                      {downloadingEvidencePack ? 'Packing...' : 'Evidence Pack'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void onGenerateReport(stormDate.date);
+                      }}
+                      disabled={generatingReport}
+                      className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
+                    >
+                      {generatingReport ? 'Generating...' : 'Generate PDF'}
+                    </button>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void onDownloadEvidencePack(stormDate.date);
-                    }}
-                    disabled={downloadingEvidencePack}
-                    className="rounded-2xl border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-gray-700 hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
-                  >
-                    {downloadingEvidencePack ? 'Packing...' : 'Evidence Pack'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      void onGenerateReport(stormDate.date);
-                    }}
-                    disabled={generatingReport}
-                    className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
-                  >
-                    {generatingReport ? 'Generating...' : 'Generate PDF'}
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

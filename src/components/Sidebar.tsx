@@ -5,6 +5,7 @@
 import { useMemo, useRef, useState } from 'react';
 import type {
   CanvassingAlert,
+  EvidenceItem,
   EventFilterState,
   HistoryRangePreset,
   PropertySearchSummary,
@@ -12,6 +13,7 @@ import type {
   StormEvent,
 } from '../types/storm';
 import { getHailSizeClass, HAIL_SIZE_CLASSES } from '../types/storm';
+import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface SidebarProps {
   stormDates: StormDate[];
@@ -35,6 +37,8 @@ interface SidebarProps {
   canPinProperty: boolean;
   isPinned: boolean;
   onPinProperty: () => void;
+  evidenceItems: EvidenceItem[];
+  onOpenEvidence: () => void;
 }
 
 type TabId = 'recent' | 'impact';
@@ -61,6 +65,8 @@ export default function Sidebar({
   canPinProperty,
   isPinned,
   onPinProperty,
+  evidenceItems,
+  onOpenEvidence,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>('recent');
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -79,6 +85,15 @@ export default function Sidebar({
     () => [...stormDates].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 2),
     [stormDates],
   );
+  const selectedStormEvidence = useMemo(() => {
+    if (!selectedDate) {
+      return [];
+    }
+
+    return evidenceItems
+      .filter((item) => item.stormDate === selectedDate.date)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }, [evidenceItems, selectedDate]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -307,6 +322,19 @@ export default function Sidebar({
               </button>
             ))}
           </div>
+        </div>
+      )}
+
+      {selectedDate && (
+        <div className="border-b border-gray-800 px-3 py-3">
+          <EvidenceThumbnailStrip
+            items={selectedStormEvidence}
+            title={`${selectedDate.label} Proof`}
+            subtitle="Photos, videos, and source evidence tied to the selected storm date."
+            emptyLabel="No evidence is attached to this selected storm date yet."
+            onOpenEvidence={onOpenEvidence}
+            compact
+          />
         </div>
       )}
 

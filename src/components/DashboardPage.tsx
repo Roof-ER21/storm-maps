@@ -1,15 +1,18 @@
 import type { ReactNode } from 'react';
 import type {
+  EvidenceItem,
   PinnedProperty,
   PropertySearchSummary,
   StormDate,
   StormEvent,
 } from '../types/storm';
+import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface DashboardPageProps {
   searchSummary: PropertySearchSummary | null;
   stormDates: StormDate[];
   events: StormEvent[];
+  evidenceItems: EvidenceItem[];
   pinnedProperties: PinnedProperty[];
   onOpenMap: () => void;
   onOpenPinned: () => void;
@@ -21,6 +24,7 @@ export default function DashboardPage({
   searchSummary,
   stormDates,
   events,
+  evidenceItems,
   pinnedProperties,
   onOpenMap,
   onOpenPinned,
@@ -268,6 +272,15 @@ export default function DashboardPage({
                           : 'No wind'}
                       </p>
                     </div>
+                  </div>
+                  <div className="mt-4">
+                    <EvidenceThumbnailStrip
+                      items={evidenceItems.filter((item) => item.stormDate === stormDate.date)}
+                      title="Evidence Preview"
+                      subtitle="Attached proof for this storm date."
+                      emptyLabel="No storm-date evidence attached yet."
+                      compact
+                    />
                   </div>
                 </div>
               ))}

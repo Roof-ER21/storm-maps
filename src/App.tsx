@@ -517,6 +517,18 @@ function App() {
     }).length;
   }, [evidenceItems, searchSummary]);
 
+  const propertyEvidenceItems = useMemo(() => {
+    return evidenceItems
+      .filter((item) => {
+        if (searchSummary && item.propertyLabel !== searchSummary.locationLabel) {
+          return false;
+        }
+
+        return true;
+      })
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
+  }, [evidenceItems, searchSummary]);
+
   const selectedEvidenceCountsByDate = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -1100,6 +1112,7 @@ function App() {
             searchSummary={searchSummary}
             stormDates={filteredStormDates}
             events={filteredEvents}
+            evidenceItems={propertyEvidenceItems}
             pinnedProperties={pinnedProperties}
             onOpenMap={() => setActiveView('map')}
             onOpenPinned={() => setActiveView('pinned')}
@@ -1132,6 +1145,8 @@ function App() {
               canPinProperty={Boolean(searchSummary)}
               isPinned={isCurrentPropertyPinned}
               onPinProperty={handlePinProperty}
+              evidenceItems={propertyEvidenceItems}
+              onOpenEvidence={() => setActiveView('evidence')}
             />
 
             {mapWorkspace}
@@ -1151,6 +1166,7 @@ function App() {
           <ReportsPage
             searchSummary={searchSummary}
             stormDates={filteredStormDates}
+            evidenceItems={propertyEvidenceItems}
             selectedEvidenceCount={selectedEvidenceCount}
             selectedEvidenceCountsByDate={selectedEvidenceCountsByDate}
             generatingReport={generatingReport}
