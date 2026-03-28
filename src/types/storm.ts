@@ -233,6 +233,21 @@ export interface StormDate {
   statesAffected: string[];
 }
 
+export type CanvassPriority = 'Knock now' | 'Monitor' | 'Low';
+
+export interface CanvassRouteStop {
+  id: string;
+  stormDate: string;
+  stormLabel: string;
+  lat: number;
+  lng: number;
+  locationLabel: string;
+  topHailInches: number;
+  reportCount: number;
+  evidenceCount: number;
+  priority: CanvassPriority;
+}
+
 // ============================================================
 // Search
 // ============================================================
@@ -365,4 +380,23 @@ export function getHailSizeClass(inches: number): HailSizeClass | null {
   return HAIL_SIZE_CLASSES.find(
     (cls) => inches >= cls.minInches && inches < cls.maxInches
   ) ?? null;
+}
+
+export function getStormCanvassPriority(
+  stormDate: StormDate,
+  evidenceCount: number,
+): CanvassPriority {
+  if (
+    stormDate.maxHailInches >= 1.5 ||
+    stormDate.maxWindMph >= 60 ||
+    evidenceCount >= 2
+  ) {
+    return 'Knock now';
+  }
+
+  if (stormDate.maxHailInches >= 1 || stormDate.eventCount >= 5) {
+    return 'Monitor';
+  }
+
+  return 'Low';
 }

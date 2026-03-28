@@ -12,7 +12,11 @@ import type {
   StormDate,
   StormEvent,
 } from '../types/storm';
-import { getHailSizeClass, HAIL_SIZE_CLASSES } from '../types/storm';
+import {
+  getHailSizeClass,
+  getStormCanvassPriority,
+  HAIL_SIZE_CLASSES,
+} from '../types/storm';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface SidebarProps {
@@ -40,6 +44,9 @@ interface SidebarProps {
   onPinProperty: () => void;
   evidenceItems: EvidenceItem[];
   onOpenEvidence: () => void;
+  routeStormDates: string[];
+  onToggleStormRoute: (stormDate: StormDate) => void;
+  onBuildKnockRoute: () => void;
 }
 
 type TabId = 'recent' | 'impact';
@@ -70,6 +77,9 @@ export default function Sidebar({
   onPinProperty,
   evidenceItems,
   onOpenEvidence,
+  routeStormDates,
+  onToggleStormRoute,
+  onBuildKnockRoute,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>('recent');
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -140,7 +150,7 @@ export default function Sidebar({
   const displayedDates = useMemo(() => {
     return sortedDates.filter((stormDate) => {
       const evidenceCount = evidenceCountsByDate.get(stormDate.date) || 0;
-      const priority = getCanvassPriority(stormDate, evidenceCount);
+      const priority = getStormCanvassPriority(stormDate, evidenceCount);
 
       if (dateListFilter === 'major') {
         return stormDate.maxHailInches >= 1.5;
@@ -161,7 +171,7 @@ export default function Sidebar({
     () =>
       sortedDates.filter((stormDate) => {
         const evidenceCount = evidenceCountsByDate.get(stormDate.date) || 0;
-        return getCanvassPriority(stormDate, evidenceCount) === 'Knock now';
+        return getStormCanvassPriority(stormDate, evidenceCount) === 'Knock now';
       }).slice(0, 3),
     [evidenceCountsByDate, sortedDates],
   );
@@ -453,7 +463,7 @@ export default function Sidebar({
               </p>
             )}
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="mt-3 grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -470,6 +480,17 @@ export default function Sidebar({
                 className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-black/30"
               >
                 Open Evidence
+              </button>
+              <button
+                type="button"
+                onClick={() => onToggleStormRoute(selectedDate)}
+                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
+                  routeStormDates.includes(selectedDate.date)
+                    ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
+                    : 'border-white/10 bg-black/20 text-white hover:bg-black/30'
+                }`}
+              >
+                {routeStormDates.includes(selectedDate.date) ? 'Queued' : 'Add Route'}
               </button>
             </div>
             <button
@@ -636,9 +657,18 @@ export default function Sidebar({
           </div>
           {knockQueue.length > 0 && (
             <div className="border-t border-gray-800 px-3 py-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-200">
-                Canvass Queue
-              </p>
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+                  Canvass Queue
+                </p>
+                <button
+                  type="button"
+                  onClick={onBuildKnockRoute}
+                  className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-100 transition-colors hover:bg-orange-500/20"
+                >
+                  Build Route
+                </button>
+              </div>
               <div className="mt-1 flex gap-1.5 overflow-x-auto pb-1">
                 {knockQueue.map((stormDate) => (
                   <button
@@ -691,6 +721,8 @@ export default function Sidebar({
             generatingReport={generatingReport}
             onGenerateReport={onGenerateReport}
             onOpenEvidence={onOpenEvidence}
+            routeQueued={routeStormDates.includes(sd.date)}
+            onToggleRoute={() => onToggleStormRoute(sd)}
             onClick={() => handleDateClick(sd)}
             onToggleExpand={(e) => toggleExpand(sd.date, e)}
           />
@@ -989,25 +1021,6 @@ function formatEventTime(dateStr: string): string {
   });
 }
 
-function getCanvassPriority(
-  stormDate: StormDate,
-  evidenceCount: number,
-): 'Knock now' | 'Monitor' | 'Low' {
-  if (
-    stormDate.maxHailInches >= 1.5 ||
-    stormDate.maxWindMph >= 60 ||
-    evidenceCount >= 2
-  ) {
-    return 'Knock now';
-  }
-
-  if (stormDate.maxHailInches >= 1 || stormDate.eventCount >= 5) {
-    return 'Monitor';
-  }
-
-  return 'Low';
-}
-
 function StormDateCard({
   stormDate,
   isSelected,
@@ -1018,6 +1031,8 @@ function StormDateCard({
   generatingReport,
   onGenerateReport,
   onOpenEvidence,
+  routeQueued,
+  onToggleRoute,
   onClick,
   onToggleExpand,
 }: {
@@ -1030,12 +1045,14 @@ function StormDateCard({
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
   onOpenEvidence: () => void;
+  routeQueued: boolean;
+  onToggleRoute: () => void;
   onClick: () => void;
   onToggleExpand: (e: React.MouseEvent) => void;
 }) {
   const sizeClass = getHailSizeClass(stormDate.maxHailInches);
   const severityColor = sizeClass?.color || HAIL_SIZE_CLASSES[0].color;
-  const canvassPriority = getCanvassPriority(stormDate, evidenceCount);
+  const canvassPriority = getStormCanvassPriority(stormDate, evidenceCount);
 
   return (
     <div
@@ -1161,6 +1178,20 @@ function StormDateCard({
               className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-black/30"
             >
               Proof
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onToggleRoute();
+              }}
+              className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
+                routeQueued
+                  ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
+                  : 'border-white/10 bg-black/20 text-white hover:bg-black/30'
+              }`}
+            >
+              {routeQueued ? 'Queued' : 'Route'}
             </button>
             <button
               type="button"

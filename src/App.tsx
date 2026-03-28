@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import type {
   AppView,
+  CanvassRouteStop,
   StormDate,
   LatLng,
   SearchResult,
@@ -25,6 +26,7 @@ import type {
   PinnedProperty,
   EvidenceItem,
 } from './types/storm';
+import { getStormCanvassPriority } from './types/storm';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
@@ -65,6 +67,7 @@ const DEFAULT_CENTER: LatLng = { lat: 39.4196, lng: -76.7803 };
 const DEFAULT_ZOOM = 10;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
+const MAX_ROUTE_STOPS = 8;
 const DEFAULT_SEARCH_SUMMARY: PropertySearchSummary = {
   locationLabel: 'Owings Mills, MD',
   resultType: 'locality',
@@ -94,6 +97,155 @@ function normalizeEvidenceItem(item: EvidenceItem): EvidenceItem {
         ? item.includeInReport
         : item.status === 'approved',
   };
+}
+
+function haversineDistanceMiles(
+  left: LatLng,
+  right: LatLng,
+): number {
+  const earthRadiusMiles = 3958.8;
+  const dLat = ((right.lat - left.lat) * Math.PI) / 180;
+  const dLng = ((right.lng - left.lng) * Math.PI) / 180;
+  const lat1 = (left.lat * Math.PI) / 180;
+  const lat2 = (right.lat * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+
+  return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function formatRouteLocationLabel(event: StormEvent | null, fallbackLabel: string): string {
+  if (!event) {
+    return fallbackLabel;
+  }
+
+  if (event.county && event.state) {
+    return `${event.county}, ${event.state}`;
+  }
+
+  return event.county || event.state || fallbackLabel;
+}
+
+function buildCanvassRouteStop(params: {
+  stormDate: StormDate;
+  events: StormEvent[];
+  evidenceCount: number;
+  fallbackLabel: string;
+  fallbackCenter: LatLng;
+}): CanvassRouteStop {
+  const hailEvents = params.events.filter((event) => event.eventType === 'Hail');
+  const rankedEvents = (hailEvents.length > 0 ? hailEvents : params.events).slice().sort(
+    (left, right) =>
+      right.magnitude - left.magnitude ||
+      new Date(right.beginDate).getTime() - new Date(left.beginDate).getTime(),
+  );
+  const representativeEvent = rankedEvents[0] ?? null;
+  const priority = getStormCanvassPriority(params.stormDate, params.evidenceCount);
+
+  return {
+    id: params.stormDate.date,
+    stormDate: params.stormDate.date,
+    stormLabel: params.stormDate.label,
+    lat: representativeEvent?.beginLat ?? params.fallbackCenter.lat,
+    lng: representativeEvent?.beginLon ?? params.fallbackCenter.lng,
+    locationLabel: formatRouteLocationLabel(representativeEvent, params.fallbackLabel),
+    topHailInches: params.stormDate.maxHailInches,
+    reportCount: params.stormDate.eventCount,
+    evidenceCount: params.evidenceCount,
+    priority,
+  };
+}
+
+function orderStopsByNearest(
+  stops: CanvassRouteStop[],
+  origin: LatLng,
+): CanvassRouteStop[] {
+  const remaining = [...stops];
+  const ordered: CanvassRouteStop[] = [];
+  let current = origin;
+
+  while (remaining.length > 0) {
+    remaining.sort((left, right) => {
+      const leftDistance = haversineDistanceMiles(current, { lat: left.lat, lng: left.lng });
+      const rightDistance = haversineDistanceMiles(current, { lat: right.lat, lng: right.lng });
+      if (Math.abs(leftDistance - rightDistance) > 0.05) {
+        return leftDistance - rightDistance;
+      }
+      return right.topHailInches - left.topHailInches;
+    });
+
+    const next = remaining.shift();
+    if (!next) {
+      break;
+    }
+
+    ordered.push(next);
+    current = { lat: next.lat, lng: next.lng };
+  }
+
+  return ordered;
+}
+
+function buildDirectionsUrl(
+  stops: CanvassRouteStop[],
+  origin: LatLng | null,
+): string | null {
+  if (stops.length === 0) {
+    return null;
+  }
+
+  const baseUrl = new URL('https://www.google.com/maps/dir/');
+  baseUrl.searchParams.set('api', '1');
+
+  if (origin) {
+    baseUrl.searchParams.set('origin', `${origin.lat},${origin.lng}`);
+  }
+
+  const orderedStops = stops.slice(0, MAX_ROUTE_STOPS);
+  const destination = orderedStops[orderedStops.length - 1];
+  baseUrl.searchParams.set('destination', `${destination.lat},${destination.lng}`);
+
+  if (orderedStops.length > 1) {
+    const waypoints = orderedStops
+      .slice(0, -1)
+      .map((stop) => `${stop.lat},${stop.lng}`)
+      .join('|');
+    if (waypoints) {
+      baseUrl.searchParams.set('waypoints', waypoints);
+    }
+  }
+
+  baseUrl.searchParams.set('travelmode', 'driving');
+  return baseUrl.toString();
+}
+
+function buildBoundsFromRoute(
+  stops: CanvassRouteStop[],
+  origin: LatLng | null,
+): BoundingBox | null {
+  const points = [
+    ...stops.map((stop) => ({ lat: stop.lat, lng: stop.lng })),
+    ...(origin ? [origin] : []),
+  ];
+
+  if (points.length === 0) {
+    return null;
+  }
+
+  let north = points[0].lat;
+  let south = points[0].lat;
+  let east = points[0].lng;
+  let west = points[0].lng;
+
+  for (const point of points) {
+    north = Math.max(north, point.lat);
+    south = Math.min(south, point.lat);
+    east = Math.max(east, point.lng);
+    west = Math.min(west, point.lng);
+  }
+
+  return { north, south, east, west };
 }
 
 function App() {
@@ -126,6 +278,9 @@ function App() {
     useState<NotificationPermission>(getNotificationPermission);
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
   const [evidenceItems, setEvidenceItems] = useState<EvidenceItem[]>([]);
+  const [routeStormDates, setRouteStormDates] = useState<string[]>([]);
+  const [activeRouteStopId, setActiveRouteStopId] = useState<string | null>(null);
+  const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
     youtube: 'live' | 'fallback';
     flickr: 'live' | 'fallback';
@@ -536,6 +691,20 @@ function App() {
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   }, [evidenceItems, searchSummary]);
 
+  const propertyEvidenceCountsByDate = useMemo(() => {
+    const counts = new Map<string, number>();
+
+    for (const item of propertyEvidenceItems) {
+      if (!item.stormDate) {
+        continue;
+      }
+
+      counts.set(item.stormDate, (counts.get(item.stormDate) || 0) + 1);
+    }
+
+    return counts;
+  }, [propertyEvidenceItems]);
+
   const selectedEvidenceCountsByDate = useMemo(() => {
     const counts: Record<string, number> = {};
 
@@ -555,6 +724,90 @@ function App() {
 
     return counts;
   }, [evidenceItems, filteredStormDates, searchSummary]);
+
+  const stormRouteStopsByDate = useMemo(() => {
+    const stops = new Map<string, CanvassRouteStop>();
+    const fallbackLabel = searchSummary?.locationLabel || 'Current search area';
+
+    for (const stormDate of filteredStormDates) {
+      const dateEvents = filteredEvents.filter(
+        (event) => event.beginDate.slice(0, 10) === stormDate.date,
+      );
+      const stop = buildCanvassRouteStop({
+        stormDate,
+        events: dateEvents,
+        evidenceCount: propertyEvidenceCountsByDate.get(stormDate.date) || 0,
+        fallbackLabel,
+        fallbackCenter: queryLocation,
+      });
+      stops.set(stormDate.date, stop);
+    }
+
+    return stops;
+  }, [filteredEvents, filteredStormDates, propertyEvidenceCountsByDate, queryLocation, searchSummary]);
+
+  const routeStops = useMemo(() => {
+    return routeStormDates
+      .map((stormDate) => stormRouteStopsByDate.get(stormDate))
+      .filter((stop): stop is CanvassRouteStop => Boolean(stop));
+  }, [routeStormDates, stormRouteStopsByDate]);
+
+  const routeOrigin = useMemo(
+    () =>
+      gpsPosition
+        ? { lat: gpsPosition.lat, lng: gpsPosition.lng }
+        : queryLocation,
+    [gpsPosition, queryLocation],
+  );
+
+  const orderedRouteStops = useMemo(() => {
+    if (routeStops.length <= 1) {
+      return routeStops;
+    }
+
+    return orderStopsByNearest(routeStops, routeOrigin);
+  }, [routeOrigin, routeStops]);
+
+  const activeRouteStop = useMemo(() => {
+    if (orderedRouteStops.length === 0) {
+      return null;
+    }
+
+    return (
+      orderedRouteStops.find((stop) => stop.id === activeRouteStopId) ||
+      orderedRouteStops[0]
+    );
+  }, [activeRouteStopId, orderedRouteStops]);
+
+  const knockNowRouteCandidates = useMemo(() => {
+    return filteredStormDates
+      .map((stormDate) => stormRouteStopsByDate.get(stormDate.date))
+      .filter((stop): stop is CanvassRouteStop => Boolean(stop))
+      .filter((stop) => stop.priority === 'Knock now')
+      .sort(
+        (left, right) =>
+          right.topHailInches - left.topHailInches ||
+          right.stormDate.localeCompare(left.stormDate),
+      )
+      .slice(0, MAX_ROUTE_STOPS);
+  }, [filteredStormDates, stormRouteStopsByDate]);
+
+  useEffect(() => {
+    setRouteStormDates((current) =>
+      current.filter((stormDate) => stormRouteStopsByDate.has(stormDate)),
+    );
+  }, [stormRouteStopsByDate]);
+
+  useEffect(() => {
+    if (routeStops.length === 0) {
+      setActiveRouteStopId(null);
+      return;
+    }
+
+    if (!activeRouteStopId || !routeStops.some((stop) => stop.id === activeRouteStopId)) {
+      setActiveRouteStopId(routeStops[0].id);
+    }
+  }, [activeRouteStopId, routeStops]);
 
   const makePinnedPropertyId = useCallback((label: string, lat: number, lng: number) => {
     return `${label.toLowerCase()}-${lat.toFixed(4)}-${lng.toFixed(4)}`
@@ -663,6 +916,107 @@ function App() {
       zoom: getFallbackZoom(property.resultType),
     }));
   }, [getFallbackZoom]);
+
+  const focusRouteStop = useCallback((stop: CanvassRouteStop) => {
+    const matchingStormDate =
+      filteredStormDates.find((stormDate) => stormDate.date === stop.stormDate) ?? null;
+
+    setActiveView('map');
+    setSelectedDate(matchingStormDate);
+    setFitBoundsRequest(null);
+    setCamera((current) => ({
+      ...current,
+      center: { lat: stop.lat, lng: stop.lng },
+      zoom: Math.max(current.zoom, 13),
+    }));
+    setActiveRouteStopId(stop.id);
+    setShowRoutePanel(true);
+  }, [filteredStormDates]);
+
+  const handleToggleStormRoute = useCallback((stormDate: StormDate) => {
+    const stop = stormRouteStopsByDate.get(stormDate.date);
+    if (!stop) {
+      window.alert('No mappable storm hit is available for this date yet.');
+      return;
+    }
+
+    setRouteStormDates((current) => {
+      if (current.includes(stormDate.date)) {
+        return current.filter((date) => date !== stormDate.date);
+      }
+
+      return [...current, stormDate.date].slice(0, MAX_ROUTE_STOPS);
+    });
+    setActiveRouteStopId(stormDate.date);
+    setShowRoutePanel(true);
+    focusRouteStop(stop);
+  }, [focusRouteStop, stormRouteStopsByDate]);
+
+  const handleBuildKnockRoute = useCallback(() => {
+    if (knockNowRouteCandidates.length === 0) {
+      window.alert('No Knock Now storm dates are available for this search yet.');
+      return;
+    }
+
+    const ordered = orderStopsByNearest(knockNowRouteCandidates, routeOrigin)
+      .slice(0, MAX_ROUTE_STOPS);
+    setRouteStormDates(ordered.map((stop) => stop.stormDate));
+    setActiveRouteStopId(ordered[0]?.id ?? null);
+    setShowRoutePanel(true);
+
+    const routeBounds = buildBoundsFromRoute(ordered, gpsPosition ? routeOrigin : null);
+    if (routeBounds) {
+      setFitBoundsRequest({
+        id: Date.now(),
+        bounds: routeBounds,
+        padding: 64,
+        maxZoom: 12,
+      });
+    }
+
+    if (ordered[0]) {
+      setSelectedDate(
+        filteredStormDates.find((stormDate) => stormDate.date === ordered[0].stormDate) ?? null,
+      );
+    }
+  }, [filteredStormDates, gpsPosition, knockNowRouteCandidates, routeOrigin]);
+
+  const handleRemoveStormFromRoute = useCallback((stormDate: string) => {
+    setRouteStormDates((current) => current.filter((date) => date !== stormDate));
+    setActiveRouteStopId((current) => (current === stormDate ? null : current));
+  }, []);
+
+  const handleClearRoute = useCallback(() => {
+    setRouteStormDates([]);
+    setActiveRouteStopId(null);
+    setShowRoutePanel(false);
+  }, []);
+
+  const handleAdvanceRoute = useCallback(() => {
+    if (!activeRouteStop) {
+      return;
+    }
+
+    const remainingStops = orderedRouteStops.filter((stop) => stop.id !== activeRouteStop.id);
+    setRouteStormDates(remainingStops.map((stop) => stop.stormDate));
+    setActiveRouteStopId(remainingStops[0]?.id ?? null);
+
+    if (remainingStops[0]) {
+      focusRouteStop(remainingStops[0]);
+      return;
+    }
+
+    setShowRoutePanel(false);
+  }, [activeRouteStop, focusRouteStop, orderedRouteStops]);
+
+  const handleOpenRouteNavigation = useCallback(() => {
+    const routeUrl = buildDirectionsUrl(orderedRouteStops, gpsPosition ? routeOrigin : null);
+    if (!routeUrl) {
+      return;
+    }
+
+    window.open(routeUrl, '_blank', 'noopener,noreferrer');
+  }, [gpsPosition, orderedRouteStops, routeOrigin]);
 
   const handleUploadEvidenceFiles = useCallback(async (
     files: FileList,
@@ -915,6 +1269,21 @@ function App() {
         onMapClick={handleMapClick}
       />
 
+      <RouteQueuePanel
+        visible={showRoutePanel || orderedRouteStops.length > 0}
+        stops={orderedRouteStops}
+        activeStopId={activeRouteStop?.id ?? null}
+        gpsPosition={gpsPosition}
+        knockNowCount={knockNowRouteCandidates.length}
+        onToggleOpen={() => setShowRoutePanel((current) => !current)}
+        onBuildKnockRoute={handleBuildKnockRoute}
+        onFocusStop={focusRouteStop}
+        onRemoveStop={handleRemoveStormFromRoute}
+        onAdvanceRoute={handleAdvanceRoute}
+        onOpenNavigation={handleOpenRouteNavigation}
+        onClearRoute={handleClearRoute}
+      />
+
       {/* Legend overlay */}
       <Legend />
 
@@ -1155,6 +1524,9 @@ function App() {
               onPinProperty={handlePinProperty}
               evidenceItems={propertyEvidenceItems}
               onOpenEvidence={() => setActiveView('evidence')}
+              routeStormDates={routeStormDates}
+              onToggleStormRoute={handleToggleStormRoute}
+              onBuildKnockRoute={handleBuildKnockRoute}
             />
 
             {mapWorkspace}
@@ -1202,6 +1574,183 @@ function App() {
             onOpenMap={() => setActiveView('map')}
             providerStatus={evidenceProviderStatus}
           />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function RouteQueuePanel({
+  visible,
+  stops,
+  activeStopId,
+  gpsPosition,
+  knockNowCount,
+  onToggleOpen,
+  onBuildKnockRoute,
+  onFocusStop,
+  onRemoveStop,
+  onAdvanceRoute,
+  onOpenNavigation,
+  onClearRoute,
+}: {
+  visible: boolean;
+  stops: CanvassRouteStop[];
+  activeStopId: string | null;
+  gpsPosition: LatLng | null;
+  knockNowCount: number;
+  onToggleOpen: () => void;
+  onBuildKnockRoute: () => void;
+  onFocusStop: (stop: CanvassRouteStop) => void;
+  onRemoveStop: (stormDate: string) => void;
+  onAdvanceRoute: () => void;
+  onOpenNavigation: () => void;
+  onClearRoute: () => void;
+}) {
+  if (!visible && stops.length === 0 && knockNowCount === 0) {
+    return null;
+  }
+
+  const activeStop =
+    stops.find((stop) => stop.id === activeStopId) ||
+    stops[0] ||
+    null;
+  const etaLabel = gpsPosition && activeStop
+    ? `${haversineDistanceMiles(gpsPosition, { lat: activeStop.lat, lng: activeStop.lng }).toFixed(1)} mi from you`
+    : activeStop
+      ? 'Ready for turn-by-turn'
+      : 'Build a canvass route from top hail dates';
+
+  return (
+    <div className="absolute right-4 top-20 z-20 w-[min(24rem,calc(100%-2rem))]">
+      <div className="overflow-hidden rounded-2xl border border-orange-500/20 bg-slate-950/92 shadow-[0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur">
+        <button
+          type="button"
+          onClick={onToggleOpen}
+          className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.03]"
+        >
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-200">
+              Route Queue
+            </p>
+            <p className="mt-1 text-sm font-semibold text-white">
+              {stops.length > 0
+                ? `${stops.length} canvass stop${stops.length === 1 ? '' : 's'}`
+                : knockNowCount > 0
+                  ? `${knockNowCount} knock-now dates ready`
+                  : 'No route built yet'}
+            </p>
+            <p className="mt-1 text-xs text-slate-400">{etaLabel}</p>
+          </div>
+          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs font-semibold text-orange-100">
+            {stops.length > 0 ? 'Live' : 'Ready'}
+          </span>
+        </button>
+
+        {visible && (stops.length > 0 || knockNowCount > 0) && (
+          <div className="border-t border-slate-800 px-4 py-3">
+            {stops.length === 0 ? (
+              <div className="space-y-3">
+                <p className="text-sm text-slate-300">
+                  Build a canvass run from the highest-priority hail dates and open it in Google Maps.
+                </p>
+                <button
+                  type="button"
+                  onClick={onBuildKnockRoute}
+                  className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-opacity hover:opacity-95"
+                >
+                  Build Knock-Now Route
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={onOpenNavigation}
+                    className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-opacity hover:opacity-95"
+                  >
+                    Open Turn-by-Turn
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onAdvanceRoute}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
+                  >
+                    Mark Next Done
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onClearRoute}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/10"
+                  >
+                    Clear
+                  </button>
+                </div>
+
+                <div className="mt-3 max-h-72 space-y-2 overflow-y-auto pr-1">
+                  {stops.map((stop, index) => {
+                    const active = stop.id === activeStop?.id;
+                    return (
+                      <div
+                        key={stop.id}
+                        className={`rounded-2xl border px-3 py-3 ${
+                          active
+                            ? 'border-orange-400/40 bg-orange-500/10'
+                            : 'border-slate-800 bg-black/20'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-orange-100">
+                                {index + 1}
+                              </span>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-white">
+                                  {stop.stormLabel}
+                                </p>
+                                <p className="truncate text-xs text-slate-400">
+                                  {stop.locationLabel}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-300">
+                              <span>{stop.reportCount} reports</span>
+                              <span>{stop.topHailInches > 0 ? `${stop.topHailInches}" hail` : 'hail swath'}</span>
+                              <span>{stop.evidenceCount} proof</span>
+                              <span className="text-orange-200">{stop.priority}</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveStop(stop.stormDate)}
+                            className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-[11px] font-semibold text-slate-300 transition-colors hover:bg-black/30"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                        <div className="mt-3 flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => onFocusStop(stop)}
+                            className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-black/30"
+                          >
+                            Center Stop
+                          </button>
+                          {active && (
+                            <span className="rounded-lg border border-orange-400/30 bg-orange-500/15 px-2.5 py-1.5 text-[11px] font-semibold text-orange-100">
+                              Next Stop
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+          </div>
         )}
       </div>
     </div>
