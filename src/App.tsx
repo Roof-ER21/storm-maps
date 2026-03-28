@@ -13,6 +13,7 @@ import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { APIProvider } from '@vis.gl/react-google-maps';
 import type {
   AppView,
+  CanvassOutcome,
   CanvassRouteStop,
   CanvassStopStatus,
   StormDate,
@@ -158,6 +159,7 @@ function buildCanvassRouteStop(params: {
     evidenceCount: params.evidenceCount,
     priority,
     status: params.existingStop?.status ?? 'queued',
+    outcome: params.existingStop?.outcome ?? 'none',
     notes: params.existingStop?.notes ?? '',
     createdAt: params.existingStop?.createdAt ?? now,
     updatedAt: now,
@@ -330,6 +332,72 @@ function buildBoundsFromRoute(
   }
 
   return { north, south, east, west };
+}
+
+function formatOutcomeLabel(outcome: CanvassOutcome): string {
+  switch (outcome) {
+    case 'no_answer':
+      return 'No Answer';
+    case 'interested':
+      return 'Interested';
+    case 'follow_up':
+      return 'Follow Up';
+    case 'inspection_booked':
+      return 'Inspection Booked';
+    default:
+      return 'Not Set';
+  }
+}
+
+function downloadRouteSummary(params: {
+  propertyLabel: string | null;
+  stops: CanvassRouteStop[];
+  generatedAt: string;
+}): void {
+  const completed = params.stops.filter((stop) => stop.status === 'completed').length;
+  const booked = params.stops.filter((stop) => stop.outcome === 'inspection_booked').length;
+  const interested = params.stops.filter((stop) => stop.outcome === 'interested').length;
+  const followUps = params.stops.filter((stop) => stop.outcome === 'follow_up').length;
+  const lines = [
+    'Hail Yes! Route Summary',
+    `Property: ${params.propertyLabel || 'Current search area'}`,
+    `Generated: ${new Date(params.generatedAt).toLocaleString('en-US', {
+      timeZone: 'America/New_York',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    })} ET`,
+    `Stops: ${params.stops.length}`,
+    `Completed: ${completed}`,
+    `Inspections Booked: ${booked}`,
+    `Interested: ${interested}`,
+    `Follow Ups: ${followUps}`,
+    '',
+    ...params.stops.map((stop, index) =>
+      [
+        `${index + 1}. ${stop.stormLabel} - ${stop.locationLabel}`,
+        `   Hail: ${stop.topHailInches > 0 ? `${stop.topHailInches}"` : 'swath only'} | Reports: ${stop.reportCount} | Proof: ${stop.evidenceCount}`,
+        `   Status: ${stop.status} | Outcome: ${formatOutcomeLabel(stop.outcome)} | Source: ${stop.sourceLabel}`,
+        `   Notes: ${stop.notes || 'None'}`,
+      ].join('\n'),
+    ),
+  ];
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  const safeProperty = (params.propertyLabel || 'route')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  anchor.href = url;
+  anchor.download = `hail-yes-route-summary-${safeProperty || 'route'}-${Date.now()}.txt`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function App() {
@@ -1222,6 +1290,23 @@ function App() {
     [],
   );
 
+  const handleUpdateRouteStopOutcome = useCallback(
+    (stopId: string, outcome: CanvassOutcome) => {
+      setRouteStopsState((current) =>
+        current.map((stop) =>
+          stop.id === stopId
+            ? {
+                ...stop,
+                outcome,
+                updatedAt: new Date().toISOString(),
+              }
+            : stop,
+        ),
+      );
+    },
+    [],
+  );
+
   const handleUpdateRouteStopNotes = useCallback((stopId: string, notes: string) => {
     setRouteStopsState((current) =>
       current.map((stop) =>
@@ -1264,6 +1349,14 @@ function App() {
 
     window.open(routeUrl, '_blank', 'noopener,noreferrer');
   }, [gpsPosition, orderedRouteStops, routeOrigin]);
+
+  const handleExportRouteSummary = useCallback(() => {
+    downloadRouteSummary({
+      propertyLabel: searchSummary?.locationLabel ?? null,
+      stops: orderedRouteStops,
+      generatedAt: new Date().toISOString(),
+    });
+  }, [orderedRouteStops, searchSummary]);
 
   const handleUploadEvidenceFiles = useCallback(async (
     files: FileList,
@@ -1527,9 +1620,11 @@ function App() {
         onFocusStop={focusRouteStop}
         onRemoveStop={handleRemoveStopFromRoute}
         onUpdateStopStatus={handleUpdateRouteStopStatus}
+        onUpdateStopOutcome={handleUpdateRouteStopOutcome}
         onUpdateStopNotes={handleUpdateRouteStopNotes}
         onAdvanceRoute={handleAdvanceRoute}
         onOpenNavigation={handleOpenRouteNavigation}
+        onExportSummary={handleExportRouteSummary}
         onClearRoute={handleClearRoute}
       />
 
@@ -1840,9 +1935,11 @@ function RouteQueuePanel({
   onFocusStop,
   onRemoveStop,
   onUpdateStopStatus,
+  onUpdateStopOutcome,
   onUpdateStopNotes,
   onAdvanceRoute,
   onOpenNavigation,
+  onExportSummary,
   onClearRoute,
 }: {
   visible: boolean;
@@ -1855,9 +1952,11 @@ function RouteQueuePanel({
   onFocusStop: (stop: CanvassRouteStop) => void;
   onRemoveStop: (stopId: string) => void;
   onUpdateStopStatus: (stopId: string, status: CanvassStopStatus) => void;
+  onUpdateStopOutcome: (stopId: string, outcome: CanvassOutcome) => void;
   onUpdateStopNotes: (stopId: string, notes: string) => void;
   onAdvanceRoute: () => void;
   onOpenNavigation: () => void;
+  onExportSummary: () => void;
   onClearRoute: () => void;
 }) {
   if (!visible && stops.length === 0 && knockNowCount === 0) {
@@ -1931,9 +2030,16 @@ function RouteQueuePanel({
                     type="button"
                     onClick={onAdvanceRoute}
                     disabled={pendingStops.length === 0}
-                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Mark Next Done
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onExportSummary}
+                    className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/10"
+                  >
+                    Export Summary
                   </button>
                   <button
                     type="button"
@@ -1981,11 +2087,11 @@ function RouteQueuePanel({
                               {stop.status === 'visited' && (
                                 <span className="text-sky-200">Visited</span>
                               )}
-                              {stop.status === 'completed' && (
-                                <span className="text-emerald-200">Done</span>
-                              )}
-                            </div>
-                          </div>
+                          {stop.status === 'completed' && (
+                            <span className="text-emerald-200">Done</span>
+                          )}
+                        </div>
+                      </div>
                           <button
                             type="button"
                             onClick={() => onRemoveStop(stop.id)}
@@ -2034,6 +2140,35 @@ function RouteQueuePanel({
                               Next Stop
                             </span>
                           )}
+                        </div>
+                        <div className="mt-3">
+                          <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                            Outcome
+                          </label>
+                          <div className="mt-1 flex flex-wrap gap-1.5">
+                            {(
+                              [
+                                ['none', 'Not Set'],
+                                ['no_answer', 'No Answer'],
+                                ['interested', 'Interested'],
+                                ['follow_up', 'Follow Up'],
+                                ['inspection_booked', 'Booked'],
+                              ] as Array<[CanvassOutcome, string]>
+                            ).map(([outcome, label]) => (
+                              <button
+                                key={`${stop.id}-${outcome}`}
+                                type="button"
+                                onClick={() => onUpdateStopOutcome(stop.id, outcome)}
+                                className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                                  stop.outcome === outcome
+                                    ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
+                                    : 'border-white/10 bg-black/20 text-slate-300 hover:bg-black/30'
+                                }`}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                         <div className="mt-3">
                           <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">

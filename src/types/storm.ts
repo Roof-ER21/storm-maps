@@ -235,6 +235,12 @@ export interface StormDate {
 
 export type CanvassPriority = 'Knock now' | 'Monitor' | 'Low';
 export type CanvassStopStatus = 'queued' | 'visited' | 'completed';
+export type CanvassOutcome =
+  | 'none'
+  | 'no_answer'
+  | 'interested'
+  | 'follow_up'
+  | 'inspection_booked';
 
 export interface CanvassRouteStop {
   id: string;
@@ -251,6 +257,7 @@ export interface CanvassRouteStop {
   evidenceCount: number;
   priority: CanvassPriority;
   status: CanvassStopStatus;
+  outcome: CanvassOutcome;
   notes: string;
   createdAt: string;
   updatedAt: string;
