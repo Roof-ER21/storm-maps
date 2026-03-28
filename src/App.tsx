@@ -54,6 +54,7 @@ import {
 import { fetchEvidenceCandidates } from './services/evidenceApi';
 import { buildEvidenceQuerySeeds } from './services/evidenceProviders';
 import { buildDemoEvidencePack } from './services/demoEvidence';
+import { buildRegionalEvidenceSeeds } from './services/regionalEvidenceSeeds';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -783,6 +784,50 @@ function App() {
     });
   }, [evidenceItems, filteredStormDates, searchSummary]);
 
+  const handleSeedRegionalEvidence = useCallback(async () => {
+    if (!searchSummary) {
+      throw new Error('Search a property before seeding regional evidence.');
+    }
+
+    const seededItems = buildRegionalEvidenceSeeds(
+      searchSummary,
+      filteredStormDates,
+      queryLocation,
+    );
+
+    if (seededItems.length === 0) {
+      throw new Error(
+        'No pre-seeded regional evidence exists for this search area yet. Try DMV, PA, or Richmond-area properties.',
+      );
+    }
+
+    await Promise.all(
+      seededItems.map(async (item) => {
+        const existing = evidenceItems.find((current) => current.id === item.id);
+        const nextItem = existing
+          ? {
+              ...existing,
+              ...item,
+              createdAt: existing.createdAt,
+            }
+          : item;
+        await saveEvidenceItem(nextItem);
+      }),
+    );
+
+    setEvidenceItems((current) => {
+      const nextMap = new Map(current.map((item) => [item.id, item]));
+      for (const item of seededItems) {
+        const existing = nextMap.get(item.id);
+        nextMap.set(
+          item.id,
+          existing ? { ...existing, ...item, createdAt: existing.createdAt } : item,
+        );
+      }
+      return Array.from(nextMap.values()).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    });
+  }, [evidenceItems, filteredStormDates, queryLocation, searchSummary]);
+
   const handleRemoveEvidenceItem = useCallback(async (itemId: string) => {
     await removeEvidenceItem(itemId);
     setEvidenceItems((current) => current.filter((item) => item.id !== itemId));
@@ -1093,6 +1138,7 @@ function App() {
             onUploadFiles={handleUploadEvidenceFiles}
             onFetchProviderCandidates={handleFetchEvidenceCandidates}
             onSeedDemoEvidence={handleSeedDemoEvidence}
+            onSeedRegionalEvidence={handleSeedRegionalEvidence}
             onRemoveEvidenceItem={handleRemoveEvidenceItem}
             onToggleEvidenceStatus={handleToggleEvidenceStatus}
             onToggleEvidenceInReport={handleToggleEvidenceInReport}

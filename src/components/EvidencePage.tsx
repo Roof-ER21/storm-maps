@@ -8,6 +8,7 @@ interface EvidencePageProps {
   onUploadFiles: (files: FileList, stormDate: string | null) => Promise<void>;
   onFetchProviderCandidates: () => Promise<void>;
   onSeedDemoEvidence: () => Promise<void>;
+  onSeedRegionalEvidence: () => Promise<void>;
   onRemoveEvidenceItem: (itemId: string) => Promise<void>;
   onToggleEvidenceStatus: (itemId: string) => Promise<void>;
   onToggleEvidenceInReport: (itemId: string) => Promise<void>;
@@ -26,6 +27,7 @@ export default function EvidencePage({
   onUploadFiles,
   onFetchProviderCandidates,
   onSeedDemoEvidence,
+  onSeedRegionalEvidence,
   onRemoveEvidenceItem,
   onToggleEvidenceStatus,
   onToggleEvidenceInReport,
@@ -37,6 +39,7 @@ export default function EvidencePage({
   const [uploading, setUploading] = useState(false);
   const [seeding, setSeeding] = useState(false);
   const [seedingDemo, setSeedingDemo] = useState(false);
+  const [seedingRegional, setSeedingRegional] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -112,6 +115,15 @@ export default function EvidencePage({
       await onSeedDemoEvidence();
     } finally {
       setSeedingDemo(false);
+    }
+  };
+
+  const handleSeedRegionalPack = async () => {
+    setSeedingRegional(true);
+    try {
+      await onSeedRegionalEvidence();
+    } finally {
+      setSeedingRegional(false);
     }
   };
 
@@ -219,6 +231,29 @@ export default function EvidencePage({
                       className="rounded-2xl bg-amber-400 px-3 py-2 text-xs font-semibold text-gray-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
                     >
                       {seedingDemo ? 'Seeding...' : 'Seed Demo Pack'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-gray-900 bg-black/35 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+                        Real Regional Samples
+                      </p>
+                      <p className="mt-2 text-sm text-gray-400">
+                        Seed verified public storm-related articles and viewer media
+                        from actual DMV, PA, or Richmond-area hail dates when the
+                        current property falls inside those regions.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleSeedRegionalPack}
+                      disabled={seedingRegional}
+                      className="rounded-2xl bg-sky-400 px-3 py-2 text-xs font-semibold text-gray-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                    >
+                      {seedingRegional ? 'Seeding...' : 'Seed Real Samples'}
                     </button>
                   </div>
                 </div>
