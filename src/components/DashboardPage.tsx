@@ -53,6 +53,7 @@ export default function DashboardPage({
   const contactedStops = routeStops.filter((stop) => stop.leadStage === 'contacted');
   const inspectionSetStops = routeStops.filter((stop) => stop.leadStage === 'inspection_set');
   const wonStops = routeStops.filter((stop) => stop.leadStage === 'won');
+  const lostStops = routeStops.filter((stop) => stop.leadStage === 'lost');
 
   const stateCounts = Array.from(
     events.reduce((map, event) => {
@@ -240,7 +241,7 @@ export default function DashboardPage({
               <h3 className="mt-2 text-2xl font-semibold text-white">
                 Stage movement across active route stops
               </h3>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
                 <MetricCard
                   label="Contacted"
                   value={String(contactedStops.length)}
@@ -266,6 +267,14 @@ export default function DashboardPage({
                   compact
                 />
                 <MetricCard
+                  label="Lost"
+                  value={String(lostStops.length)}
+                  tone="plum"
+                  icon={<AlertIcon />}
+                  onClick={onOpenLeads}
+                  compact
+                />
+                <MetricCard
                   label="Tracked Damage"
                   value={formatCurrencyCompact(totalDamage)}
                   tone="amber"
@@ -275,6 +284,44 @@ export default function DashboardPage({
                 />
               </div>
             </section>
+
+            {wonStops.length > 0 && (
+              <section className="rounded-[28px] border border-emerald-500/18 bg-emerald-500/[0.04] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  Won Jobs
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-white">
+                  {wonStops.length} closed deal{wonStops.length === 1 ? '' : 's'}
+                </h3>
+                <div className="mt-4 grid gap-3">
+                  {wonStops.slice(0, 4).map((stop) => (
+                    <button
+                      type="button"
+                      key={stop.id}
+                      onClick={onOpenLeads}
+                      className="rounded-2xl border border-emerald-500/12 bg-slate-900/60 p-4 text-left transition-colors hover:border-emerald-400/25 hover:bg-slate-900"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-white">
+                            {stop.homeownerName || stop.locationLabel}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">
+                            {stop.stormLabel} · {stop.homeownerPhone || 'No phone'}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                          Won
+                        </span>
+                      </div>
+                      {stop.assignedRep && (
+                        <p className="mt-2 text-xs text-violet-200">Rep: {stop.assignedRep}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">

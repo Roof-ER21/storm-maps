@@ -274,6 +274,7 @@ export interface CanvassRouteStop {
   leadStage: LeadStage;
   notes: string;
   reminderAt?: string | null;
+  assignedRep?: string;
   homeownerName?: string;
   homeownerPhone?: string;
   homeownerEmail?: string;

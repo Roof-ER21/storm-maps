@@ -109,6 +109,65 @@ export default function ReportsPage({
           </div>
         )}
 
+        {searchSummary && (() => {
+          const wonStops = routeStops.filter((s) => s.leadStage === 'won');
+          return wonStops.length > 0 ? (
+            <section className="rounded-3xl border border-emerald-500/18 bg-emerald-500/[0.04] p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                Won Jobs Ready for Reports
+              </p>
+              <p className="mt-2 text-sm text-gray-400">
+                {wonStops.length} closed deal{wonStops.length === 1 ? '' : 's'} — generate final documentation.
+              </p>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {wonStops.map((stop) => (
+                  <div
+                    key={stop.id}
+                    className="rounded-2xl border border-emerald-500/12 bg-slate-900/60 p-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white">
+                          {stop.homeownerName || stop.locationLabel}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-400">
+                          {stop.stormLabel} · {stop.topHailInches > 0 ? `${stop.topHailInches}" hail` : 'Hail swath'}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                        Won
+                      </span>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-400">
+                      <p>{stop.homeownerPhone || 'No phone'} · {stop.homeownerEmail || 'No email'}</p>
+                      {stop.assignedRep && <p className="mt-1 text-violet-200">Rep: {stop.assignedRep}</p>}
+                      {stop.notes && <p className="mt-2 text-slate-300">{stop.notes}</p>}
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => { void onGenerateReport(stop.stormDate); }}
+                        disabled={generatingReport}
+                        className="rounded-xl bg-[linear-gradient(135deg,#10b981,#059669)] px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                      >
+                        {generatingReport ? 'Generating...' : 'Generate PDF'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { void onDownloadEvidencePack(stop.stormDate); }}
+                        disabled={downloadingEvidencePack}
+                        className="rounded-xl border border-emerald-500/20 bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:border-emerald-400/30"
+                      >
+                        Evidence Pack
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null;
+        })()}
+
         {searchSummary && (
           <div className="grid gap-3">
             {stormDates.map((stormDate) => {

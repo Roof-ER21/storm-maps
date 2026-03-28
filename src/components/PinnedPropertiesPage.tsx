@@ -133,17 +133,22 @@ export default function PinnedPropertiesPage({
                   routeCounts.contacted > 0 ||
                   routeCounts.inspectionSet > 0 ||
                   routeCounts.won > 0) && (
-                  <div className="mt-4 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-violet-200">
-                      Canvass Activity
+                  <div className={`mt-4 rounded-2xl border p-3 ${routeCounts.won > 0 ? 'border-emerald-500/18 bg-emerald-500/[0.04]' : 'border-violet-500/15 bg-violet-500/5'}`}>
+                    <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${routeCounts.won > 0 ? 'text-emerald-300' : 'text-violet-200'}`}>
+                      {routeCounts.won > 0 ? 'Pipeline + Won' : 'Canvass Activity'}
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                      {routeCounts.won > 0 && (
+                        <span className="rounded-full border border-emerald-400/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                          {routeCounts.won} won
+                        </span>
+                      )}
                       {routeCounts.active > 0 && <span>{routeCounts.active} active stops</span>}
                       {routeCounts.booked > 0 && <span>{routeCounts.booked} booked</span>}
                       {routeCounts.followUp > 0 && <span>{routeCounts.followUp} follow-up</span>}
                       {routeCounts.contacted > 0 && <span>{routeCounts.contacted} contacted</span>}
                       {routeCounts.inspectionSet > 0 && <span>{routeCounts.inspectionSet} inspection set</span>}
-                      {routeCounts.won > 0 && <span>{routeCounts.won} won</span>}
+                      {routeCounts.lost > 0 && <span className="text-slate-500">{routeCounts.lost} lost</span>}
                     </div>
                   </div>
                 )}

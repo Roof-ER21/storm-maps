@@ -170,6 +170,7 @@ function buildCanvassRouteStop(params: {
       defaultLeadStageForOutcome(params.existingStop?.outcome ?? 'none'),
     notes: params.existingStop?.notes ?? '',
     reminderAt: params.existingStop?.reminderAt ?? null,
+    assignedRep: params.existingStop?.assignedRep ?? '',
     homeownerName: params.existingStop?.homeownerName ?? '',
     homeownerPhone: params.existingStop?.homeownerPhone ?? '',
     homeownerEmail: params.existingStop?.homeownerEmail ?? '',
@@ -419,7 +420,7 @@ function downloadRouteSummary(params: {
         `${index + 1}. ${stop.stormLabel} - ${stop.locationLabel}`,
         `   Hail: ${stop.topHailInches > 0 ? `${stop.topHailInches}"` : 'swath only'} | Reports: ${stop.reportCount} | Proof: ${stop.evidenceCount}`,
         `   Status: ${stop.status} | Outcome: ${formatOutcomeLabel(stop.outcome)} | Stage: ${formatLeadStageLabel(stop.leadStage)} | Source: ${stop.sourceLabel}`,
-        `   Reminder: ${stop.reminderAt || 'None'}`,
+        `   Reminder: ${stop.reminderAt || 'None'} | Rep: ${stop.assignedRep || 'Unassigned'}`,
         `   Homeowner: ${stop.homeownerName || 'None'} | Phone: ${stop.homeownerPhone || 'None'} | Email: ${stop.homeownerEmail || 'None'}`,
         `   Notes: ${stop.notes || 'None'}`,
       ].join('\n'),
@@ -460,6 +461,7 @@ function downloadRouteCsv(params: {
       'outcome',
       'lead_stage',
       'reminder_at',
+      'assigned_rep',
       'homeowner_name',
       'homeowner_phone',
       'homeowner_email',
@@ -483,6 +485,7 @@ function downloadRouteCsv(params: {
       stop.outcome,
       stop.leadStage,
       stop.reminderAt || '',
+      stop.assignedRep || '',
       stop.homeownerName || '',
       stop.homeownerPhone || '',
       stop.homeownerEmail || '',
@@ -1124,6 +1127,7 @@ function App() {
           outcome: stop.outcome,
           leadStage: stop.leadStage ?? defaultLeadStageForOutcome(stop.outcome),
           reminderAt: stop.reminderAt ?? null,
+          assignedRep: stop.assignedRep ?? '',
           homeownerName: stop.homeownerName ?? '',
           homeownerPhone: stop.homeownerPhone ?? '',
           homeownerEmail: stop.homeownerEmail ?? '',
@@ -1663,6 +1667,20 @@ function App() {
     },
     [],
   );
+
+  const handleUpdateRouteStopAssignedRep = useCallback((stopId: string, rep: string) => {
+    setRouteStopsState((current) =>
+      current.map((stop) =>
+        stop.id === stopId
+          ? {
+              ...stop,
+              assignedRep: rep,
+              updatedAt: new Date().toISOString(),
+            }
+          : stop,
+      ),
+    );
+  }, []);
 
   const handleUpdateRouteStopReminder = useCallback((stopId: string, reminderAt: string) => {
     setRouteStopsState((current) =>
@@ -2312,6 +2330,7 @@ function App() {
             onUpdateLeadStage={handleUpdateRouteStopLeadStage}
             onUpdateLeadNotes={handleUpdateRouteStopNotes}
             onUpdateLeadReminder={handleUpdateRouteStopReminder}
+            onUpdateLeadAssignedRep={handleUpdateRouteStopAssignedRep}
             onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
             onRestoreArchive={handleRestoreRouteArchive}
           />

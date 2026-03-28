@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type {
   CanvassOutcome,
   CanvassRouteArchive,
@@ -19,6 +20,7 @@ interface LeadsPageProps {
   onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
   onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
+  onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -40,6 +42,29 @@ const LEAD_OUTCOMES: CanvassOutcome[] = [
   'interested',
 ];
 
+const STAGE_CONFIG: Record<LeadStage, { label: string; color: string; bg: string; border: string; ring: string; order: number }> = {
+  new: { label: 'New', color: 'text-sky-300', bg: 'bg-sky-500/15', border: 'border-sky-400/30', ring: 'ring-sky-400/20', order: 0 },
+  contacted: { label: 'Contacted', color: 'text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-400/30', ring: 'ring-amber-400/20', order: 1 },
+  inspection_set: { label: 'Inspection Set', color: 'text-violet-300', bg: 'bg-violet-500/15', border: 'border-violet-400/30', ring: 'ring-violet-400/20', order: 2 },
+  won: { label: 'Won', color: 'text-emerald-300', bg: 'bg-emerald-500/15', border: 'border-emerald-400/30', ring: 'ring-emerald-400/20', order: 3 },
+  lost: { label: 'Lost', color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-600/30', ring: 'ring-slate-500/15', order: 4 },
+};
+
+function getQuickDate(preset: 'today' | 'tomorrow' | 'next_week'): string {
+  const d = new Date();
+  if (preset === 'tomorrow') d.setDate(d.getDate() + 1);
+  if (preset === 'next_week') d.setDate(d.getDate() + 7);
+  return d.toISOString().slice(0, 10);
+}
+
+function getReminderUrgency(reminderAt: string | null | undefined): 'overdue' | 'today' | 'upcoming' | 'none' {
+  if (!reminderAt) return 'none';
+  const today = new Date().toISOString().slice(0, 10);
+  if (reminderAt < today) return 'overdue';
+  if (reminderAt === today) return 'today';
+  return 'upcoming';
+}
+
 export default function LeadsPage({
   searchSummary,
   routeStops,
@@ -52,6 +77,7 @@ export default function LeadsPage({
   onUpdateLeadStage,
   onUpdateLeadNotes,
   onUpdateLeadReminder,
+  onUpdateLeadAssignedRep,
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
@@ -73,9 +99,14 @@ export default function LeadsPage({
     )
     .sort((left, right) => right.archivedAt.localeCompare(left.archivedAt));
 
-  const bookedActive = activeLeads.filter((stop) => stop.outcome === 'inspection_booked');
-  const followUpActive = activeLeads.filter((stop) => stop.outcome === 'follow_up');
-  const interestedActive = activeLeads.filter((stop) => stop.outcome === 'interested');
+  const wonLeads = activeLeads.filter((s) => s.leadStage === 'won');
+  const lostLeads = activeLeads.filter((s) => s.leadStage === 'lost');
+  const pipelineLeads = activeLeads.filter((s) => s.leadStage !== 'won' && s.leadStage !== 'lost');
+
+  const stageCounts = activeLeads.reduce((acc, lead) => {
+    acc[lead.leadStage] = (acc[lead.leadStage] || 0) + 1;
+    return acc;
+  }, {} as Record<LeadStage, number>);
 
   return (
     <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
@@ -110,12 +141,17 @@ export default function LeadsPage({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <LeadMetric label="Active Leads" value={String(activeLeads.length)} />
-          <LeadMetric label="Booked" value={String(bookedActive.length)} />
-          <LeadMetric label="Follow Ups" value={String(followUpActive.length)} />
-          <LeadMetric label="Interested" value={String(interestedActive.length)} />
-          <LeadMetric label="Archived Leads" value={String(archivedLeads.length)} />
+        {/* Stage funnel metrics */}
+        <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <StageMetric stage="new" count={stageCounts.new || 0} />
+          <StageMetric stage="contacted" count={stageCounts.contacted || 0} />
+          <StageMetric stage="inspection_set" count={stageCounts.inspection_set || 0} />
+          <StageMetric stage="won" count={stageCounts.won || 0} />
+          <StageMetric stage="lost" count={stageCounts.lost || 0} />
+          <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
+            <p className="text-3xl font-semibold tracking-tight text-white">{archivedLeads.length}</p>
+            <p className="mt-1 text-xs text-slate-500">Archived</p>
+          </div>
         </div>
 
         {activeLeads.length === 0 && archivedLeads.length === 0 ? (
@@ -127,60 +163,93 @@ export default function LeadsPage({
           </div>
         ) : (
           <>
-            <div className="grid gap-5 xl:grid-cols-3">
-              <LeadColumn
-                title="Booked Inspections"
-                subtitle="Strongest opportunities with homeowner details."
-                leads={bookedActive}
-                emptyLabel="No booked inspections yet."
-                accent="rose"
-                onFocusLead={onFocusLead}
-                onUpdateLeadStatus={onUpdateLeadStatus}
-                onUpdateLeadOutcome={onUpdateLeadOutcome}
-                onUpdateLeadStage={onUpdateLeadStage}
-                onUpdateLeadNotes={onUpdateLeadNotes}
-                onUpdateLeadReminder={onUpdateLeadReminder}
-                onUpdateLeadHomeowner={onUpdateLeadHomeowner}
-              />
-              <LeadColumn
-                title="Follow Ups"
-                subtitle="Doors that need another touch or scheduled revisit."
-                leads={followUpActive}
-                emptyLabel="No follow-up leads yet."
-                accent="violet"
-                onFocusLead={onFocusLead}
-                onUpdateLeadStatus={onUpdateLeadStatus}
-                onUpdateLeadOutcome={onUpdateLeadOutcome}
-                onUpdateLeadStage={onUpdateLeadStage}
-                onUpdateLeadNotes={onUpdateLeadNotes}
-                onUpdateLeadReminder={onUpdateLeadReminder}
-                onUpdateLeadHomeowner={onUpdateLeadHomeowner}
-              />
-              <LeadColumn
-                title="Interested"
-                subtitle="Early momentum that still needs conversion."
-                leads={interestedActive}
-                emptyLabel="No interested leads yet."
-                accent="amber"
-                onFocusLead={onFocusLead}
-                onUpdateLeadStatus={onUpdateLeadStatus}
-                onUpdateLeadOutcome={onUpdateLeadOutcome}
-                onUpdateLeadStage={onUpdateLeadStage}
-                onUpdateLeadNotes={onUpdateLeadNotes}
-                onUpdateLeadReminder={onUpdateLeadReminder}
-                onUpdateLeadHomeowner={onUpdateLeadHomeowner}
-              />
-            </div>
+            {/* Active pipeline leads (not won/lost) */}
+            {pipelineLeads.length > 0 && (
+              <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-300">
+                  Active Pipeline
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  {pipelineLeads.length} lead{pipelineLeads.length === 1 ? '' : 's'} in progress
+                </p>
+                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                  {pipelineLeads.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onFocusLead={onFocusLead}
+                      onUpdateLeadStatus={onUpdateLeadStatus}
+                      onUpdateLeadOutcome={onUpdateLeadOutcome}
+                      onUpdateLeadStage={onUpdateLeadStage}
+                      onUpdateLeadNotes={onUpdateLeadNotes}
+                      onUpdateLeadReminder={onUpdateLeadReminder}
+                      onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
+                      onUpdateLeadHomeowner={onUpdateLeadHomeowner}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Won leads */}
+            {wonLeads.length > 0 && (
+              <section className="rounded-[28px] border border-emerald-500/20 bg-emerald-500/[0.04] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
+                  Won Jobs
+                </p>
+                <p className="mt-2 text-sm text-slate-400">
+                  {wonLeads.length} closed deal{wonLeads.length === 1 ? '' : 's'} ready for follow-up
+                </p>
+                <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                  {wonLeads.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onFocusLead={onFocusLead}
+                      onUpdateLeadStatus={onUpdateLeadStatus}
+                      onUpdateLeadOutcome={onUpdateLeadOutcome}
+                      onUpdateLeadStage={onUpdateLeadStage}
+                      onUpdateLeadNotes={onUpdateLeadNotes}
+                      onUpdateLeadReminder={onUpdateLeadReminder}
+                      onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
+                      onUpdateLeadHomeowner={onUpdateLeadHomeowner}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* Lost leads (collapsed) */}
+            {lostLeads.length > 0 && (
+              <CollapsibleSection
+                title={`Lost (${lostLeads.length})`}
+                accent="slate"
+              >
+                <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                  {lostLeads.map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      onFocusLead={onFocusLead}
+                      onUpdateLeadStatus={onUpdateLeadStatus}
+                      onUpdateLeadOutcome={onUpdateLeadOutcome}
+                      onUpdateLeadStage={onUpdateLeadStage}
+                      onUpdateLeadNotes={onUpdateLeadNotes}
+                      onUpdateLeadReminder={onUpdateLeadReminder}
+                      onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
+                      onUpdateLeadHomeowner={onUpdateLeadHomeowner}
+                    />
+                  ))}
+                </div>
+              </CollapsibleSection>
+            )}
 
             {archivedLeads.length > 0 && (
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Archived Leads
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-white">
-                  Leads saved from completed canvass days
-                </h3>
-                <div className="mt-5 grid gap-4 lg:grid-cols-2">
+              <CollapsibleSection
+                title={`Archived Leads (${archivedLeads.length})`}
+                accent="slate"
+              >
+                <div className="mt-4 grid gap-4 lg:grid-cols-2">
                   {archivedLeads.map((entry) => (
                     <ArchivedLeadCard
                       key={`${entry.archiveId}-${entry.stop.id}`}
@@ -190,7 +259,7 @@ export default function LeadsPage({
                     />
                   ))}
                 </div>
-              </section>
+              </CollapsibleSection>
             )}
           </>
         )}
@@ -199,81 +268,42 @@ export default function LeadsPage({
   );
 }
 
-function LeadMetric({ label, value }: { label: string; value: string }) {
+function StageMetric({ stage, count }: { stage: LeadStage; count: number }) {
+  const cfg = STAGE_CONFIG[stage];
   return (
-    <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-5">
-      <p className="text-3xl font-semibold tracking-tight text-white">{value}</p>
-      <p className="mt-1 text-sm text-slate-400">{label}</p>
+    <div className={`rounded-[24px] border ${cfg.border} ${cfg.bg} p-4`}>
+      <p className="text-3xl font-semibold tracking-tight text-white">{count}</p>
+      <p className={`mt-1 text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
     </div>
   );
 }
 
-function LeadColumn({
+function CollapsibleSection({
   title,
-  subtitle,
-  leads,
-  emptyLabel,
   accent,
-  onFocusLead,
-  onUpdateLeadStatus,
-  onUpdateLeadOutcome,
-  onUpdateLeadStage,
-  onUpdateLeadNotes,
-  onUpdateLeadReminder,
-  onUpdateLeadHomeowner,
+  children,
 }: {
   title: string;
-  subtitle: string;
-  leads: CanvassRouteStop[];
-  emptyLabel: string;
-  accent: 'rose' | 'violet' | 'amber';
-  onFocusLead: (stop: CanvassRouteStop) => void;
-  onUpdateLeadStatus: (stopId: string, status: CanvassStopStatus) => void;
-  onUpdateLeadOutcome: (stopId: string, outcome: CanvassOutcome) => void;
-  onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
-  onUpdateLeadNotes: (stopId: string, notes: string) => void;
-  onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
-  onUpdateLeadHomeowner: (
-    stopId: string,
-    field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
-    value: string,
-  ) => void;
+  accent: 'slate' | 'emerald';
+  children: React.ReactNode;
 }) {
-  const accentClass =
-    accent === 'rose'
-      ? 'text-rose-300'
-      : accent === 'violet'
-        ? 'text-violet-300'
-        : 'text-amber-300';
+  const [open, setOpen] = useState(false);
+  const borderClass = accent === 'emerald' ? 'border-emerald-500/15' : 'border-slate-800';
+  const textClass = accent === 'emerald' ? 'text-emerald-300' : 'text-slate-500';
 
   return (
-    <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-      <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${accentClass}`}>
-        {title}
-      </p>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{subtitle}</p>
-
-      <div className="mt-5 grid gap-4">
-        {leads.length > 0 ? (
-          leads.map((lead) => (
-            <LeadCard
-              key={lead.id}
-              lead={lead}
-              onFocusLead={onFocusLead}
-              onUpdateLeadStatus={onUpdateLeadStatus}
-              onUpdateLeadOutcome={onUpdateLeadOutcome}
-              onUpdateLeadStage={onUpdateLeadStage}
-              onUpdateLeadNotes={onUpdateLeadNotes}
-              onUpdateLeadReminder={onUpdateLeadReminder}
-              onUpdateLeadHomeowner={onUpdateLeadHomeowner}
-            />
-          ))
-        ) : (
-          <div className="rounded-2xl border border-dashed border-slate-800 bg-black/20 p-4 text-sm text-slate-500">
-            {emptyLabel}
-          </div>
-        )}
-      </div>
+    <section className={`rounded-[28px] border ${borderClass} bg-slate-950/82 p-5`}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between"
+      >
+        <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${textClass}`}>
+          {title}
+        </p>
+        <span className="text-slate-500 text-xs">{open ? 'Hide' : 'Show'}</span>
+      </button>
+      {open && children}
     </section>
   );
 }
@@ -286,6 +316,7 @@ function LeadCard({
   onUpdateLeadStage,
   onUpdateLeadNotes,
   onUpdateLeadReminder,
+  onUpdateLeadAssignedRep,
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
@@ -295,17 +326,40 @@ function LeadCard({
   onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
   onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
+  onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
     value: string,
   ) => void;
 }) {
+  const stageCfg = STAGE_CONFIG[lead.leadStage];
+  const urgency = getReminderUrgency(lead.reminderAt);
+
+  const urgencyBadge = urgency === 'overdue'
+    ? 'border-red-400/40 bg-red-500/15 text-red-300'
+    : urgency === 'today'
+      ? 'border-amber-400/40 bg-amber-500/15 text-amber-300'
+      : urgency === 'upcoming'
+        ? 'border-sky-400/30 bg-sky-500/10 text-sky-300'
+        : '';
+
   return (
     <article className="rounded-3xl border border-slate-800 bg-slate-900/72 p-4">
+      {/* Header row */}
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-base font-semibold text-white">{lead.stormLabel}</p>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${stageCfg.border} ${stageCfg.bg} ${stageCfg.color}`}>
+              {stageCfg.label}
+            </span>
+            {urgency !== 'none' && lead.reminderAt && (
+              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold ${urgencyBadge}`}>
+                {urgency === 'overdue' ? 'Overdue' : urgency === 'today' ? 'Due Today' : formatShortDate(lead.reminderAt)}
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-base font-semibold text-white">{lead.stormLabel}</p>
           <p className="mt-1 text-sm text-slate-400">{lead.locationLabel}</p>
         </div>
         <button
@@ -313,19 +367,60 @@ function LeadCard({
           onClick={() => onFocusLead(lead)}
           className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
         >
-          Open on Map
+          Map
         </button>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
-        <span>{lead.reportCount} reports</span>
-        <span>{lead.topHailInches > 0 ? `${lead.topHailInches}" hail` : 'hail swath'}</span>
-        <span>{lead.evidenceCount} proof</span>
-        <span className="text-orange-200">{lead.priority}</span>
-        <span className="text-violet-200">{formatLeadStageLabel(lead.leadStage)}</span>
-        {lead.reminderAt && <span className="text-amber-200">Due {lead.reminderAt}</span>}
+      {/* Storm context badges */}
+      <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
+        <span className="rounded-full border border-slate-800 bg-slate-950/80 px-2 py-0.5 text-slate-300">
+          {lead.reportCount} reports
+        </span>
+        <span className="rounded-full border border-slate-800 bg-slate-950/80 px-2 py-0.5 text-slate-300">
+          {lead.topHailInches > 0 ? `${lead.topHailInches}" hail` : 'hail swath'}
+        </span>
+        <span className="rounded-full border border-slate-800 bg-slate-950/80 px-2 py-0.5 text-slate-300">
+          {lead.evidenceCount} proof
+        </span>
+        <span className="rounded-full border border-orange-400/25 bg-orange-500/10 px-2 py-0.5 text-orange-200">
+          {lead.priority}
+        </span>
+        {lead.assignedRep && (
+          <span className="rounded-full border border-violet-400/25 bg-violet-500/10 px-2 py-0.5 text-violet-200">
+            {lead.assignedRep}
+          </span>
+        )}
       </div>
 
+      {/* Stage pipeline - visual progression */}
+      <div className="mt-4">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-2">Stage</p>
+        <div className="flex gap-1">
+          {(['new', 'contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => {
+            const cfg = STAGE_CONFIG[stage];
+            const isActive = lead.leadStage === stage;
+            const isPast = cfg.order < STAGE_CONFIG[lead.leadStage].order && lead.leadStage !== 'lost';
+            return (
+              <button
+                key={stage}
+                type="button"
+                onClick={() => onUpdateLeadStage(lead.id, stage)}
+                className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold transition-all ${
+                  isActive
+                    ? `${cfg.border} ${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}`
+                    : isPast
+                      ? 'border-slate-700 bg-slate-800/50 text-slate-400'
+                      : 'border-slate-800 bg-slate-950 text-slate-600 hover:border-slate-700 hover:text-slate-400'
+                }`}
+              >
+                {cfg.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Quick actions row */}
       <div className="mt-4 flex flex-wrap gap-2">
         {(
           [
@@ -346,9 +441,7 @@ function LeadCard({
             {label}
           </button>
         ))}
-      </div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="mx-1 border-l border-slate-800" />
         {(
           [
             ['interested', 'Interested'],
@@ -371,31 +464,56 @@ function LeadCard({
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {(
-          [
-            ['new', 'New'],
-            ['contacted', 'Contacted'],
-            ['inspection_set', 'Inspection Set'],
-            ['won', 'Won'],
-            ['lost', 'Lost'],
-          ] as Array<[LeadStage, string]>
-        ).map(([leadStage, label]) => (
-          <button
-            key={`${lead.id}-${leadStage}`}
-            type="button"
-            onClick={() => onUpdateLeadStage(lead.id, leadStage)}
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-              lead.leadStage === leadStage
-                ? 'border-fuchsia-400/40 bg-fuchsia-500/20 text-fuchsia-100'
-                : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+      {/* Rep assignment + Reminder row */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+            Assigned Rep
+          </label>
+          <input
+            value={lead.assignedRep || ''}
+            onChange={(event) => onUpdateLeadAssignedRep(lead.id, event.target.value)}
+            placeholder="Rep name"
+            className="mt-1 w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+            Reminder
+          </label>
+          <div className="mt-1 flex gap-1.5">
+            <input
+              type="date"
+              value={lead.reminderAt || ''}
+              onChange={(event) => onUpdateLeadReminder(lead.id, event.target.value)}
+              className="min-w-0 flex-1 rounded-2xl border border-slate-800 bg-slate-950 px-2.5 py-2 text-sm text-white focus:border-orange-400/40 focus:outline-none"
+            />
+            <button
+              type="button"
+              onClick={() => onUpdateLeadReminder(lead.id, getQuickDate('today'))}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:border-amber-400/30 hover:text-amber-300"
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateLeadReminder(lead.id, getQuickDate('tomorrow'))}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:border-amber-400/30 hover:text-amber-300"
+            >
+              Tmrw
+            </button>
+            <button
+              type="button"
+              onClick={() => onUpdateLeadReminder(lead.id, getQuickDate('next_week'))}
+              className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:border-amber-400/30 hover:text-amber-300"
+            >
+              +7d
+            </button>
+          </div>
+        </div>
       </div>
 
+      {/* Homeowner fields */}
       <div className="mt-4 grid gap-3 md:grid-cols-3">
         <input
           value={lead.homeownerName || ''}
@@ -423,23 +541,11 @@ function LeadCard({
         />
       </div>
 
-      <div className="mt-4">
-        <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-          Reminder Date
-        </label>
-        <input
-          type="date"
-          value={lead.reminderAt || ''}
-          onChange={(event) => onUpdateLeadReminder(lead.id, event.target.value)}
-          className="mt-2 rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-orange-400/40 focus:outline-none"
-        />
-      </div>
-
       <textarea
         value={lead.notes}
         onChange={(event) => onUpdateLeadNotes(lead.id, event.target.value)}
         placeholder="Lead notes, scheduling details, next touch..."
-        className="mt-4 h-24 w-full resize-none rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+        className="mt-4 h-20 w-full resize-none rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
       />
     </article>
   );
@@ -454,16 +560,23 @@ function ArchivedLeadCard({
   onFocusLead: (stop: CanvassRouteStop) => void;
   onRestoreArchive: (archiveId: string) => void;
 }) {
+  const stageCfg = STAGE_CONFIG[lead.stop.leadStage];
+
   return (
     <article className="rounded-3xl border border-slate-800 bg-slate-900/72 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-base font-semibold text-white">{lead.stop.stormLabel}</p>
+          <div className="flex items-center gap-2">
+            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${stageCfg.border} ${stageCfg.bg} ${stageCfg.color}`}>
+              {stageCfg.label}
+            </span>
+            <span className="rounded-full border border-slate-800 bg-slate-950 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+              Archived
+            </span>
+          </div>
+          <p className="mt-2 text-base font-semibold text-white">{lead.stop.stormLabel}</p>
           <p className="mt-1 text-sm text-slate-400">{lead.stop.locationLabel}</p>
         </div>
-        <span className="rounded-full border border-slate-800 bg-slate-950 px-3 py-1 text-[11px] font-semibold text-slate-300">
-          Archived
-        </span>
       </div>
 
       <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
@@ -524,19 +637,10 @@ function formatOutcomeLabel(outcome: CanvassOutcome): string {
   }
 }
 
-function formatLeadStageLabel(stage: LeadStage): string {
-  switch (stage) {
-    case 'contacted':
-      return 'Contacted';
-    case 'inspection_set':
-      return 'Inspection Set';
-    case 'won':
-      return 'Won';
-    case 'lost':
-      return 'Lost';
-    default:
-      return 'New';
-  }
+function formatShortDate(value: string): string {
+  const parsed = new Date(`${value}T12:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function compareLeadPriority(left: CanvassRouteStop, right: CanvassRouteStop): number {
