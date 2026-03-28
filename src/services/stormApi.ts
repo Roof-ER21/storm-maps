@@ -16,7 +16,9 @@ import type { StormEvent, BoundingBox } from '../types/storm';
 
 const OPTIONAL_STORM_SEARCH_API_BASE =
   (import.meta.env.VITE_STORM_SEARCH_API_BASE as string | undefined)?.trim() || '';
-const SWDI_FALLBACK_MAX_MONTHS = 24;
+const SWDI_MAX_MONTHS = 120;
+const SWDI_CHUNK_MS = 30 * 24 * 60 * 60 * 1000;
+const SWDI_BATCH_SIZE = 6;
 
 function appendEvents(target: StormEvent[], next: StormEvent[]): void {
   for (const event of next) {
@@ -32,7 +34,7 @@ function getFieldAssistantTimeoutMs(months: number): number {
 }
 
 function shouldUseSwdiFallback(months: number): boolean {
-  return months <= SWDI_FALLBACK_MAX_MONTHS;
+  return months <= SWDI_MAX_MONTHS;
 }
 
 function getOptionalSearchApiBase(): string | null {
@@ -230,7 +232,7 @@ export async function searchByCoordinates(
     }
   } else if (!shouldUseSwdiFallback(months)) {
     console.warn(
-      `[stormApi] No standalone search backend configured for ${months}-month event search; returning direct-source results only.`,
+      `[stormApi] No standalone search backend configured for ${months}-month event search, and SWDI is capped at ${SWDI_MAX_MONTHS} months.`,
     );
     return [];
   }
@@ -241,43 +243,59 @@ export async function searchByCoordinates(
   start.setMonth(start.getMonth() - months);
 
   const allEvents: StormEvent[] = [];
-  const chunkMs = 30 * 24 * 60 * 60 * 1000;
+  const chunks: Array<{ start: number; end: number }> = [];
   let chunkStart = start.getTime();
   const endMs = end.getTime();
 
   while (chunkStart < endMs) {
-    const chunkEnd = Math.min(chunkStart + chunkMs, endMs);
-    const s = formatSwdiDate(new Date(chunkStart));
-    const e = formatSwdiDate(new Date(chunkEnd));
+    const chunkEnd = Math.min(chunkStart + SWDI_CHUNK_MS, endMs);
+    chunks.push({ start: chunkStart, end: chunkEnd });
+    chunkStart = chunkEnd;
+  }
 
-    const url =
-      `https://www.ncei.noaa.gov/swdiws/json/nx3hail/${s}:${e}` +
-      `?center=${lng},${lat}&radius=${radius}`;
+  for (let index = 0; index < chunks.length; index += SWDI_BATCH_SIZE) {
+    const batch = chunks.slice(index, index + SWDI_BATCH_SIZE);
 
-    try {
-      const res = await fetch(url, {
-        signal: getTimeoutSignal(15000, signal),
-      });
-      if (signal?.aborted) {
-        return allEvents;
-      }
-      if (res.ok) {
-        const data: SwdiResponse = await res.json();
-        if (data.result && Array.isArray(data.result)) {
-          appendEvents(
-            allEvents,
-            data.result.map((r, idx) => parseSwdiRecord(r, allEvents.length + idx)),
-          );
+    const results = await Promise.allSettled(
+      batch.map(async (chunk) => {
+        const s = formatSwdiDate(new Date(chunk.start));
+        const e = formatSwdiDate(new Date(chunk.end));
+        const url =
+          `https://www.ncei.noaa.gov/swdiws/json/nx3hail/${s}:${e}` +
+          `?center=${lng},${lat}&radius=${radius}`;
+
+        const res = await fetch(url, {
+          signal: getTimeoutSignal(15000, signal),
+        });
+
+        if (!res.ok) {
+          throw new Error(`SWDI returned ${res.status} for ${s}:${e}`);
         }
-      }
-    } catch (err) {
-      if (signal?.aborted) {
-        return allEvents;
-      }
-      console.warn(`[stormApi] SWDI chunk ${s}:${e} failed:`, err);
+
+        const data: SwdiResponse = await res.json();
+        return {
+          dateRange: `${s}:${e}`,
+          records: data.result && Array.isArray(data.result) ? data.result : [],
+        };
+      }),
+    );
+
+    if (signal?.aborted) {
+      return allEvents;
     }
 
-    chunkStart = chunkEnd;
+    for (const result of results) {
+      if (result.status === 'fulfilled') {
+        appendEvents(
+          allEvents,
+          result.value.records.map((record, recordIndex) =>
+            parseSwdiRecord(record, allEvents.length + recordIndex),
+          ),
+        );
+      } else {
+        console.warn('[stormApi] SWDI chunk failed:', result.reason);
+      }
+    }
   }
 
   return allEvents;
