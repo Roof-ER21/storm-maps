@@ -633,6 +633,12 @@ function MapContent({
     mrmsHistoricalMode && !historicalMrmsParams
       ? 'Historical MRMS requires selected storm bounds.'
       : mrmsError;
+  const historicalMrmsBounds = mrmsMeta?.bounds || historicalMrmsParams?.bounds || null;
+  const canRenderHistoricalMrms =
+    showMrms &&
+    mrmsHistoricalMode &&
+    Boolean(historicalMrmsUrl && historicalMrmsBounds) &&
+    !effectiveMrmsLoading;
   const polygonSwathsForSelectedDate = useMemo(
     () =>
       selectedDate
@@ -757,8 +763,16 @@ function MapContent({
       .then((metadata) => {
         if (cancelled) return;
         if (!metadata) {
-          setMrmsMeta(null);
-          setMrmsError('Historical MRMS archive is unavailable right now.');
+          setMrmsMeta({
+            product: 'mesh1440',
+            ref_time: historicalMrmsParams.anchorTimestamp || historicalMrmsParams.date,
+            generated_at: undefined,
+            has_hail: true,
+            max_mesh_inches: undefined,
+            hail_pixels: undefined,
+            bounds: historicalMrmsParams.bounds,
+          });
+          setMrmsError(null);
           return;
         }
 
@@ -774,12 +788,17 @@ function MapContent({
       })
       .catch((error) => {
         if (!cancelled) {
-          setMrmsMeta(null);
-          setMrmsError(
-            error instanceof Error
-              ? error.message
-              : 'Failed to load archived MRMS hail raster.',
-          );
+          console.warn('[StormMap] Historical MRMS metadata unavailable, using direct overlay fallback.', error);
+          setMrmsMeta({
+            product: 'mesh1440',
+            ref_time: historicalMrmsParams.anchorTimestamp || historicalMrmsParams.date,
+            generated_at: undefined,
+            has_hail: true,
+            max_mesh_inches: undefined,
+            hail_pixels: undefined,
+            bounds: historicalMrmsParams.bounds,
+          });
+          setMrmsError(null);
         }
       })
       .finally(() => {
@@ -1016,14 +1035,11 @@ function MapContent({
 
       <MRMSOverlay
         visible={
-          showMrms &&
-          mrmsHistoricalMode &&
-          !effectiveMrmsLoading &&
-          Boolean(mrmsMeta?.has_hail && mrmsMeta?.bounds)
+          canRenderHistoricalMrms
         }
         product="mesh1440"
         opacity={0.72}
-        bounds={mrmsMeta?.bounds || null}
+        bounds={historicalMrmsBounds}
         url={historicalMrmsUrl}
         refreshMs={null}
       />
