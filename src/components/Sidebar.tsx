@@ -43,6 +43,7 @@ interface SidebarProps {
 }
 
 type TabId = 'recent' | 'impact';
+type DateListFilter = 'all' | 'major' | 'proof' | 'knock';
 
 export default function Sidebar({
   stormDates,
@@ -76,6 +77,7 @@ export default function Sidebar({
   const [selectedDateOfLoss, setSelectedDateOfLoss] = useState('');
   const [showSelectedStormDetails, setShowSelectedStormDetails] = useState(false);
   const [compactList, setCompactList] = useState(true);
+  const [dateListFilter, setDateListFilter] = useState<DateListFilter>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sortedDates = [...stormDates].sort((a, b) => {
@@ -135,6 +137,34 @@ export default function Sidebar({
     }
     return counts;
   }, [evidenceItems]);
+  const displayedDates = useMemo(() => {
+    return sortedDates.filter((stormDate) => {
+      const evidenceCount = evidenceCountsByDate.get(stormDate.date) || 0;
+      const priority = getCanvassPriority(stormDate, evidenceCount);
+
+      if (dateListFilter === 'major') {
+        return stormDate.maxHailInches >= 1.5;
+      }
+
+      if (dateListFilter === 'proof') {
+        return evidenceCount > 0;
+      }
+
+      if (dateListFilter === 'knock') {
+        return priority === 'Knock now';
+      }
+
+      return true;
+    });
+  }, [dateListFilter, evidenceCountsByDate, sortedDates]);
+  const knockQueue = useMemo(
+    () =>
+      sortedDates.filter((stormDate) => {
+        const evidenceCount = evidenceCountsByDate.get(stormDate.date) || 0;
+        return getCanvassPriority(stormDate, evidenceCount) === 'Knock now';
+      }).slice(0, 3),
+    [evidenceCountsByDate, sortedDates],
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -582,6 +612,47 @@ export default function Sidebar({
               {compactList ? 'Comfort' : 'Compact'}
             </button>
           </div>
+          <div className="flex gap-1.5 overflow-x-auto px-3 pb-2">
+            <ListFilterChip
+              active={dateListFilter === 'all'}
+              label={`All ${sortedDates.length}`}
+              onClick={() => setDateListFilter('all')}
+            />
+            <ListFilterChip
+              active={dateListFilter === 'major'}
+              label={'1.5"+'}
+              onClick={() => setDateListFilter('major')}
+            />
+            <ListFilterChip
+              active={dateListFilter === 'proof'}
+              label="With Proof"
+              onClick={() => setDateListFilter('proof')}
+            />
+            <ListFilterChip
+              active={dateListFilter === 'knock'}
+              label="Knock Now"
+              onClick={() => setDateListFilter('knock')}
+            />
+          </div>
+          {knockQueue.length > 0 && (
+            <div className="border-t border-gray-800 px-3 py-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+                Canvass Queue
+              </p>
+              <div className="mt-1 flex gap-1.5 overflow-x-auto pb-1">
+                {knockQueue.map((stormDate) => (
+                  <button
+                    key={`queue-${stormDate.date}`}
+                    type="button"
+                    onClick={() => handleDateClick(stormDate)}
+                    className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-[11px] font-semibold text-orange-100"
+                  >
+                    {stormDate.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {loading && (
@@ -597,7 +668,7 @@ export default function Sidebar({
           </div>
         )}
 
-        {!loading && !error && sortedDates.length === 0 && (
+        {!loading && !error && displayedDates.length === 0 && (
           <div className="p-4 text-center">
             <p className="text-sm text-gray-500">No storm dates found</p>
             <p className="text-xs text-gray-600 mt-1">
@@ -608,7 +679,7 @@ export default function Sidebar({
           </div>
         )}
 
-        {sortedDates.map((sd) => (
+        {displayedDates.map((sd) => (
           <StormDateCard
             key={sd.date}
             stormDate={sd}
@@ -617,6 +688,9 @@ export default function Sidebar({
             compact={compactList}
             events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
             evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
+            generatingReport={generatingReport}
+            onGenerateReport={onGenerateReport}
+            onOpenEvidence={onOpenEvidence}
             onClick={() => handleDateClick(sd)}
             onToggleExpand={(e) => toggleExpand(sd.date, e)}
           />
@@ -722,6 +796,30 @@ function SelectedStormMetric({
       </p>
       <p className="mt-1 text-sm font-semibold text-white">{value}</p>
     </div>
+  );
+}
+
+function ListFilterChip({
+  active,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+        active
+          ? 'border-orange-400/60 bg-orange-500/15 text-orange-100'
+          : 'border-gray-800 bg-gray-900 text-gray-400 hover:bg-gray-800'
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -917,6 +1015,9 @@ function StormDateCard({
   compact,
   events: dateEvents,
   evidenceCount,
+  generatingReport,
+  onGenerateReport,
+  onOpenEvidence,
   onClick,
   onToggleExpand,
 }: {
@@ -926,6 +1027,9 @@ function StormDateCard({
   compact: boolean;
   events: StormEvent[];
   evidenceCount: number;
+  generatingReport: boolean;
+  onGenerateReport: (dateOfLoss: string) => Promise<void>;
+  onOpenEvidence: () => void;
   onClick: () => void;
   onToggleExpand: (e: React.MouseEvent) => void;
 }) {
@@ -1033,6 +1137,41 @@ function StormDateCard({
           </div>
         </div>
       </div>
+
+      {isSelected && (
+        <div className="border-t border-gray-800/60 px-3 pb-2">
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                void onGenerateReport(stormDate.date);
+              }}
+              disabled={generatingReport}
+              className="rounded-lg bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-950 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50"
+            >
+              {generatingReport ? 'Generating...' : 'PDF'}
+            </button>
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOpenEvidence();
+              }}
+              className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-black/30"
+            >
+              Proof
+            </button>
+            <button
+              type="button"
+              onClick={onToggleExpand}
+              className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-gray-300 transition-colors hover:bg-black/30"
+            >
+              {isExpanded ? 'Hide Hits' : 'Show Hits'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {isExpanded && (
         <div className="px-3 pb-3 border-t border-gray-800/50">
