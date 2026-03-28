@@ -2,7 +2,7 @@
  * Sidebar — Property-search-first storm date list with range controls.
  */
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   CanvassingAlert,
   EvidenceItem,
@@ -74,6 +74,7 @@ export default function Sidebar({
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
   const [showDateOfLossModal, setShowDateOfLossModal] = useState(false);
   const [selectedDateOfLoss, setSelectedDateOfLoss] = useState('');
+  const [showSelectedStormDetails, setShowSelectedStormDetails] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sortedDates = [...stormDates].sort((a, b) => {
@@ -165,6 +166,12 @@ export default function Sidebar({
       // Parent already handles the user-visible error.
     }
   };
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setShowSelectedStormDetails(false);
+    });
+  }, [selectedDate?.date]);
 
   return (
     <aside className="flex max-h-[48vh] w-full shrink-0 flex-col border-b border-slate-800 bg-slate-950 text-white min-h-0 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r">
@@ -335,12 +342,12 @@ export default function Sidebar({
             </p>
             <span className="text-[10px] text-gray-600">newest first</span>
           </div>
-          <div className="mt-2 grid gap-2">
+          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
             {latestStorms.map((stormDate) => (
               <button
                 key={`latest-${stormDate.date}`}
                 onClick={() => handleDateClick(stormDate)}
-                className={`rounded-xl border px-3 py-2 text-left transition-colors ${
+                className={`min-w-[11rem] shrink-0 rounded-xl border px-3 py-2 text-left transition-colors ${
                   selectedDate?.date === stormDate.date
                     ? 'border-orange-400/70 bg-orange-500/10'
                     : 'border-gray-800 bg-gray-900/70 hover:bg-gray-900'
@@ -433,60 +440,79 @@ export default function Sidebar({
             >
               Open Report Workspace
             </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSelectedStormDetails((current) => !current)}
+              className="mt-2 flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-black/25"
+            >
+              <span>
+                {showSelectedStormDetails ? 'Hide' : 'Show'} Storm Details
+              </span>
+              <span className="text-orange-200">
+                {showSelectedStormDetails ? '−' : '+'}
+              </span>
+            </button>
           </div>
 
-          <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-950/80 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                Strongest Hits
-              </p>
-              <span className="text-[10px] text-gray-600">
-                top {rankedStormHits.length}
-              </span>
-            </div>
+          {showSelectedStormDetails && (
+            <>
+              <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-950/80 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                    Strongest Hits
+                  </p>
+                  <span className="text-[10px] text-gray-600">
+                    top {rankedStormHits.length}
+                  </span>
+                </div>
 
-            {rankedStormHits.length > 0 ? (
-              <div className="mt-3 space-y-2">
-                {rankedStormHits.map((event) => (
-                  <div
-                    key={event.id}
-                    className="rounded-xl border border-gray-800 bg-black/20 px-3 py-2"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-white">
-                          {formatEventMagnitude(event)}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-400">
-                          {formatEventLocation(event)}
+                {rankedStormHits.length > 0 ? (
+                  <div className="mt-3 space-y-2">
+                    {rankedStormHits.map((event) => (
+                      <div
+                        key={event.id}
+                        className="rounded-xl border border-gray-800 bg-black/20 px-3 py-2"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white">
+                              {formatEventMagnitude(event)}
+                            </p>
+                            <p className="mt-1 text-xs text-gray-400">
+                              {formatEventLocation(event)}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-300">
+                            {formatEventTime(event.beginDate)}
+                          </span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 text-[11px] text-gray-500">
+                          {event.narrative || event.source}
                         </p>
                       </div>
-                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-300">
-                        {formatEventTime(event.beginDate)}
-                      </span>
-                    </div>
-                    <p className="mt-2 line-clamp-2 text-[11px] text-gray-500">
-                      {event.narrative || event.source}
-                    </p>
+                    ))}
                   </div>
-                ))}
+                ) : (
+                  <p className="mt-3 text-xs text-gray-500">
+                    No ranked storm reports are available for this selected date yet.
+                  </p>
+                )}
               </div>
-            ) : (
-              <p className="mt-3 text-xs text-gray-500">
-                No ranked storm reports are available for this selected date yet.
-              </p>
-            )}
-          </div>
 
-          <EvidenceThumbnailStrip
-            items={selectedStormEvidence}
-            title={`${selectedDate.label} Proof`}
-            subtitle="Photos, videos, and source evidence tied to the selected storm date."
-            emptyLabel="No evidence is attached to this selected storm date yet."
-            onOpenEvidence={onOpenEvidence}
-            compact
-            prioritizeIncluded
-          />
+              <div className="mt-3">
+                <EvidenceThumbnailStrip
+                  items={selectedStormEvidence}
+                  title={`${selectedDate.label} Proof`}
+                  subtitle="Photos, videos, and source evidence tied to the selected storm date."
+                  emptyLabel="No evidence is attached to this selected storm date yet."
+                  onOpenEvidence={onOpenEvidence}
+                  compact
+                  prioritizeIncluded
+                />
+              </div>
+            </>
+          )}
         </div>
       )}
 
