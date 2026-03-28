@@ -47,6 +47,7 @@ import SearchBar from './components/SearchBar';
 import Legend from './components/Legend';
 import AppHeader from './components/AppHeader';
 import DashboardPage from './components/DashboardPage';
+import CanvassPage from './components/CanvassPage';
 import PinnedPropertiesPage from './components/PinnedPropertiesPage';
 import ReportsPage from './components/ReportsPage';
 import EvidencePage from './components/EvidencePage';
@@ -394,6 +395,68 @@ function downloadRouteSummary(params: {
     .replace(/^-+|-+$/g, '');
   anchor.href = url;
   anchor.download = `hail-yes-route-summary-${safeProperty || 'route'}-${Date.now()}.txt`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function downloadRouteCsv(params: {
+  propertyLabel: string | null;
+  stops: CanvassRouteStop[];
+}): void {
+  const rows = [
+    [
+      'property',
+      'storm_date',
+      'storm_label',
+      'location',
+      'source',
+      'hail_inches',
+      'report_count',
+      'evidence_count',
+      'priority',
+      'status',
+      'outcome',
+      'notes',
+      'visited_at',
+      'completed_at',
+      'lat',
+      'lng',
+    ],
+    ...params.stops.map((stop) => [
+      params.propertyLabel || '',
+      stop.stormDate,
+      stop.stormLabel,
+      stop.locationLabel,
+      stop.sourceLabel,
+      String(stop.topHailInches),
+      String(stop.reportCount),
+      String(stop.evidenceCount),
+      stop.priority,
+      stop.status,
+      stop.outcome,
+      stop.notes.replaceAll('"', '""'),
+      stop.visitedAt || '',
+      stop.completedAt || '',
+      String(stop.lat),
+      String(stop.lng),
+    ]),
+  ];
+
+  const csv = rows
+    .map((row) => row.map((value) => `"${value}"`).join(','))
+    .join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  const safeProperty = (params.propertyLabel || 'route')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  anchor.href = url;
+  anchor.download = `hail-yes-route-summary-${safeProperty || 'route'}-${Date.now()}.csv`;
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
@@ -1363,6 +1426,13 @@ function App() {
     });
   }, [orderedRouteStops, searchSummary]);
 
+  const handleExportRouteCsv = useCallback(() => {
+    downloadRouteCsv({
+      propertyLabel: searchSummary?.locationLabel ?? null,
+      stops: orderedRouteStops,
+    });
+  }, [orderedRouteStops, searchSummary]);
+
   const handleUploadEvidenceFiles = useCallback(async (
     files: FileList,
     stormDate: string | null,
@@ -1846,10 +1916,7 @@ function App() {
             onOpenPinnedProperty={handleOpenPinnedProperty}
             onOpenEvidence={() => setActiveView('evidence')}
             onOpenReports={() => setActiveView('reports')}
-            onOpenCanvass={() => {
-              setActiveView('map');
-              setShowRoutePanel(true);
-            }}
+            onOpenCanvass={() => setActiveView('canvass')}
           />
         )}
 
@@ -1887,6 +1954,27 @@ function App() {
 
             {mapWorkspace}
           </div>
+        )}
+
+        {activeView === 'canvass' && (
+          <CanvassPage
+            searchSummary={searchSummary}
+            routeStops={orderedRouteStops}
+            onOpenMap={() => setActiveView('map')}
+            onFocusStop={(stop) => {
+              focusRouteStop(stop);
+              setActiveView('map');
+            }}
+            onBuildKnockRoute={handleBuildKnockRoute}
+            onOpenNavigation={handleOpenRouteNavigation}
+            onExportSummary={handleExportRouteSummary}
+            onExportCsv={handleExportRouteCsv}
+            onClearRoute={handleClearRoute}
+            onUpdateStopStatus={handleUpdateRouteStopStatus}
+            onUpdateStopOutcome={handleUpdateRouteStopOutcome}
+            onUpdateStopNotes={handleUpdateRouteStopNotes}
+            onRemoveStop={handleRemoveStopFromRoute}
+          />
         )}
 
         {activeView === 'pinned' && (

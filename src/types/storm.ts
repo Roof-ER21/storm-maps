@@ -54,7 +54,13 @@ export type SearchResultType =
 
 export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
 
-export type AppView = 'dashboard' | 'map' | 'pinned' | 'reports' | 'evidence';
+export type AppView =
+  | 'dashboard'
+  | 'map'
+  | 'canvass'
+  | 'pinned'
+  | 'reports'
+  | 'evidence';
 
 // ============================================================
 // Storm Event Types
