@@ -94,6 +94,24 @@ export default function Sidebar({
       .filter((item) => item.stormDate === selectedDate.date)
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   }, [evidenceItems, selectedDate]);
+  const selectedDateEvents = useMemo(() => {
+    if (!selectedDate) {
+      return [];
+    }
+
+    return events.filter((event) => event.beginDate.slice(0, 10) === selectedDate.date);
+  }, [events, selectedDate]);
+  const selectedStormSources = useMemo(() => {
+    const ranked = new Map<string, number>();
+    for (const event of selectedDateEvents) {
+      ranked.set(event.source, (ranked.get(event.source) || 0) + 1);
+    }
+
+    return [...ranked.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 3)
+      .map(([source]) => source);
+  }, [selectedDateEvents]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -327,6 +345,56 @@ export default function Sidebar({
 
       {selectedDate && (
         <div className="border-b border-gray-800 px-3 py-3">
+          <div className="rounded-2xl border border-orange-500/20 bg-[linear-gradient(135deg,rgba(249,115,22,0.16),rgba(124,58,237,0.14))] p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-200">
+                  Selected Storm
+                </p>
+                <h3 className="mt-1 text-base font-semibold text-white">
+                  {selectedDate.label}
+                </h3>
+                <p className="mt-1 text-xs text-orange-50/90">
+                  Historical MRMS is now the primary hail footprint for this storm on the map.
+                </p>
+              </div>
+              <span
+                className="rounded-full px-2 py-1 text-[11px] font-bold"
+                style={{
+                  backgroundColor: `${getHailSizeClass(selectedDate.maxHailInches)?.color || '#fb923c'}20`,
+                  color: getHailSizeClass(selectedDate.maxHailInches)?.color || '#fb923c',
+                }}
+              >
+                {selectedDate.maxHailInches > 0 ? `${selectedDate.maxHailInches}"` : '--'}
+              </span>
+            </div>
+
+            <div className="mt-3 grid grid-cols-3 gap-2">
+              <SelectedStormMetric
+                label="Reports"
+                value={String(selectedDate.eventCount)}
+              />
+              <SelectedStormMetric
+                label="Wind"
+                value={
+                  selectedDate.maxWindMph > 0
+                    ? `${selectedDate.maxWindMph.toFixed(0)} mph`
+                    : 'None'
+                }
+              />
+              <SelectedStormMetric
+                label="Proof"
+                value={String(selectedStormEvidence.length)}
+              />
+            </div>
+
+            {selectedStormSources.length > 0 && (
+              <p className="mt-3 text-[11px] text-orange-50/80">
+                Primary sources: {selectedStormSources.join(' · ')}
+              </p>
+            )}
+          </div>
+
           <EvidenceThumbnailStrip
             items={selectedStormEvidence}
             title={`${selectedDate.label} Proof`}
@@ -503,6 +571,23 @@ export default function Sidebar({
         </div>
       )}
     </aside>
+  );
+}
+
+function SelectedStormMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-100/70">
+        {label}
+      </p>
+      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+    </div>
   );
 }
 

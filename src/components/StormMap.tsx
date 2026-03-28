@@ -503,6 +503,9 @@ function LayerStatusPanel({
 
           {mrmsHistoricalMode && (
             <>
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+                Selected storm mode
+              </p>
               {mrmsLoading && (
                 <p className="mt-2 text-xs text-gray-300">
                   Loading archived MRMS hail raster for {selectedDate}...
@@ -587,6 +590,7 @@ function MapContent({
   const [selectedDistanceMiles, setSelectedDistanceMiles] = useState<number | null>(null);
   const radarAutoFitKeyRef = useRef<string | null>(null);
   const mrmsAutoFitKeyRef = useRef<string | null>(null);
+  const previousSelectedDateRef = useRef<string | null>(null);
 
   const visibleEvents = useMemo(() => {
     if (!selectedDate) return events;
@@ -639,6 +643,25 @@ function MapContent({
     mrmsHistoricalMode &&
     Boolean(historicalMrmsUrl && historicalMrmsBounds) &&
     !effectiveMrmsLoading;
+
+  useEffect(() => {
+    if (!selectedDate) {
+      previousSelectedDateRef.current = null;
+      return;
+    }
+
+    if (previousSelectedDateRef.current === selectedDate) {
+      return;
+    }
+
+    previousSelectedDateRef.current = selectedDate;
+    queueMicrotask(() => {
+      setMrmsProduct('mesh1440');
+      setShowMrms(true);
+      setMrmsLoading(true);
+      setMrmsError(null);
+    });
+  }, [selectedDate]);
   const polygonSwathsForSelectedDate = useMemo(
     () =>
       selectedDate
