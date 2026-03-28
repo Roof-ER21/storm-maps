@@ -181,7 +181,7 @@ export async function generateEvidencePack({
   zip.file(
     'README.txt',
     [
-      `Storm Maps Evidence Pack`,
+      `Hail Yes! Evidence Pack`,
       `Property: ${address}`,
       `Date of Loss: ${dateOfLoss}`,
       `Evidence Count: ${evidenceItems.length}`,

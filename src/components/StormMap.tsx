@@ -509,7 +509,7 @@ function LayerStatusPanel({
                 </p>
               )}
               {mrmsError && (
-                <p className="mt-2 text-xs text-red-300">{mrmsError}</p>
+                <p className="mt-2 text-xs text-orange-300">{mrmsError}</p>
               )}
               {mrmsMeta && !mrmsLoading && !mrmsError && (
                 <>
@@ -540,7 +540,7 @@ function LayerStatusPanel({
           )}
 
           {!mrmsHistoricalMode && mrmsError && (
-            <p className="mt-2 text-xs text-red-300">{mrmsError}</p>
+            <p className="mt-2 text-xs text-orange-300">{mrmsError}</p>
           )}
 
           {!mrmsHistoricalMode && mrmsMeta && !mrmsLoading && !mrmsError && (
@@ -1056,7 +1056,7 @@ function MapContent({
             onClick={toggleMapType}
             className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
               mapTypeId === 'satellite'
-                ? 'bg-blue-600 text-white'
+                ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
                 : 'bg-white text-gray-700 hover:bg-gray-50'
             }`}
             title={

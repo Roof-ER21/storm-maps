@@ -128,7 +128,7 @@ export default function EvidencePage({
   };
 
   return (
-    <section className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-950 via-gray-950 to-black px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.12),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
         <div className="rounded-3xl border border-gray-900 bg-gray-950/80 p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-400">
@@ -251,7 +251,7 @@ export default function EvidencePage({
                       type="button"
                       onClick={handleSeedRegionalPack}
                       disabled={seedingRegional}
-                      className="rounded-2xl bg-sky-400 px-3 py-2 text-xs font-semibold text-gray-950 hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                      className="rounded-2xl bg-violet-400 px-3 py-2 text-xs font-semibold text-gray-950 hover:bg-violet-300 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
                     >
                       {seedingRegional ? 'Seeding...' : 'Seed Real Samples'}
                     </button>
@@ -382,8 +382,8 @@ export default function EvidencePage({
                               onClick={() => void onToggleEvidenceInReport(item.id)}
                               className={`rounded-xl px-3 py-2 text-xs font-semibold ${
                                 item.includeInReport
-                                  ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
-                                  : 'border border-gray-800 text-gray-300 hover:border-emerald-500/30 hover:text-emerald-300'
+                                  ? 'bg-violet-500/15 text-violet-300 hover:bg-violet-500/25'
+                                  : 'border border-gray-800 text-gray-300 hover:border-violet-500/30 hover:text-violet-300'
                               }`}
                             >
                               {item.includeInReport
@@ -394,7 +394,7 @@ export default function EvidencePage({
                           <button
                             type="button"
                             onClick={() => void onRemoveEvidenceItem(item.id)}
-                            className="rounded-xl border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-300 hover:border-red-500/30 hover:text-red-300"
+                            className="rounded-xl border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-300 hover:border-orange-500/30 hover:text-orange-300"
                           >
                             Remove
                           </button>
@@ -478,8 +478,8 @@ export default function EvidencePage({
                             onClick={() => void onToggleEvidenceInReport(item.id)}
                             className={`rounded-xl px-3 py-2 text-xs font-semibold ${
                               item.includeInReport
-                                ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
-                                : 'border border-gray-800 text-gray-300 hover:border-emerald-500/30 hover:text-emerald-300'
+                                ? 'bg-violet-500/15 text-violet-300 hover:bg-violet-500/25'
+                                : 'border border-gray-800 text-gray-300 hover:border-violet-500/30 hover:text-violet-300'
                             }`}
                           >
                             {item.includeInReport
@@ -490,7 +490,7 @@ export default function EvidencePage({
                         <button
                           type="button"
                           onClick={() => void onRemoveEvidenceItem(item.id)}
-                          className="rounded-xl border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-300 hover:border-red-500/30 hover:text-red-300"
+                          className="rounded-xl border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-300 hover:border-orange-500/30 hover:text-orange-300"
                         >
                           Remove
                         </button>
@@ -545,7 +545,7 @@ function StatusPill({ status }: { status: EvidenceItem['status'] }) {
     <span
       className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
         status === 'approved'
-          ? 'bg-emerald-500/15 text-emerald-300'
+          ? 'bg-violet-500/15 text-violet-300'
           : 'bg-amber-500/15 text-amber-300'
       }`}
     >

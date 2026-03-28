@@ -157,7 +157,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={handleInputFocus}
             placeholder="Search address or ZIP code..."
-            className="w-full pl-10 pr-10 py-2.5 bg-white/95 backdrop-blur-sm rounded-lg shadow-lg text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-red-500 placeholder-gray-400"
+            className="w-full rounded-lg bg-white/95 py-2.5 pl-10 pr-10 text-sm text-gray-900 shadow-lg backdrop-blur-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
             aria-label="Search address or ZIP code"
             aria-describedby={errorMsg ? 'search-error' : undefined}
             autoComplete="off"
@@ -186,7 +186,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
               className="absolute right-3 top-1/2 -translate-y-1/2"
               aria-label="Searching…"
             >
-              <div className="w-4 h-4 border-2 border-gray-300 border-t-red-500 rounded-full animate-spin" />
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-orange-400" />
             </div>
           ) : query.length > 0 ? (
             <button
@@ -218,7 +218,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
       {errorMsg && (
         <div
           id="search-error"
-          className="mt-1 px-3 py-1.5 bg-red-50 rounded-lg text-xs text-red-600 shadow"
+          className="mt-1 rounded-lg bg-orange-50 px-3 py-1.5 text-xs text-orange-700 shadow"
           role="alert"
         >
           {errorMsg}

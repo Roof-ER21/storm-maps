@@ -1,5 +1,5 @@
 /**
- * Storm Maps -- Main Application
+ * Hail Yes! -- Main Application
  *
  * Wires together GPS, storm data, hail alerts, sidebar, map,
  * and search into a single cohesive application.
@@ -91,7 +91,7 @@ function normalizeEvidenceItem(item: EvidenceItem): EvidenceItem {
 
 function App() {
   const notificationsSupported = isNotificationSupported();
-  const [activeView, setActiveView] = useState<AppView>('map');
+  const [activeView, setActiveView] = useState<AppView>('dashboard');
 
   // ---- Location state ----
   const [camera, setCamera] = useState<MapCameraState>({
@@ -257,7 +257,7 @@ function App() {
 
     const body = `${
       hailSize > 0 ? `${hailSize}" hail detected` : 'Hail activity detected'
-    }${stormDate ? ` from ${stormDate}` : ''}. Open Storm Maps for nearby reports.`;
+    }${stormDate ? ` from ${stormDate}` : ''}. Open Hail Yes! for nearby reports.`;
 
     void showHailZoneNotification({
       title: 'Hail Zone Alert',
@@ -904,7 +904,7 @@ function App() {
           onClick={isTracking ? stopTracking : startTracking}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold transition-colors ${
             isTracking
-              ? 'bg-blue-600 text-white'
+              ? 'bg-violet-600 text-white'
               : 'bg-white text-gray-700 hover:bg-gray-50'
           }`}
           title={isTracking ? 'Stop GPS tracking' : 'Start GPS tracking'}
@@ -931,7 +931,7 @@ function App() {
           </svg>
           {isTracking ? 'GPS On' : 'GPS'}
           {isTracking && gpsPosition && (
-            <span className="w-2 h-2 rounded-full bg-blue-300 animate-pulse" />
+            <span className="h-2 w-2 animate-pulse rounded-full bg-orange-300" />
           )}
         </button>
         {isTracking && gpsPosition && (
@@ -947,7 +947,7 @@ function App() {
                 zoom: 14,
               }));
             }}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold bg-white text-blue-600 hover:bg-blue-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-violet-600 shadow-lg transition-colors hover:bg-violet-50"
             title="Center map on your location"
             aria-label="Center map on your location"
           >
@@ -973,7 +973,7 @@ function App() {
             disabled={notificationPermission !== 'default'}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg shadow-lg text-xs font-semibold transition-colors ${
               notificationPermission === 'granted'
-                ? 'bg-emerald-600 text-white'
+                ? 'bg-violet-600 text-white'
                 : notificationPermission === 'denied'
                   ? 'bg-gray-800 text-gray-300 cursor-not-allowed'
                   : 'bg-amber-500 text-gray-950 hover:bg-amber-400'
@@ -1012,7 +1012,7 @@ function App() {
       {/* Canvassing alert toast */}
       {canvassingAlert?.inHailZone && (
         <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-30 max-w-sm w-full mx-4 animate-slide-up">
-          <div className="bg-red-600 text-white rounded-xl shadow-2xl p-4 border border-red-500">
+          <div className="rounded-xl border border-orange-400/40 bg-[linear-gradient(135deg,rgba(249,115,22,0.94),rgba(124,58,237,0.9))] p-4 text-white shadow-2xl">
             <div className="flex items-start gap-3">
               <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                 <svg
@@ -1031,14 +1031,14 @@ function App() {
                 <p className="font-semibold text-sm">
                   You're in a hail zone!
                 </p>
-                <p className="text-red-100 text-xs mt-0.5">
+                <p className="mt-0.5 text-xs text-orange-50">
                   {canvassingAlert.estimatedHailSize}" hail detected
                   {canvassingAlert.stormDate
                     ? ` on ${canvassingAlert.stormDate}`
                     : ''}
                 </p>
                 {canvassingAlert.talkingPoints.length > 1 && (
-                  <p className="text-red-200 text-xs mt-1 italic">
+                  <p className="mt-1 text-xs italic text-orange-100/90">
                     {canvassingAlert.talkingPoints[1]}
                   </p>
                 )}

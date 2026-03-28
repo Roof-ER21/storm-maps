@@ -9,11 +9,16 @@ body,
   padding: 0;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
     sans-serif;
-  background: #020617;
+  background: #090412;
+  color: #fff7ed;
 }
 
 body {
   overflow: hidden;
+  background:
+    radial-gradient(circle at top, rgba(249, 115, 22, 0.12), transparent 22%),
+    radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.14), transparent 24%),
+    linear-gradient(180deg, #12071d 0%, #090412 40%, #04020a 100%);
 }
 
 /* Custom scrollbar for sidebar */
@@ -26,12 +31,12 @@ body {
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: linear-gradient(180deg, #f97316, #7c3aed);
   border-radius: 3px;
 }
 
 .sidebar-scroll::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
+  background: linear-gradient(180deg, #fb923c, #8b5cf6);
 }
 
 /* Alert slide-up animation */

@@ -14,11 +14,11 @@ export default function PinnedPropertiesPage({
   onOpenMap,
 }: PinnedPropertiesPageProps) {
   return (
-    <section className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-950 via-gray-950 to-black px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.15),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-400">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
               Pinned Properties
             </p>
             <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
@@ -66,7 +66,7 @@ export default function PinnedPropertiesPage({
                   <button
                     type="button"
                     onClick={() => onRemoveProperty(property.id)}
-                    className="rounded-xl border border-gray-800 px-2.5 py-1.5 text-xs font-semibold text-gray-400 hover:border-red-500/30 hover:text-red-300"
+                    className="rounded-xl border border-gray-800 px-2.5 py-1.5 text-xs font-semibold text-gray-400 hover:border-orange-500/30 hover:text-orange-300"
                   >
                     Remove
                   </button>

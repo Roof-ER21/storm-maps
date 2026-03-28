@@ -26,10 +26,10 @@ export default function ReportsPage({
   onOpenEvidence,
 }: ReportsPageProps) {
   return (
-    <section className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-950 via-gray-950 to-black px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.12),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-5">
         <div className="rounded-3xl border border-gray-900 bg-gray-950/80 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-400">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
             Report Workspace
           </p>
           <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
@@ -131,7 +131,7 @@ export default function ReportsPage({
                       void onGenerateReport(stormDate.date);
                     }}
                     disabled={generatingReport}
-                    className="rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+                    className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
                   >
                     {generatingReport ? 'Generating...' : 'Generate PDF'}
                   </button>

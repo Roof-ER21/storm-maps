@@ -62,20 +62,20 @@ export default function DashboardPage({
     : 'Comprehensive hail and wind reconnaissance for Virginia, Maryland, and Pennsylvania.';
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(34,211,238,0.16),_transparent_32%),linear-gradient(180deg,_#020617_0%,_#020617_48%,_#030712_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.18),_transparent_24%),radial-gradient(circle_at_75%_10%,_rgba(124,58,237,0.18),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_42%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-7">
         <section className="relative overflow-hidden rounded-[30px] border border-slate-800 bg-slate-950/88 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.55)]">
-          <div className="absolute -right-16 top-0 h-56 w-56 rounded-full bg-cyan-400/12 blur-3xl" />
-          <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-blue-500/10 blur-3xl" />
+          <div className="absolute -right-16 top-0 h-56 w-56 rounded-full bg-orange-500/14 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-violet-500/14 blur-3xl" />
 
           <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-400/12 text-cyan-300 ring-1 ring-cyan-400/20 shadow-[0_0_35px_rgba(34,211,238,0.18)]">
-                  <ShieldIcon />
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.22),rgba(124,58,237,0.22))] text-orange-300 ring-1 ring-orange-400/15 shadow-[0_0_35px_rgba(168,85,247,0.24)]">
+                  <BrandCloudIcon />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-cyan-300/90">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300/90">
                     Dashboard
                   </p>
                   <p className="text-sm text-slate-400">{heroLabel}</p>
@@ -83,7 +83,7 @@ export default function DashboardPage({
               </div>
 
               <h2 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-                Storm <span className="text-cyan-300">Intelligence</span>
+                Hail <span className="bg-[linear-gradient(135deg,#fb923c,#a855f7)] bg-clip-text text-transparent">Intelligence</span>
               </h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
                 {heroSubcopy} Use the map, pinned targets, evidence queue, and
@@ -110,19 +110,19 @@ export default function DashboardPage({
           <MetricCard
             label="Total Events"
             value={String(events.length)}
-            tone="cyan"
+            tone="orange"
             icon={<TrendIcon />}
           />
           <MetricCard
             label="Hail Events"
             value={String(hailEvents.length)}
-            tone="emerald"
+            tone="violet"
             icon={<HailIcon />}
           />
           <MetricCard
             label="Wind Events"
             value={String(windEvents.length)}
-            tone="blue"
+            tone="plum"
             icon={<WindIcon />}
           />
           <MetricCard
@@ -153,7 +153,7 @@ export default function DashboardPage({
               <button
                 type="button"
                 onClick={onOpenMap}
-                className="rounded-2xl border border-slate-700 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-cyan-300 transition-colors hover:border-slate-600 hover:bg-slate-800"
+                className="rounded-2xl border border-violet-500/20 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-orange-200 transition-colors hover:border-violet-400/30 hover:bg-slate-800"
               >
                 Open Map
               </button>
@@ -262,7 +262,7 @@ export default function DashboardPage({
                           ? `${stormDate.maxHailInches.toFixed(2)}" hail`
                           : 'No hail'}
                       </p>
-                      <p className="mt-1 text-sm text-cyan-300">
+                      <p className="mt-1 text-sm text-violet-200">
                         {stormDate.maxWindMph > 0
                           ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
                           : 'No wind'}
@@ -301,7 +301,7 @@ export default function DashboardPage({
                     {property.stormDateCount} storm date
                     {property.stormDateCount === 1 ? '' : 's'}
                   </p>
-                  <p className="mt-3 text-sm text-cyan-300">
+                  <p className="mt-3 text-sm text-violet-200">
                     {property.latestStormDate
                       ? `Latest hit ${formatShortDate(property.latestStormDate)}`
                       : 'No hit date saved yet'}
@@ -352,13 +352,13 @@ function MetricCard({
 }: {
   label: string;
   value: string;
-  tone: 'cyan' | 'emerald' | 'blue' | 'rose' | 'amber';
+  tone: 'orange' | 'violet' | 'plum' | 'rose' | 'amber';
   icon: ReactNode;
 }) {
   const toneClasses = {
-    cyan: 'border-cyan-500/18 bg-cyan-500/[0.07] text-cyan-300',
-    emerald: 'border-emerald-500/18 bg-emerald-500/[0.07] text-emerald-300',
-    blue: 'border-blue-500/18 bg-blue-500/[0.07] text-blue-300',
+    orange: 'border-orange-500/18 bg-orange-500/[0.07] text-orange-300',
+    violet: 'border-violet-500/18 bg-violet-500/[0.07] text-violet-200',
+    plum: 'border-fuchsia-500/18 bg-fuchsia-500/[0.07] text-fuchsia-200',
     rose: 'border-rose-500/18 bg-rose-500/[0.07] text-rose-300',
     amber: 'border-amber-500/18 bg-amber-500/[0.07] text-amber-300',
   };
@@ -389,7 +389,7 @@ function RecentEventCard({ event }: { event: StormEvent }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-cyan-300">
+            <span className="text-orange-300">
               {event.eventType === 'Hail' ? <HailIcon /> : <WindIcon />}
             </span>
             <p className="truncate text-lg font-semibold text-white">
@@ -434,7 +434,7 @@ function ActionTile({
       onClick={onClick}
       className="rounded-[22px] border border-slate-800 bg-slate-900/65 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800/80 text-cyan-300">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800/80 text-orange-300">
         {icon}
       </div>
       <p className="mt-4 text-lg font-semibold text-white">{title}</p>
@@ -450,7 +450,7 @@ function StateRow({ state, count }: { state: string; count: number }) {
         <p className="text-lg font-semibold text-white">{stateName(state)}</p>
         <p className="text-sm text-slate-500">{state}</p>
       </div>
-      <p className="text-5xl font-semibold tracking-tight text-cyan-300">{count}</p>
+      <p className="text-5xl font-semibold tracking-tight text-orange-300">{count}</p>
     </div>
   );
 }
@@ -566,10 +566,22 @@ function stateName(code: string): string {
   return names[code] ?? code;
 }
 
-function ShieldIcon() {
+function BrandCloudIcon() {
   return (
-    <svg className="h-6 w-6" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-      <path d="M10 2a1 1 0 01.447.105l5 2.5A1 1 0 0116 5.5V9c0 4.747-2.878 7.86-5.553 8.943a1.21 1.21 0 01-.894 0C6.878 16.86 4 13.747 4 9V5.5a1 1 0 01.553-.895l5-2.5A1 1 0 0110 2zm0 2.118L6 6.118V9c0 3.83 2.2 6.252 4 7.123 1.8-.871 4-3.293 4-7.123V6.118l-4-2z" />
+    <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M6.5 15a3.5 3.5 0 0 1 .25-7 5.2 5.2 0 0 1 10.05 1.6A3.05 3.05 0 0 1 16.9 15H6.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M8.5 16.6 7.6 19M12 16.6 11.1 19.5M15.5 16.6 14.6 19.2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

@@ -125,17 +125,29 @@ export default function Sidebar({
       <div className="border-b border-slate-800 p-4">
         <div className="flex items-center gap-2">
           <svg
-            className="h-5 w-5 flex-shrink-0 text-cyan-300"
-            fill="currentColor"
+            className="h-5 w-5 flex-shrink-0 text-orange-300"
+            fill="none"
             viewBox="0 0 20 20"
             aria-hidden="true"
           >
-            <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.547a1 1 0 01.64 1.895l-1.04.354L18 10.17V17a1 1 0 01-1 1H3a1 1 0 01-1-1v-6.83l1.847-3.563-1.04-.354a1 1 0 01.64-1.895l1.599.547L9 4.323V3a1 1 0 011-1z" />
+            <path
+              d="M5.5 12.5a3 3 0 0 1 .2-6 4.5 4.5 0 0 1 8.72 1.3 2.6 2.6 0 0 1 .08 5.2H5.5Z"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M7.2 13.8 6.4 16M10 13.8 9.2 16.6M12.8 13.8 12 16.3"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
           </svg>
           <div className="flex-1">
-            <h1 className="text-lg font-bold tracking-tight">HailRecon</h1>
+            <h1 className="text-lg font-bold tracking-tight">Hail Yes!</h1>
             <p className="text-xs text-gray-400">
-              Property hail history for roofing reps
+              Property hail intelligence for roofing reps
             </p>
           </div>
         </div>
@@ -149,7 +161,7 @@ export default function Sidebar({
             type="text"
             defaultValue={activeSearchLabel ?? ''}
             placeholder="Address, city, or ZIP..."
-            className="w-full pl-9 pr-3 py-2 bg-gray-900 border border-gray-700 rounded-lg text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+            className="w-full rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white placeholder-gray-500 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
             aria-label="Search location"
           />
           <svg
@@ -204,7 +216,7 @@ export default function Sidebar({
               type="date"
               value={sinceDate}
               onChange={(e) => onSinceDateChange(e.target.value)}
-              className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500"
+              className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               aria-label="Show storms since date"
             />
           )}
@@ -251,18 +263,18 @@ export default function Sidebar({
       )}
 
       {canvassingAlert?.inHailZone && (
-        <div className="mx-3 mt-3 p-3 bg-red-900/60 border border-red-700 rounded-lg">
+        <div className="mx-3 mt-3 rounded-lg border border-orange-500/30 bg-[linear-gradient(135deg,rgba(249,115,22,0.18),rgba(124,58,237,0.18))] p-3">
           <div className="flex items-center gap-2 mb-1">
-            <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
-            <span className="text-xs font-semibold text-red-300 uppercase tracking-wider">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-orange-300" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-orange-200">
               Hail Zone Alert
             </span>
           </div>
-          <p className="text-sm text-red-100 font-medium">
+          <p className="text-sm font-medium text-white">
             {canvassingAlert.estimatedHailSize}" hail detected nearby
           </p>
           {canvassingAlert.talkingPoints.length > 0 && (
-            <p className="text-xs text-red-200 mt-1">
+            <p className="mt-1 text-xs text-orange-100/90">
               {canvassingAlert.talkingPoints[0]}
             </p>
           )}
@@ -284,7 +296,7 @@ export default function Sidebar({
                 onClick={() => handleDateClick(stormDate)}
                 className={`rounded-xl border px-3 py-2 text-left transition-colors ${
                   selectedDate?.date === stormDate.date
-                    ? 'border-red-500 bg-red-500/10'
+                    ? 'border-orange-400/70 bg-orange-500/10'
                     : 'border-gray-800 bg-gray-900/70 hover:bg-gray-900'
                 }`}
               >
@@ -345,14 +357,14 @@ export default function Sidebar({
       <div className="flex-1 overflow-y-auto sidebar-scroll min-h-0">
         {loading && (
           <div className="p-4 text-center">
-            <div className="inline-block w-5 h-5 border-2 border-gray-600 border-t-red-500 rounded-full animate-spin" />
+            <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-600 border-t-orange-400" />
             <p className="text-xs text-gray-500 mt-2">Loading storm data...</p>
           </div>
         )}
 
         {error && (
-          <div className="m-3 p-3 bg-red-900/30 border border-red-800 rounded-lg">
-            <p className="text-xs text-red-400">{error}</p>
+          <div className="m-3 rounded-lg border border-orange-500/30 bg-orange-950/25 p-3">
+            <p className="text-xs text-orange-300">{error}</p>
           </div>
         )}
 
@@ -384,7 +396,7 @@ export default function Sidebar({
         <button
           onClick={openDateOfLossModal}
           disabled={stormDates.length === 0 || generatingReport}
-          className="w-full rounded-xl bg-red-500 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500"
+          className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
         >
           {generatingReport ? 'Generating Report...' : 'Gen Report'}
         </button>
@@ -427,7 +439,7 @@ export default function Sidebar({
                     onClick={() => setSelectedDateOfLoss(stormDate.date)}
                     className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                       selectedDateOfLoss === stormDate.date
-                        ? 'border-red-500 bg-red-500/10'
+                        ? 'border-orange-400/70 bg-orange-500/10'
                         : 'border-gray-800 bg-gray-900/70 hover:bg-gray-900'
                     }`}
                   >
@@ -453,7 +465,7 @@ export default function Sidebar({
               <button
                 onClick={handleGenerateReportClick}
                 disabled={!selectedDateOfLoss || generatingReport}
-                className="rounded-lg bg-red-500 px-3 py-2 text-sm font-semibold text-white hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-gray-700"
+                className="rounded-lg bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:cursor-not-allowed disabled:bg-gray-700"
               >
                 {generatingReport ? 'Generating...' : 'Gen PDF Report'}
               </button>
@@ -479,7 +491,7 @@ function TabButton({
       onClick={onClick}
       className={`flex-1 py-2.5 text-xs font-semibold uppercase tracking-wider transition-colors ${
         active
-          ? 'text-white border-b-2 border-red-500'
+          ? 'text-white border-b-2 border-orange-400'
           : 'text-gray-500 hover:text-gray-300'
       }`}
       role="tab"
@@ -505,7 +517,7 @@ function RangeButton({
       onClick={onClick}
       className={`rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
         active
-          ? 'bg-red-500 text-white'
+          ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
           : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
       }`}
     >
@@ -523,14 +535,17 @@ function FilterButton({
   label: string;
   onClick: () => void;
 }) {
+  const activeClass =
+    label === 'Wind'
+      ? 'bg-violet-500 text-white'
+      : 'bg-orange-400 text-gray-950';
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-        active
-          ? 'bg-cyan-500 text-gray-950'
-          : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
+        active ? activeClass : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
       }`}
     >
       {label}
@@ -613,7 +628,7 @@ function StormDateCard({
     <div
       className={`border-b border-gray-800 cursor-pointer transition-colors ${
         isSelected
-          ? 'bg-gray-800/80 border-l-2 border-l-red-500'
+          ? 'bg-gray-800/80 border-l-2 border-l-orange-400'
           : 'hover:bg-gray-900/60 border-l-2 border-l-transparent'
       }`}
       onClick={onClick}

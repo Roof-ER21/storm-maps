@@ -1,5 +1,5 @@
 /**
- * Storm Maps - Shared Types
+ * Hail Yes! - Shared Types
  *
  * Core type definitions for hail/storm intelligence data,
  * map overlays, and canvassing features.
