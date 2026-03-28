@@ -18,7 +18,8 @@ const OPTIONAL_STORM_SEARCH_API_BASE =
   (import.meta.env.VITE_STORM_SEARCH_API_BASE as string | undefined)?.trim() || '';
 const SWDI_MAX_MONTHS = 120;
 const SWDI_CHUNK_MS = 30 * 24 * 60 * 60 * 1000;
-const SWDI_BATCH_SIZE = 6;
+const SWDI_BATCH_SIZE = 3;
+const SWDI_REQUEST_TIMEOUT_MS = 25000;
 
 function appendEvents(target: StormEvent[], next: StormEvent[]): void {
   for (const event of next) {
@@ -299,7 +300,7 @@ export async function searchByCoordinates(
           `?bbox=${bbox.west},${bbox.south},${bbox.east},${bbox.north}`;
 
         const res = await fetch(url, {
-          signal: getTimeoutSignal(15000, signal),
+          signal: getTimeoutSignal(SWDI_REQUEST_TIMEOUT_MS, signal),
         });
 
         if (!res.ok) {
@@ -327,7 +328,19 @@ export async function searchByCoordinates(
           ),
         );
       } else {
-        console.warn('[stormApi] SWDI chunk failed:', result.reason);
+        const reason = result.reason;
+        if (reason instanceof Error) {
+          if (reason.name === 'AbortError') {
+            continue;
+          }
+
+          if (reason.name === 'TimeoutError') {
+            console.warn('[stormApi] SWDI chunk timed out, continuing with partial data.');
+            continue;
+          }
+        }
+
+        console.warn('[stormApi] SWDI chunk failed:', reason);
       }
     }
   }
