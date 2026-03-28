@@ -34,6 +34,7 @@ interface SidebarProps {
   onFilterChange: (filters: EventFilterState) => void;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
+  onOpenReports: () => void;
   canPinProperty: boolean;
   isPinned: boolean;
   onPinProperty: () => void;
@@ -62,6 +63,7 @@ export default function Sidebar({
   onFilterChange,
   generatingReport,
   onGenerateReport,
+  onOpenReports,
   canPinProperty,
   isPinned,
   onPinProperty,
@@ -112,6 +114,17 @@ export default function Sidebar({
       .slice(0, 3)
       .map(([source]) => source);
   }, [selectedDateEvents]);
+  const rankedStormHits = useMemo(
+    () =>
+      [...selectedDateEvents]
+        .sort(
+          (left, right) =>
+            right.magnitude - left.magnitude ||
+            left.beginDate.localeCompare(right.beginDate),
+        )
+        .slice(0, 5),
+    [selectedDateEvents],
+  );
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -391,6 +404,76 @@ export default function Sidebar({
             {selectedStormSources.length > 0 && (
               <p className="mt-3 text-[11px] text-orange-50/80">
                 Primary sources: {selectedStormSources.join(' · ')}
+              </p>
+            )}
+
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  void onGenerateReport(selectedDate.date);
+                }}
+                disabled={generatingReport}
+                className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-gray-950 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50"
+              >
+                {generatingReport ? 'Generating...' : 'Generate PDF'}
+              </button>
+              <button
+                type="button"
+                onClick={onOpenEvidence}
+                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-black/30"
+              >
+                Open Evidence
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={onOpenReports}
+              className="mt-2 w-full rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-orange-100/90 transition-colors hover:bg-black/25"
+            >
+              Open Report Workspace
+            </button>
+          </div>
+
+          <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-950/80 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Strongest Hits
+              </p>
+              <span className="text-[10px] text-gray-600">
+                top {rankedStormHits.length}
+              </span>
+            </div>
+
+            {rankedStormHits.length > 0 ? (
+              <div className="mt-3 space-y-2">
+                {rankedStormHits.map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-xl border border-gray-800 bg-black/20 px-3 py-2"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-white">
+                          {formatEventMagnitude(event)}
+                        </p>
+                        <p className="mt-1 text-xs text-gray-400">
+                          {formatEventLocation(event)}
+                        </p>
+                      </div>
+                      <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-300">
+                        {formatEventTime(event.beginDate)}
+                      </span>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-[11px] text-gray-500">
+                      {event.narrative || event.source}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-gray-500">
+                No ranked storm reports are available for this selected date yet.
               </p>
             )}
           </div>
@@ -718,6 +801,43 @@ function formatStormImpactSummary(stormDate: StormDate): string {
   }
 
   return parts.join(' · ') || 'no measured hail or wind';
+}
+
+function formatEventMagnitude(event: StormEvent): string {
+  if (event.eventType === 'Thunderstorm Wind') {
+    return `${event.magnitude.toFixed(0)} mph wind`;
+  }
+
+  return `${event.magnitude}" hail`;
+}
+
+function formatEventLocation(event: StormEvent): string {
+  if (event.county && event.state) {
+    return `${event.county}, ${event.state}`;
+  }
+
+  if (event.county) {
+    return event.county;
+  }
+
+  if (event.state) {
+    return event.state;
+  }
+
+  return event.source;
+}
+
+function formatEventTime(dateStr: string): string {
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'Time unknown';
+  }
+
+  return parsed.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone: 'America/New_York',
+  });
 }
 
 function StormDateCard({

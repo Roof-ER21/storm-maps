@@ -1149,6 +1149,7 @@ function App() {
               onFilterChange={handleFilterChange}
               generatingReport={generatingReport}
               onGenerateReport={handleGenerateReport}
+              onOpenReports={() => setActiveView('reports')}
               canPinProperty={Boolean(searchSummary)}
               isPinned={isCurrentPropertyPinned}
               onPinProperty={handlePinProperty}
