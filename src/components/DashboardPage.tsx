@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type {
+  CanvassRouteStop,
   EvidenceItem,
   PinnedProperty,
   PropertySearchSummary,
@@ -13,11 +14,15 @@ interface DashboardPageProps {
   stormDates: StormDate[];
   events: StormEvent[];
   evidenceItems: EvidenceItem[];
+  routeStops: CanvassRouteStop[];
   pinnedProperties: PinnedProperty[];
   onOpenMap: () => void;
+  onOpenStormDate: (stormDate: StormDate) => void;
   onOpenPinned: () => void;
+  onOpenPinnedProperty: (property: PinnedProperty) => void;
   onOpenEvidence: () => void;
   onOpenReports: () => void;
+  onOpenCanvass: () => void;
 }
 
 export default function DashboardPage({
@@ -25,25 +30,25 @@ export default function DashboardPage({
   stormDates,
   events,
   evidenceItems,
+  routeStops,
   pinnedProperties,
   onOpenMap,
+  onOpenStormDate,
   onOpenPinned,
+  onOpenPinnedProperty,
   onOpenEvidence,
   onOpenReports,
+  onOpenCanvass,
 }: DashboardPageProps) {
   const hailEvents = events.filter((event) => event.eventType === 'Hail');
-  const windEvents = events.filter(
-    (event) => event.eventType === 'Thunderstorm Wind',
-  );
-  const severeEvents = events.filter(
-    (event) =>
-      (event.eventType === 'Hail' && event.magnitude >= 1.75) ||
-      (event.eventType === 'Thunderstorm Wind' && event.magnitude >= 60),
-  );
   const totalDamage = events.reduce(
     (sum, event) => sum + Math.max(0, event.damageProperty || 0),
     0,
   );
+  const activeRouteStops = routeStops.filter((stop) => stop.status !== 'completed');
+  const completedRouteStops = routeStops.filter((stop) => stop.status === 'completed');
+  const bookedStops = routeStops.filter((stop) => stop.outcome === 'inspection_booked');
+  const followUpStops = routeStops.filter((stop) => stop.outcome === 'follow_up');
 
   const stateCounts = Array.from(
     events.reduce((map, event) => {
@@ -116,30 +121,35 @@ export default function DashboardPage({
             value={String(events.length)}
             tone="orange"
             icon={<TrendIcon />}
+            onClick={onOpenMap}
           />
           <MetricCard
             label="Hail Events"
             value={String(hailEvents.length)}
             tone="violet"
             icon={<HailIcon />}
+            onClick={onOpenMap}
           />
           <MetricCard
-            label="Wind Events"
-            value={String(windEvents.length)}
+            label="Active Canvass Stops"
+            value={String(activeRouteStops.length)}
             tone="plum"
-            icon={<WindIcon />}
+            icon={<MapPinIcon />}
+            onClick={onOpenCanvass}
           />
           <MetricCard
-            label='Severe (1.75"+ / 60mph+)'
-            value={String(severeEvents.length)}
+            label="Inspections Booked"
+            value={String(bookedStops.length)}
             tone="rose"
-            icon={<AlertIcon />}
+            icon={<CalendarIcon />}
+            onClick={onOpenCanvass}
           />
           <MetricCard
-            label="Tracked Damage"
-            value={formatCurrencyCompact(totalDamage)}
+            label="Follow Ups"
+            value={String(followUpStops.length)}
             tone="amber"
-            icon={<DollarIcon />}
+            icon={<AlertIcon />}
+            onClick={onOpenCanvass}
           />
         </section>
 
@@ -166,7 +176,7 @@ export default function DashboardPage({
             <div className="mt-5 grid gap-4 xl:grid-cols-2">
               {recentEvents.length > 0 ? (
                 recentEvents.map((event) => (
-                  <RecentEventCard key={event.id} event={event} />
+                  <RecentEventCard key={event.id} event={event} onClick={onOpenMap} />
                 ))
               ) : (
                 <EmptyPanel
@@ -215,6 +225,49 @@ export default function DashboardPage({
 
             <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                Canvass Pipeline
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">
+                Active route performance
+              </h3>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <MetricCard
+                  label="Visited"
+                  value={String(routeStops.filter((stop) => stop.status === 'visited').length)}
+                  tone="plum"
+                  icon={<TrendIcon />}
+                  onClick={onOpenCanvass}
+                  compact
+                />
+                <MetricCard
+                  label="Completed"
+                  value={String(completedRouteStops.length)}
+                  tone="orange"
+                  icon={<PinIcon />}
+                  onClick={onOpenCanvass}
+                  compact
+                />
+                <MetricCard
+                  label="Interested"
+                  value={String(routeStops.filter((stop) => stop.outcome === 'interested').length)}
+                  tone="violet"
+                  icon={<HailIcon />}
+                  onClick={onOpenCanvass}
+                  compact
+                />
+                <MetricCard
+                  label="Tracked Damage"
+                  value={formatCurrencyCompact(totalDamage)}
+                  tone="amber"
+                  icon={<DollarIcon />}
+                  onClick={onOpenReports}
+                  compact
+                />
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Events by State
               </p>
               <h3 className="mt-2 text-2xl font-semibold text-white">
@@ -223,7 +276,7 @@ export default function DashboardPage({
               <div className="mt-5 grid gap-3">
                 {stateCounts.length > 0 ? (
                   stateCounts.map(([state, count]) => (
-                    <StateRow key={state} state={state} count={count} />
+                    <StateRow key={state} state={state} count={count} onClick={onOpenMap} />
                   ))
                 ) : (
                   <EmptyPanel
@@ -246,9 +299,11 @@ export default function DashboardPage({
             </h3>
             <div className="mt-5 grid gap-3">
               {stormDates.slice(0, 4).map((stormDate) => (
-                <div
+                <button
+                  type="button"
                   key={stormDate.date}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4"
+                  onClick={() => onOpenStormDate(stormDate)}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -283,7 +338,7 @@ export default function DashboardPage({
                       prioritizeIncluded
                     />
                   </div>
-                </div>
+                </button>
               ))}
 
               {stormDates.length === 0 && (
@@ -304,9 +359,11 @@ export default function DashboardPage({
             </h3>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {pinnedProperties.slice(0, 4).map((property) => (
-                <div
+                <button
+                  type="button"
                   key={property.id}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4"
+                  onClick={() => onOpenPinnedProperty(property)}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
                 >
                   <p className="text-base font-semibold text-white">
                     {property.locationLabel}
@@ -320,7 +377,7 @@ export default function DashboardPage({
                       ? `Latest hit ${formatShortDate(property.latestStormDate)}`
                       : 'No hit date saved yet'}
                   </p>
-                </div>
+                </button>
               ))}
 
               {pinnedProperties.length === 0 && (
@@ -363,11 +420,15 @@ function MetricCard({
   value,
   tone,
   icon,
+  onClick,
+  compact = false,
 }: {
   label: string;
   value: string;
   tone: 'orange' | 'violet' | 'plum' | 'rose' | 'amber';
   icon: ReactNode;
+  onClick?: () => void;
+  compact?: boolean;
 }) {
   const toneClasses = {
     orange: 'border-orange-500/18 bg-orange-500/[0.07] text-orange-300',
@@ -377,18 +438,38 @@ function MetricCard({
     amber: 'border-amber-500/18 bg-amber-500/[0.07] text-amber-300',
   };
 
-  return (
-    <div className={`rounded-[24px] border p-5 ${toneClasses[tone]}`}>
+  const className = `rounded-[24px] border ${compact ? 'p-4' : 'p-5'} ${toneClasses[tone]} ${
+    onClick ? 'cursor-pointer transition-colors hover:bg-white/[0.06]' : ''
+  }`;
+
+  const content = (
+    <>
       <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950/60">
         {icon}
       </div>
       <p className="mt-4 text-4xl font-semibold tracking-tight text-white">{value}</p>
       <p className="mt-1 text-sm text-slate-400">{label}</p>
-    </div>
+    </>
   );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
-function RecentEventCard({ event }: { event: StormEvent }) {
+function RecentEventCard({
+  event,
+  onClick,
+}: {
+  event: StormEvent;
+  onClick: () => void;
+}) {
   const severityValue =
     event.eventType === 'Hail'
       ? event.magnitude
@@ -399,7 +480,11 @@ function RecentEventCard({ event }: { event: StormEvent }) {
       : `${trimTrailingZeroes(event.magnitude)} mph`;
 
   return (
-    <article className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5">
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -427,7 +512,7 @@ function RecentEventCard({ event }: { event: StormEvent }) {
           }
         />
       </div>
-    </article>
+    </button>
   );
 }
 
@@ -457,15 +542,27 @@ function ActionTile({
   );
 }
 
-function StateRow({ state, count }: { state: string; count: number }) {
+function StateRow({
+  state,
+  count,
+  onClick,
+}: {
+  state: string;
+  count: number;
+  onClick: () => void;
+}) {
   return (
-    <div className="flex items-center justify-between rounded-[22px] border border-slate-800 bg-slate-900/65 px-4 py-4">
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center justify-between rounded-[22px] border border-slate-800 bg-slate-900/65 px-4 py-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
+    >
       <div>
         <p className="text-lg font-semibold text-white">{stateName(state)}</p>
         <p className="text-sm text-slate-500">{state}</p>
       </div>
       <p className="text-5xl font-semibold tracking-tight text-orange-300">{count}</p>
-    </div>
+    </button>
   );
 }
 

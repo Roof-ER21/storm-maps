@@ -721,6 +721,11 @@ function App() {
     setSelectedDate(matchingStormDate);
   }, [filteredStormDates]);
 
+  const handleOpenStormDate = useCallback((stormDate: StormDate) => {
+    setActiveView('map');
+    setSelectedDate(stormDate);
+  }, []);
+
   const handleEnableNotifications = useCallback(async () => {
     const permission = await requestNotificationPermission();
     setNotificationPermission(permission);
@@ -1833,11 +1838,18 @@ function App() {
             stormDates={filteredStormDates}
             events={filteredEvents}
             evidenceItems={propertyEvidenceItems}
+            routeStops={routeStops}
             pinnedProperties={pinnedProperties}
             onOpenMap={() => setActiveView('map')}
+            onOpenStormDate={handleOpenStormDate}
             onOpenPinned={() => setActiveView('pinned')}
+            onOpenPinnedProperty={handleOpenPinnedProperty}
             onOpenEvidence={() => setActiveView('evidence')}
             onOpenReports={() => setActiveView('reports')}
+            onOpenCanvass={() => {
+              setActiveView('map');
+              setShowRoutePanel(true);
+            }}
           />
         )}
 

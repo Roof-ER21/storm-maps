@@ -86,7 +86,6 @@ export default function Sidebar({
   const [showDateOfLossModal, setShowDateOfLossModal] = useState(false);
   const [selectedDateOfLoss, setSelectedDateOfLoss] = useState('');
   const [showSelectedStormDetails, setShowSelectedStormDetails] = useState(false);
-  const [compactList, setCompactList] = useState(true);
   const [dateListFilter, setDateListFilter] = useState<DateListFilter>('all');
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -223,7 +222,7 @@ export default function Sidebar({
   }, [selectedDate?.date]);
 
   return (
-    <aside className="flex max-h-[48vh] w-full shrink-0 flex-col border-b border-slate-800 bg-slate-950 text-white min-h-0 lg:max-h-none lg:w-80 lg:border-b-0 lg:border-r">
+    <aside className="flex w-full shrink-0 flex-col overflow-y-auto border-b border-slate-800 bg-slate-950 text-white min-h-0 lg:w-80 lg:border-b-0 lg:border-r">
       <div className="border-b border-slate-800 p-4">
         <div className="flex items-center gap-2">
           <svg
@@ -380,35 +379,6 @@ export default function Sidebar({
               {canvassingAlert.talkingPoints[0]}
             </p>
           )}
-        </div>
-      )}
-
-      {latestStorms.length > 0 && (
-        <div className="border-b border-gray-800 px-3 py-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Latest Two Hits
-            </p>
-            <span className="text-[10px] text-gray-600">newest first</span>
-          </div>
-          <div className="mt-2 flex gap-2 overflow-x-auto pb-1">
-            {latestStorms.map((stormDate) => (
-              <button
-                key={`latest-${stormDate.date}`}
-                onClick={() => handleDateClick(stormDate)}
-                className={`min-w-[11rem] shrink-0 rounded-xl border px-3 py-2 text-left transition-colors ${
-                  selectedDate?.date === stormDate.date
-                    ? 'border-orange-400/70 bg-orange-500/10'
-                    : 'border-gray-800 bg-gray-900/70 hover:bg-gray-900'
-                }`}
-              >
-                <p className="text-sm font-semibold text-white">{stormDate.label}</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  {stormDate.eventCount} report{stormDate.eventCount === 1 ? '' : 's'} · {formatStormImpactSummary(stormDate)}
-                </p>
-              </button>
-            ))}
-          </div>
         </div>
       )}
 
@@ -609,8 +579,8 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto sidebar-scroll min-h-0">
-        <div className="sticky top-0 z-10 border-b border-gray-800 bg-slate-950/96 backdrop-blur">
+      <div className="min-h-0">
+        <div className="border-b border-gray-800">
           <div className="flex items-center border-b border-gray-800">
             <TabButton
               active={activeTab === 'recent'}
@@ -623,17 +593,10 @@ export default function Sidebar({
               label="Impact"
             />
           </div>
-          <div className="flex items-center justify-between px-3 py-2">
+          <div className="px-3 py-2">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
               Hail Dates
             </p>
-            <button
-              type="button"
-              onClick={() => setCompactList((current) => !current)}
-              className="rounded-lg border border-gray-800 bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-gray-300 transition-colors hover:bg-gray-800"
-            >
-              {compactList ? 'Comfort' : 'Compact'}
-            </button>
           </div>
           <div className="flex gap-1.5 overflow-x-auto px-3 pb-2">
             <ListFilterChip
@@ -717,7 +680,7 @@ export default function Sidebar({
             stormDate={sd}
             isSelected={selectedDate?.date === sd.date}
             isExpanded={expandedDate === sd.date}
-            compact={compactList}
+            compact={false}
             events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
             evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
             generatingReport={generatingReport}
