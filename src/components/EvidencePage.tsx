@@ -265,9 +265,10 @@ export default function EvidencePage({
             </div>
 
             {/* Filter bar */}
-            <div className="rounded-[24px] border border-gray-900 bg-gray-950/80 p-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search evidence..." className="min-w-[160px] flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-amber-400/40 focus:outline-none" />
+            <div className="rounded-[24px] border border-gray-900 bg-gray-950/80 p-3 sm:p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search evidence..." className="w-full sm:min-w-[160px] sm:flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-amber-400/40 focus:outline-none" />
+                <div className="grid grid-cols-2 gap-2 sm:contents">
                 <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
@@ -290,8 +291,9 @@ export default function EvidencePage({
                   <option value="__none__">No Date</option>
                   {stormDates.map((sd) => <option key={sd.date} value={sd.date}>{sd.label}</option>)}
                 </select>
+                </div>
                 {hasActiveFilters && (
-                  <button type="button" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterMedia('all'); setFilterProvider('all'); setFilterDate('all'); }} className="rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20">Clear</button>
+                  <button type="button" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterMedia('all'); setFilterProvider('all'); setFilterDate('all'); }} className="w-full sm:w-auto rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20">Clear</button>
                 )}
               </div>
               {hasActiveFilters && <p className="mt-2 text-xs text-gray-500">Showing {filteredEvidence.length} of {propertyEvidence.length} items</p>}
@@ -315,7 +317,7 @@ export default function EvidencePage({
             )}
 
             {/* Evidence grid - unified view */}
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {filteredEvidence.map((item) => (
                 <EvidenceCard
                   key={item.id}
@@ -715,6 +717,9 @@ function AnnotationCanvas({ imageUrl, onSave, onClose }: { imageUrl: string; onS
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
+            onTouchStart={(e) => { e.preventDefault(); const t = e.touches[0]; handleMouseDown({ clientX: t.clientX, clientY: t.clientY, stopPropagation: () => {}, preventDefault: () => {} } as unknown as React.MouseEvent<HTMLCanvasElement>); }}
+            onTouchMove={(e) => { e.preventDefault(); const t = e.touches[0]; handleMouseMove({ clientX: t.clientX, clientY: t.clientY } as unknown as React.MouseEvent<HTMLCanvasElement>); }}
+            onTouchEnd={(e) => { e.preventDefault(); const t = e.changedTouches[0]; handleMouseUp({ clientX: t.clientX, clientY: t.clientY } as unknown as React.MouseEvent<HTMLCanvasElement>); }}
           />
         </div>
       </div>

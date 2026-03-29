@@ -69,7 +69,7 @@ export default function AppHeader({
           </div>
         </div>
 
-        <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+        <nav className="-mx-1 flex gap-1.5 sm:gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
           {NAV_ITEMS.map((item) => {
             const active = item.id === activeView;
 
@@ -78,7 +78,7 @@ export default function AppHeader({
                 key={item.id}
                 type="button"
                 onClick={() => onChangeView(item.id)}
-                className={`shrink-0 rounded-xl px-4 py-2 text-sm font-semibold transition-colors ${
+                className={`shrink-0 rounded-xl px-3 sm:px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors ${
                   active
                     ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_10px_30px_rgba(124,58,237,0.28)]'
                     : 'bg-slate-900 text-gray-300 hover:bg-slate-800 hover:text-white'

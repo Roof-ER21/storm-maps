@@ -281,18 +281,19 @@ export default function LeadsPage({
 
         {/* Filter bar */}
         {allActiveLeads.length > 0 && (
-          <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-            <div className="flex flex-wrap items-center gap-3">
+          <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-3 sm:p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search leads..."
-                className="min-w-[180px] flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none"
+                className="w-full sm:min-w-[180px] sm:flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none"
               />
+              <div className="grid grid-cols-2 gap-2 sm:contents">
               <select
                 value={filterStage}
                 onChange={(e) => setFilterStage(e.target.value as LeadStage | 'all')}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+                className="rounded-xl border border-slate-800 bg-slate-900 px-2 sm:px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
               >
                 <option value="all">All Stages</option>
                 <option value="new">New</option>
@@ -332,11 +333,12 @@ export default function LeadsPage({
                   <option key={rep} value={rep}>{rep}</option>
                 ))}
               </select>
+              </div>
               {hasActiveFilters && (
                 <button
                   type="button"
                   onClick={() => { setSearchQuery(''); setFilterStage('all'); setFilterUrgency('all'); setFilterRep('all'); setFilterOutcome('all'); }}
-                  className="rounded-xl border border-orange-400/30 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/20"
+                  className="w-full sm:w-auto rounded-xl border border-orange-400/30 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/20"
                 >
                   Clear Filters
                 </button>
@@ -629,7 +631,7 @@ function LeadCard({
       {/* Stage pipeline - visual progression */}
       <div className="mt-4">
         <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-2">Stage</p>
-        <div className="flex gap-1">
+        <div className="grid grid-cols-3 gap-1 sm:grid-cols-5">
           {(['new', 'contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => {
             const cfg = STAGE_CONFIG[stage];
             const isActive = lead.leadStage === stage;
@@ -639,7 +641,7 @@ function LeadCard({
                 key={stage}
                 type="button"
                 onClick={() => onUpdateLeadStage(lead.id, stage)}
-                className={`flex-1 rounded-lg border py-1.5 text-[10px] font-bold transition-all ${
+                className={`rounded-lg border py-1.5 text-[9px] sm:text-[10px] font-bold transition-all ${
                   isActive
                     ? `${cfg.border} ${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}`
                     : isPast
@@ -753,7 +755,7 @@ function LeadCard({
       </div>
 
       {/* Homeowner fields */}
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         <input
           value={lead.homeownerName || ''}
           onChange={(event) =>
@@ -787,13 +789,13 @@ function LeadCard({
             <>
               <a
                 href={`tel:${lead.homeownerPhone.replace(/[^\d+]/g, '')}`}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-2.5 text-xs font-semibold text-emerald-300 hover:bg-emerald-500/20"
               >
                 <PhoneIcon /> Call
               </a>
               <a
                 href={buildSmsLink(lead.homeownerPhone, lead.homeownerName || 'there', lead.locationLabel, lead.stormLabel)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/25 bg-sky-500/10 px-3 py-1.5 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/25 bg-sky-500/10 px-3 py-2.5 text-xs font-semibold text-sky-300 hover:bg-sky-500/20"
               >
                 <MessageIcon /> Text
               </a>
@@ -802,7 +804,7 @@ function LeadCard({
           {lead.homeownerEmail && (
             <a
               href={buildEmailLink(lead.homeownerEmail, lead.homeownerName || 'Homeowner', lead.locationLabel, lead.stormLabel)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-violet-400/25 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-300 hover:bg-violet-500/20"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-violet-400/25 bg-violet-500/10 px-3 py-2.5 text-xs font-semibold text-violet-300 hover:bg-violet-500/20"
             >
               <EmailIcon /> Email
             </a>

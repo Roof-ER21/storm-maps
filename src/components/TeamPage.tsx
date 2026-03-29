@@ -161,7 +161,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
             {repProfile ? 'Your Profile' : 'Quick Setup'}
           </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+          <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             <div>
               <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Name</label>
               <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
@@ -178,16 +178,16 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
               </select>
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button type="button" onClick={handleSetup} className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white">
+          <div className="mt-4 flex flex-wrap gap-1.5 sm:gap-2">
+            <button type="button" onClick={handleSetup} className="flex-1 min-w-[140px] sm:flex-none rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-white">
               {repProfile ? 'Update Profile' : 'Create Profile'}
             </button>
             {repProfile && (
               <>
-                <button type="button" onClick={handleExportMyData} className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                <button type="button" onClick={handleExportMyData} className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
                   Export My Data
                 </button>
-                <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
                   Import Team Member
                   <input type="file" accept=".json" className="hidden" onChange={handleImportTeamData} />
                 </label>
@@ -198,7 +198,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
 
         {/* Team stats */}
         {teamMembers.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
             <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
               <p className="text-2xl font-semibold text-white">{teamMembers.length}</p>
               <p className="mt-1 text-xs text-slate-500">Team Members</p>
@@ -222,7 +222,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
         {teamMembers.length > 0 && (
           <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Team Roster</p>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {teamMembers.map((member) => {
                 const isMe = repProfile?.id === member.repId;
                 return (
@@ -230,14 +230,14 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-white">{member.repName}</p>
+                          <p className="text-sm font-semibold text-white truncate">{member.repName}</p>
                           {isMe && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[9px] font-bold text-orange-300">YOU</span>}
                           <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[9px] font-semibold text-slate-400">
                             {member.role === 'manager' ? 'Manager' : 'Rep'}
                           </span>
                         </div>
                         {member.territories.length > 0 && (
-                          <p className="mt-1 text-xs text-slate-500">{member.territories.join(', ')}</p>
+                          <p className="mt-1 text-xs text-slate-500 truncate">{member.territories.join(', ')}</p>
                         )}
                       </div>
                       <p className="text-[10px] text-slate-600">
@@ -245,7 +245,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                       </p>
                     </div>
 
-                    <div className="mt-3 grid grid-cols-3 gap-2">
+                    <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2">
                       <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2 text-center">
                         <p className="text-lg font-semibold text-white">{member.totalLeads}</p>
                         <p className="text-[9px] text-slate-500">Leads</p>
@@ -260,11 +260,11 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                       </div>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-2 flex flex-wrap gap-0.5 sm:gap-1.5">
                       {(Object.entries(member.leadsByStage) as Array<[LeadStage, number]>)
                         .filter(([, count]) => count > 0)
                         .map(([stage, count]) => (
-                          <span key={stage} className={`text-[9px] font-semibold ${STAGE_COLORS[stage]}`}>
+                          <span key={stage} className={`text-[8px] sm:text-[9px] font-semibold ${STAGE_COLORS[stage]}`}>
                             {count} {STAGE_LABELS[stage]}
                           </span>
                         ))}
