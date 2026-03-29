@@ -509,7 +509,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (blob: Blob) => Prom
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-800 bg-gray-950 p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-800 bg-gray-950 p-3 sm:p-4 mx-3 sm:mx-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-white">Camera Capture</p>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
@@ -524,7 +524,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (blob: Blob) => Prom
                 type="button"
                 onClick={() => void handleSnap()}
                 disabled={capturing}
-                className="h-16 w-16 rounded-full border-4 border-white bg-red-500 transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-4 border-white bg-red-500 transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
               />
             </div>
           </>
@@ -679,7 +679,7 @@ function AnnotationCanvas({ imageUrl, onSave, onClose }: { imageUrl: string; onS
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative flex max-h-[95vh] w-full max-w-4xl flex-col rounded-3xl border border-gray-800 bg-gray-950 p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex max-h-[95vh] w-full max-w-4xl flex-col rounded-3xl border border-gray-800 bg-gray-950 p-3 sm:p-4 mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-white">Annotate Evidence</p>
           <button type="button" onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
@@ -703,7 +703,7 @@ function AnnotationCanvas({ imageUrl, onSave, onClose }: { imageUrl: string; onS
 
         {/* Text input */}
         {textPos && (
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2 sm:mb-3">
             <input value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Type annotation text..." autoFocus className="flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); }} />
             <button type="button" onClick={handleTextSubmit} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-gray-950">Place</button>
             <button type="button" onClick={() => setTextPos(null)} className="rounded-xl border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-400">Cancel</button>

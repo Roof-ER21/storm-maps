@@ -915,62 +915,59 @@ function BulkActionBar({
   const [bulkRep, setBulkRep] = useState('');
 
   return (
-    <div className="sticky top-0 z-20 rounded-[24px] border border-orange-400/30 bg-slate-950/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-sm">
-      <div className="flex flex-wrap items-center gap-3">
-        <p className="text-sm font-semibold text-orange-300">
-          {count} selected
-        </p>
-        {count < totalVisible && (
-          <button type="button" onClick={onSelectAll} className="text-xs text-slate-400 hover:text-white underline">
-            Select all {totalVisible}
-          </button>
-        )}
-        <button type="button" onClick={onClearSelection} className="text-xs text-slate-400 hover:text-white underline">
-          Clear
-        </button>
+    <div className="sticky top-0 z-20 rounded-[24px] border border-orange-400/30 bg-slate-950/95 p-3 sm:p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+      <div className="space-y-2 sm:space-y-3">
+        {/* Selection controls */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <p className="text-sm font-semibold text-orange-300">{count} selected</p>
+          {count < totalVisible && (
+            <button type="button" onClick={onSelectAll} className="text-xs text-slate-400 hover:text-white underline">Select all {totalVisible}</button>
+          )}
+          <button type="button" onClick={onClearSelection} className="text-xs text-slate-400 hover:text-white underline">Clear</button>
+        </div>
 
-        <span className="mx-1 h-5 border-l border-slate-700" />
+        {/* Stage + Reminder row */}
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+          <span className="text-[10px] font-semibold uppercase text-slate-600 shrink-0">Stage:</span>
+          {(['contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => (
+            <button
+              key={stage}
+              type="button"
+              onClick={() => onBulkSetStage(stage)}
+              className={`flex-1 sm:flex-none rounded-lg border px-1.5 sm:px-2 py-1.5 text-[9px] sm:text-[10px] font-bold ${STAGE_CONFIG[stage].border} ${STAGE_CONFIG[stage].bg} ${STAGE_CONFIG[stage].color} hover:opacity-80`}
+            >
+              {STAGE_CONFIG[stage].label}
+            </button>
+          ))}
+          <span className="hidden sm:block mx-1 h-5 border-l border-slate-700" />
+          <span className="text-[10px] font-semibold uppercase text-slate-600 shrink-0">Remind:</span>
+          <button type="button" onClick={() => onBulkSetReminder('today')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Today</button>
+          <button type="button" onClick={() => onBulkSetReminder('tomorrow')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Tmrw</button>
+          <button type="button" onClick={() => onBulkSetReminder('next_week')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-slate-300 hover:text-amber-300">+7d</button>
+        </div>
 
-        <span className="text-[10px] font-semibold uppercase text-slate-600">Stage:</span>
-        {(['contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => (
-          <button
-            key={stage}
-            type="button"
-            onClick={() => onBulkSetStage(stage)}
-            className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STAGE_CONFIG[stage].border} ${STAGE_CONFIG[stage].bg} ${STAGE_CONFIG[stage].color} hover:opacity-80`}
-          >
-            {STAGE_CONFIG[stage].label}
-          </button>
-        ))}
-
-        <span className="mx-1 h-5 border-l border-slate-700" />
-
-        <span className="text-[10px] font-semibold uppercase text-slate-600">Remind:</span>
-        <button type="button" onClick={() => onBulkSetReminder('today')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Today</button>
-        <button type="button" onClick={() => onBulkSetReminder('tomorrow')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Tmrw</button>
-        <button type="button" onClick={() => onBulkSetReminder('next_week')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-amber-300">+7d</button>
-
-        <span className="mx-1 h-5 border-l border-slate-700" />
-
-        <span className="text-[10px] font-semibold uppercase text-slate-600">Rep:</span>
-        <div className="flex items-center gap-1">
-          <input
-            value={bulkRep}
-            onChange={(e) => setBulkRep(e.target.value)}
-            placeholder="Name"
-            list="bulk-rep-options"
-            className="w-24 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[11px] text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
-          />
-          <datalist id="bulk-rep-options">
-            {availableReps.map((rep) => <option key={rep} value={rep} />)}
-          </datalist>
-          <button
-            type="button"
-            onClick={() => { if (bulkRep.trim()) { onBulkSetRep(bulkRep.trim()); setBulkRep(''); } }}
-            className="rounded-lg border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-[10px] font-bold text-violet-300 hover:bg-violet-500/25"
-          >
-            Assign
-          </button>
+        {/* Rep assignment row */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
+          <span className="text-[10px] font-semibold uppercase text-slate-600 shrink-0">Rep:</span>
+          <div className="flex items-center gap-1 flex-1">
+            <input
+              value={bulkRep}
+              onChange={(e) => setBulkRep(e.target.value)}
+              placeholder="Name"
+              list="bulk-rep-options"
+              className="flex-1 sm:w-24 sm:flex-none rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[11px] text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
+            />
+            <datalist id="bulk-rep-options">
+              {availableReps.map((rep) => <option key={rep} value={rep} />)}
+            </datalist>
+            <button
+              type="button"
+              onClick={() => { if (bulkRep.trim()) { onBulkSetRep(bulkRep.trim()); setBulkRep(''); } }}
+              className="rounded-lg border border-violet-400/30 bg-violet-500/15 px-3 py-1.5 text-[10px] font-bold text-violet-300 hover:bg-violet-500/25"
+            >
+              Assign
+            </button>
+          </div>
         </div>
       </div>
     </div>

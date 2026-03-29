@@ -119,7 +119,7 @@ export default function ReportsPage({
               <p className="mt-2 text-sm text-gray-400">
                 {wonStops.length} closed deal{wonStops.length === 1 ? '' : 's'} — generate final documentation.
               </p>
-              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {wonStops.map((stop) => (
                   <div
                     key={stop.id}
@@ -143,12 +143,12 @@ export default function ReportsPage({
                       {stop.assignedRep && <p className="mt-1 text-violet-200">Rep: {stop.assignedRep}</p>}
                       {stop.notes && <p className="mt-2 text-slate-300">{stop.notes}</p>}
                     </div>
-                    <div className="mt-3 flex gap-2">
+                    <div className="mt-3 flex flex-col sm:flex-row gap-2">
                       <button
                         type="button"
                         onClick={() => { void onGenerateReport(stop.stormDate); }}
                         disabled={generatingReport}
-                        className="rounded-xl bg-[linear-gradient(135deg,#10b981,#059669)] px-3 py-2 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+                        className="rounded-xl bg-[linear-gradient(135deg,#10b981,#059669)] px-3 py-2.5 text-xs font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50"
                       >
                         {generatingReport ? 'Generating...' : 'Generate PDF'}
                       </button>
@@ -156,7 +156,7 @@ export default function ReportsPage({
                         type="button"
                         onClick={() => { void onDownloadEvidencePack(stop.stormDate); }}
                         disabled={downloadingEvidencePack}
-                        className="rounded-xl border border-emerald-500/20 bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:border-emerald-400/30"
+                        className="rounded-xl border border-emerald-500/20 bg-slate-900 px-3 py-2.5 text-xs font-semibold text-white hover:border-emerald-400/30"
                       >
                         Evidence Pack
                       </button>

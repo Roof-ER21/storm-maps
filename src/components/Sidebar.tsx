@@ -285,7 +285,7 @@ export default function Sidebar({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
             History Range
           </p>
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
             <RangeButton
               active={historyRange === '1y'}
               label="1Y"
@@ -598,7 +598,7 @@ export default function Sidebar({
               Hail Dates
             </p>
           </div>
-          <div className="flex gap-1.5 overflow-x-auto px-3 pb-2">
+          <div className="flex flex-wrap gap-1.5 px-3 pb-2">
             <ListFilterChip
               active={dateListFilter === 'all'}
               label={`All ${sortedDates.length}`}
@@ -629,7 +629,7 @@ export default function Sidebar({
                 <button
                   type="button"
                   onClick={onBuildKnockRoute}
-                  className="rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-100 transition-colors hover:bg-orange-500/20"
+                  className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-100 transition-colors hover:bg-orange-500/20"
                 >
                   Build Route
                 </button>

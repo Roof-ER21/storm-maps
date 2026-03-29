@@ -70,11 +70,11 @@ export default function CanvassPage({
               ? `Working route for ${searchSummary.locationLabel}.`
               : 'Build a route from the Storm Map and use this page as the rep field log.'}
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-5 grid grid-cols-2 sm:flex sm:flex-wrap gap-2">
             <button
               type="button"
               onClick={onBuildKnockRoute}
-              className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
+              className="col-span-2 sm:col-span-1 rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
             >
               Build Knock-Now Route
             </button>
@@ -82,30 +82,30 @@ export default function CanvassPage({
               type="button"
               onClick={onOpenNavigation}
               disabled={pendingStops.length === 0}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Open Turn-by-Turn
+              Turn-by-Turn
             </button>
             <button
               type="button"
               onClick={onExportSummary}
               disabled={routeStops.length === 0}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Export Summary
+              Summary
             </button>
             <button
               type="button"
               onClick={onExportCsv}
               disabled={routeStops.length === 0}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Export CSV
+              CSV
             </button>
             <button
               type="button"
               onClick={onOpenMap}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+              className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
             >
               Back to Map
             </button>
@@ -140,7 +140,7 @@ export default function CanvassPage({
                       : 'border-slate-800 bg-slate-950/82'
                 }`}
               >
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-3">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-orange-100">
@@ -179,12 +179,12 @@ export default function CanvassPage({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-[0.52fr_0.48fr]">
+                <div className="mt-4 grid gap-4 md:grid-cols-[0.52fr_0.48fr]">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Stop Status
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap gap-1.5 sm:gap-2">
                       {(
                         [
                           ['queued', 'Queued'],
@@ -196,7 +196,7 @@ export default function CanvassPage({
                           key={`${stop.id}-${status}`}
                           type="button"
                           onClick={() => onUpdateStopStatus(stop.id, status)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          className={`rounded-full border px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold transition-colors ${
                             stop.status === status
                               ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
                               : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
@@ -210,7 +210,7 @@ export default function CanvassPage({
                     <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Outcome
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                    <div className="mt-2 flex flex-wrap gap-1.5 sm:gap-2">
                       {(
                         [
                           ['none', 'Not Set'],
@@ -224,7 +224,7 @@ export default function CanvassPage({
                           key={`${stop.id}-${outcome}`}
                           type="button"
                           onClick={() => onUpdateStopOutcome(stop.id, outcome)}
-                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
+                          className={`rounded-full border px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold transition-colors ${
                             stop.outcome === outcome
                               ? 'border-violet-400/40 bg-violet-500/20 text-violet-100'
                               : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
