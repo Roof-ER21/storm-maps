@@ -5,17 +5,28 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:server": "tsx watch server/index.ts",
     "build": "tsc -b && vite build",
+    "start": "node --import tsx server/migrate.ts && node --import tsx server/index.ts",
+    "db:migrate": "node --import tsx server/migrate.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
+    "@types/express": "^5.0.6",
     "@vis.gl/react-google-maps": "^1.7.1",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "express": "^5.2.1",
     "jszip": "^3.10.1",
+    "postgres": "^3.4.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "tailwindcss": "^4.2.2"
+    "tailwindcss": "^4.2.2",
+    "tsx": "^4.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

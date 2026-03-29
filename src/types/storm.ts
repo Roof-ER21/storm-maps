@@ -282,6 +282,7 @@ export interface CanvassRouteStop {
   notes: string;
   reminderAt?: string | null;
   assignedRep?: string;
+  dealValue?: number | null;
   stageHistory?: LeadStageEntry[];
   homeownerName?: string;
   homeownerPhone?: string;

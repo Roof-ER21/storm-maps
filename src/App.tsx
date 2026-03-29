@@ -60,6 +60,7 @@ const PinnedPropertiesPage = lazy(() => import('./components/PinnedPropertiesPag
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
+import { syncLeadsToServer, seedDemoData } from './services/api';
 import {
   listEvidenceItems,
   removeEvidenceItem,
@@ -177,6 +178,7 @@ function buildCanvassRouteStop(params: {
     notes: params.existingStop?.notes ?? '',
     reminderAt: params.existingStop?.reminderAt ?? null,
     assignedRep: params.existingStop?.assignedRep ?? '',
+    dealValue: params.existingStop?.dealValue ?? null,
     stageHistory: params.existingStop?.stageHistory ?? [{ stage: defaultLeadStageForOutcome(params.existingStop?.outcome ?? 'none'), at: now }],
     homeownerName: params.existingStop?.homeownerName ?? '',
     homeownerPhone: params.existingStop?.homeownerPhone ?? '',
@@ -723,6 +725,8 @@ function App() {
         CANVASS_ROUTE_STORAGE_KEY,
         JSON.stringify(routeStopsState),
       );
+      // Background sync to server
+      void syncLeadsToServer(routeStopsState);
     } catch (error) {
       console.error('[App] Failed to save canvass route:', error);
     }
@@ -1185,6 +1189,7 @@ function App() {
           leadStage: stop.leadStage ?? defaultLeadStageForOutcome(stop.outcome),
           reminderAt: stop.reminderAt ?? null,
           assignedRep: stop.assignedRep ?? '',
+          dealValue: stop.dealValue ?? null,
           stageHistory: stop.stageHistory ?? [],
           homeownerName: stop.homeownerName ?? '',
           homeownerPhone: stop.homeownerPhone ?? '',
@@ -1773,6 +1778,21 @@ function App() {
           : stop,
       ),
     );
+  }, []);
+
+  const handleUpdateRouteStopDealValue = useCallback((stopId: string, value: number | null) => {
+    setRouteStopsState((current) =>
+      current.map((stop) =>
+        stop.id === stopId
+          ? { ...stop, dealValue: value, updatedAt: new Date().toISOString() }
+          : stop,
+      ),
+    );
+  }, []);
+
+  const handleSeedDemo = useCallback(async () => {
+    const ok = await seedDemoData();
+    if (ok) window.alert('Demo data seeded! Search "Dallas, TX" to see the demo leads.');
   }, []);
 
   const handleUpdateRouteStopReminder = useCallback((stopId: string, reminderAt: string) => {
@@ -2440,6 +2460,7 @@ function App() {
             stormAlertsChecking={checkingStormAlerts}
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
+            onSeedDemo={handleSeedDemo}
           />
         )}
 
@@ -2537,6 +2558,7 @@ function App() {
             onUpdateLeadNotes={handleUpdateRouteStopNotes}
             onUpdateLeadReminder={handleUpdateRouteStopReminder}
             onUpdateLeadAssignedRep={handleUpdateRouteStopAssignedRep}
+            onUpdateLeadDealValue={handleUpdateRouteStopDealValue}
             onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
             onRestoreArchive={handleRestoreRouteArchive}
           />

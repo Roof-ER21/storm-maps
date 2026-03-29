@@ -31,6 +31,7 @@ interface DashboardPageProps {
   stormAlertsChecking: boolean;
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
+  onSeedDemo: () => void;
 }
 
 export default function DashboardPage({
@@ -54,6 +55,7 @@ export default function DashboardPage({
   stormAlertsChecking,
   onExportBackup,
   onImportBackup,
+  onSeedDemo,
 }: DashboardPageProps) {
   const hailEvents = events.filter((event) => event.eventType === 'Hail');
   const totalDamage = events.reduce(
@@ -550,6 +552,13 @@ export default function DashboardPage({
                 }}
               />
             </label>
+            <button
+              type="button"
+              onClick={onSeedDemo}
+              className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 sm:py-2.5 text-sm font-semibold text-amber-300 hover:bg-amber-500/20"
+            >
+              Load Demo Data
+            </button>
           </div>
         </section>
       </div>

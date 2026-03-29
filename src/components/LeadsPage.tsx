@@ -22,6 +22,7 @@ interface LeadsPageProps {
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
   onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
+  onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -79,6 +80,7 @@ export default function LeadsPage({
   onUpdateLeadNotes,
   onUpdateLeadReminder,
   onUpdateLeadAssignedRep,
+  onUpdateLeadDealValue,
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
@@ -246,23 +248,34 @@ export default function LeadsPage({
         </div>
 
         {/* Conversion insights */}
-        {activeLeads.length > 0 && (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {activeLeads.length > 0 && (() => {
+          const pipelineValue = allActiveLeads.filter((l) => l.leadStage !== 'won' && l.leadStage !== 'lost').reduce((s, l) => s + (l.dealValue || 0), 0);
+          const closedValue = allActiveLeads.filter((l) => l.leadStage === 'won').reduce((s, l) => s + (l.dealValue || 0), 0);
+          return (
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
+            <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-emerald-300">
+                {closedValue > 0 ? `$${(closedValue / 1000).toFixed(0)}k` : '--'}
+              </p>
+              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Closed Revenue</p>
+            </div>
+            <div className="rounded-[24px] border border-orange-500/20 bg-orange-500/[0.06] p-4">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-orange-300">
+                {pipelineValue > 0 ? `$${(pipelineValue / 1000).toFixed(0)}k` : '--'}
+              </p>
+              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Pipeline Value</p>
+            </div>
             <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-2xl font-semibold tracking-tight text-white">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-white">
                 {winRate !== null ? `${winRate}%` : '--'}
               </p>
-              <p className="mt-1 text-xs text-slate-500">Win Rate</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Win Rate</p>
             </div>
             <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-2xl font-semibold tracking-tight text-white">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-white">
                 {avgDaysInPipeline !== null ? `${avgDaysInPipeline}d` : '--'}
               </p>
-              <p className="mt-1 text-xs text-slate-500">Avg Days in Pipeline</p>
-            </div>
-            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-2xl font-semibold tracking-tight text-white">{activeLeads.length}</p>
-              <p className="mt-1 text-xs text-slate-500">Total Leads</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Avg Days</p>
             </div>
             <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
               <p className="text-xs font-semibold text-slate-500 mb-2">Leads by Rep</p>
@@ -277,7 +290,8 @@ export default function LeadsPage({
               )}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Filter bar */}
         {allActiveLeads.length > 0 && (
@@ -405,6 +419,7 @@ export default function LeadsPage({
                       onUpdateLeadNotes={onUpdateLeadNotes}
                       onUpdateLeadReminder={onUpdateLeadReminder}
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
+                      onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -435,6 +450,7 @@ export default function LeadsPage({
                       onUpdateLeadNotes={onUpdateLeadNotes}
                       onUpdateLeadReminder={onUpdateLeadReminder}
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
+                      onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -462,6 +478,7 @@ export default function LeadsPage({
                       onUpdateLeadNotes={onUpdateLeadNotes}
                       onUpdateLeadReminder={onUpdateLeadReminder}
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
+                      onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -544,6 +561,7 @@ function LeadCard({
   onUpdateLeadNotes,
   onUpdateLeadReminder,
   onUpdateLeadAssignedRep,
+  onUpdateLeadDealValue,
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
@@ -556,6 +574,7 @@ function LeadCard({
   onUpdateLeadNotes: (stopId: string, notes: string) => void;
   onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
+  onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -705,8 +724,8 @@ function LeadCard({
         ))}
       </div>
 
-      {/* Rep assignment + Reminder row */}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      {/* Rep + Deal Value + Reminder row */}
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div>
           <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
             Assigned Rep
@@ -716,6 +735,18 @@ function LeadCard({
             onChange={(event) => onUpdateLeadAssignedRep(lead.id, event.target.value)}
             placeholder="Rep name"
             className="mt-1 w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
+          />
+        </div>
+        <div>
+          <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+            Deal Value ($)
+          </label>
+          <input
+            type="number"
+            value={lead.dealValue ?? ''}
+            onChange={(event) => onUpdateLeadDealValue(lead.id, event.target.value ? parseFloat(event.target.value) : null)}
+            placeholder="0"
+            className="mt-1 w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-emerald-400/40 focus:outline-none"
           />
         </div>
         <div>
