@@ -65,6 +65,9 @@ interface StormMapProps {
   onLeadPinClick?: (stop: CanvassRouteStop) => void;
   evidencePins?: Array<{ id: string; lat: number; lng: number; title: string; status: string }>;
   onEvidencePinClick?: (id: string) => void;
+  heatmapPoints?: Array<{ lat: number; lng: number; weight: number }>;
+  showHeatmap?: boolean;
+  onToggleHeatmap?: () => void;
 }
 
 interface StormContext {
@@ -593,6 +596,9 @@ function MapContent({
   onLeadPinClick,
   evidencePins,
   onEvidencePinClick,
+  heatmapPoints,
+  showHeatmap,
+  onToggleHeatmap,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -1028,6 +1034,32 @@ function MapContent({
         );
       })}
 
+      {/* Heatmap overlay */}
+      {showHeatmap && heatmapPoints && heatmapPoints.map((point, idx) => {
+        const intensity = Math.min(1, point.weight / 5);
+        const size = 20 + intensity * 40;
+        const r = Math.round(255 * intensity);
+        const g = Math.round(100 * (1 - intensity));
+        const b = Math.round(200 * (1 - intensity));
+        return (
+          <AdvancedMarker
+            key={`heat-${idx}`}
+            position={{ lat: point.lat, lng: point.lng }}
+            zIndex={100}
+          >
+            <div
+              style={{
+                width: size,
+                height: size,
+                borderRadius: '50%',
+                background: `radial-gradient(circle, rgba(${r},${g},${b},${0.3 + intensity * 0.35}) 0%, rgba(${r},${g},${b},0) 70%)`,
+                pointerEvents: 'none',
+              }}
+            />
+          </AdvancedMarker>
+        );
+      })}
+
       {/* Evidence pins */}
       {evidencePins && evidencePins.map((pin) => (
         <AdvancedMarker
@@ -1231,6 +1263,20 @@ function MapContent({
               MRMS
             </div>
           </button>
+          {onToggleHeatmap && (
+            <button
+              onClick={onToggleHeatmap}
+              className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+                showHeatmap
+                  ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
+                  : 'bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+              title={showHeatmap ? 'Hide heat map' : 'Show heat map'}
+              aria-label="Toggle heat map"
+            >
+              Heat Map
+            </button>
+          )}
         </div>
       </MapControl>
     </>
@@ -1252,6 +1298,9 @@ export default function StormMap({
   onLeadPinClick,
   evidencePins,
   onEvidencePinClick,
+  heatmapPoints,
+  showHeatmap,
+  onToggleHeatmap,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1299,6 +1348,9 @@ export default function StormMap({
         onLeadPinClick={onLeadPinClick}
         evidencePins={evidencePins}
         onEvidencePinClick={onEvidencePinClick}
+        heatmapPoints={heatmapPoints}
+        showHeatmap={showHeatmap}
+        onToggleHeatmap={onToggleHeatmap}
       />
     </Map>
   );

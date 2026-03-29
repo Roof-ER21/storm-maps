@@ -36,6 +36,7 @@ import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
 import { useStormAlerts } from './hooks/useStormAlerts';
+import { useRepProfile } from './hooks/useRepProfile';
 import { geocodeAddress } from './services/geocodeApi';
 import {
   getNotificationPermission,
@@ -52,11 +53,13 @@ import Legend from './components/Legend';
 import AppHeader from './components/AppHeader';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
+const TodayPage = lazy(() => import('./components/TodayPage'));
 const CanvassPage = lazy(() => import('./components/CanvassPage'));
 const LeadsPage = lazy(() => import('./components/LeadsPage'));
 const PinnedPropertiesPage = lazy(() => import('./components/PinnedPropertiesPage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
+const TeamPage = lazy(() => import('./components/TeamPage'));
 import {
   listEvidenceItems,
   removeEvidenceItem,
@@ -522,6 +525,7 @@ function downloadRouteCsv(params: {
 
 function App() {
   const notificationsSupported = isNotificationSupported();
+  const { profile: repProfile, updateProfile: updateRepProfile } = useRepProfile();
   const [activeView, setActiveView] = useState<AppView>('dashboard');
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
 
@@ -554,6 +558,7 @@ function App() {
   const [routeArchives, setRouteArchives] = useState<CanvassRouteArchive[]>([]);
   const [activeRouteStopId, setActiveRouteStopId] = useState<string | null>(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
+  const [showHeatmap, setShowHeatmap] = useState(true);
   const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
     youtube: 'live' | 'fallback';
     flickr: 'live' | 'fallback';
@@ -1239,6 +1244,35 @@ function App() {
       )
       .slice(0, MAX_ROUTE_STOPS);
   }, [filteredStormDates, stormRouteCandidatesByDate]);
+
+  const heatmapPoints = useMemo(() => {
+    const points: Array<{ lat: number; lng: number; weight: number }> = [];
+
+    // Add hail events weighted by magnitude
+    for (const event of filteredEvents) {
+      if (event.eventType !== 'Hail') continue;
+      points.push({
+        lat: event.beginLat,
+        lng: event.beginLon,
+        weight: Math.max(1, event.magnitude),
+      });
+    }
+
+    // Add leads weighted by stage
+    const stageWeight: Record<string, number> = {
+      won: 5, inspection_set: 4, contacted: 3, new: 2, lost: 1,
+    };
+    for (const stop of routeStops) {
+      if (stop.outcome === 'none' || stop.outcome === 'no_answer') continue;
+      points.push({
+        lat: stop.lat,
+        lng: stop.lng,
+        weight: stageWeight[stop.leadStage] ?? 2,
+      });
+    }
+
+    return points;
+  }, [filteredEvents, routeStops]);
 
   const routeQueuedCountsByDate = useMemo(() => {
     const counts = new Map<string, number>();
@@ -2160,6 +2194,9 @@ function App() {
           }))
         }
         onEvidencePinClick={() => setActiveView('evidence')}
+        heatmapPoints={heatmapPoints}
+        showHeatmap={showHeatmap}
+        onToggleHeatmap={() => setShowHeatmap((v) => !v)}
       />
 
       <RouteQueuePanel
@@ -2406,6 +2443,22 @@ function App() {
           />
         )}
 
+        {activeView === 'today' && (
+          <TodayPage
+            searchSummary={searchSummary}
+            routeStops={routeStops}
+            stormAlerts={activeStormAlerts}
+            onOpenMap={() => setActiveView('map')}
+            onOpenLeads={() => setActiveView('leads')}
+            onOpenCanvass={() => setActiveView('canvass')}
+            onFocusLead={(stop) => {
+              focusRouteStop(stop);
+              setActiveView('map');
+            }}
+            onDismissAlert={dismissStormAlert}
+          />
+        )}
+
         {activeView === 'map' && (
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <Sidebar
@@ -2534,6 +2587,15 @@ function App() {
             onOpenReports={() => setActiveView('reports')}
             onOpenMap={() => setActiveView('map')}
             providerStatus={evidenceProviderStatus}
+          />
+        )}
+
+        {activeView === 'team' && (
+          <TeamPage
+            routeStops={routeStops}
+            repProfile={repProfile}
+            onUpdateProfile={updateRepProfile}
+            searchLabel={searchSummary?.locationLabel ?? null}
           />
         )}
         </Suspense>

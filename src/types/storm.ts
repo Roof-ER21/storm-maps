@@ -56,12 +56,14 @@ export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
 
 export type AppView =
   | 'dashboard'
+  | 'today'
   | 'map'
   | 'canvass'
   | 'leads'
   | 'pinned'
   | 'reports'
-  | 'evidence';
+  | 'evidence'
+  | 'team';
 
 // ============================================================
 // Storm Event Types

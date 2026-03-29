@@ -9,12 +9,14 @@ interface AppHeaderProps {
 
 const NAV_ITEMS: Array<{ id: AppView; label: string }> = [
   { id: 'dashboard', label: 'Dashboard' },
+  { id: 'today', label: 'Your Day' },
   { id: 'map', label: 'Storm Map' },
   { id: 'canvass', label: 'Canvass' },
   { id: 'leads', label: 'Leads' },
   { id: 'pinned', label: 'Pinned' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'reports', label: 'Reports' },
+  { id: 'team', label: 'Team' },
 ];
 
 export default function AppHeader({
