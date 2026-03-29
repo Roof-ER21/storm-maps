@@ -66,11 +66,11 @@ export default function TodayPage({
     <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-4xl flex-col gap-5">
         {/* Hero */}
-        <div className="rounded-[28px] border border-slate-800 bg-slate-950/88 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
+        <div className="rounded-[28px] border border-slate-800 bg-slate-950/88 px-4 py-5 sm:p-6 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
           <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+          <h2 className="mt-2 text-2xl sm:text-3xl font-semibold tracking-tight text-white">
             {greeting}
           </h2>
           <p className="mt-3 text-sm text-slate-400">
@@ -171,7 +171,7 @@ export default function TodayPage({
         )}
 
         {/* Quick nav */}
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-2 grid-cols-1 sm:grid-cols-3">
           <button type="button" onClick={onOpenMap} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-left hover:border-slate-700 hover:bg-slate-900">
             <p className="text-sm font-semibold text-white">Storm Map</p>
             <p className="mt-1 text-xs text-slate-500">Check current conditions</p>
@@ -232,7 +232,7 @@ function DigestLeadCard({
         {lead.homeownerPhone && (
           <a
             href={`tel:${formatPhone(lead.homeownerPhone)}`}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-emerald-400/25 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+            className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-emerald-400/25 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
             title="Call"
           >
             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
@@ -241,7 +241,7 @@ function DigestLeadCard({
         <button
           type="button"
           onClick={() => onFocusLead(lead)}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white"
+          className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white"
           title="View on map"
         >
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 21s-6-5.33-6-11a6 6 0 1112 0c0 5.67-6 11-6 11z" /></svg>
@@ -249,7 +249,7 @@ function DigestLeadCard({
         <button
           type="button"
           onClick={onOpenLeads}
-          className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white"
+          className="flex h-10 w-10 sm:h-8 sm:w-8 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-400 hover:text-white"
           title="Open in leads"
         >
           <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>

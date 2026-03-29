@@ -171,7 +171,7 @@ export default function DashboardPage({
                     <button
                       type="button"
                       onClick={onOpenMap}
-                      className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-[10px] font-semibold text-red-300 hover:bg-red-500/25"
+                      className="rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/25"
                     >
                       View Map
                     </button>
@@ -227,7 +227,7 @@ export default function DashboardPage({
           />
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr]">
           <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
@@ -247,7 +247,7 @@ export default function DashboardPage({
               </button>
             </div>
 
-            <div className="mt-5 grid gap-4 xl:grid-cols-2">
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
               {recentEvents.length > 0 ? (
                 recentEvents.map((event) => (
                   <RecentEventCard key={event.id} event={event} onClick={onOpenMap} />
@@ -415,7 +415,7 @@ export default function DashboardPage({
           </div>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.95fr_1.05fr]">
           <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
               Latest Hits
@@ -724,7 +724,7 @@ function StateRow({
         <p className="text-lg font-semibold text-white">{stateName(state)}</p>
         <p className="text-sm text-slate-500">{state}</p>
       </div>
-      <p className="text-5xl font-semibold tracking-tight text-orange-300">{count}</p>
+      <p className="text-4xl sm:text-5xl font-semibold tracking-tight text-orange-300">{count}</p>
     </button>
   );
 }

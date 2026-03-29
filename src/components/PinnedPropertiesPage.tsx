@@ -30,7 +30,7 @@ export default function PinnedPropertiesPage({
   return (
     <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.15),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
               Pinned Properties
@@ -62,7 +62,7 @@ export default function PinnedPropertiesPage({
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {pinnedProperties.map((property) => (
               <article
                 key={property.id}
@@ -100,7 +100,7 @@ export default function PinnedPropertiesPage({
                   </button>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-3 text-xs sm:text-sm">
                   <PinnedMetric
                     label="Storm Dates"
                     value={String(property.stormDateCount)}

@@ -112,7 +112,7 @@ export default function CanvassPage({
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 md:grid-cols-3 xl:grid-cols-5">
           <CanvassMetric label="Pending Stops" value={String(pendingStops.length)} />
           <CanvassMetric label="Visited" value={String(visitedStops.length)} />
           <CanvassMetric label="Completed" value={String(completedStops.length)} />
@@ -247,7 +247,7 @@ export default function CanvassPage({
                       className="mt-2 h-28 w-full resize-none rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
                     />
                     {(stop.outcome === 'inspection_booked' || stop.homeownerName || stop.homeownerPhone || stop.homeownerEmail) && (
-                      <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                         <input
                           value={stop.homeownerName || ''}
                           onChange={(event) =>

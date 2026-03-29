@@ -204,7 +204,7 @@ export default function EvidencePage({
         ) : (
           <>
             {/* Upload + seeding controls */}
-            <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.95fr_1.05fr]">
               <section className="rounded-3xl border border-gray-900 bg-gray-950/80 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Current Property</p>
                 <h3 className="mt-2 text-xl font-semibold text-white">{searchSummary.locationLabel}</h3>
@@ -230,7 +230,7 @@ export default function EvidencePage({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-3">
                   <button type="button" onClick={handleSeedDemoPack} disabled={seedingDemo} className="rounded-2xl bg-amber-400 px-3 py-2.5 text-xs font-semibold text-gray-950 hover:bg-amber-300 disabled:bg-gray-800 disabled:text-gray-500">
                     {seedingDemo ? 'Seeding...' : 'Demo Pack'}
                   </button>
@@ -252,7 +252,7 @@ export default function EvidencePage({
                   </div>
                   <button type="button" onClick={onOpenReports} className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gray-100">Open Reports</button>
                 </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="mt-4 grid gap-2 grid-cols-2 lg:grid-cols-4">
                   <SummaryCard label="Uploads" value={String(propertyEvidence.filter((i) => i.kind === 'upload').length)} />
                   <SummaryCard label="Candidates" value={String(propertyEvidence.filter((i) => i.kind === 'provider-query').length)} />
                   <SummaryCard label="Approved" value={String(propertyEvidence.filter((i) => i.status === 'approved').length)} />
@@ -686,7 +686,7 @@ function AnnotationCanvas({ imageUrl, onSave, onClose }: { imageUrl: string; onS
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-wrap items-center gap-2 mb-3">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
           {(['freehand', 'arrow', 'circle', 'text'] as const).map((t) => (
             <button key={t} type="button" onClick={() => setTool(t)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tool === t ? 'bg-amber-500 text-gray-950' : 'bg-gray-900 text-gray-300 hover:bg-gray-800'}`}>
               {t === 'freehand' ? 'Draw' : t === 'arrow' ? 'Arrow' : t === 'circle' ? 'Circle' : 'Text'}
