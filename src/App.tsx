@@ -47,6 +47,8 @@ import {
 import { generateStormReport } from './services/reportService';
 import { generateEvidencePack } from './services/evidencePackService';
 import ErrorBoundary from './components/ErrorBoundary';
+import OnboardingTour from './components/OnboardingTour';
+import { useOnboarding } from './hooks/useOnboarding';
 import HomeownerImport, { type ImportedHomeowner } from './components/HomeownerImport';
 import PageSkeleton from './components/PageSkeleton';
 import Sidebar from './components/Sidebar';
@@ -58,9 +60,6 @@ import AppHeader from './components/AppHeader';
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const TodayPage = lazy(() => import('./components/TodayPage'));
 const PipelinePage = lazy(() => import('./components/PipelinePage'));
-const CanvassPage = lazy(() => import('./components/CanvassPage'));
-const LeadsPage = lazy(() => import('./components/LeadsPage'));
-const PinnedPropertiesPage = lazy(() => import('./components/PinnedPropertiesPage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
@@ -81,9 +80,9 @@ const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
 const ALERT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
 
-/** Default center: DMV area */
-const DEFAULT_CENTER: LatLng = { lat: 39.4196, lng: -76.7803 };
-const DEFAULT_ZOOM = 10;
+/** Default center: US continental midpoint — zoomed out until user searches */
+const DEFAULT_CENTER: LatLng = { lat: 39.0, lng: -98.0 };
+const DEFAULT_ZOOM = 5;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
 const CANVASS_ROUTE_STORAGE_KEY = 'hail-yes:canvass-route';
@@ -555,6 +554,7 @@ function AppRouter() {
 function App() {
   const notificationsSupported = isNotificationSupported();
   const { profile: repProfile, updateProfile: updateRepProfile } = useRepProfile();
+  const { showOnboarding, markComplete: completeOnboarding } = useOnboarding();
   const [activeView, setActiveView] = useState<AppView>('dashboard');
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
 
@@ -1993,6 +1993,8 @@ function App() {
       maxWindMph: stormDate?.maxWindMph ?? 0,
       eventCount: stop.reportCount,
       repName: stop.assignedRep || repProfile?.name || undefined,
+      repPhone: repProfile?.phone || undefined,
+      companyName: repProfile?.companyName || undefined,
       homeownerName: stop.homeownerName || undefined,
     });
     if (result) {
@@ -2767,67 +2769,6 @@ function App() {
           />
         )}
 
-        {activeView === 'canvass' && (
-          <CanvassPage
-            searchSummary={searchSummary}
-            routeStops={orderedRouteStops}
-            routeArchives={currentPropertyRouteArchives}
-            onOpenMap={() => setActiveView('map')}
-            onFocusStop={(stop) => {
-              focusRouteStop(stop);
-              setActiveView('map');
-            }}
-            onBuildKnockRoute={handleBuildKnockRoute}
-            onOpenNavigation={handleOpenRouteNavigation}
-            onExportSummary={handleExportRouteSummary}
-            onExportCsv={handleExportRouteCsv}
-            onClearRoute={handleClearRoute}
-            onUpdateStopStatus={handleUpdateRouteStopStatus}
-            onUpdateStopOutcome={handleUpdateRouteStopOutcome}
-            onUpdateStopNotes={handleUpdateRouteStopNotes}
-            onUpdateStopHomeowner={handleUpdateRouteStopHomeowner}
-            onRemoveStop={handleRemoveStopFromRoute}
-            onRestoreArchive={handleRestoreRouteArchive}
-            onRemoveArchive={handleRemoveRouteArchive}
-          />
-        )}
-
-        {activeView === 'leads' && (
-          <LeadsPage
-            searchSummary={searchSummary}
-            routeStops={routeStops}
-            routeArchives={currentPropertyRouteArchives}
-            onOpenMap={() => setActiveView('map')}
-            onOpenCanvass={() => setActiveView('pipeline')}
-            onFocusLead={(stop) => {
-              focusRouteStop(stop);
-              setActiveView('map');
-            }}
-            onUpdateLeadStatus={handleUpdateRouteStopStatus}
-            onUpdateLeadOutcome={handleUpdateRouteStopOutcome}
-            onUpdateLeadStage={handleUpdateRouteStopLeadStage}
-            onUpdateLeadNotes={handleUpdateRouteStopNotes}
-            onUpdateLeadReminder={handleUpdateRouteStopReminder}
-            onUpdateLeadAssignedRep={handleUpdateRouteStopAssignedRep}
-            onUpdateLeadDealValue={handleUpdateRouteStopDealValue}
-            onShareLeadReport={handleShareLeadReport}
-            onUpdateLeadChecklist={handleUpdateRouteStopChecklist}
-            onLookupPropertyOwner={handleLookupPropertyOwner}
-            onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
-            onRestoreArchive={handleRestoreRouteArchive}
-          />
-        )}
-
-        {activeView === 'pinned' && (
-          <PinnedPropertiesPage
-            pinnedProperties={pinnedProperties}
-            routeCountsByPropertyId={routeCountsByPropertyId}
-            onOpenProperty={handleOpenPinnedProperty}
-            onRemoveProperty={handleRemovePinnedProperty}
-            onOpenMap={() => setActiveView('map')}
-          />
-        )}
-
         {activeView === 'reports' && (
           <ReportsPage
             searchSummary={searchSummary}
@@ -2884,6 +2825,8 @@ function App() {
           onClose={() => setShowHomeownerImport(false)}
         />
       )}
+
+      {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
     </div>
   );
 }

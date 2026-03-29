@@ -50,6 +50,8 @@ const STAGE_COLORS: Record<LeadStage, string> = {
 
 export default function TeamPage({ routeStops, repProfile, onUpdateProfile, searchLabel }: TeamPageProps) {
   const [name, setName] = useState(repProfile?.name || '');
+  const [phone, setPhone] = useState(repProfile?.phone || '');
+  const [companyName, setCompanyName] = useState(repProfile?.companyName || '');
   const [teamCode, setTeamCode] = useState(repProfile?.teamCode || '');
   const [role, setRole] = useState<'rep' | 'manager'>(repProfile?.role || 'rep');
   const [roster, setRoster] = useState<TeamMemberSnapshot[]>(loadRoster);
@@ -89,6 +91,8 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
     const profile: RepProfile = {
       id: repProfile?.id || generateId(),
       name: name.trim(),
+      phone: phone.trim(),
+      companyName: companyName.trim(),
       teamCode: teamCode.trim().toUpperCase(),
       role,
       createdAt: repProfile?.createdAt || new Date().toISOString(),
@@ -165,6 +169,14 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
             <div>
               <label htmlFor="team-rep-name" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Name</label>
               <input id="team-rep-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+            </div>
+            <div>
+              <label htmlFor="team-phone" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Phone</label>
+              <input id="team-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your phone number" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+            </div>
+            <div>
+              <label htmlFor="team-company" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Company</label>
+              <input id="team-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your company name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
             </div>
             <div>
               <label htmlFor="team-code" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Team Code</label>

@@ -5,6 +5,8 @@ const REP_PROFILE_KEY = 'hail-yes:rep-profile';
 export interface RepProfile {
   id: string;
   name: string;
+  phone: string;
+  companyName: string;
   teamCode: string;
   role: 'rep' | 'manager';
   createdAt: string;
