@@ -82,10 +82,45 @@ export default function LeadsPage({
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
-  const activeLeads = routeStops
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterStage, setFilterStage] = useState<LeadStage | 'all'>('all');
+  const [filterUrgency, setFilterUrgency] = useState<'all' | 'overdue' | 'today' | 'upcoming'>('all');
+  const [filterRep, setFilterRep] = useState('all');
+  const [filterOutcome, setFilterOutcome] = useState<CanvassOutcome | 'all'>('all');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const allActiveLeads = routeStops
     .filter((stop) => LEAD_OUTCOMES.includes(stop.outcome))
     .slice()
     .sort(compareLeadPriority);
+
+  // Derive available reps for the filter dropdown
+  const availableReps = Array.from(
+    new Set(allActiveLeads.map((l) => l.assignedRep?.trim()).filter(Boolean) as string[]),
+  ).sort();
+
+  // Apply filters
+  const activeLeads = allActiveLeads.filter((lead) => {
+    if (filterStage !== 'all' && lead.leadStage !== filterStage) return false;
+    if (filterOutcome !== 'all' && lead.outcome !== filterOutcome) return false;
+    if (filterRep !== 'all') {
+      const rep = lead.assignedRep?.trim() || '';
+      if (filterRep === '__unassigned__' ? rep !== '' : rep !== filterRep) return false;
+    }
+    if (filterUrgency !== 'all') {
+      const u = getReminderUrgency(lead.reminderAt);
+      if (filterUrgency !== u) return false;
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const haystack = [
+        lead.homeownerName, lead.homeownerPhone, lead.homeownerEmail,
+        lead.locationLabel, lead.stormLabel, lead.notes, lead.assignedRep,
+      ].filter(Boolean).join(' ').toLowerCase();
+      if (!haystack.includes(q)) return false;
+    }
+    return true;
+  });
 
   const archivedLeads = routeArchives
     .flatMap((archive) =>
@@ -103,18 +138,51 @@ export default function LeadsPage({
   const wonLeads = activeLeads.filter((s) => s.leadStage === 'won');
   const lostLeads = activeLeads.filter((s) => s.leadStage === 'lost');
   const pipelineLeads = activeLeads.filter((s) => s.leadStage !== 'won' && s.leadStage !== 'lost');
+  const hasActiveFilters = filterStage !== 'all' || filterUrgency !== 'all' || filterRep !== 'all' || filterOutcome !== 'all' || searchQuery.trim() !== '';
 
-  const stageCounts = activeLeads.reduce((acc, lead) => {
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedIds(new Set(activeLeads.map((l) => l.id)));
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const bulkSetStage = (stage: LeadStage) => {
+    for (const id of selectedIds) onUpdateLeadStage(id, stage);
+    clearSelection();
+  };
+
+  const bulkSetReminder = (preset: 'today' | 'tomorrow' | 'next_week') => {
+    const date = getQuickDate(preset);
+    for (const id of selectedIds) onUpdateLeadReminder(id, date);
+    clearSelection();
+  };
+
+  const bulkSetRep = (rep: string) => {
+    for (const id of selectedIds) onUpdateLeadAssignedRep(id, rep);
+    clearSelection();
+  };
+
+  const stageCounts = allActiveLeads.reduce((acc, lead) => {
     acc[lead.leadStage] = (acc[lead.leadStage] || 0) + 1;
     return acc;
   }, {} as Record<LeadStage, number>);
 
-  // Conversion stats
-  const closedLeads = wonLeads.length + lostLeads.length;
-  const winRate = closedLeads > 0 ? Math.round((wonLeads.length / closedLeads) * 100) : null;
+  // Conversion stats (always against full set)
+  const allWon = allActiveLeads.filter((s) => s.leadStage === 'won').length;
+  const allLost = allActiveLeads.filter((s) => s.leadStage === 'lost').length;
+  const closedLeads = allWon + allLost;
+  const winRate = closedLeads > 0 ? Math.round((allWon / closedLeads) * 100) : null;
 
   const avgDaysInPipeline = (() => {
-    const leadsWithHistory = activeLeads.filter((l) => l.stageHistory && l.stageHistory.length >= 2);
+    const leadsWithHistory = allActiveLeads.filter((l) => l.stageHistory && l.stageHistory.length >= 2);
     if (leadsWithHistory.length === 0) return null;
     const totalDays = leadsWithHistory.reduce((sum, l) => {
       const first = new Date(l.stageHistory![0].at).getTime();
@@ -124,7 +192,7 @@ export default function LeadsPage({
     return Math.round(totalDays / leadsWithHistory.length);
   })();
 
-  const repCounts = activeLeads.reduce((acc, lead) => {
+  const repCounts = allActiveLeads.reduce((acc, lead) => {
     const rep = lead.assignedRep?.trim() || 'Unassigned';
     acc[rep] = (acc[rep] || 0) + 1;
     return acc;
@@ -211,11 +279,103 @@ export default function LeadsPage({
           </div>
         )}
 
-        {activeLeads.length === 0 && archivedLeads.length === 0 ? (
+        {/* Filter bar */}
+        {allActiveLeads.length > 0 && (
+          <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search leads..."
+                className="min-w-[180px] flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none"
+              />
+              <select
+                value={filterStage}
+                onChange={(e) => setFilterStage(e.target.value as LeadStage | 'all')}
+                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+              >
+                <option value="all">All Stages</option>
+                <option value="new">New</option>
+                <option value="contacted">Contacted</option>
+                <option value="inspection_set">Inspection Set</option>
+                <option value="won">Won</option>
+                <option value="lost">Lost</option>
+              </select>
+              <select
+                value={filterOutcome}
+                onChange={(e) => setFilterOutcome(e.target.value as CanvassOutcome | 'all')}
+                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+              >
+                <option value="all">All Outcomes</option>
+                <option value="inspection_booked">Booked</option>
+                <option value="follow_up">Follow Up</option>
+                <option value="interested">Interested</option>
+              </select>
+              <select
+                value={filterUrgency}
+                onChange={(e) => setFilterUrgency(e.target.value as 'all' | 'overdue' | 'today' | 'upcoming')}
+                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+              >
+                <option value="all">All Reminders</option>
+                <option value="overdue">Overdue</option>
+                <option value="today">Due Today</option>
+                <option value="upcoming">Upcoming</option>
+              </select>
+              <select
+                value={filterRep}
+                onChange={(e) => setFilterRep(e.target.value)}
+                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+              >
+                <option value="all">All Reps</option>
+                <option value="__unassigned__">Unassigned</option>
+                {availableReps.map((rep) => (
+                  <option key={rep} value={rep}>{rep}</option>
+                ))}
+              </select>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  onClick={() => { setSearchQuery(''); setFilterStage('all'); setFilterUrgency('all'); setFilterRep('all'); setFilterOutcome('all'); }}
+                  className="rounded-xl border border-orange-400/30 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/20"
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+            {hasActiveFilters && (
+              <p className="mt-2 text-xs text-slate-500">
+                Showing {activeLeads.length} of {allActiveLeads.length} leads
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Bulk action bar */}
+        {selectedIds.size > 0 && (
+          <BulkActionBar
+            count={selectedIds.size}
+            totalVisible={activeLeads.length}
+            availableReps={availableReps}
+            onSelectAll={selectAll}
+            onClearSelection={clearSelection}
+            onBulkSetStage={bulkSetStage}
+            onBulkSetReminder={bulkSetReminder}
+            onBulkSetRep={bulkSetRep}
+          />
+        )}
+
+        {activeLeads.length === 0 && archivedLeads.length === 0 && !hasActiveFilters ? (
           <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
             <p className="text-lg font-semibold text-white">No lead pipeline yet</p>
             <p className="mt-2 text-sm text-slate-500">
               Leads are created when reps mark a route stop as Interested, Follow Up, or Inspection Booked.
+            </p>
+          </div>
+        ) : activeLeads.length === 0 && hasActiveFilters ? (
+          <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
+            <p className="text-lg font-semibold text-white">No leads match filters</p>
+            <p className="mt-2 text-sm text-slate-500">
+              Try adjusting your filters or clearing them to see all {allActiveLeads.length} leads.
             </p>
           </div>
         ) : (
@@ -234,6 +394,8 @@ export default function LeadsPage({
                     <LeadCard
                       key={lead.id}
                       lead={lead}
+                      isSelected={selectedIds.has(lead.id)}
+                      onToggleSelect={() => toggleSelect(lead.id)}
                       onFocusLead={onFocusLead}
                       onUpdateLeadStatus={onUpdateLeadStatus}
                       onUpdateLeadOutcome={onUpdateLeadOutcome}
@@ -262,6 +424,8 @@ export default function LeadsPage({
                     <LeadCard
                       key={lead.id}
                       lead={lead}
+                      isSelected={selectedIds.has(lead.id)}
+                      onToggleSelect={() => toggleSelect(lead.id)}
                       onFocusLead={onFocusLead}
                       onUpdateLeadStatus={onUpdateLeadStatus}
                       onUpdateLeadOutcome={onUpdateLeadOutcome}
@@ -287,6 +451,8 @@ export default function LeadsPage({
                     <LeadCard
                       key={lead.id}
                       lead={lead}
+                      isSelected={selectedIds.has(lead.id)}
+                      onToggleSelect={() => toggleSelect(lead.id)}
                       onFocusLead={onFocusLead}
                       onUpdateLeadStatus={onUpdateLeadStatus}
                       onUpdateLeadOutcome={onUpdateLeadOutcome}
@@ -367,6 +533,8 @@ function CollapsibleSection({
 
 function LeadCard({
   lead,
+  isSelected,
+  onToggleSelect,
   onFocusLead,
   onUpdateLeadStatus,
   onUpdateLeadOutcome,
@@ -377,6 +545,8 @@ function LeadCard({
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
+  isSelected: boolean;
+  onToggleSelect: () => void;
   onFocusLead: (stop: CanvassRouteStop) => void;
   onUpdateLeadStatus: (stopId: string, status: CanvassStopStatus) => void;
   onUpdateLeadOutcome: (stopId: string, outcome: CanvassOutcome) => void;
@@ -402,9 +572,16 @@ function LeadCard({
         : '';
 
   return (
-    <article className="rounded-3xl border border-slate-800 bg-slate-900/72 p-4">
+    <article className={`rounded-3xl border p-4 transition-colors ${isSelected ? 'border-orange-400/40 bg-orange-500/[0.06]' : 'border-slate-800 bg-slate-900/72'}`}>
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
+        <button
+          type="button"
+          onClick={onToggleSelect}
+          className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${isSelected ? 'border-orange-400 bg-orange-500 text-white' : 'border-slate-700 bg-slate-950 text-transparent hover:border-slate-500'}`}
+        >
+          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+        </button>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${stageCfg.border} ${stageCfg.bg} ${stageCfg.color}`}>
@@ -681,6 +858,90 @@ function ArchivedLeadCard({
         </button>
       </div>
     </article>
+  );
+}
+
+function BulkActionBar({
+  count,
+  totalVisible,
+  availableReps,
+  onSelectAll,
+  onClearSelection,
+  onBulkSetStage,
+  onBulkSetReminder,
+  onBulkSetRep,
+}: {
+  count: number;
+  totalVisible: number;
+  availableReps: string[];
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+  onBulkSetStage: (stage: LeadStage) => void;
+  onBulkSetReminder: (preset: 'today' | 'tomorrow' | 'next_week') => void;
+  onBulkSetRep: (rep: string) => void;
+}) {
+  const [bulkRep, setBulkRep] = useState('');
+
+  return (
+    <div className="sticky top-0 z-20 rounded-[24px] border border-orange-400/30 bg-slate-950/95 p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm font-semibold text-orange-300">
+          {count} selected
+        </p>
+        {count < totalVisible && (
+          <button type="button" onClick={onSelectAll} className="text-xs text-slate-400 hover:text-white underline">
+            Select all {totalVisible}
+          </button>
+        )}
+        <button type="button" onClick={onClearSelection} className="text-xs text-slate-400 hover:text-white underline">
+          Clear
+        </button>
+
+        <span className="mx-1 h-5 border-l border-slate-700" />
+
+        <span className="text-[10px] font-semibold uppercase text-slate-600">Stage:</span>
+        {(['contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => (
+          <button
+            key={stage}
+            type="button"
+            onClick={() => onBulkSetStage(stage)}
+            className={`rounded-lg border px-2 py-1 text-[10px] font-bold ${STAGE_CONFIG[stage].border} ${STAGE_CONFIG[stage].bg} ${STAGE_CONFIG[stage].color} hover:opacity-80`}
+          >
+            {STAGE_CONFIG[stage].label}
+          </button>
+        ))}
+
+        <span className="mx-1 h-5 border-l border-slate-700" />
+
+        <span className="text-[10px] font-semibold uppercase text-slate-600">Remind:</span>
+        <button type="button" onClick={() => onBulkSetReminder('today')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Today</button>
+        <button type="button" onClick={() => onBulkSetReminder('tomorrow')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Tmrw</button>
+        <button type="button" onClick={() => onBulkSetReminder('next_week')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:text-amber-300">+7d</button>
+
+        <span className="mx-1 h-5 border-l border-slate-700" />
+
+        <span className="text-[10px] font-semibold uppercase text-slate-600">Rep:</span>
+        <div className="flex items-center gap-1">
+          <input
+            value={bulkRep}
+            onChange={(e) => setBulkRep(e.target.value)}
+            placeholder="Name"
+            list="bulk-rep-options"
+            className="w-24 rounded-lg border border-slate-800 bg-slate-900 px-2 py-1 text-[11px] text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
+          />
+          <datalist id="bulk-rep-options">
+            {availableReps.map((rep) => <option key={rep} value={rep} />)}
+          </datalist>
+          <button
+            type="button"
+            onClick={() => { if (bulkRep.trim()) { onBulkSetRep(bulkRep.trim()); setBulkRep(''); } }}
+            className="rounded-lg border border-violet-400/30 bg-violet-500/15 px-2 py-1 text-[10px] font-bold text-violet-300 hover:bg-violet-500/25"
+          >
+            Assign
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 

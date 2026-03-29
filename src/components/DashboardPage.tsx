@@ -24,6 +24,8 @@ interface DashboardPageProps {
   onOpenReports: () => void;
   onOpenCanvass: () => void;
   onOpenLeads: () => void;
+  onExportBackup: () => void;
+  onImportBackup: (file: File) => void;
 }
 
 export default function DashboardPage({
@@ -41,6 +43,8 @@ export default function DashboardPage({
   onOpenReports,
   onOpenCanvass,
   onOpenLeads,
+  onExportBackup,
+  onImportBackup,
 }: DashboardPageProps) {
   const hailEvents = events.filter((event) => event.eventType === 'Hail');
   const totalDamage = events.reduce(
@@ -444,6 +448,43 @@ export default function DashboardPage({
                 />
               )}
             </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+            Data Management
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-white">
+            Backup and restore all app data
+          </h3>
+          <p className="mt-2 text-sm text-slate-400">
+            Export pinned properties, canvass routes, lead pipeline, and evidence as a single JSON file.
+            Import restores everything from a previous backup.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={onExportBackup}
+              className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
+            >
+              Export Backup
+            </button>
+            <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800">
+              Import Backup
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    onImportBackup(file);
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </label>
           </div>
         </section>
       </div>

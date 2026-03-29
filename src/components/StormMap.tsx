@@ -24,6 +24,8 @@ import type {
   GpsPosition,
   LatLng,
   BoundingBox,
+  CanvassRouteStop,
+  LeadStage,
 } from '../types/storm';
 import { getHailSizeClass } from '../types/storm';
 import HailSwathLayer from './HailSwathLayer';
@@ -59,6 +61,8 @@ interface StormMapProps {
     bounds: BoundingBox | null;
   }) => void;
   onMapClick?: (event: StormEvent | null) => void;
+  leadPins?: CanvassRouteStop[];
+  onLeadPinClick?: (stop: CanvassRouteStop) => void;
 }
 
 interface StormContext {
@@ -82,6 +86,14 @@ type MapContentProps = Omit<
   'center' | 'zoom' | 'onCameraChanged' | 'bounds'
 > & {
   mapBounds: BoundingBox | null;
+};
+
+const LEAD_STAGE_COLORS: Record<LeadStage, string> = {
+  new: '#38bdf8',
+  contacted: '#fbbf24',
+  inspection_set: '#a78bfa',
+  won: '#34d399',
+  lost: '#94a3b8',
 };
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
@@ -575,6 +587,8 @@ function MapContent({
   fitBoundsRequest,
   mapBounds,
   onMapClick,
+  leadPins,
+  onLeadPinClick,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -976,6 +990,40 @@ function MapContent({
         );
       })}
 
+      {/* Lead pins */}
+      {leadPins && leadPins.map((lead) => {
+        const stageColor = LEAD_STAGE_COLORS[lead.leadStage] || '#94a3b8';
+        return (
+          <AdvancedMarker
+            key={`lead-${lead.id}`}
+            position={{ lat: lead.lat, lng: lead.lng }}
+            title={`${lead.homeownerName || lead.locationLabel} — ${lead.leadStage}`}
+            onClick={() => onLeadPinClick?.(lead)}
+            zIndex={2000}
+          >
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                backgroundColor: stageColor,
+                border: '3px solid rgba(255,255,255,0.9)',
+                borderRadius: '50% 50% 50% 0',
+                transform: 'rotate(-45deg)',
+                cursor: 'pointer',
+                boxShadow: `0 0 10px ${stageColor}90, 0 2px 8px rgba(0,0,0,0.4)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span style={{ transform: 'rotate(45deg)', fontSize: 11, fontWeight: 700, color: '#fff' }}>
+                {lead.leadStage === 'won' ? 'W' : lead.leadStage === 'lost' ? 'L' : lead.leadStage[0].toUpperCase()}
+              </span>
+            </div>
+          </AdvancedMarker>
+        );
+      })}
+
       {selectedEvent && (
         <InfoWindow
           position={{
@@ -1167,6 +1215,8 @@ export default function StormMap({
   fitBoundsRequest,
   onCameraChanged,
   onMapClick,
+  leadPins,
+  onLeadPinClick,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1210,6 +1260,8 @@ export default function StormMap({
         fitBoundsRequest={fitBoundsRequest}
         mapBounds={bounds}
         onMapClick={onMapClick}
+        leadPins={leadPins}
+        onLeadPinClick={onLeadPinClick}
       />
     </Map>
   );

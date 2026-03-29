@@ -1783,6 +1783,54 @@ function App() {
     });
   }, [orderedRouteStops, searchSummary]);
 
+  const handleExportBackup = useCallback(() => {
+    const backup = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      pinnedProperties,
+      routeStops: routeStopsState,
+      routeArchives,
+      evidenceItems,
+    };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `hail-yes-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }, [evidenceItems, pinnedProperties, routeArchives, routeStopsState]);
+
+  const handleImportBackup = useCallback((file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result as string);
+        if (data.pinnedProperties && Array.isArray(data.pinnedProperties)) {
+          setPinnedProperties(data.pinnedProperties);
+        }
+        if (data.routeStops && Array.isArray(data.routeStops)) {
+          setRouteStopsState(data.routeStops);
+        }
+        if (data.routeArchives && Array.isArray(data.routeArchives)) {
+          setRouteArchives(data.routeArchives);
+        }
+        if (data.evidenceItems && Array.isArray(data.evidenceItems)) {
+          setEvidenceItems(data.evidenceItems.map(normalizeEvidenceItem));
+          for (const item of data.evidenceItems) {
+            void saveEvidenceItem(normalizeEvidenceItem(item));
+          }
+        }
+        window.alert('Backup restored successfully.');
+      } catch {
+        window.alert('Invalid backup file.');
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
   const handleRestoreRouteArchive = useCallback((archiveId: string) => {
     const archive = routeArchives.find((item) => item.id === archiveId);
     if (!archive) {
@@ -2057,6 +2105,18 @@ function App() {
         fitBoundsRequest={fitBoundsRequest}
         onCameraChanged={handleCameraChanged}
         onMapClick={handleMapClick}
+        leadPins={routeStops.filter((stop) =>
+          stop.outcome === 'interested' || stop.outcome === 'follow_up' || stop.outcome === 'inspection_booked'
+        )}
+        onLeadPinClick={(stop) => {
+          setActiveRouteStopId(stop.id);
+          setShowRoutePanel(true);
+          setCamera((prev) => ({
+            ...prev,
+            center: { lat: stop.lat, lng: stop.lng },
+            zoom: Math.max(prev.zoom, 15),
+          }));
+        }}
       />
 
       <RouteQueuePanel
@@ -2294,6 +2354,8 @@ function App() {
             onOpenReports={() => setActiveView('reports')}
             onOpenCanvass={() => setActiveView('canvass')}
             onOpenLeads={() => setActiveView('leads')}
+            onExportBackup={handleExportBackup}
+            onImportBackup={handleImportBackup}
           />
         )}
 
