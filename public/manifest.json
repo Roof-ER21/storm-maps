@@ -1,0 +1,12 @@
+{
+  "name": "Hail Yes!",
+  "short_name": "Hail Yes!",
+  "description": "Storm intelligence for roofing professionals",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#04020a",
+  "theme_color": "#f97316",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

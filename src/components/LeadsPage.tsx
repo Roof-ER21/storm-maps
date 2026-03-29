@@ -24,6 +24,7 @@ interface LeadsPageProps {
   onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
   onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
   onShareLeadReport: (stop: CanvassRouteStop) => void;
+  onUpdateLeadChecklist: (stopId: string, key: string, done: boolean) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -83,6 +84,7 @@ export default function LeadsPage({
   onUpdateLeadAssignedRep,
   onUpdateLeadDealValue,
   onShareLeadReport,
+  onUpdateLeadChecklist,
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
@@ -423,6 +425,7 @@ export default function LeadsPage({
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onShareLeadReport={onShareLeadReport}
+                      onUpdateLeadChecklist={onUpdateLeadChecklist}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -455,6 +458,7 @@ export default function LeadsPage({
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onShareLeadReport={onShareLeadReport}
+                      onUpdateLeadChecklist={onUpdateLeadChecklist}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -484,6 +488,7 @@ export default function LeadsPage({
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onShareLeadReport={onShareLeadReport}
+                      onUpdateLeadChecklist={onUpdateLeadChecklist}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -568,6 +573,7 @@ function LeadCard({
   onUpdateLeadAssignedRep,
   onUpdateLeadDealValue,
   onShareLeadReport,
+  onUpdateLeadChecklist,
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
@@ -582,6 +588,7 @@ function LeadCard({
   onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
   onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
   onShareLeadReport: (stop: CanvassRouteStop) => void;
+  onUpdateLeadChecklist: (stopId: string, key: string, done: boolean) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -856,6 +863,31 @@ function LeadCard({
               <EmailIcon /> Email
             </a>
           )}
+        </div>
+      )}
+
+      {/* Win checklist */}
+      {lead.leadStage === 'won' && lead.winChecklist && lead.winChecklist.length > 0 && (
+        <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-300 mb-2">
+            Closeout Checklist ({lead.winChecklist.filter((i) => i.done).length}/{lead.winChecklist.length})
+          </p>
+          <div className="space-y-1.5">
+            {lead.winChecklist.map((item) => (
+              <label key={item.key} className="flex items-center gap-2 cursor-pointer group">
+                <button
+                  type="button"
+                  onClick={() => onUpdateLeadChecklist(lead.id, item.key, !item.done)}
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${item.done ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-700 bg-slate-950 text-transparent group-hover:border-emerald-400/50'}`}
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                </button>
+                <span className={`text-xs ${item.done ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                  {item.label}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
 

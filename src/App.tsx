@@ -31,7 +31,7 @@ import type {
   PinnedProperty,
   EvidenceItem,
 } from './types/storm';
-import { getStormCanvassPriority } from './types/storm';
+import { getStormCanvassPriority, DEFAULT_WIN_CHECKLIST } from './types/storm';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
@@ -47,6 +47,7 @@ import {
 import { generateStormReport } from './services/reportService';
 import { generateEvidencePack } from './services/evidencePackService';
 import ErrorBoundary from './components/ErrorBoundary';
+import PageSkeleton from './components/PageSkeleton';
 import Sidebar from './components/Sidebar';
 import StormMap from './components/StormMap';
 import SearchBar from './components/SearchBar';
@@ -180,6 +181,7 @@ function buildCanvassRouteStop(params: {
     reminderAt: params.existingStop?.reminderAt ?? null,
     assignedRep: params.existingStop?.assignedRep ?? '',
     dealValue: params.existingStop?.dealValue ?? null,
+    winChecklist: params.existingStop?.winChecklist ?? [],
     stageHistory: params.existingStop?.stageHistory ?? [{ stage: defaultLeadStageForOutcome(params.existingStop?.outcome ?? 'none'), at: now }],
     homeownerName: params.existingStop?.homeownerName ?? '',
     homeownerPhone: params.existingStop?.homeownerPhone ?? '',
@@ -524,6 +526,20 @@ function downloadRouteCsv(params: {
   anchor.click();
   document.body.removeChild(anchor);
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
+
+function AppRouter() {
+  const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
+  if (reportSlug) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" /></div>}>
+        <SharedReportPage slug={reportSlug} />
+      </Suspense>
+    );
+  }
+  return <App />;
 }
 
 function App() {
@@ -1191,6 +1207,7 @@ function App() {
           reminderAt: stop.reminderAt ?? null,
           assignedRep: stop.assignedRep ?? '',
           dealValue: stop.dealValue ?? null,
+          winChecklist: stop.winChecklist ?? [],
           stageHistory: stop.stageHistory ?? [],
           homeownerName: stop.homeownerName ?? '',
           homeownerPhone: stop.homeownerPhone ?? '',
@@ -1720,9 +1737,13 @@ function App() {
           const nextHistory = lastEntry?.stage === leadStage
             ? history
             : [...history, { stage: leadStage, at: now }];
+          const winChecklist = leadStage === 'won' && (!stop.winChecklist || stop.winChecklist.length === 0)
+            ? DEFAULT_WIN_CHECKLIST.map((item) => ({ ...item }))
+            : stop.winChecklist;
           return {
             ...stop,
             leadStage,
+            winChecklist,
             stageHistory: nextHistory,
             updatedAt: now,
           };
@@ -1781,6 +1802,18 @@ function App() {
     );
   }, []);
 
+  const handleUpdateRouteStopChecklist = useCallback((stopId: string, key: string, done: boolean) => {
+    setRouteStopsState((current) =>
+      current.map((stop) => {
+        if (stop.id !== stopId) return stop;
+        const checklist = (stop.winChecklist || []).map((item) =>
+          item.key === key ? { ...item, done, doneAt: done ? new Date().toISOString() : undefined } : item,
+        );
+        return { ...stop, winChecklist: checklist, updatedAt: new Date().toISOString() };
+      }),
+    );
+  }, []);
+
   const handleUpdateRouteStopDealValue = useCallback((stopId: string, value: number | null) => {
     setRouteStopsState((current) =>
       current.map((stop) =>
@@ -1792,8 +1825,87 @@ function App() {
   }, []);
 
   const handleSeedDemo = useCallback(async () => {
-    const ok = await seedDemoData();
-    if (ok) window.alert('Demo data seeded! Search "Dallas, TX" to see the demo leads.');
+    // Seed to server
+    void seedDemoData();
+
+    // Seed to localStorage immediately
+    const now = new Date().toISOString();
+    const today = now.slice(0, 10);
+    const demoStops: CanvassRouteStop[] = [
+      {
+        id: 'demo-lead-1', propertyLabel: 'Dallas, TX', stormDate: '2024-05-28', stormLabel: 'Tue, May 28, 2024',
+        lat: 32.7767, lng: -96.797, locationLabel: 'Dallas County, TX', sourceEventId: null, sourceLabel: 'NOAA SWDI',
+        topHailInches: 1.75, reportCount: 12, evidenceCount: 3, priority: 'Knock now',
+        status: 'completed', outcome: 'inspection_booked', leadStage: 'won', dealValue: 18500,
+        notes: 'Full roof replacement approved. Insurance paid out.', reminderAt: today,
+        assignedRep: 'Mike R.', stageHistory: [
+          { stage: 'new', at: new Date(Date.now() - 14 * 86400000).toISOString() },
+          { stage: 'contacted', at: new Date(Date.now() - 12 * 86400000).toISOString() },
+          { stage: 'inspection_set', at: new Date(Date.now() - 8 * 86400000).toISOString() },
+          { stage: 'won', at: new Date(Date.now() - 2 * 86400000).toISOString() },
+        ],
+        homeownerName: 'Sarah Johnson', homeownerPhone: '214-555-0142', homeownerEmail: 'sarah.j@example.com',
+        createdAt: new Date(Date.now() - 14 * 86400000).toISOString(), updatedAt: now,
+      },
+      {
+        id: 'demo-lead-2', propertyLabel: 'Dallas, TX', stormDate: '2024-05-28', stormLabel: 'Tue, May 28, 2024',
+        lat: 32.783, lng: -96.81, locationLabel: 'Garland, TX', sourceEventId: null, sourceLabel: 'NOAA SWDI',
+        topHailInches: 2.0, reportCount: 8, evidenceCount: 2, priority: 'Knock now',
+        status: 'visited', outcome: 'inspection_booked', leadStage: 'inspection_set', dealValue: 22000,
+        notes: 'Adjuster meeting Thursday 2 PM.', reminderAt: new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        assignedRep: 'Mike R.', stageHistory: [
+          { stage: 'new', at: new Date(Date.now() - 7 * 86400000).toISOString() },
+          { stage: 'contacted', at: new Date(Date.now() - 5 * 86400000).toISOString() },
+          { stage: 'inspection_set', at: new Date(Date.now() - 86400000).toISOString() },
+        ],
+        homeownerName: 'Robert Chen', homeownerPhone: '972-555-0198', homeownerEmail: 'rchen@example.com',
+        createdAt: new Date(Date.now() - 7 * 86400000).toISOString(), updatedAt: now,
+      },
+      {
+        id: 'demo-lead-3', propertyLabel: 'Dallas, TX', stormDate: '2025-06-01', stormLabel: 'Sun, Jun 1, 2025',
+        lat: 32.751, lng: -97.082, locationLabel: 'Arlington, TX', sourceEventId: null, sourceLabel: 'NOAA SWDI',
+        topHailInches: 3.0, reportCount: 15, evidenceCount: 0, priority: 'Knock now',
+        status: 'visited', outcome: 'follow_up', leadStage: 'contacted', notes: 'Left door hanger.',
+        reminderAt: new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10),
+        assignedRep: 'Lisa T.', stageHistory: [
+          { stage: 'new', at: new Date(Date.now() - 3 * 86400000).toISOString() },
+          { stage: 'contacted', at: new Date(Date.now() - 86400000).toISOString() },
+        ],
+        homeownerName: 'David Martinez', homeownerPhone: '817-555-0267', homeownerEmail: '',
+        createdAt: new Date(Date.now() - 3 * 86400000).toISOString(), updatedAt: now,
+      },
+      {
+        id: 'demo-lead-4', propertyLabel: 'Dallas, TX', stormDate: '2025-06-01', stormLabel: 'Sun, Jun 1, 2025',
+        lat: 32.814, lng: -96.872, locationLabel: 'Irving, TX', sourceEventId: null, sourceLabel: 'NOAA SWDI',
+        topHailInches: 2.5, reportCount: 9, evidenceCount: 1, priority: 'Knock now',
+        status: 'queued', outcome: 'interested', leadStage: 'new', notes: '', assignedRep: 'Lisa T.',
+        stageHistory: [{ stage: 'new', at: new Date(Date.now() - 86400000).toISOString() }],
+        homeownerName: 'Jennifer Williams', homeownerPhone: '', homeownerEmail: 'jen.w@example.com',
+        createdAt: new Date(Date.now() - 86400000).toISOString(), updatedAt: now,
+      },
+      {
+        id: 'demo-lead-5', propertyLabel: 'Dallas, TX', stormDate: '2024-05-28', stormLabel: 'Tue, May 28, 2024',
+        lat: 32.795, lng: -96.755, locationLabel: 'Mesquite, TX', sourceEventId: null, sourceLabel: 'NOAA SWDI',
+        topHailInches: 1.5, reportCount: 6, evidenceCount: 0, priority: 'Monitor',
+        status: 'completed', outcome: 'interested', leadStage: 'lost',
+        notes: 'Homeowner went with another contractor.', assignedRep: 'Mike R.',
+        stageHistory: [
+          { stage: 'new', at: new Date(Date.now() - 10 * 86400000).toISOString() },
+          { stage: 'contacted', at: new Date(Date.now() - 8 * 86400000).toISOString() },
+          { stage: 'lost', at: new Date(Date.now() - 3 * 86400000).toISOString() },
+        ],
+        homeownerName: 'Tom Anderson', homeownerPhone: '469-555-0311', homeownerEmail: 'tom.a@example.com',
+        createdAt: new Date(Date.now() - 10 * 86400000).toISOString(), updatedAt: now,
+      },
+    ];
+
+    setRouteStopsState((prev) => {
+      const existingIds = new Set(prev.map((s) => s.id));
+      const newStops = demoStops.filter((s) => !existingIds.has(s.id));
+      return [...prev, ...newStops];
+    });
+
+    window.alert('Demo data loaded! 5 leads added (Sarah Johnson Won $18.5K, Robert Chen Inspection Set $22K, and 3 more). Check the Leads page.');
   }, []);
 
   const handleShareLeadReport = useCallback(async (stop: CanvassRouteStop) => {
@@ -2466,7 +2578,7 @@ function App() {
 
       <div className="flex min-h-0 flex-1 flex-col">
         <ErrorBoundary fallbackLabel="This page encountered an error. Try going back to Dashboard." onReset={() => setActiveView('dashboard')}>
-        <Suspense fallback={<PageLoader />}>
+        <Suspense fallback={<PageSkeleton />}>
         {activeView === 'dashboard' && (
           <DashboardPage
             searchSummary={searchSummary}
@@ -2589,6 +2701,7 @@ function App() {
             onUpdateLeadAssignedRep={handleUpdateRouteStopAssignedRep}
             onUpdateLeadDealValue={handleUpdateRouteStopDealValue}
             onShareLeadReport={handleShareLeadReport}
+            onUpdateLeadChecklist={handleUpdateRouteStopChecklist}
             onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
             onRestoreArchive={handleRestoreRouteArchive}
           />
@@ -2657,13 +2770,6 @@ function App() {
   );
 }
 
-function PageLoader() {
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
-    </div>
-  );
-}
 
 function RouteQueuePanel({
   visible,
@@ -3008,4 +3114,4 @@ function MapUnavailablePanel({
   );
 }
 
-export default App;
+export default AppRouter;

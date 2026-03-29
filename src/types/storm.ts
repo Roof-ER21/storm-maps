@@ -262,6 +262,22 @@ export interface LeadStageEntry {
   at: string;
 }
 
+export interface WinChecklistItem {
+  key: string;
+  label: string;
+  done: boolean;
+  doneAt?: string;
+}
+
+export const DEFAULT_WIN_CHECKLIST: WinChecklistItem[] = [
+  { key: 'inspection', label: 'Schedule roof inspection', done: false },
+  { key: 'adjuster', label: 'Meet with insurance adjuster', done: false },
+  { key: 'supplement', label: 'File supplement if needed', done: false },
+  { key: 'materials', label: 'Order materials', done: false },
+  { key: 'install', label: 'Schedule installation', done: false },
+  { key: 'walkthrough', label: 'Final walkthrough with homeowner', done: false },
+];
+
 export interface CanvassRouteStop {
   id: string;
   propertyLabel: string;
@@ -283,6 +299,7 @@ export interface CanvassRouteStop {
   reminderAt?: string | null;
   assignedRep?: string;
   dealValue?: number | null;
+  winChecklist?: WinChecklistItem[];
   stageHistory?: LeadStageEntry[];
   homeownerName?: string;
   homeownerPhone?: string;

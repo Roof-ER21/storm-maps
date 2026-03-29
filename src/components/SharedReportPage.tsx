@@ -1,0 +1,197 @@
+import { useEffect, useState } from 'react';
+import { getShareableReport } from '../services/api';
+
+interface ReportData {
+  address: string;
+  lat: number;
+  lng: number;
+  stormDate: string;
+  stormLabel: string;
+  maxHailInches: number;
+  maxWindMph: number;
+  eventCount: number;
+  repName: string | null;
+  repPhone: string | null;
+  companyName: string | null;
+  homeownerName: string | null;
+  createdAt: string;
+}
+
+export default function SharedReportPage({ slug }: { slug: string }) {
+  const [report, setReport] = useState<ReportData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    getShareableReport(slug)
+      .then((data) => {
+        if (data) setReport(data as unknown as ReportData);
+        else setError('Report not found or has expired.');
+      })
+      .catch(() => setError('Failed to load report.'))
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center px-4">
+        <div className="max-w-md rounded-3xl border border-slate-800 bg-slate-950 p-8 text-center">
+          <p className="text-lg font-semibold text-white">Report Not Available</p>
+          <p className="mt-2 text-sm text-slate-400">{error || 'This report may have expired or been removed.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const hailLabel = report.maxHailInches > 0 ? `${report.maxHailInches}" hail` : 'Hail activity';
+  const windLabel = report.maxWindMph > 0 ? `${report.maxWindMph} mph wind` : null;
+  const sizeDesc = hailNickname(report.maxHailInches);
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+      {/* Header */}
+      <header className="border-b border-slate-800/60 bg-slate-950/80 backdrop-blur px-4 py-4">
+        <div className="mx-auto max-w-2xl flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white font-bold text-sm">
+            H!
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">Hail Yes!</p>
+            <p className="text-xs text-slate-400">Storm Damage Intelligence</p>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto max-w-2xl px-4 py-8">
+        {/* Homeowner greeting */}
+        {report.homeownerName && (
+          <p className="text-sm text-slate-400 mb-2">
+            Prepared for <span className="text-white font-semibold">{report.homeownerName}</span>
+          </p>
+        )}
+
+        <h1 className="text-3xl sm:text-4xl font-bold text-white leading-tight">
+          Your property was in a<br />
+          <span className="bg-[linear-gradient(135deg,#fb923c,#a855f7)] bg-clip-text text-transparent">
+            documented hail zone
+          </span>
+        </h1>
+
+        <p className="mt-4 text-base text-slate-400 leading-relaxed">
+          NOAA storm records show hail activity near <span className="text-white">{report.address}</span> on{' '}
+          <span className="text-white">{report.stormLabel}</span>. This data is used by insurance companies
+          to validate damage claims.
+        </p>
+
+        {/* Storm data card */}
+        <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">Storm Event Details</p>
+
+          <div className="mt-5 grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-3xl font-bold text-white">{hailLabel}</p>
+              <p className="mt-1 text-sm text-slate-400">{sizeDesc} size hail</p>
+            </div>
+            {windLabel && (
+              <div>
+                <p className="text-3xl font-bold text-white">{windLabel}</p>
+                <p className="mt-1 text-sm text-slate-400">Sustained wind speed</p>
+              </div>
+            )}
+            <div>
+              <p className="text-3xl font-bold text-white">{report.eventCount}</p>
+              <p className="mt-1 text-sm text-slate-400">NOAA reports nearby</p>
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-white">{report.stormLabel}</p>
+              <p className="mt-1 text-sm text-slate-400">Date of loss</p>
+            </div>
+          </div>
+        </div>
+
+        {/* What this means */}
+        <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">What This Means For You</p>
+          <div className="mt-4 space-y-4 text-sm text-slate-300 leading-relaxed">
+            <p>
+              Hail of this size ({sizeDesc}) is known to cause damage to roofing materials including
+              asphalt shingles, gutters, flashing, and siding. Damage may not be visible from the ground.
+            </p>
+            <p>
+              Most homeowners insurance policies cover hail damage with no increase to your premium
+              for filing a weather-related claim. A professional inspection can determine if damage exists.
+            </p>
+            <p className="font-semibold text-white">
+              We offer free, no-obligation roof inspections and can help guide you through the
+              insurance claim process if damage is found.
+            </p>
+          </div>
+        </div>
+
+        {/* Rep contact */}
+        {report.repName && (
+          <div className="mt-8 rounded-3xl border border-emerald-500/20 bg-emerald-500/[0.06] p-6">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-300">Your Local Specialist</p>
+            <p className="mt-3 text-lg font-semibold text-white">{report.repName}</p>
+            {report.companyName && <p className="mt-1 text-sm text-slate-400">{report.companyName}</p>}
+            {report.repPhone && (
+              <a
+                href={`tel:${report.repPhone.replace(/[^\d+]/g, '')}`}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-emerald-500 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600"
+              >
+                Call {report.repName.split(' ')[0]} — {report.repPhone}
+              </a>
+            )}
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="mt-8 rounded-3xl bg-[linear-gradient(135deg,rgba(249,115,22,0.15),rgba(124,58,237,0.15))] border border-orange-500/20 p-6 text-center">
+          <p className="text-lg font-semibold text-white">Ready to schedule a free inspection?</p>
+          <p className="mt-2 text-sm text-slate-400">
+            We'll check your roof, document any damage with photos, and help you file with your
+            insurance company — all at no cost to you.
+          </p>
+          {report.repPhone ? (
+            <a
+              href={`tel:${report.repPhone.replace(/[^\d+]/g, '')}`}
+              className="mt-5 inline-block rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-6 py-3 text-sm font-semibold text-white shadow-lg"
+            >
+              Schedule Free Inspection
+            </a>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">Contact your local roofing specialist to get started.</p>
+          )}
+        </div>
+
+        {/* Footer */}
+        <p className="mt-8 text-center text-xs text-slate-600">
+          Data sourced from NOAA Storm Events Database. Report generated {formatDate(report.createdAt)}.
+        </p>
+      </main>
+    </div>
+  );
+}
+
+function hailNickname(inches: number): string {
+  if (inches >= 4.5) return 'Softball';
+  if (inches >= 2.5) return 'Tennis ball';
+  if (inches >= 1.75) return 'Golf ball';
+  if (inches >= 1.5) return 'Ping pong ball';
+  if (inches >= 1) return 'Quarter';
+  return 'Small';
+}
+
+function formatDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
