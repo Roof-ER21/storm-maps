@@ -32,6 +32,7 @@ interface DashboardPageProps {
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
   onSeedDemo: () => void;
+  onImportHomeowners: () => void;
 }
 
 export default function DashboardPage({
@@ -56,6 +57,7 @@ export default function DashboardPage({
   onExportBackup,
   onImportBackup,
   onSeedDemo,
+  onImportHomeowners,
 }: DashboardPageProps) {
   const hailEvents = events.filter((event) => event.eventType === 'Hail');
   const totalDamage = events.reduce(
@@ -580,8 +582,8 @@ export default function DashboardPage({
             Backup and restore all app data
           </h3>
           <p className="mt-2 text-sm text-slate-400">
-            Export pinned properties, canvass routes, lead pipeline, and evidence as a single JSON file.
-            Import restores everything from a previous backup.
+            Import homeowner lists from any data provider (Cole Info, ListSource, ATTOM, PropertyRadar)
+            to create leads matched to storm zones. Export and restore all app data as JSON backup.
           </p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button
@@ -606,6 +608,13 @@ export default function DashboardPage({
                 }}
               />
             </label>
+            <button
+              type="button"
+              onClick={onImportHomeowners}
+              className="rounded-2xl bg-emerald-500 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-emerald-600"
+            >
+              Import Homeowner CSV
+            </button>
             <button
               type="button"
               onClick={onSeedDemo}

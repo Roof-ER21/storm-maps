@@ -47,6 +47,7 @@ import {
 import { generateStormReport } from './services/reportService';
 import { generateEvidencePack } from './services/evidencePackService';
 import ErrorBoundary from './components/ErrorBoundary';
+import HomeownerImport, { type ImportedHomeowner } from './components/HomeownerImport';
 import PageSkeleton from './components/PageSkeleton';
 import Sidebar from './components/Sidebar';
 import StormMap from './components/StormMap';
@@ -579,6 +580,7 @@ function App() {
   const [activeRouteStopId, setActiveRouteStopId] = useState<string | null>(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showHomeownerImport, setShowHomeownerImport] = useState(false);
   const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
     youtube: 'live' | 'fallback';
     flickr: 'live' | 'fallback';
@@ -1825,6 +1827,46 @@ function App() {
     );
   }, []);
 
+  const handleImportHomeowners = useCallback((homeowners: ImportedHomeowner[]) => {
+    const now = new Date().toISOString();
+    // Find the closest storm date to use
+    const bestStormDate = filteredStormDates[0];
+
+    const newStops: CanvassRouteStop[] = homeowners.map((hw, idx) => ({
+      id: `import-${Date.now()}-${idx}`,
+      propertyLabel: searchSummary?.locationLabel || 'Imported',
+      stormDate: bestStormDate?.date || '',
+      stormLabel: bestStormDate?.label || 'Imported lead',
+      lat: queryLocation.lat + ((idx % 7) - 3) * 0.001,
+      lng: queryLocation.lng + ((idx % 5) - 2) * 0.0012,
+      locationLabel: hw.address,
+      sourceEventId: null,
+      sourceLabel: 'CSV Import',
+      topHailInches: bestStormDate?.maxHailInches || 0,
+      reportCount: bestStormDate?.eventCount || 0,
+      evidenceCount: 0,
+      priority: 'Knock now' as const,
+      status: 'queued' as const,
+      outcome: 'none' as const,
+      leadStage: 'new' as const,
+      notes: '',
+      reminderAt: null,
+      assignedRep: repProfile?.name || '',
+      dealValue: null,
+      winChecklist: [],
+      stageHistory: [{ stage: 'new' as const, at: now }],
+      homeownerName: hw.name,
+      homeownerPhone: hw.phone,
+      homeownerEmail: hw.email,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    setRouteStopsState((prev) => [...prev, ...newStops]);
+    setShowHomeownerImport(false);
+    window.alert(`${newStops.length} homeowners imported as leads! They're ready in the Canvass and Leads pages.`);
+  }, [filteredStormDates, queryLocation, repProfile, searchSummary]);
+
   const handleSeedDemo = useCallback(async () => {
     // Seed to server
     void seedDemoData();
@@ -2606,6 +2648,7 @@ function App() {
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
             onSeedDemo={handleSeedDemo}
+            onImportHomeowners={() => setShowHomeownerImport(true)}
           />
         )}
 
@@ -2770,6 +2813,13 @@ function App() {
         </Suspense>
         </ErrorBoundary>
       </div>
+
+      {showHomeownerImport && (
+        <HomeownerImport
+          onImport={handleImportHomeowners}
+          onClose={() => setShowHomeownerImport(false)}
+        />
+      )}
     </div>
   );
 }
