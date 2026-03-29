@@ -121,3 +121,39 @@ export async function checkHealth(): Promise<boolean> {
   const result = await apiGet<{ ok: boolean }>('/health');
   return result?.ok === true;
 }
+
+// ── Hydration (server → client) ─────────────────────────
+
+export async function fetchLeadsFromServer(): Promise<Record<string, unknown>[] | null> {
+  return apiGet('/leads');
+}
+
+export async function fetchPropertiesFromServer(): Promise<Record<string, unknown>[] | null> {
+  return apiGet('/properties');
+}
+
+// ── Evidence blob upload ────────────────────────────────
+
+export async function uploadEvidenceBlob(evidenceId: string, blob: Blob, fileName: string): Promise<boolean> {
+  try {
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    const res = await fetch(`${API_BASE}/evidence/${evidenceId}/blob`, {
+      method: 'POST',
+      body: formData,
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+export async function getEvidenceBlobUrl(evidenceId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/evidence/${evidenceId}/blob`, { method: 'HEAD' });
+    if (res.ok) return `${API_BASE}/evidence/${evidenceId}/blob`;
+    return null;
+  } catch {
+    return null;
+  }
+}

@@ -1,16 +1,31 @@
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import rateLimit from 'express-rate-limit';
 import { db } from './db.js';
 import { leads, properties, evidence, archives, reps, shareableReports } from './schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
+import fs from 'fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const UPLOADS_DIR = path.join(__dirname, '../uploads');
+if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 app.use(express.json({ limit: '10mb' }));
+
+// Rate limiting
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 300, // 300 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, try again later' },
+});
+app.use('/api/', apiLimiter);
 
 // Serve Vite build
 app.use(express.static(path.join(__dirname, '../dist')));
@@ -133,6 +148,32 @@ app.delete('/api/evidence/:id', async (req, res) => {
   } catch {
     res.status(500).json({ error: 'Failed to delete evidence' });
   }
+});
+
+// ── Evidence Blob Upload/Download ────────────────────────
+app.post('/api/evidence/:id/blob', express.raw({ type: '*/*', limit: '20mb' }), (req, res) => {
+  try {
+    const filePath = path.join(UPLOADS_DIR, `${req.params.id}.bin`);
+    fs.writeFileSync(filePath, Buffer.from(req.body as ArrayBuffer));
+    res.json({ ok: true });
+  } catch {
+    res.status(500).json({ error: 'Failed to save blob' });
+  }
+});
+
+app.get('/api/evidence/:id/blob', (req, res) => {
+  const filePath = path.join(UPLOADS_DIR, `${req.params.id}.bin`);
+  if (!fs.existsSync(filePath)) {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  res.sendFile(filePath);
+});
+
+app.head('/api/evidence/:id/blob', (req, res) => {
+  const filePath = path.join(UPLOADS_DIR, `${req.params.id}.bin`);
+  if (fs.existsSync(filePath)) res.sendStatus(200);
+  else res.sendStatus(404);
 });
 
 // ── Reps ────────────────────────────────────────────────

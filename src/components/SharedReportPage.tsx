@@ -91,6 +91,16 @@ export default function SharedReportPage({ slug }: { slug: string }) {
           to validate damage claims.
         </p>
 
+        {/* Property location map */}
+        <div className="mt-8 overflow-hidden rounded-3xl border border-slate-800">
+          <img
+            src={`https://maps.googleapis.com/maps/api/staticmap?center=${report.lat},${report.lng}&zoom=15&size=640x300&scale=2&maptype=roadmap&markers=color:red%7C${report.lat},${report.lng}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || ''}`}
+            alt={`Map of ${report.address}`}
+            className="w-full h-auto"
+            loading="lazy"
+          />
+        </div>
+
         {/* Storm data card */}
         <div className="mt-8 rounded-3xl border border-slate-800 bg-slate-900/60 p-6">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">Storm Event Details</p>

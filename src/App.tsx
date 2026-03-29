@@ -58,12 +58,11 @@ import Legend from './components/Legend';
 import AppHeader from './components/AppHeader';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
-const TodayPage = lazy(() => import('./components/TodayPage'));
 const PipelinePage = lazy(() => import('./components/PipelinePage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
-import { syncLeadsToServer, seedDemoData, createShareableReport } from './services/api';
+import { syncLeadsToServer, seedDemoData, createShareableReport, fetchLeadsFromServer, uploadEvidenceBlob } from './services/api';
 import { extractGpsFromBlob } from './services/exifGps';
 import { lookupProperty, type PropertyInfo } from './services/propertyLookup';
 import {
@@ -778,6 +777,22 @@ function App() {
       .catch((error) => {
         console.error('[App] Failed to load evidence items:', error);
       });
+  }, []);
+
+  // Hydrate from server — merge server leads into localStorage state
+  useEffect(() => {
+    void fetchLeadsFromServer().then((serverLeads) => {
+      if (!serverLeads || !Array.isArray(serverLeads) || serverLeads.length === 0) return;
+      setRouteStopsState((local) => {
+        const localIds = new Set(local.map((s) => s.id));
+        const newFromServer = (serverLeads as unknown as CanvassRouteStop[]).filter(
+          (s) => !localIds.has(s.id),
+        );
+        if (newFromServer.length === 0) return local;
+        console.log(`[sync] Hydrated ${newFromServer.length} leads from server`);
+        return [...local, ...newFromServer];
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -1894,7 +1909,26 @@ function App() {
 
     setRouteStopsState((prev) => [...prev, ...newStops]);
     setShowHomeownerImport(false);
-    window.alert(`${newStops.length} homeowners imported as leads! They're ready in the Canvass and Leads pages.`);
+    window.alert(`${newStops.length} homeowners imported! Geocoding addresses in background...`);
+
+    // Background geocode each address to get real lat/lng
+    void (async () => {
+      for (const stop of newStops) {
+        if (!stop.locationLabel) continue;
+        try {
+          const result = await geocodeAddress(stop.locationLabel);
+          if (result) {
+            setRouteStopsState((prev) =>
+              prev.map((s) => s.id === stop.id ? { ...s, lat: result.lat, lng: result.lng, updatedAt: new Date().toISOString() } : s),
+            );
+          }
+          // Throttle to avoid hitting Google rate limits
+          await new Promise((r) => setTimeout(r, 300));
+        } catch {
+          // Silently continue — stop keeps fallback position
+        }
+      }
+    })();
   }, [filteredStormDates, queryLocation, repProfile, searchSummary]);
 
   const handleSeedDemo = useCallback(async () => {
@@ -2177,6 +2211,8 @@ function App() {
         };
 
         await saveEvidenceItem(item);
+        // Background sync blob to server
+        void uploadEvidenceBlob(item.id, file, file.name);
         return normalizeEvidenceItem(item);
       }),
     );
@@ -2681,22 +2717,6 @@ function App() {
             onImportBackup={handleImportBackup}
             onSeedDemo={handleSeedDemo}
             onImportHomeowners={() => setShowHomeownerImport(true)}
-          />
-        )}
-
-        {activeView === 'today' && (
-          <TodayPage
-            searchSummary={searchSummary}
-            routeStops={routeStops}
-            stormAlerts={activeStormAlerts}
-            onOpenMap={() => setActiveView('map')}
-            onOpenLeads={() => setActiveView('pipeline')}
-            onOpenCanvass={() => setActiveView('pipeline')}
-            onFocusLead={(stop) => {
-              focusRouteStop(stop);
-              setActiveView('map');
-            }}
-            onDismissAlert={dismissStormAlert}
           />
         )}
 
