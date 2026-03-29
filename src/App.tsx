@@ -65,6 +65,7 @@ const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
 import { syncLeadsToServer, seedDemoData, createShareableReport } from './services/api';
 import { extractGpsFromBlob } from './services/exifGps';
+import { lookupProperty, type PropertyInfo } from './services/propertyLookup';
 import {
   listEvidenceItems,
   removeEvidenceItem,
@@ -374,6 +375,18 @@ function formatOutcomeLabel(outcome: CanvassOutcome): string {
     default:
       return 'Not Set';
   }
+}
+
+function formatPropertyNotes(info: PropertyInfo): string {
+  const parts: string[] = [`[Property Lookup — ${info.source}]`];
+  if (info.owner) parts.push(`Owner: ${info.owner}`);
+  if (info.yearBuilt) parts.push(`Built: ${info.yearBuilt}`);
+  if (info.roofType) parts.push(`Roof: ${info.roofType}`);
+  if (info.assessedValue) parts.push(`Assessed: $${Number(info.assessedValue).toLocaleString()}`);
+  if (info.marketValue) parts.push(`Market: $${Number(info.marketValue).toLocaleString()}`);
+  if (info.buildingSqft) parts.push(`${info.buildingSqft} sqft`);
+  if (info.lastSaleDate) parts.push(`Last sold: ${info.lastSaleDate}`);
+  return parts.join(' | ');
 }
 
 function defaultLeadStageForOutcome(outcome: CanvassOutcome): LeadStage {
@@ -1805,6 +1818,29 @@ function App() {
     );
   }, []);
 
+  const handleLookupPropertyOwner = useCallback(async (stopId: string) => {
+    const stop = routeStopsState.find((s) => s.id === stopId);
+    if (!stop) return;
+
+    const info = await lookupProperty(stop.lat, stop.lng);
+    if (!info || !info.owner) {
+      window.alert('No property owner data found for this location. Try a different address or configure a Regrid API key in Team settings.');
+      return;
+    }
+
+    setRouteStopsState((current) =>
+      current.map((s) => {
+        if (s.id !== stopId) return s;
+        return {
+          ...s,
+          homeownerName: s.homeownerName || info.owner,
+          notes: s.notes + (s.notes ? '\n' : '') + formatPropertyNotes(info),
+          updatedAt: new Date().toISOString(),
+        };
+      }),
+    );
+  }, [routeStopsState]);
+
   const handleUpdateRouteStopChecklist = useCallback((stopId: string, key: string, done: boolean) => {
     setRouteStopsState((current) =>
       current.map((stop) => {
@@ -2749,6 +2785,7 @@ function App() {
             onUpdateLeadDealValue={handleUpdateRouteStopDealValue}
             onShareLeadReport={handleShareLeadReport}
             onUpdateLeadChecklist={handleUpdateRouteStopChecklist}
+            onLookupPropertyOwner={handleLookupPropertyOwner}
             onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
             onRestoreArchive={handleRestoreRouteArchive}
           />

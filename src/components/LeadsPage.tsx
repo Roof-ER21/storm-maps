@@ -25,6 +25,7 @@ interface LeadsPageProps {
   onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
   onShareLeadReport: (stop: CanvassRouteStop) => void;
   onUpdateLeadChecklist: (stopId: string, key: string, done: boolean) => void;
+  onLookupPropertyOwner: (stopId: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -85,6 +86,7 @@ export default function LeadsPage({
   onUpdateLeadDealValue,
   onShareLeadReport,
   onUpdateLeadChecklist,
+  onLookupPropertyOwner,
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
@@ -426,6 +428,7 @@ export default function LeadsPage({
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onShareLeadReport={onShareLeadReport}
                       onUpdateLeadChecklist={onUpdateLeadChecklist}
+                      onLookupPropertyOwner={onLookupPropertyOwner}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -459,6 +462,7 @@ export default function LeadsPage({
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onShareLeadReport={onShareLeadReport}
                       onUpdateLeadChecklist={onUpdateLeadChecklist}
+                      onLookupPropertyOwner={onLookupPropertyOwner}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -489,6 +493,7 @@ export default function LeadsPage({
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
                       onShareLeadReport={onShareLeadReport}
                       onUpdateLeadChecklist={onUpdateLeadChecklist}
+                      onLookupPropertyOwner={onLookupPropertyOwner}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -574,6 +579,7 @@ function LeadCard({
   onUpdateLeadDealValue,
   onShareLeadReport,
   onUpdateLeadChecklist,
+  onLookupPropertyOwner,
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
@@ -589,6 +595,7 @@ function LeadCard({
   onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
   onShareLeadReport: (stop: CanvassRouteStop) => void;
   onUpdateLeadChecklist: (stopId: string, key: string, done: boolean) => void;
+  onLookupPropertyOwner: (stopId: string) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -809,7 +816,19 @@ function LeadCard({
       </div>
 
       {/* Homeowner fields */}
-      <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onLookupPropertyOwner(lead.id)}
+          className="rounded-xl border border-sky-400/25 bg-sky-500/10 px-3 py-2 text-[10px] font-semibold text-sky-300 hover:bg-sky-500/20"
+        >
+          Lookup Owner
+        </button>
+        {!lead.homeownerName && (
+          <p className="text-[10px] text-slate-600">Auto-fill owner name from public records</p>
+        )}
+      </div>
+      <div className="mt-2 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         <input
           value={lead.homeownerName || ''}
           onChange={(event) =>
