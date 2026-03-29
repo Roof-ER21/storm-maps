@@ -7,6 +7,7 @@ import type {
   StormDate,
   StormEvent,
 } from '../types/storm';
+import type { StormAlert } from '../hooks/useStormAlerts';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 
 interface DashboardPageProps {
@@ -24,6 +25,10 @@ interface DashboardPageProps {
   onOpenReports: () => void;
   onOpenCanvass: () => void;
   onOpenLeads: () => void;
+  stormAlerts: StormAlert[];
+  onDismissStormAlert: (id: string) => void;
+  onDismissAllStormAlerts: () => void;
+  stormAlertsChecking: boolean;
   onExportBackup: () => void;
   onImportBackup: (file: File) => void;
 }
@@ -43,6 +48,10 @@ export default function DashboardPage({
   onOpenReports,
   onOpenCanvass,
   onOpenLeads,
+  stormAlerts,
+  onDismissStormAlert,
+  onDismissAllStormAlerts,
+  stormAlertsChecking,
   onExportBackup,
   onImportBackup,
 }: DashboardPageProps) {
@@ -123,6 +132,62 @@ export default function DashboardPage({
             </div>
           </div>
         </section>
+
+        {/* Storm Alerts Banner */}
+        {stormAlerts.length > 0 && (
+          <section className="rounded-[28px] border border-red-500/25 bg-red-500/[0.06] p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-red-500/20 text-red-400">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-300">
+                    New Storm Activity {stormAlertsChecking ? '(checking...)' : ''}
+                  </p>
+                  <p className="mt-1 text-sm text-white">
+                    {stormAlerts.length} alert{stormAlerts.length === 1 ? '' : 's'} in your territory
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onDismissAllStormAlerts}
+                className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/20"
+              >
+                Dismiss All
+              </button>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {stormAlerts.slice(0, 5).map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between rounded-2xl border border-red-500/15 bg-slate-950/60 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm text-white">{alert.message}</p>
+                    <p className="mt-1 text-[10px] text-slate-500">
+                      Detected {new Date(alert.detectedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    </p>
+                  </div>
+                  <div className="ml-3 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={onOpenMap}
+                      className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-[10px] font-semibold text-red-300 hover:bg-red-500/25"
+                    >
+                      View Map
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDismissStormAlert(alert.id)}
+                      className="text-slate-600 hover:text-slate-400"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <MetricCard

@@ -780,6 +780,36 @@ function LeadCard({
         />
       </div>
 
+      {/* Quick-contact actions */}
+      {(lead.homeownerPhone || lead.homeownerEmail) && (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {lead.homeownerPhone && (
+            <>
+              <a
+                href={`tel:${lead.homeownerPhone.replace(/[^\d+]/g, '')}`}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
+              >
+                <PhoneIcon /> Call
+              </a>
+              <a
+                href={buildSmsLink(lead.homeownerPhone, lead.homeownerName || 'there', lead.locationLabel, lead.stormLabel)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-sky-400/25 bg-sky-500/10 px-3 py-1.5 text-[11px] font-semibold text-sky-300 hover:bg-sky-500/20"
+              >
+                <MessageIcon /> Text
+              </a>
+            </>
+          )}
+          {lead.homeownerEmail && (
+            <a
+              href={buildEmailLink(lead.homeownerEmail, lead.homeownerName || 'Homeowner', lead.locationLabel, lead.stormLabel)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-violet-400/25 bg-violet-500/10 px-3 py-1.5 text-[11px] font-semibold text-violet-300 hover:bg-violet-500/20"
+            >
+              <EmailIcon /> Email
+            </a>
+          )}
+        </div>
+      )}
+
       <textarea
         value={lead.notes}
         onChange={(event) => onUpdateLeadNotes(lead.id, event.target.value)}
@@ -1014,6 +1044,42 @@ function compareLeadPriority(left: CanvassRouteStop, right: CanvassRouteStop): n
   }
 
   return right.updatedAt.localeCompare(left.updatedAt);
+}
+
+function buildSmsLink(phone: string, name: string, address: string, stormLabel: string): string {
+  const cleanPhone = phone.replace(/[^\d+]/g, '');
+  const body = `Hi ${name}, this is your local roofing specialist following up about the ${stormLabel} storm that affected ${address}. We offer free inspections to check for hail damage. Would you like to schedule one?`;
+  return `sms:${cleanPhone}?body=${encodeURIComponent(body)}`;
+}
+
+function buildEmailLink(email: string, name: string, address: string, stormLabel: string): string {
+  const subject = `Free Hail Damage Inspection — ${address}`;
+  const body = `Hi ${name},\n\nI'm reaching out because the ${stormLabel} storm brought documented hail activity to your area around ${address}.\n\nWe offer free roof inspections to assess any potential damage, and we can help you navigate the insurance claim process if damage is found.\n\nWould you have time this week for a quick inspection?\n\nBest regards`;
+  return `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
+function PhoneIcon() {
+  return (
+    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+    </svg>
+  );
+}
+
+function MessageIcon() {
+  return (
+    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+    </svg>
+  );
+}
+
+function EmailIcon() {
+  return (
+    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+    </svg>
+  );
 }
 
 function formatArchiveDate(value: string): string {

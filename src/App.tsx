@@ -35,6 +35,7 @@ import { getStormCanvassPriority } from './types/storm';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
+import { useStormAlerts } from './hooks/useStormAlerts';
 import { geocodeAddress } from './services/geocodeApi';
 import {
   getNotificationPermission,
@@ -597,6 +598,21 @@ function App() {
     position: gpsPosition,
     events,
   });
+
+  // ---- Storm alerts (background polling) ----
+  const {
+    alerts: stormAlerts,
+    dismissAlert: dismissStormAlert,
+    dismissAll: dismissAllStormAlerts,
+    checking: checkingStormAlerts,
+    // lastCheckedAt available if needed for UI
+  } = useStormAlerts({
+    location: searchSummary ? queryLocation : null,
+    enabled: true,
+    notificationsGranted: notificationPermission === 'granted',
+  });
+
+  const activeStormAlerts = stormAlerts.filter((a) => !a.dismissed);
 
   const filteredEvents = useMemo(
     () =>
@@ -2381,6 +2397,10 @@ function App() {
             onOpenReports={() => setActiveView('reports')}
             onOpenCanvass={() => setActiveView('canvass')}
             onOpenLeads={() => setActiveView('leads')}
+            stormAlerts={activeStormAlerts}
+            onDismissStormAlert={dismissStormAlert}
+            onDismissAllStormAlerts={dismissAllStormAlerts}
+            stormAlertsChecking={checkingStormAlerts}
             onExportBackup={handleExportBackup}
             onImportBackup={handleImportBackup}
           />
