@@ -63,6 +63,7 @@ const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
 import { syncLeadsToServer, seedDemoData, createShareableReport } from './services/api';
+import { extractGpsFromBlob } from './services/exifGps';
 import {
   listEvidenceItems,
   removeEvidenceItem,
@@ -2080,6 +2081,7 @@ function App() {
         const mediaType = file.type.startsWith('video/')
           ? 'video'
           : 'image';
+        const gps = mediaType === 'image' ? await extractGpsFromBlob(file) : null;
         const item: EvidenceItem = {
           id: `upload-${crypto.randomUUID()}`,
           kind: 'upload',
@@ -2092,6 +2094,8 @@ function App() {
           mimeType: file.type,
           sizeBytes: file.size,
           blob: file,
+          evidenceLat: gps?.lat,
+          evidenceLng: gps?.lng,
           createdAt: now,
           updatedAt: now,
           status: 'pending',

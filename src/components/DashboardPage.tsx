@@ -70,6 +70,14 @@ export default function DashboardPage({
   const wonStops = routeStops.filter((stop) => stop.leadStage === 'won');
   const lostStops = routeStops.filter((stop) => stop.leadStage === 'lost');
 
+  // Your Day digest
+  const today = new Date().toISOString().slice(0, 10);
+  const activeLeads = routeStops.filter((s) =>
+    s.outcome === 'interested' || s.outcome === 'follow_up' || s.outcome === 'inspection_booked',
+  );
+  const overdueLeads = activeLeads.filter((s) => s.reminderAt && s.reminderAt < today && s.leadStage !== 'won' && s.leadStage !== 'lost');
+  const dueTodayLeads = activeLeads.filter((s) => s.reminderAt === today && s.leadStage !== 'won' && s.leadStage !== 'lost');
+
   const stateCounts = Array.from(
     events.reduce((map, event) => {
       const key = event.state || 'Unknown';
@@ -186,6 +194,52 @@ export default function DashboardPage({
                     </button>
                   </div>
                 </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Your Day digest strip */}
+        {(overdueLeads.length > 0 || dueTodayLeads.length > 0) && (
+          <section className="rounded-[28px] border border-amber-500/20 bg-amber-500/[0.04] p-4 sm:p-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+                  Your Day
+                </p>
+                <div className="flex gap-2 text-xs">
+                  {overdueLeads.length > 0 && (
+                    <span className="rounded-full border border-red-400/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                      {overdueLeads.length} overdue
+                    </span>
+                  )}
+                  {dueTodayLeads.length > 0 && (
+                    <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                      {dueTodayLeads.length} due today
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button type="button" onClick={onOpenLeads} className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20">
+                Open Leads
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {[...overdueLeads, ...dueTodayLeads].slice(0, 3).map((lead) => (
+                <button
+                  key={lead.id}
+                  type="button"
+                  onClick={onOpenLeads}
+                  className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2.5 text-left hover:border-slate-700"
+                >
+                  <p className="text-sm font-semibold text-white truncate">{lead.homeownerName || lead.locationLabel}</p>
+                  <p className="mt-1 text-xs text-slate-400 truncate">
+                    {lead.stormLabel}
+                    {lead.reminderAt && lead.reminderAt < today && (
+                      <span className="ml-1 text-red-300">overdue</span>
+                    )}
+                  </p>
+                </button>
               ))}
             </div>
           </section>

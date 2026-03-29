@@ -9,14 +9,12 @@ interface AppHeaderProps {
 
 const NAV_ITEMS: Array<{ id: AppView; label: string }> = [
   { id: 'dashboard', label: 'Dashboard' },
-  { id: 'today', label: 'Your Day' },
   { id: 'map', label: 'Storm Map' },
   { id: 'canvass', label: 'Canvass' },
   { id: 'leads', label: 'Leads' },
   { id: 'pinned', label: 'Pinned' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'reports', label: 'Reports' },
-  { id: 'team', label: 'Team' },
 ];
 
 export default function AppHeader({
@@ -28,51 +26,47 @@ export default function AppHeader({
   return (
     <header className="border-b border-slate-800/80 bg-slate-950/95 backdrop-blur">
       <div className="flex flex-col gap-3 px-4 py-3 lg:px-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.24),rgba(124,58,237,0.22))] text-orange-300 ring-1 ring-orange-400/20 shadow-[0_0_30px_rgba(168,85,247,0.24)]">
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 20 20"
-                aria-hidden="true"
-              >
-                <path
-                  d="M5.5 12.5a3 3 0 0 1 .2-6 4.5 4.5 0 0 1 8.72 1.3 2.6 2.6 0 0 1 .08 5.2H5.5Z"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-                <path
-                  d="M7.2 13.8 6.4 16M10 13.8 9.2 16.6M12.8 13.8 12 16.3"
-                  stroke="currentColor"
-                  strokeWidth="1.8"
-                  strokeLinecap="round"
-                />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.24),rgba(124,58,237,0.22))] text-orange-300 ring-1 ring-orange-400/20 shadow-[0_0_30px_rgba(168,85,247,0.24)]">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 20 20" aria-hidden="true">
+                <path d="M5.5 12.5a3 3 0 0 1 .2-6 4.5 4.5 0 0 1 8.72 1.3 2.6 2.6 0 0 1 .08 5.2H5.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7.2 13.8 6.4 16M10 13.8 9.2 16.6M12.8 13.8 12 16.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold tracking-tight text-white">
-                Hail Yes!
-              </h1>
+              <h1 className="text-lg font-semibold tracking-tight text-white">Hail Yes!</h1>
               <p className="truncate text-sm text-gray-400">
                 {activeSearchLabel || 'Storm intelligence for roofing professionals'}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-start lg:self-auto">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-200">
               {pinnedCount} pinned
             </span>
+            <button
+              type="button"
+              onClick={() => onChangeView('team')}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                activeView === 'team'
+                  ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
+                  : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white'
+              }`}
+              title="Team & Settings"
+            >
+              <svg className="h-4.5 w-4.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </button>
           </div>
         </div>
 
         <nav className="-mx-1 flex gap-1.5 sm:gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
           {NAV_ITEMS.map((item) => {
             const active = item.id === activeView;
-
             return (
               <button
                 key={item.id}
