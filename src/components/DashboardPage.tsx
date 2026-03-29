@@ -178,9 +178,9 @@ export default function DashboardPage({
                     <button
                       type="button"
                       onClick={() => onDismissStormAlert(alert.id)}
-                      className="text-slate-600 hover:text-slate-400"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:text-slate-400"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
                 </div>
@@ -531,11 +531,11 @@ export default function DashboardPage({
             <button
               type="button"
               onClick={onExportBackup}
-              className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
+              className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
             >
               Export Backup
             </button>
-            <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800">
+            <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800">
               Import Backup
               <input
                 type="file"
@@ -918,7 +918,7 @@ function PinIcon() {
 
 function CalendarIcon() {
   return (
-    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10m-12 9h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v11a2 2 0 002 2z" />
     </svg>
   );

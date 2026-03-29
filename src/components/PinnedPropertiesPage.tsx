@@ -94,7 +94,7 @@ export default function PinnedPropertiesPage({
                   <button
                     type="button"
                     onClick={() => onRemoveProperty(property.id)}
-                    className="rounded-xl border border-gray-800 px-2.5 py-1.5 text-xs font-semibold text-gray-400 hover:border-orange-500/30 hover:text-orange-300"
+                    className="rounded-xl border border-gray-800 px-2.5 py-2 text-xs font-semibold text-gray-400 hover:border-orange-500/30 hover:text-orange-300"
                   >
                     Remove
                   </button>
