@@ -1,0 +1,170 @@
+import { useRef, useState } from 'react';
+import type {
+  CanvassOutcome,
+  CanvassRouteArchive,
+  CanvassRouteStop,
+  CanvassStopStatus,
+  LeadStage,
+  PinnedProperty,
+  PropertySearchSummary,
+} from '../types/storm';
+
+// Lazy-load the heavy sub-sections
+import PinnedPropertiesPage from './PinnedPropertiesPage';
+import CanvassPage from './CanvassPage';
+import LeadsPage from './LeadsPage';
+
+type PipelineTab = 'targets' | 'route' | 'leads';
+
+interface PipelinePageProps {
+  searchSummary: PropertySearchSummary | null;
+
+  // Pinned (Targets)
+  pinnedProperties: PinnedProperty[];
+  routeCountsByPropertyId: Record<string, { active: number; booked: number; followUp: number; new: number; contacted: number; inspectionSet: number; won: number; lost: number }>;
+  onOpenProperty: (property: PinnedProperty) => void;
+  onRemoveProperty: (propertyId: string) => void;
+
+  // Canvass (Route)
+  routeStops: CanvassRouteStop[];
+  routeArchives: CanvassRouteArchive[];
+  onFocusStop: (stop: CanvassRouteStop) => void;
+  onBuildKnockRoute: () => void;
+  onOpenNavigation: () => void;
+  onExportSummary: () => void;
+  onExportCsv: () => void;
+  onClearRoute: () => void;
+  onUpdateStopStatus: (stopId: string, status: CanvassStopStatus) => void;
+  onUpdateStopOutcome: (stopId: string, outcome: CanvassOutcome) => void;
+  onUpdateStopNotes: (stopId: string, notes: string) => void;
+  onUpdateStopHomeowner: (stopId: string, field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail', value: string) => void;
+  onRemoveStop: (stopId: string) => void;
+  onRestoreArchive: (archiveId: string) => void;
+  onRemoveArchive: (archiveId: string) => void;
+
+  // Leads
+  onUpdateLeadStage: (stopId: string, leadStage: LeadStage) => void;
+  onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
+  onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
+  onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
+  onShareLeadReport: (stop: CanvassRouteStop) => void;
+  onUpdateLeadChecklist: (stopId: string, key: string, done: boolean) => void;
+  onLookupPropertyOwner: (stopId: string) => void;
+
+  onOpenMap: () => void;
+}
+
+const TABS: Array<{ id: PipelineTab; label: string; desc: string }> = [
+  { id: 'targets', label: 'Targets', desc: 'Pinned properties' },
+  { id: 'route', label: 'Route', desc: 'Canvass stops' },
+  { id: 'leads', label: 'Leads', desc: 'Sales pipeline' },
+];
+
+export default function PipelinePage(props: PipelinePageProps) {
+  const [activeTab, setActiveTab] = useState<PipelineTab>('leads');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const activeLeadCount = props.routeStops.filter((s) =>
+    s.outcome === 'interested' || s.outcome === 'follow_up' || s.outcome === 'inspection_booked',
+  ).length;
+  const routeCount = props.routeStops.filter((s) => s.status !== 'completed').length;
+
+  return (
+    <section ref={scrollRef} className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)]">
+      {/* Sticky tab nav */}
+      <div className="sticky top-0 z-10 border-b border-slate-800/60 bg-slate-950/95 backdrop-blur px-4 py-3 lg:px-6">
+        <div className="mx-auto flex max-w-7xl items-center gap-2">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            const count = tab.id === 'targets' ? props.pinnedProperties.length
+              : tab.id === 'route' ? routeCount
+              : activeLeadCount;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                  isActive
+                    ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_8px_24px_rgba(124,58,237,0.25)]'
+                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white'
+                }`}
+              >
+                {tab.label}
+                {count > 0 && (
+                  <span className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
+                    isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                  }`}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Tab content */}
+      <div className="px-0">
+        {activeTab === 'targets' && (
+          <PinnedPropertiesPage
+            pinnedProperties={props.pinnedProperties}
+            routeCountsByPropertyId={props.routeCountsByPropertyId}
+            onOpenProperty={props.onOpenProperty}
+            onRemoveProperty={props.onRemoveProperty}
+            onOpenMap={props.onOpenMap}
+          />
+        )}
+
+        {activeTab === 'route' && (
+          <CanvassPage
+            searchSummary={props.searchSummary}
+            routeStops={props.routeStops}
+            routeArchives={props.routeArchives}
+            onOpenMap={props.onOpenMap}
+            onFocusStop={props.onFocusStop}
+            onBuildKnockRoute={props.onBuildKnockRoute}
+            onOpenNavigation={props.onOpenNavigation}
+            onExportSummary={props.onExportSummary}
+            onExportCsv={props.onExportCsv}
+            onClearRoute={props.onClearRoute}
+            onUpdateStopStatus={props.onUpdateStopStatus}
+            onUpdateStopOutcome={props.onUpdateStopOutcome}
+            onUpdateStopNotes={props.onUpdateStopNotes}
+            onUpdateStopHomeowner={props.onUpdateStopHomeowner}
+            onRemoveStop={props.onRemoveStop}
+            onRestoreArchive={props.onRestoreArchive}
+            onRemoveArchive={props.onRemoveArchive}
+          />
+        )}
+
+        {activeTab === 'leads' && (
+          <LeadsPage
+            searchSummary={props.searchSummary}
+            routeStops={props.routeStops}
+            routeArchives={props.routeArchives}
+            onOpenMap={props.onOpenMap}
+            onOpenCanvass={() => setActiveTab('route')}
+            onFocusLead={(stop) => { props.onFocusStop(stop); props.onOpenMap(); }}
+            onUpdateLeadStatus={props.onUpdateStopStatus}
+            onUpdateLeadOutcome={props.onUpdateStopOutcome}
+            onUpdateLeadStage={props.onUpdateLeadStage}
+            onUpdateLeadNotes={props.onUpdateStopNotes}
+            onUpdateLeadReminder={props.onUpdateLeadReminder}
+            onUpdateLeadAssignedRep={props.onUpdateLeadAssignedRep}
+            onUpdateLeadDealValue={props.onUpdateLeadDealValue}
+            onShareLeadReport={props.onShareLeadReport}
+            onUpdateLeadChecklist={props.onUpdateLeadChecklist}
+            onLookupPropertyOwner={props.onLookupPropertyOwner}
+            onUpdateLeadHomeowner={props.onUpdateStopHomeowner}
+            onRestoreArchive={props.onRestoreArchive}
+          />
+        )}
+      </div>
+    </section>
+  );
+}

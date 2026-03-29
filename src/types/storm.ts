@@ -58,6 +58,7 @@ export type AppView =
   | 'dashboard'
   | 'today'
   | 'map'
+  | 'pipeline'
   | 'canvass'
   | 'leads'
   | 'pinned'

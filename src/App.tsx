@@ -57,6 +57,7 @@ import AppHeader from './components/AppHeader';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const TodayPage = lazy(() => import('./components/TodayPage'));
+const PipelinePage = lazy(() => import('./components/PipelinePage'));
 const CanvassPage = lazy(() => import('./components/CanvassPage'));
 const LeadsPage = lazy(() => import('./components/LeadsPage'));
 const PinnedPropertiesPage = lazy(() => import('./components/PinnedPropertiesPage'));
@@ -2125,7 +2126,7 @@ function App() {
       );
       return [...nonPropertyStops, ...archive.stops];
     });
-    setActiveView('canvass');
+    setActiveView('pipeline');
     setShowRoutePanel(true);
     setActiveRouteStopId(
       archive.stops.find((stop) => stop.status !== 'completed')?.id ??
@@ -2664,12 +2665,12 @@ function App() {
             pinnedProperties={pinnedProperties}
             onOpenMap={() => setActiveView('map')}
             onOpenStormDate={handleOpenStormDate}
-            onOpenPinned={() => setActiveView('pinned')}
+            onOpenPinned={() => setActiveView('pipeline')}
             onOpenPinnedProperty={handleOpenPinnedProperty}
             onOpenEvidence={() => setActiveView('evidence')}
             onOpenReports={() => setActiveView('reports')}
-            onOpenCanvass={() => setActiveView('canvass')}
-            onOpenLeads={() => setActiveView('leads')}
+            onOpenCanvass={() => setActiveView('pipeline')}
+            onOpenLeads={() => setActiveView('pipeline')}
             stormAlerts={activeStormAlerts}
             onDismissStormAlert={dismissStormAlert}
             onDismissAllStormAlerts={dismissAllStormAlerts}
@@ -2687,8 +2688,8 @@ function App() {
             routeStops={routeStops}
             stormAlerts={activeStormAlerts}
             onOpenMap={() => setActiveView('map')}
-            onOpenLeads={() => setActiveView('leads')}
-            onOpenCanvass={() => setActiveView('canvass')}
+            onOpenLeads={() => setActiveView('pipeline')}
+            onOpenCanvass={() => setActiveView('pipeline')}
             onFocusLead={(stop) => {
               focusRouteStop(stop);
               setActiveView('map');
@@ -2733,6 +2734,39 @@ function App() {
           </div>
         )}
 
+        {activeView === 'pipeline' && (
+          <PipelinePage
+            searchSummary={searchSummary}
+            pinnedProperties={pinnedProperties}
+            routeCountsByPropertyId={routeCountsByPropertyId}
+            onOpenProperty={handleOpenPinnedProperty}
+            onRemoveProperty={handleRemovePinnedProperty}
+            routeStops={routeStops}
+            routeArchives={currentPropertyRouteArchives}
+            onFocusStop={focusRouteStop}
+            onBuildKnockRoute={handleBuildKnockRoute}
+            onOpenNavigation={handleOpenRouteNavigation}
+            onExportSummary={handleExportRouteSummary}
+            onExportCsv={handleExportRouteCsv}
+            onClearRoute={handleClearRoute}
+            onUpdateStopStatus={handleUpdateRouteStopStatus}
+            onUpdateStopOutcome={handleUpdateRouteStopOutcome}
+            onUpdateStopNotes={handleUpdateRouteStopNotes}
+            onUpdateStopHomeowner={handleUpdateRouteStopHomeowner}
+            onRemoveStop={handleRemoveStopFromRoute}
+            onRestoreArchive={handleRestoreRouteArchive}
+            onRemoveArchive={handleRemoveRouteArchive}
+            onUpdateLeadStage={handleUpdateRouteStopLeadStage}
+            onUpdateLeadReminder={handleUpdateRouteStopReminder}
+            onUpdateLeadAssignedRep={handleUpdateRouteStopAssignedRep}
+            onUpdateLeadDealValue={handleUpdateRouteStopDealValue}
+            onShareLeadReport={handleShareLeadReport}
+            onUpdateLeadChecklist={handleUpdateRouteStopChecklist}
+            onLookupPropertyOwner={handleLookupPropertyOwner}
+            onOpenMap={() => setActiveView('map')}
+          />
+        )}
+
         {activeView === 'canvass' && (
           <CanvassPage
             searchSummary={searchSummary}
@@ -2764,7 +2798,7 @@ function App() {
             routeStops={routeStops}
             routeArchives={currentPropertyRouteArchives}
             onOpenMap={() => setActiveView('map')}
-            onOpenCanvass={() => setActiveView('canvass')}
+            onOpenCanvass={() => setActiveView('pipeline')}
             onFocusLead={(stop) => {
               focusRouteStop(stop);
               setActiveView('map');
