@@ -63,6 +63,8 @@ interface StormMapProps {
   onMapClick?: (event: StormEvent | null) => void;
   leadPins?: CanvassRouteStop[];
   onLeadPinClick?: (stop: CanvassRouteStop) => void;
+  evidencePins?: Array<{ id: string; lat: number; lng: number; title: string; status: string }>;
+  onEvidencePinClick?: (id: string) => void;
 }
 
 interface StormContext {
@@ -589,6 +591,8 @@ function MapContent({
   onMapClick,
   leadPins,
   onLeadPinClick,
+  evidencePins,
+  onEvidencePinClick,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -1024,6 +1028,35 @@ function MapContent({
         );
       })}
 
+      {/* Evidence pins */}
+      {evidencePins && evidencePins.map((pin) => (
+        <AdvancedMarker
+          key={`ev-${pin.id}`}
+          position={{ lat: pin.lat, lng: pin.lng }}
+          title={pin.title}
+          onClick={() => onEvidencePinClick?.(pin.id)}
+          zIndex={1800}
+        >
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              backgroundColor: pin.status === 'approved' ? '#a78bfa' : '#fbbf24',
+              border: '2px solid rgba(255,255,255,0.9)',
+              borderRadius: '4px',
+              cursor: 'pointer',
+              boxShadow: '0 0 8px rgba(0,0,0,0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 12,
+            }}
+          >
+            📷
+          </div>
+        </AdvancedMarker>
+      ))}
+
       {selectedEvent && (
         <InfoWindow
           position={{
@@ -1217,6 +1250,8 @@ export default function StormMap({
   onMapClick,
   leadPins,
   onLeadPinClick,
+  evidencePins,
+  onEvidencePinClick,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1262,6 +1297,8 @@ export default function StormMap({
         onMapClick={onMapClick}
         leadPins={leadPins}
         onLeadPinClick={onLeadPinClick}
+        evidencePins={evidencePins}
+        onEvidencePinClick={onEvidencePinClick}
       />
     </Map>
   );

@@ -362,6 +362,9 @@ export interface EvidenceItem {
   mimeType?: string;
   sizeBytes?: number;
   blob?: Blob;
+  annotatedBlob?: Blob;
+  evidenceLat?: number;
+  evidenceLng?: number;
   createdAt: string;
   updatedAt: string;
   status: EvidenceStatus;

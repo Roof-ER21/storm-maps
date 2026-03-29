@@ -2088,6 +2088,22 @@ function App() {
     );
   }, [evidenceItems]);
 
+  const handleSaveAnnotatedEvidence = useCallback((itemId: string, blob: Blob) => {
+    setEvidenceItems((current) =>
+      current.map((item) => {
+        if (item.id !== itemId) return item;
+        const updated: EvidenceItem = {
+          ...item,
+          annotatedBlob: blob,
+          blob: blob,
+          updatedAt: new Date().toISOString(),
+        };
+        void saveEvidenceItem(updated);
+        return updated;
+      }),
+    );
+  }, []);
+
   const mapArea = (
     <main className="relative flex min-h-[55vh] flex-1 flex-col min-w-0 lg:min-h-0">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
@@ -2117,6 +2133,17 @@ function App() {
             zoom: Math.max(prev.zoom, 15),
           }));
         }}
+        evidencePins={propertyEvidenceItems
+          .filter((item) => item.status === 'approved')
+          .map((item, idx) => ({
+            id: item.id,
+            lat: item.evidenceLat ?? queryLocation.lat + ((idx % 5) - 2) * 0.0004,
+            lng: item.evidenceLng ?? queryLocation.lng + ((idx % 3) - 1) * 0.0005,
+            title: item.title,
+            status: item.status,
+          }))
+        }
+        onEvidencePinClick={() => setActiveView('evidence')}
       />
 
       <RouteQueuePanel
@@ -2483,6 +2510,7 @@ function App() {
             onRemoveEvidenceItem={handleRemoveEvidenceItem}
             onToggleEvidenceStatus={handleToggleEvidenceStatus}
             onToggleEvidenceInReport={handleToggleEvidenceInReport}
+            onSaveAnnotatedEvidence={handleSaveAnnotatedEvidence}
             onOpenReports={() => setActiveView('reports')}
             onOpenMap={() => setActiveView('map')}
             providerStatus={evidenceProviderStatus}
