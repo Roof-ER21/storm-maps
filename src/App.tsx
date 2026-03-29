@@ -88,13 +88,7 @@ const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
 const CANVASS_ROUTE_STORAGE_KEY = 'hail-yes:canvass-route';
 const CANVASS_ARCHIVE_STORAGE_KEY = 'hail-yes:canvass-archive';
 const MAX_ROUTE_STOPS = 8;
-const DEFAULT_SEARCH_SUMMARY: PropertySearchSummary = {
-  locationLabel: 'Owings Mills, MD',
-  resultType: 'locality',
-  radiusMiles: 20,
-  historyPreset: DEFAULT_HISTORY_RANGE,
-  sinceDate: null,
-};
+const DEFAULT_SEARCH_SUMMARY: PropertySearchSummary | null = null;
 
 interface MapCameraState {
   center: LatLng;
@@ -2441,7 +2435,7 @@ function App() {
       />
 
       <RouteQueuePanel
-        visible={showRoutePanel || orderedRouteStops.length > 0}
+        visible={showRoutePanel}
         stops={orderedRouteStops}
         activeStopId={activeRouteStop?.id ?? null}
         gpsPosition={gpsPosition}
@@ -2896,20 +2890,43 @@ function RouteQueuePanel({
   onExportSummary: () => void;
   onClearRoute: () => void;
 }) {
-  if (!visible && stops.length === 0 && knockNowCount === 0) {
-    return null;
-  }
+  const hasContent = stops.length > 0 || knockNowCount > 0;
+  if (!hasContent) return null;
 
   const activeStop =
     stops.find((stop) => stop.id === activeStopId) ||
     stops[0] ||
     null;
+  const pendingStops = stops.filter((stop) => stop.status !== 'completed');
+  const badgeCount = stops.length > 0 ? pendingStops.length : knockNowCount;
+
+  // Fully collapsed — just a small floating button
+  if (!visible) {
+    return (
+      <div className="absolute right-4 top-20 z-20">
+        <button
+          type="button"
+          onClick={onToggleOpen}
+          className="flex items-center gap-2 rounded-xl border border-orange-500/30 bg-slate-950/92 px-3 py-2 shadow-lg backdrop-blur transition-colors hover:bg-slate-900"
+          aria-label="Open route queue"
+        >
+          <svg className="h-4 w-4 text-orange-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" /></svg>
+          <span className="text-xs font-semibold text-white">Route</span>
+          {badgeCount > 0 && (
+            <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">
+              {badgeCount}
+            </span>
+          )}
+        </button>
+      </div>
+    );
+  }
+
   const etaLabel = gpsPosition && activeStop
     ? `${haversineDistanceMiles(gpsPosition, { lat: activeStop.lat, lng: activeStop.lng }).toFixed(1)} mi from you`
     : activeStop
       ? 'Ready for turn-by-turn'
       : 'Build a canvass route from top hail dates';
-  const pendingStops = stops.filter((stop) => stop.status !== 'completed');
 
   return (
     <div className="absolute right-4 top-20 z-20 w-[min(24rem,calc(100%-2rem))]">
@@ -2926,9 +2943,7 @@ function RouteQueuePanel({
             <p className="mt-1 text-sm font-semibold text-white">
               {stops.length > 0
                 ? `${pendingStops.length} active stop${pendingStops.length === 1 ? '' : 's'}`
-                : knockNowCount > 0
-                  ? `${knockNowCount} knock-now dates ready`
-                  : 'No route built yet'}
+                : `${knockNowCount} knock-now dates ready`}
             </p>
             <p className="mt-1 text-xs text-slate-400">{etaLabel}</p>
           </div>
