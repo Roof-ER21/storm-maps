@@ -23,6 +23,7 @@ interface LeadsPageProps {
   onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
   onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
+  onShareLeadReport: (stop: CanvassRouteStop) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -81,6 +82,7 @@ export default function LeadsPage({
   onUpdateLeadReminder,
   onUpdateLeadAssignedRep,
   onUpdateLeadDealValue,
+  onShareLeadReport,
   onUpdateLeadHomeowner,
   onRestoreArchive,
 }: LeadsPageProps) {
@@ -420,6 +422,7 @@ export default function LeadsPage({
                       onUpdateLeadReminder={onUpdateLeadReminder}
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
+                      onShareLeadReport={onShareLeadReport}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -451,6 +454,7 @@ export default function LeadsPage({
                       onUpdateLeadReminder={onUpdateLeadReminder}
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
+                      onShareLeadReport={onShareLeadReport}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -479,6 +483,7 @@ export default function LeadsPage({
                       onUpdateLeadReminder={onUpdateLeadReminder}
                       onUpdateLeadAssignedRep={onUpdateLeadAssignedRep}
                       onUpdateLeadDealValue={onUpdateLeadDealValue}
+                      onShareLeadReport={onShareLeadReport}
                       onUpdateLeadHomeowner={onUpdateLeadHomeowner}
                     />
                   ))}
@@ -562,6 +567,7 @@ function LeadCard({
   onUpdateLeadReminder,
   onUpdateLeadAssignedRep,
   onUpdateLeadDealValue,
+  onShareLeadReport,
   onUpdateLeadHomeowner,
 }: {
   lead: CanvassRouteStop;
@@ -575,6 +581,7 @@ function LeadCard({
   onUpdateLeadReminder: (stopId: string, reminderAt: string) => void;
   onUpdateLeadAssignedRep: (stopId: string, rep: string) => void;
   onUpdateLeadDealValue: (stopId: string, value: number | null) => void;
+  onShareLeadReport: (stop: CanvassRouteStop) => void;
   onUpdateLeadHomeowner: (
     stopId: string,
     field: 'homeownerName' | 'homeownerPhone' | 'homeownerEmail',
@@ -617,13 +624,22 @@ function LeadCard({
           <p className="mt-2 text-base font-semibold text-white">{lead.stormLabel}</p>
           <p className="mt-1 text-sm text-slate-400">{lead.locationLabel}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => onFocusLead(lead)}
-          className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
-        >
-          Map
-        </button>
+        <div className="flex gap-1.5">
+          <button
+            type="button"
+            onClick={() => onShareLeadReport(lead)}
+            className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 px-2.5 py-2 text-[10px] font-semibold text-emerald-300 hover:bg-emerald-500/20"
+          >
+            Share
+          </button>
+          <button
+            type="button"
+            onClick={() => onFocusLead(lead)}
+            className="rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-2 text-[10px] font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+          >
+            Map
+          </button>
+        </div>
       </div>
 
       {/* Storm context badges */}

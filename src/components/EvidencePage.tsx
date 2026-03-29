@@ -137,6 +137,7 @@ export default function EvidencePage({
   };
 
   const bulkRemove = async () => {
+    if (!window.confirm(`Remove ${selectedIds.size} evidence item${selectedIds.size === 1 ? '' : 's'}? This cannot be undone.`)) return;
     for (const id of selectedIds) await onRemoveEvidenceItem(id);
     clearSelection();
   };

@@ -46,6 +46,7 @@ import {
 } from './services/notificationService';
 import { generateStormReport } from './services/reportService';
 import { generateEvidencePack } from './services/evidencePackService';
+import ErrorBoundary from './components/ErrorBoundary';
 import Sidebar from './components/Sidebar';
 import StormMap from './components/StormMap';
 import SearchBar from './components/SearchBar';
@@ -60,7 +61,7 @@ const PinnedPropertiesPage = lazy(() => import('./components/PinnedPropertiesPag
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
-import { syncLeadsToServer, seedDemoData } from './services/api';
+import { syncLeadsToServer, seedDemoData, createShareableReport } from './services/api';
 import {
   listEvidenceItems,
   removeEvidenceItem,
@@ -1795,6 +1796,33 @@ function App() {
     if (ok) window.alert('Demo data seeded! Search "Dallas, TX" to see the demo leads.');
   }, []);
 
+  const handleShareLeadReport = useCallback(async (stop: CanvassRouteStop) => {
+    const stormDate = filteredStormDates.find((sd) => sd.date === stop.stormDate);
+    const result = await createShareableReport({
+      address: stop.locationLabel,
+      lat: stop.lat,
+      lng: stop.lng,
+      stormDate: stop.stormDate,
+      stormLabel: stop.stormLabel,
+      maxHailInches: stop.topHailInches,
+      maxWindMph: stormDate?.maxWindMph ?? 0,
+      eventCount: stop.reportCount,
+      repName: stop.assignedRep || repProfile?.name || undefined,
+      homeownerName: stop.homeownerName || undefined,
+    });
+    if (result) {
+      const fullUrl = `${window.location.origin}${result.url}`;
+      try {
+        await navigator.clipboard.writeText(fullUrl);
+        window.alert(`Report link copied to clipboard!\n\n${fullUrl}\n\nShare this with the homeowner via text or email.`);
+      } catch {
+        window.alert(`Share this link with the homeowner:\n\n${fullUrl}`);
+      }
+    } else {
+      window.alert('Failed to create shareable report. Try again.');
+    }
+  }, [filteredStormDates, repProfile]);
+
   const handleUpdateRouteStopReminder = useCallback((stopId: string, reminderAt: string) => {
     setRouteStopsState((current) =>
       current.map((stop) =>
@@ -2437,6 +2465,7 @@ function App() {
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
+        <ErrorBoundary fallbackLabel="This page encountered an error. Try going back to Dashboard." onReset={() => setActiveView('dashboard')}>
         <Suspense fallback={<PageLoader />}>
         {activeView === 'dashboard' && (
           <DashboardPage
@@ -2559,6 +2588,7 @@ function App() {
             onUpdateLeadReminder={handleUpdateRouteStopReminder}
             onUpdateLeadAssignedRep={handleUpdateRouteStopAssignedRep}
             onUpdateLeadDealValue={handleUpdateRouteStopDealValue}
+            onShareLeadReport={handleShareLeadReport}
             onUpdateLeadHomeowner={handleUpdateRouteStopHomeowner}
             onRestoreArchive={handleRestoreRouteArchive}
           />
@@ -2621,6 +2651,7 @@ function App() {
           />
         )}
         </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   );
