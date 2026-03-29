@@ -49,7 +49,16 @@ interface CountyEndpoint {
 }
 
 const COUNTY_ENDPOINTS: CountyEndpoint[] = [
-  // Maryland
+  // ── DC ────────────────────────────────────────────────
+  {
+    name: 'District of Columbia',
+    state: 'DC',
+    latMin: 38.79, latMax: 38.99, lngMin: -77.12, lngMax: -76.91,
+    url: 'https://maps2.dcgis.dc.gov/dcgis/rest/services/Property_and_Land/MapServer/40/query',
+    ownerField: 'OWNERNAME', addressField: 'PREMISEADD', valueField: 'ASSESSMENT',
+  },
+
+  // ── Maryland ──────────────────────────────────────────
   {
     name: 'Baltimore County, MD',
     state: 'MD',
@@ -57,7 +66,105 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://bcgis.baltimorecountymd.gov/arcgis/rest/services/Property/Parcels/MapServer/0/query',
     ownerField: 'OWNNAME1', addressField: 'STRTADDR', yearBuiltField: 'YRBUILT',
   },
-  // Texas — Dallas County
+  {
+    name: 'Harford County, MD',
+    state: 'MD',
+    latMin: 39.35, latMax: 39.72, lngMin: -76.55, lngMax: -76.04,
+    url: 'https://hcggis.harfordcountymd.gov/arcgis/rest/services/Cadastral/MapServer/0/query',
+    ownerField: 'OWN_1', yearBuiltField: 'YR_BUILT', valueField: 'CUR_T_ASSM',
+  },
+  {
+    name: 'Anne Arundel County, MD',
+    state: 'MD',
+    latMin: 38.82, latMax: 39.28, lngMin: -76.84, lngMax: -76.44,
+    url: 'https://gis.aacounty.org/arcgis/rest/services/Planning_OpenData/MapServer/34/query',
+    ownerField: 'ASST_FIRST_OWNER',
+  },
+
+  // ── Virginia (DMV) ────────────────────────────────────
+  {
+    name: 'Prince William County, VA',
+    state: 'VA',
+    latMin: 38.52, latMax: 38.92, lngMin: -77.73, lngMax: -77.23,
+    url: 'https://gisweb.pwcva.gov/arcgis/rest/services/LandRecords/MapServer/4/query',
+    ownerField: 'CAMA_OWNER_CUR',
+  },
+  {
+    name: 'City of Alexandria, VA',
+    state: 'VA',
+    latMin: 38.78, latMax: 38.85, lngMin: -77.15, lngMax: -77.04,
+    url: 'https://maps.alexandriava.gov/arcgis/rest/services/alxLandWm/MapServer/1/query',
+    ownerField: 'OWN_NAME', valueField: 'TOT_CYR',
+  },
+  {
+    name: 'Spotsylvania County, VA',
+    state: 'VA',
+    latMin: 38.05, latMax: 38.40, lngMin: -77.82, lngMax: -77.34,
+    url: 'https://gis.spotsylvania.va.us/arcgis/rest/services/GeoHub/MapServer/45/query',
+    ownerField: 'OwnerSearch', yearBuiltField: 'YEARBUILT', valueField: 'BLDGASSESSMENT',
+  },
+
+  // ── Virginia (Richmond Area) ──────────────────────────
+  {
+    name: 'Hanover County, VA',
+    state: 'VA',
+    latMin: 37.60, latMax: 38.00, lngMin: -77.70, lngMax: -77.20,
+    url: 'https://parcelviewer.geodecisions.com/arcgis/rest/services/Hanover/Public/MapServer/0/query',
+    ownerField: 'OWN_NAME1',
+  },
+
+  // ── Pennsylvania ──────────────────────────────────────
+  {
+    name: 'Philadelphia, PA',
+    state: 'PA',
+    latMin: 39.86, latMax: 40.14, lngMin: -75.28, lngMax: -74.95,
+    url: 'https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/PWD_PARCELS/FeatureServer/0/query',
+    ownerField: 'owner1',
+  },
+  {
+    name: 'Chester County, PA',
+    state: 'PA',
+    latMin: 39.71, latMax: 40.17, lngMin: -76.01, lngMax: -75.35,
+    url: 'https://maps.pasda.psu.edu/arcgis/rest/services/ChesterCounty/MapServer/11/query',
+    ownerField: 'OWN1', valueField: 'TOT_ASSESS',
+  },
+  {
+    name: 'Bucks County, PA',
+    state: 'PA',
+    latMin: 40.09, latMax: 40.63, lngMin: -75.40, lngMax: -74.72,
+    url: 'https://mapservices.pasda.psu.edu/arcgis/rest/services/BucksCounty/MapServer/17/query',
+    ownerField: 'OWNER1', valueField: 'TOTAL_VALU',
+  },
+  {
+    name: 'Lancaster County, PA',
+    state: 'PA',
+    latMin: 39.72, latMax: 40.29, lngMin: -76.72, lngMax: -75.87,
+    url: 'https://arcgis.lancastercountypa.gov/arcgis/rest/services/parcel_poly/MapServer/0/query',
+    ownerField: 'OWNER_NAME', valueField: 'TOTLASSESS',
+  },
+  {
+    name: 'York County, PA',
+    state: 'PA',
+    latMin: 39.72, latMax: 40.07, lngMin: -77.04, lngMax: -76.47,
+    url: 'https://maps.yorkcounty.gov/arcgis/rest/services/Landrecords_Service/MapServer/7/query',
+    ownerField: 'ownerName', yearBuiltField: 'yearBuilt', valueField: 'currTotalVal',
+  },
+  {
+    name: 'Berks County, PA',
+    state: 'PA',
+    latMin: 40.15, latMax: 40.65, lngMin: -76.30, lngMax: -75.53,
+    url: 'https://gis.co.berks.pa.us/arcgis/rest/services/ParcelSearchTable/MapServer/0/query',
+    ownerField: 'NAME1', valueField: 'VALUTOTAL',
+  },
+  {
+    name: 'Lehigh County, PA',
+    state: 'PA',
+    latMin: 40.49, latMax: 40.73, lngMin: -75.82, lngMax: -75.37,
+    url: 'https://gis.lehighcounty.org/arcgis/rest/services/OwnerAsmtData/MapServer/0/query',
+    ownerField: 'NAMOWN', valueField: 'TOTASMT',
+  },
+
+  // ── Texas ─────────────────────────────────────────────
   {
     name: 'Dallas County, TX',
     state: 'TX',
@@ -65,7 +172,6 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://maps.dcad.org/prdarcgis/rest/services/Public/Parcel_Public/MapServer/0/query',
     ownerField: 'OwnerName', addressField: 'SitusAddress', yearBuiltField: 'YearBuilt', valueField: 'TotalMarketValue',
   },
-  // Texas — Tarrant County (Fort Worth)
   {
     name: 'Tarrant County, TX',
     state: 'TX',
@@ -73,7 +179,6 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://gis.tarrantcounty.com/arcgis/rest/services/Parcels/Parcels/MapServer/0/query',
     ownerField: 'OWNER_NAME', addressField: 'SITUS_ADDR',
   },
-  // Texas — Harris County (Houston)
   {
     name: 'Harris County, TX',
     state: 'TX',
@@ -81,7 +186,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://arcgis.hcad.org/server/rest/services/public/parcel_public/MapServer/0/query',
     ownerField: 'OWN_NAME', addressField: 'SITE_ADDR',
   },
-  // Colorado — Denver
+
+  // ── Colorado ──────────────────────────────────────────
   {
     name: 'Denver County, CO',
     state: 'CO',
@@ -89,7 +195,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://www.denvergov.org/gis/rest/services/Parcels/MapServer/0/query',
     ownerField: 'OWNER1',
   },
-  // Oklahoma — Oklahoma County (OKC)
+
+  // ── Oklahoma ──────────────────────────────────────────
   {
     name: 'Oklahoma County, OK',
     state: 'OK',
@@ -97,7 +204,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://gis.oklahomacounty.org/arcgis/rest/services/AssessorParcels/MapServer/0/query',
     ownerField: 'OWNER',
   },
-  // Kansas — Sedgwick County (Wichita)
+
+  // ── Kansas ────────────────────────────────────────────
   {
     name: 'Sedgwick County, KS',
     state: 'KS',
@@ -105,7 +213,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://gisdata.sedgwickcounty.org/arcgis/rest/services/Parcels/MapServer/0/query',
     ownerField: 'OWNER_NAME',
   },
-  // Georgia — Fulton County (Atlanta)
+
+  // ── Georgia ───────────────────────────────────────────
   {
     name: 'Fulton County, GA',
     state: 'GA',
@@ -113,7 +222,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://gisdata.fultoncountyga.gov/arcgis/rest/services/Cadastral/Parcels/MapServer/0/query',
     ownerField: 'OWNER',
   },
-  // Tennessee — Davidson County (Nashville)
+
+  // ── Tennessee ─────────────────────────────────────────
   {
     name: 'Davidson County, TN',
     state: 'TN',
@@ -121,7 +231,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://maps.nashville.gov/arcgis/rest/services/Parcels/MapServer/0/query',
     ownerField: 'OWNERNAME',
   },
-  // North Carolina — Mecklenburg County (Charlotte)
+
+  // ── North Carolina ────────────────────────────────────
   {
     name: 'Mecklenburg County, NC',
     state: 'NC',
@@ -129,7 +240,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://maps.mecklenburgcountync.gov/arcgis/rest/services/Parcels/MapServer/0/query',
     ownerField: 'OWNER_NAME',
   },
-  // Missouri — Jackson County (Kansas City)
+
+  // ── Missouri ──────────────────────────────────────────
   {
     name: 'Jackson County, MO',
     state: 'MO',
@@ -137,7 +249,8 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://gis2.jacksongov.org/arcgis/rest/services/Cadastral/Parcels/MapServer/0/query',
     ownerField: 'OWNER_NAME',
   },
-  // Nebraska — Douglas County (Omaha)
+
+  // ── Nebraska ──────────────────────────────────────────
   {
     name: 'Douglas County, NE',
     state: 'NE',
