@@ -1,7 +1,14 @@
 {
-  "name": "storm-maps",
+  "name": "hail-yes",
   "private": true,
   "version": "0.0.0",
+  "description": "Property-level hail intelligence, storm swaths, MRMS overlays, evidence workflow, and NOAA-forward reports for roofing professionals.",
+  "author": "Roof-ER21",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Roof-ER21/storm-maps.git"
+  },
   "type": "module",
   "scripts": {
     "dev": "vite",

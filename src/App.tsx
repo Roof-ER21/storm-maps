@@ -645,7 +645,6 @@ function App() {
     dismissAlert: dismissStormAlert,
     dismissAll: dismissAllStormAlerts,
     checking: checkingStormAlerts,
-    // lastCheckedAt available if needed for UI
   } = useStormAlerts({
     location: searchSummary ? queryLocation : null,
     enabled: true,

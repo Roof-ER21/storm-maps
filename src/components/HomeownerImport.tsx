@@ -121,7 +121,7 @@ export default function HomeownerImport({ onImport, onClose }: HomeownerImportPr
                `Preview ${mapped.length} homeowners to import`}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="text-slate-400 hover:text-white text-xl">&times;</button>
+          <button type="button" onClick={onClose} aria-label="Close import dialog" className="flex h-8 w-8 items-center justify-center text-slate-400 hover:text-white text-xl">&times;</button>
         </div>
 
         {/* Step 1: Upload */}
@@ -156,10 +156,11 @@ export default function HomeownerImport({ onImport, onClose }: HomeownerImportPr
             <div className="grid gap-4 sm:grid-cols-2">
               {(['address', 'name', 'phone', 'email'] as const).map((field) => (
                 <div key={field}>
-                  <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <label htmlFor={`col-map-${field}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     {field === 'address' ? 'Property Address *' : field === 'name' ? 'Owner Name' : field === 'phone' ? 'Phone Number' : 'Email Address'}
                   </label>
                   <select
+                    id={`col-map-${field}`}
                     value={mapping[field]}
                     onChange={(e) => setMapping({ ...mapping, [field]: e.target.value })}
                     className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm text-white focus:border-orange-400/40 focus:outline-none"

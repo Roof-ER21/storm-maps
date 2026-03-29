@@ -304,6 +304,7 @@ export default function LeadsPage({
           <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-3 sm:p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <input
+                aria-label="Search leads"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search leads..."
@@ -311,6 +312,7 @@ export default function LeadsPage({
               />
               <div className="grid grid-cols-2 gap-2 sm:contents">
               <select
+                aria-label="Filter by stage"
                 value={filterStage}
                 onChange={(e) => setFilterStage(e.target.value as LeadStage | 'all')}
                 className="rounded-xl border border-slate-800 bg-slate-900 px-2 sm:px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
@@ -323,6 +325,7 @@ export default function LeadsPage({
                 <option value="lost">Lost</option>
               </select>
               <select
+                aria-label="Filter by outcome"
                 value={filterOutcome}
                 onChange={(e) => setFilterOutcome(e.target.value as CanvassOutcome | 'all')}
                 className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
@@ -333,6 +336,7 @@ export default function LeadsPage({
                 <option value="interested">Interested</option>
               </select>
               <select
+                aria-label="Filter by reminder urgency"
                 value={filterUrgency}
                 onChange={(e) => setFilterUrgency(e.target.value as 'all' | 'overdue' | 'today' | 'upcoming')}
                 className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
@@ -343,6 +347,7 @@ export default function LeadsPage({
                 <option value="upcoming">Upcoming</option>
               </select>
               <select
+                aria-label="Filter by rep"
                 value={filterRep}
                 onChange={(e) => setFilterRep(e.target.value)}
                 className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
@@ -620,6 +625,8 @@ function LeadCard({
         <button
           type="button"
           onClick={onToggleSelect}
+          aria-label={isSelected ? 'Deselect lead' : 'Select lead'}
+          aria-pressed={isSelected}
           className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${isSelected ? 'border-orange-400 bg-orange-500 text-white' : 'border-slate-700 bg-slate-950 text-transparent hover:border-slate-500'}`}
         >
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -757,10 +764,11 @@ function LeadCard({
       {/* Rep + Deal Value + Reminder row */}
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <label htmlFor={`rep-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
             Assigned Rep
           </label>
           <input
+            id={`rep-${lead.id}`}
             value={lead.assignedRep || ''}
             onChange={(event) => onUpdateLeadAssignedRep(lead.id, event.target.value)}
             placeholder="Rep name"
@@ -768,10 +776,11 @@ function LeadCard({
           />
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <label htmlFor={`deal-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
             Deal Value ($)
           </label>
           <input
+            id={`deal-${lead.id}`}
             type="number"
             value={lead.dealValue ?? ''}
             onChange={(event) => onUpdateLeadDealValue(lead.id, event.target.value ? parseFloat(event.target.value) : null)}
@@ -780,11 +789,12 @@ function LeadCard({
           />
         </div>
         <div>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <label htmlFor={`reminder-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
             Reminder
           </label>
           <div className="mt-1 flex gap-1.5">
             <input
+              id={`reminder-${lead.id}`}
               type="date"
               value={lead.reminderAt || ''}
               onChange={(event) => onUpdateLeadReminder(lead.id, event.target.value)}
@@ -830,6 +840,7 @@ function LeadCard({
       </div>
       <div className="mt-2 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
         <input
+          aria-label="Homeowner name"
           value={lead.homeownerName || ''}
           onChange={(event) =>
             onUpdateLeadHomeowner(lead.id, 'homeownerName', event.target.value)
@@ -838,6 +849,7 @@ function LeadCard({
           className="rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
         />
         <input
+          aria-label="Phone number"
           value={lead.homeownerPhone || ''}
           onChange={(event) =>
             onUpdateLeadHomeowner(lead.id, 'homeownerPhone', event.target.value)
@@ -846,6 +858,7 @@ function LeadCard({
           className="rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
         />
         <input
+          aria-label="Email address"
           value={lead.homeownerEmail || ''}
           onChange={(event) =>
             onUpdateLeadHomeowner(lead.id, 'homeownerEmail', event.target.value)
@@ -911,6 +924,7 @@ function LeadCard({
       )}
 
       <textarea
+        aria-label="Lead notes"
         value={lead.notes}
         onChange={(event) => onUpdateLeadNotes(lead.id, event.target.value)}
         placeholder="Lead notes, scheduling details, next touch..."

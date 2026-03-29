@@ -237,10 +237,11 @@ export default function CanvassPage({
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <label htmlFor={`notes-${stop.id}`} className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                       Rep Notes
                     </label>
                     <textarea
+                      id={`notes-${stop.id}`}
                       value={stop.notes}
                       onChange={(event) => onUpdateStopNotes(stop.id, event.target.value)}
                       placeholder="Gate code, homeowner name, roof age, follow-up timing..."
@@ -249,6 +250,7 @@ export default function CanvassPage({
                     {(stop.outcome === 'inspection_booked' || stop.homeownerName || stop.homeownerPhone || stop.homeownerEmail) && (
                       <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
                         <input
+                          aria-label="Homeowner name"
                           value={stop.homeownerName || ''}
                           onChange={(event) =>
                             onUpdateStopHomeowner(stop.id, 'homeownerName', event.target.value)
@@ -257,6 +259,7 @@ export default function CanvassPage({
                           className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
                         />
                         <input
+                          aria-label="Phone number"
                           value={stop.homeownerPhone || ''}
                           onChange={(event) =>
                             onUpdateStopHomeowner(stop.id, 'homeownerPhone', event.target.value)
@@ -265,6 +268,7 @@ export default function CanvassPage({
                           className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
                         />
                         <input
+                          aria-label="Email address"
                           value={stop.homeownerEmail || ''}
                           onChange={(event) =>
                             onUpdateStopHomeowner(stop.id, 'homeownerEmail', event.target.value)

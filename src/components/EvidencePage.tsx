@@ -211,8 +211,8 @@ export default function EvidencePage({
                 <h3 className="mt-2 text-xl font-semibold text-white">{searchSummary.locationLabel}</h3>
 
                 <div className="mt-5 rounded-2xl border border-gray-900 bg-black/35 p-4">
-                  <label className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Attach to Storm Date</label>
-                  <select value={selectedStormDate} onChange={(e) => setSelectedStormDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400">
+                  <label htmlFor="evidence-storm-date" className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Attach to Storm Date</label>
+                  <select id="evidence-storm-date" value={selectedStormDate} onChange={(e) => setSelectedStormDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400">
                     <option value="">No specific date</option>
                     {stormDates.map((sd) => <option key={sd.date} value={sd.date}>{sd.label}</option>)}
                   </select>
@@ -268,26 +268,26 @@ export default function EvidencePage({
             {/* Filter bar */}
             <div className="rounded-[24px] border border-gray-900 bg-gray-950/80 p-3 sm:p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search evidence..." className="w-full sm:min-w-[160px] sm:flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-amber-400/40 focus:outline-none" />
+                <input aria-label="Search evidence" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search evidence..." className="w-full sm:min-w-[160px] sm:flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-amber-400/40 focus:outline-none" />
                 <div className="grid grid-cols-2 gap-2 sm:contents">
-                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                 </select>
-                <select value={filterMedia} onChange={(e) => setFilterMedia(e.target.value as FilterMedia)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by media type" value={filterMedia} onChange={(e) => setFilterMedia(e.target.value as FilterMedia)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
                   <option value="all">All Media</option>
                   <option value="image">Images</option>
                   <option value="video">Videos</option>
                   <option value="link">Links</option>
                 </select>
-                <select value={filterProvider} onChange={(e) => setFilterProvider(e.target.value as FilterProvider)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by source" value={filterProvider} onChange={(e) => setFilterProvider(e.target.value as FilterProvider)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
                   <option value="all">All Sources</option>
                   <option value="upload">Uploads</option>
                   <option value="youtube">YouTube</option>
                   <option value="flickr">Flickr</option>
                 </select>
-                <select value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by storm date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
                   <option value="all">All Dates</option>
                   <option value="__none__">No Date</option>
                   {stormDates.map((sd) => <option key={sd.date} value={sd.date}>{sd.label}</option>)}
@@ -396,6 +396,8 @@ function EvidenceCard({
         <button
           type="button"
           onClick={onToggleSelect}
+          aria-label={isSelected ? 'Deselect evidence item' : 'Select evidence item'}
+          aria-pressed={isSelected}
           className={`absolute left-3 top-3 z-10 flex h-5 w-5 items-center justify-center rounded border transition-colors ${isSelected ? 'border-amber-400 bg-amber-500 text-white' : 'border-gray-600 bg-gray-900/80 text-transparent hover:border-gray-400'}`}
         >
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
@@ -513,7 +515,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (blob: Blob) => Prom
       <div className="relative w-full max-w-2xl rounded-3xl border border-gray-800 bg-gray-950 p-3 sm:p-4 mx-3 sm:mx-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-white">Camera Capture</p>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
+          <button type="button" onClick={onClose} aria-label="Close camera" className="flex h-8 w-8 items-center justify-center text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
         {error ? (
           <p className="text-sm text-red-400 p-8 text-center">{error}</p>
@@ -525,6 +527,7 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (blob: Blob) => Prom
                 type="button"
                 onClick={() => void handleSnap()}
                 disabled={capturing}
+                aria-label={capturing ? 'Capturing photo...' : 'Take photo'}
                 className="h-14 w-14 sm:h-16 sm:w-16 rounded-full border-4 border-white bg-red-500 transition-transform hover:scale-105 active:scale-95 disabled:opacity-50"
               />
             </div>

@@ -1,12 +1,18 @@
 {
   "name": "Hail Yes!",
   "short_name": "Hail Yes!",
-  "description": "Storm intelligence for roofing professionals",
+  "description": "Storm intelligence for roofing professionals — property-level hail data, swaths, MRMS overlays, evidence workflow, and NOAA-forward reports.",
   "start_url": "/",
+  "id": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
+  "scope": "/",
   "background_color": "#04020a",
   "theme_color": "#f97316",
+  "categories": ["weather", "business", "productivity"],
   "icons": [
-    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" },
+    { "src": "/favicon.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/favicon.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any" }
   ]
 }

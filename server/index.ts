@@ -373,7 +373,7 @@ app.post('/api/demo/seed', async (_req, res) => {
     }
 
     res.json({ ok: true, seeded: demoLeads.length });
-  } catch {
+  } catch (err) {
     console.error('Demo seed error:', err);
     res.status(500).json({ error: 'Failed to seed demo data' });
   }

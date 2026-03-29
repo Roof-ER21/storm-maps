@@ -530,5 +530,5 @@ export async function lookupProperty(lat: number, lng: number): Promise<Property
 }
 
 export function getCoveredCounties(): string[] {
-  return COUNTY_ENDPOINTS.map((ep) => `${ep.name}`);
+  return COUNTY_ENDPOINTS.map((ep) => ep.name);
 }

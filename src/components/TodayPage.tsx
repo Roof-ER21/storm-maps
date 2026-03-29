@@ -102,7 +102,7 @@ export default function TodayPage({
                   </div>
                   <div className="ml-3 flex gap-2">
                     <button type="button" onClick={onOpenMap} className="rounded-lg bg-red-500/15 px-2.5 py-1.5 text-[10px] font-semibold text-red-300 hover:bg-red-500/25">Map</button>
-                    <button type="button" onClick={() => onDismissAlert(alert.id)} className="text-slate-600 hover:text-slate-400 text-sm">&times;</button>
+                    <button type="button" onClick={() => onDismissAlert(alert.id)} aria-label="Dismiss alert" className="flex h-8 w-8 items-center justify-center text-slate-600 hover:text-slate-400">&times;</button>
                   </div>
                 </div>
               ))}

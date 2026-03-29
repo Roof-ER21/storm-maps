@@ -163,16 +163,16 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+              <label htmlFor="team-rep-name" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Name</label>
+              <input id="team-rep-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
             </div>
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Team Code</label>
-              <input value={teamCode} onChange={(e) => setTeamCode(e.target.value)} placeholder="e.g. HAILYES-DFW" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+              <label htmlFor="team-code" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Team Code</label>
+              <input id="team-code" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} placeholder="e.g. HAILYES-DFW" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
             </div>
             <div>
-              <label className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Role</label>
-              <select value={role} onChange={(e) => setRole(e.target.value as 'rep' | 'manager')} className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none">
+              <label htmlFor="team-role" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Role</label>
+              <select id="team-role" value={role} onChange={(e) => setRole(e.target.value as 'rep' | 'manager')} className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none">
                 <option value="rep">Sales Rep</option>
                 <option value="manager">Sales Manager</option>
               </select>

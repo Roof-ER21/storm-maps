@@ -54,7 +54,7 @@ function loadWatermark(): { seenEventIds: Set<string>; lastChecked: string | nul
   }
 }
 
-function saveWatermark(seenEventIds: Set<string>, lastChecked: string) {
+function saveWatermark(seenEventIds: Set<string>, lastChecked: string): void {
   try {
     // Keep only last 500 IDs to avoid localStorage bloat
     const ids = [...seenEventIds].slice(-500);

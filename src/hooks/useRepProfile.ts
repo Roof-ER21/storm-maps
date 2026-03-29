@@ -17,11 +17,11 @@ function loadProfile(): RepProfile | null {
   } catch { return null; }
 }
 
-function saveProfile(profile: RepProfile) {
+function saveProfile(profile: RepProfile): void {
   localStorage.setItem(REP_PROFILE_KEY, JSON.stringify(profile));
 }
 
-export function useRepProfile() {
+export function useRepProfile(): { profile: RepProfile | null; updateProfile: (next: RepProfile) => void } {
   const [profile, setProfile] = useState<RepProfile | null>(loadProfile);
 
   const updateProfile = useCallback((next: RepProfile) => {
