@@ -83,6 +83,29 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
 
   // ── Virginia (DMV) ────────────────────────────────────
   {
+    name: 'Fairfax County, VA',
+    state: 'VA',
+    latMin: 38.59, latMax: 39.0, lngMin: -77.55, lngMax: -77.09,
+    url: 'https://services1.arcgis.com/ioennV6PpG5Xodq0/ArcGIS/rest/services/OpenData_A6/FeatureServer/2/query',
+    ownerField: '', // Owner names not exposed — values only
+    valueField: 'APPR_TOTAL',
+  },
+  {
+    name: 'Loudoun County, VA',
+    state: 'VA',
+    latMin: 38.84, latMax: 39.33, lngMin: -77.96, lngMax: -77.32,
+    url: 'https://logis.loudoun.gov/gis/rest/services/COL/LMIS_ParcelsPlatfile/MapServer/0/query',
+    ownerField: '', // Owner names not exposed
+    addressField: 'VPC_PRI_STR_ADDR',
+  },
+  {
+    name: 'Arlington County, VA',
+    state: 'VA',
+    latMin: 38.83, latMax: 38.93, lngMin: -77.17, lngMax: -77.03,
+    url: 'ARLINGTON_SPECIAL', // Uses DataHub REST API, not ArcGIS
+    ownerField: 'granteeName',
+  },
+  {
     name: 'Prince William County, VA',
     state: 'VA',
     latMin: 38.52, latMax: 38.92, lngMin: -77.73, lngMax: -77.23,
@@ -365,6 +388,71 @@ async function queryCountyGis(endpoint: CountyEndpoint, lat: number, lng: number
   }
 }
 
+async function queryArlington(lat: number, lng: number): Promise<PropertyInfo | null> {
+  try {
+    // Step 1: Find parcel by geometry
+    const parcelParams = new URLSearchParams({
+      geometry: `${lng},${lat}`,
+      geometryType: 'esriGeometryPoint',
+      inSR: '4326',
+      spatialRel: 'esriSpatialRelIntersects',
+      outFields: 'RPCMSTR',
+      returnGeometry: 'false',
+      f: 'json',
+    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const parcelRes = await fetch(
+      `https://arlgis.arlingtonva.us/arcgis/rest/services/Public_Maps/Parcel_Map/MapServer/1/query?${parcelParams}`,
+      { signal: controller.signal },
+    );
+    if (!parcelRes.ok) { clearTimeout(timeout); return null; }
+    const parcelData = await parcelRes.json();
+    if (!parcelData.features?.length) { clearTimeout(timeout); return null; }
+    const rpc = parcelData.features[0].attributes.RPCMSTR;
+    if (!rpc) { clearTimeout(timeout); return null; }
+
+    // Step 2: Get property details + most recent sale (owner name)
+    const [propRes, salesRes] = await Promise.all([
+      fetch(`https://datahub-v2.arlingtonva.us/api/RealEstate/Property?$filter=realEstatePropertyCode eq '${rpc}'&$top=1`, { signal: controller.signal }),
+      fetch(`https://datahub-v2.arlingtonva.us/api/RealEstate/SalesHistory?$filter=realEstatePropertyCode eq '${rpc}'&$orderby=saleDate desc&$top=1`, { signal: controller.signal }),
+    ]);
+    clearTimeout(timeout);
+
+    let owner = '';
+    let address = '';
+    let yearBuilt = '';
+    let assessedValue = '';
+
+    if (propRes.ok) {
+      const propData = await propRes.json();
+      const prop = Array.isArray(propData) ? propData[0] : propData?.value?.[0];
+      if (prop) {
+        address = [prop.streetNumberText, prop.streetName, prop.streetSuffixDescription].filter(Boolean).join(' ');
+        yearBuilt = prop.yearBuiltDate?.toString() || '';
+        // tradeName is not redacted for commercial properties
+        if (prop.tradeName) owner = prop.tradeName;
+      }
+    }
+
+    if (salesRes.ok) {
+      const salesData = await salesRes.json();
+      const sale = Array.isArray(salesData) ? salesData[0] : salesData?.value?.[0];
+      if (sale?.granteeName) {
+        owner = sale.granteeName;
+        assessedValue = sale.saleAmount?.toString() || assessedValue;
+      }
+    }
+
+    if (!owner) return null;
+
+    return { owner, address, yearBuilt, assessedValue, source: 'county-gis' };
+  } catch {
+    return null;
+  }
+}
+
 async function queryRegrid(lat: number, lng: number, token: string): Promise<PropertyInfo | null> {
   try {
     const controller = new AbortController();
@@ -421,8 +509,15 @@ export async function lookupProperty(lat: number, lng: number): Promise<Property
   // 1. Try county ArcGIS first (free, unlimited)
   const county = findCountyEndpoint(lat, lng);
   if (county) {
-    const result = await queryCountyGis(county, lat, lng);
-    if (result && result.owner) return result;
+    // Arlington has a special DataHub API
+    if (county.url === 'ARLINGTON_SPECIAL') {
+      const result = await queryArlington(lat, lng);
+      if (result && result.owner) return result;
+    } else {
+      const result = await queryCountyGis(county, lat, lng);
+      // Return if we got owner OR useful property data (value, year built)
+      if (result && (result.owner || result.assessedValue || result.yearBuilt)) return result;
+    }
   }
 
   // 2. Fall back to Regrid if token is configured
