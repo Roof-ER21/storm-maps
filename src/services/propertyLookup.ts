@@ -112,6 +112,68 @@ const COUNTY_ENDPOINTS: CountyEndpoint[] = [
     url: 'https://parcelviewer.geodecisions.com/arcgis/rest/services/Hanover/Public/MapServer/0/query',
     ownerField: 'OWN_NAME1',
   },
+  {
+    name: 'City of Richmond, VA',
+    state: 'VA',
+    latMin: 37.44, latMax: 37.60, lngMin: -77.60, lngMax: -77.38,
+    url: 'https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/City_of_Richmond_Parcels/FeatureServer/0/query',
+    ownerField: 'OwnerName', addressField: 'MailAddress', valueField: 'TotalValue',
+  },
+
+  // ── Virginia (Fredericksburg / Northern Neck) ────────
+  {
+    name: 'City of Fredericksburg, VA',
+    state: 'VA',
+    latMin: 38.28, latMax: 38.33, lngMin: -77.50, lngMax: -77.42,
+    url: 'https://maps.fredericksburgva.gov/arcgis/rest/services/Tax_Parcels/MapServer/0/query',
+    ownerField: 'Owner', addressField: 'PropertyAddress', valueField: 'TotalPropertyValue',
+  },
+
+  // ── Virginia (Hampton Roads) ─────────────────────────
+  {
+    name: 'City of Norfolk, VA',
+    state: 'VA',
+    latMin: 36.82, latMax: 36.97, lngMin: -76.35, lngMax: -76.18,
+    url: 'https://gisshare.norfolk.gov/pubserver/rest/services/Secure/CONProperties/MapServer/0/query',
+    ownerField: 'NORFOLKGIS.Real_Estate_Data2.Owner1',
+    addressField: 'NORFOLKGIS.Real_Estate_Data2.prop_street',
+    yearBuiltField: 'NORFOLKGIS.Real_Estate_Data2.dwelling_year_built',
+    valueField: 'NORFOLKGIS.Real_Estate_Data2.Total1',
+  },
+  {
+    name: 'City of Chesapeake, VA',
+    state: 'VA',
+    latMin: 36.55, latMax: 36.85, lngMin: -76.45, lngMax: -76.12,
+    url: 'https://gis.cityofchesapeake.net/mapping/rest/services/Common_Layers/Parcels/MapServer/0/query',
+    ownerField: 'OWNER', addressField: 'ADDRESS', valueField: 'ASMT_TOTAL',
+  },
+  {
+    name: 'City of Newport News, VA',
+    state: 'VA',
+    latMin: 36.95, latMax: 37.20, lngMin: -76.60, lngMax: -76.38,
+    url: 'https://maps.nnva.gov/gis/rest/services/Operational/Parcel/MapServer/0/query',
+    ownerField: 'OWNERNME1', addressField: 'SITEADDRESS', valueField: 'CNTIMPVAL',
+  },
+
+  // ── Virginia (Roanoke / SW Virginia) ─────────────────
+  {
+    name: 'Roanoke County, VA',
+    state: 'VA',
+    latMin: 37.17, latMax: 37.45, lngMin: -80.20, lngMax: -79.75,
+    url: 'https://arcgis.roanokecountyva.gov/arcgisweb/rest/services/PropertyReport/PropertyReport/MapServer/3/query',
+    ownerField: 'Owner1_LastAndFirst', addressField: 'Full_Address_String',
+    yearBuiltField: 'YearBuilt', valueField: 'SumAllCardsTotalValue',
+  },
+
+  // ── Maryland (Baltimore City) ────────────────────────
+  {
+    name: 'Baltimore City, MD',
+    state: 'MD',
+    latMin: 39.20, latMax: 39.37, lngMin: -76.72, lngMax: -76.53,
+    url: 'https://geodata.baltimorecity.gov/egis/rest/services/CityView/Realproperty_OB/FeatureServer/0/query',
+    ownerField: 'OWNER_1', addressField: 'FULLADDR',
+    yearBuiltField: 'YEAR_BUILD', valueField: 'FULLCASH',
+  },
 
   // ── Pennsylvania ──────────────────────────────────────
   {

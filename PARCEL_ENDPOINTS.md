@@ -206,11 +206,17 @@ https://maps.alexandriava.gov/arcgis/rest/services/alxLandWm/MapServer/1/query
 - **STATUS**: REQUIRES AUTHENTICATION. Use the Parcel Viewer web app for interactive lookups.
 
 ### 18. City of Richmond
-**No direct public ArcGIS parcel REST endpoint found.**
-- GeoHub: https://richmond-geo-hub-cor.hub.arcgis.com/
-- Parcel Mapper: https://www.rva.gov/assessor-real-estate/gismapping
-- Lat/Lng box: -77.60 to -77.38, 37.48 to 37.60
-- **STATUS**: NO PUBLIC REST SERVICE found. Use Parcel Mapper web app.
+**Parcels endpoint (HAS OWNER + ASSESSED VALUE):**
+```
+https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/City_of_Richmond_Parcels/FeatureServer/0/query
+```
+- **Owner**: OwnerName (also MaskedOwner for protected records)
+- **Address**: MailAddress (mailing), AsrLocationBldgNo (building number)
+- **Year Built**: (not available)
+- **Assessed Value**: TotalValue (total), LandValue (land), DwellingValue (dwelling)
+- **Other**: ParcelID, PIN, PropertyClass, LandUse, TaxExemptCode
+- Lat/Lng box: -77.60 to -77.38, 37.44 to 37.60
+- **VERIFIED WORKING** -- returned "City Of Richmond Public Works" at "900 E Broad St Rm 701", TotalValue: 1018000
 
 ### 19. Hanover County
 **Parcels endpoint (HAS OWNER):**
@@ -235,6 +241,83 @@ https://gis.spotsylvania.va.us/arcgis/rest/services/GeoHub/GeoHub/MapServer/45/q
 - **Assessed Value**: BLDGASSESSMENT (building), LANDASSESSMENT (land)
 - Lat/Lng box: -77.80 to -77.35, 38.08 to 38.38
 - **Note**: Service can be slow to respond. May timeout occasionally.
+
+### NEW: City of Fredericksburg
+**Parcels endpoint (HAS OWNER + ASSESSED VALUE):**
+```
+https://maps.fredericksburgva.gov/arcgis/rest/services/Tax_Parcels/MapServer/0/query
+```
+- **Owner**: Owner, OwnerAddress1, OwnerAddress2
+- **Address**: PropertyAddress
+- **Year Built**: AsmtYear (assessment year)
+- **Assessed Value**: TotalPropertyValue, TotalBuildingValue, TotalLandValue, OutbuildingValue
+- Lat/Lng box: -77.50 to -77.42, 38.28 to 38.33
+- **VERIFIED WORKING** -- returned "WILLIAMS THOMAS L & SUSAN C" at "1208 PICKETT CIR", TotalPropertyValue: 511500
+
+### NEW: City of Norfolk
+**Parcels endpoint (HAS OWNER + YEAR BUILT + VALUES - but query issues):**
+```
+https://gisshare.norfolk.gov/pubserver/rest/services/Secure/CONProperties/MapServer/0/query
+```
+- **Owner**: NORFOLKGIS.Real_Estate_Data2.Owner1 (also owners1, owners2, owners3)
+- **Address**: NORFOLKGIS.Real_Estate_Data2.prop_street, prop_city, prop_zip
+- **Year Built**: NORFOLKGIS.Real_Estate_Data2.dwelling_year_built
+- **Assessed Value**: NORFOLKGIS.Real_Estate_Data2.Total1, imp_val1, Land_market_val1
+- **Note**: 200+ fields including 5 years of historical values. However, **direct queries return errors** (pagination not supported, query failures). The service has correct field metadata. May only work through the web viewer or with specific geometry-based queries.
+- Lat/Lng box: -76.35 to -76.18, 36.82 to 36.97
+- **STATUS**: FIELDS VERIFIED but QUERIES FAIL
+
+### NEW: City of Chesapeake
+**Parcels endpoint (HAS OWNER + ASSESSED VALUE):**
+```
+https://gis.cityofchesapeake.net/mapping/rest/services/Common_Layers/Parcels/MapServer/0/query
+```
+- **Owner**: OWNER
+- **Address**: ADDRESS, ADDRESSZIP
+- **Year Built**: (not available in this layer)
+- **Assessed Value**: ASMT_TOTAL, ASMT_BL (building), ASMT_LD (land)
+- **Other**: VISIONID, PROPCLASS, LEGAL, DEEDBK, DEEDPG, CONSIDERATION (sale price)
+- Lat/Lng box: -76.45 to -76.12, 36.55 to 36.85
+- **VERIFIED WORKING** -- returned "FOREMAN PHYLLIS S & MICHAEL G SR TRUSTEES" at "2245 BENEFIT RD", ASMT_TOTAL: 572500
+
+### NEW: City of Newport News
+**Parcels endpoint (HAS OWNER + ASSESSED VALUE):**
+```
+https://maps.nnva.gov/gis/rest/services/Operational/Parcel/MapServer/0/query
+```
+- **Owner**: OWNERNME1, OWNERNME2
+- **Address**: SITEADDRESS
+- **Year Built**: (not available)
+- **Assessed Value**: CNTLNDVAL (current land), CNTIMPVAL (current improvement), PRVLNDVAL (prior land), PRVIMPVAL (prior improvement)
+- **Other**: PARCELID, PSTLADDRESS1 (mailing), CITYOWNED flag
+- Lat/Lng box: -76.60 to -76.38, 36.95 to 37.20
+- **VERIFIED WORKING** -- returned "JONES ANDRE PERNELL" at "928 IVY AVE", CNTLNDVAL: 38900, CNTIMPVAL: 162800
+
+### NEW: Roanoke County
+**Parcels endpoint (EXCELLENT - HAS ALL FIELDS, 343 fields total):**
+```
+https://arcgis.roanokecountyva.gov/arcgisweb/rest/services/PropertyReport/PropertyReport/MapServer/3/query
+```
+- **Owner**: Owner1_LastAndFirst, Owner1_LastName, Owner1_FirstName (also Owner2)
+- **Address**: Full_Address_String, Address_String, LocationAddressForDisplay
+- **Year Built**: YearBuilt, ND_YearBuilt
+- **Assessed Value**: SumAllCardsTotalValue, SumAllCardsTotalMarketValue, SumAllCardsBuildingOnlyValue, SumAllCardsLandOnlyValue
+- **Other**: Bedrooms, FullBaths, HalfBaths, TotalFinSqFt, BuildingTypeDescription, OwnerInfoIsProtected, 6 SaleValidity descriptions, mailing address
+- Lat/Lng box: -80.20 to -79.75, 37.17 to 37.45
+- **VERIFIED WORKING** -- returned "WOOD JEFFREY ALBERT" at "0 Moses Family Rd, Troutville Va, 24175"
+
+### NEW: Baltimore City (MD)
+**Parcels endpoint (HAS OWNER + YEAR BUILT + ASSESSED VALUE):**
+```
+https://geodata.baltimorecity.gov/egis/rest/services/CityView/Realproperty_OB/FeatureServer/0/query
+```
+- **Owner**: OWNER_1, OWNER_2, OWNER_3, OWNER_ABBR
+- **Address**: FULLADDR, ST_NAME, ST_TYPE, BLDG_NO
+- **Year Built**: YEAR_BUILD
+- **Assessed Value**: FULLCASH (full cash), TAXBASE, BFCVLAND, BFCVIMPR, CURRLAND, CURRIMPR
+- **Other**: SALEPRIC, SALEDATE, SDATCODE, ZONECODE, USEGROUP, NEIGHBOR, STRUCTAREA, VACIND, GRNDRENT
+- Lat/Lng box: -76.72 to -76.53, 39.20 to 39.37
+- **VERIFIED WORKING** -- returned "NORTH AVE MARKET LLC" at "2045 W NORTH AVE", YEAR_BUILD: 1920
 
 ---
 
@@ -386,23 +469,30 @@ https://gisdata.alleghenycounty.us/arcgis/rest/services/EGIS/Web_Parcels/MapServ
 
 ## QUICK REFERENCE - BEST ENDPOINTS FOR OWNER LOOKUP
 
-| # | County | Endpoint | Owner Field | Address Field | Value Field |
-|---|--------|----------|-------------|---------------|-------------|
-| 1 | **DC** | maps2.dcgis.dc.gov/.../MapServer/40/query | OWNERNAME | PREMISEADD | ASSESSMENT |
-| 2 | **All MD** (statewide) | mdgeodata.md.gov/.../MD_PropertyData/MapServer/0/query | OWNADD1* | ADDRESS | NFMTTLVL |
-| 3 | **Harford Co MD** | hcggis.harfordcountymd.gov/.../Cadastral/MapServer/0/query | OWN_1 | P_ST_NAME | CUR_T_ASSM |
-| 4 | **Anne Arundel MD** | gis.aacounty.org/.../Planning_OpenData/MapServer/34/query | ASST_FIRST_OWNER | ASST_STREET_NAME | (statewide) |
-| 5 | **Prince William VA** | gisweb.pwcva.gov/.../LandRecords/MapServer/4/query | CAMA_OWNER_CUR | StreetName | (none) |
-| 6 | **Alexandria VA** | maps.alexandriava.gov/.../alxLandWm/MapServer/1/query | OWN_NAME | ADDRESS_GIS | TOT_CYR |
-| 7 | **Hanover VA** | parcelviewer.geodecisions.com/.../Hanover/Public/MapServer/0/query | OWN_NAME1 | PROPERTYADDRESS | (none) |
-| 8 | **Spotsylvania VA** | gis.spotsylvania.va.us/.../GeoHub/MapServer/45/query | OwnerSearch | PROPADDRESS | BLDGASSESSMENT |
-| 9 | **Philadelphia PA** | services.arcgis.com/.../PWD_PARCELS/FeatureServer/0/query | owner1 | address | (none) |
-| 10 | **Chester Co PA** | maps.pasda.psu.edu/.../ChesterCounty/MapServer/11/query | OWN1 | LOC_ADDRES | TOT_ASSESS |
-| 11 | **Bucks Co PA** | mapservices.pasda.psu.edu/.../BucksCounty/MapServer/17/query | OWNER1 | ADDRESS | TOTAL_VALU |
-| 12 | **Lancaster PA** | arcgis.lancastercountypa.gov/.../parcel_poly/MapServer/0/query | OWNER_NAME | ADDRESS | TOTLASSESS |
-| 13 | **York PA** | maps.yorkcounty.gov/.../Landrecords_Service/MapServer/7/query | ownerName | ADDRESS | currTotalVal |
-| 14 | **Berks PA** | gis.co.berks.pa.us/.../ParcelSearchTable/MapServer/0/query | NAME1 | FULLSITEADDRESS | VALUTOTAL |
-| 15 | **Lehigh PA** | gis.lehighcounty.org/.../OwnerAsmtData/MapServer/0/query | NAMOWN | ADDRESS | TOTASMT |
+| # | County | Endpoint | Owner Field | Address Field | Value Field | Year Built |
+|---|--------|----------|-------------|---------------|-------------|------------|
+| 1 | **DC** | maps2.dcgis.dc.gov/.../MapServer/40/query | OWNERNAME | PREMISEADD | ASSESSMENT | -- |
+| 2 | **All MD** (statewide) | mdgeodata.md.gov/.../MD_PropertyData/MapServer/0/query | OWNADD1* | ADDRESS | NFMTTLVL | YEARBLT |
+| 3 | **Baltimore City MD** | geodata.baltimorecity.gov/.../Realproperty_OB/FeatureServer/0/query | OWNER_1 | FULLADDR | FULLCASH | YEAR_BUILD |
+| 4 | **Baltimore Co MD** | bcgis.baltimorecountymd.gov/.../Parcels/MapServer/0/query | OWNNAME1 | STRTADDR | -- | YRBUILT |
+| 5 | **Harford Co MD** | hcggis.harfordcountymd.gov/.../Cadastral/MapServer/0/query | OWN_1 | P_ST_NAME | CUR_T_ASSM | YR_BUILT |
+| 6 | **Anne Arundel MD** | gis.aacounty.org/.../Planning_OpenData/MapServer/34/query | ASST_FIRST_OWNER | ASST_STREET_NAME | (statewide) | ASST_YR_BUILT |
+| 7 | **Prince William VA** | gisweb.pwcva.gov/.../LandRecords/MapServer/4/query | CAMA_OWNER_CUR | StreetName | -- | -- |
+| 8 | **Alexandria VA** | maps.alexandriava.gov/.../alxLandWm/MapServer/1/query | OWN_NAME | ADDRESS_GIS | TOT_CYR | -- |
+| 9 | **Hanover VA** | parcelviewer.geodecisions.com/.../Hanover/Public/MapServer/0/query | OWN_NAME1 | PROPERTYADDRESS | -- | -- |
+| 10 | **Spotsylvania VA** | gis.spotsylvania.va.us/.../GeoHub/MapServer/45/query | OwnerSearch | PROPADDRESS | BLDGASSESSMENT | YEARBUILT |
+| 11 | **Richmond VA** | services1.arcgis.com/.../City_of_Richmond_Parcels/FeatureServer/0/query | OwnerName | MailAddress | TotalValue | -- |
+| 12 | **Fredericksburg VA** | maps.fredericksburgva.gov/.../Tax_Parcels/MapServer/0/query | Owner | PropertyAddress | TotalPropertyValue | AsmtYear |
+| 13 | **Chesapeake VA** | gis.cityofchesapeake.net/.../Parcels/MapServer/0/query | OWNER | ADDRESS | ASMT_TOTAL | -- |
+| 14 | **Newport News VA** | maps.nnva.gov/.../Parcel/MapServer/0/query | OWNERNME1 | SITEADDRESS | CNTIMPVAL | -- |
+| 15 | **Roanoke Co VA** | arcgis.roanokecountyva.gov/.../PropertyReport/MapServer/3/query | Owner1_LastAndFirst | Full_Address_String | SumAllCardsTotalValue | YearBuilt |
+| 16 | **Philadelphia PA** | services.arcgis.com/.../PWD_PARCELS/FeatureServer/0/query | owner1 | address | -- | -- |
+| 17 | **Chester Co PA** | maps.pasda.psu.edu/.../ChesterCounty/MapServer/11/query | OWN1 | LOC_ADDRES | TOT_ASSESS | -- |
+| 18 | **Bucks Co PA** | mapservices.pasda.psu.edu/.../BucksCounty/MapServer/17/query | OWNER1 | ADDRESS | TOTAL_VALU | -- |
+| 19 | **Lancaster PA** | arcgis.lancastercountypa.gov/.../parcel_poly/MapServer/0/query | OWNER_NAME | ADDRESS | TOTLASSESS | -- |
+| 20 | **York PA** | maps.yorkcounty.gov/.../Landrecords_Service/MapServer/7/query | ownerName | ADDRESS | currTotalVal | yearBuilt |
+| 21 | **Berks PA** | gis.co.berks.pa.us/.../ParcelSearchTable/MapServer/0/query | NAME1 | FULLSITEADDRESS | VALUTOTAL | -- |
+| 22 | **Lehigh PA** | gis.lehighcounty.org/.../OwnerAsmtData/MapServer/0/query | NAMOWN | ADDRESS | TOTASMT | -- |
 
 *OWNADD1 = owner mailing address, not owner name. MD statewide does NOT have owner name directly.
 
@@ -412,12 +502,24 @@ https://gisdata.alleghenycounty.us/arcgis/rest/services/EGIS/Web_Parcels/MapServ
 
 | County | Issue | Workaround |
 |--------|-------|------------|
-| Fairfax County VA | Parcel geometry only | iCare web app: https://icare.fairfaxcounty.gov/ |
+| **Virginia** | | |
+| Fairfax County VA | Parcel geometry only; tabular data separate | iCare web app: https://icare.fairfaxcounty.gov/ |
 | Loudoun County VA | Parcel geometry only | WebLoGIS: https://logis.loudoun.gov/weblogis/ |
 | Arlington County VA | Parcel geometry only | Real Estate: https://realestate.arlingtonva.us/ |
-| Henrico County VA | No public REST service | GIS Viewer: https://portal.henrico.gov/GISViewer/ |
+| Henrico County VA | Has address+value but NO owner name | GIS Viewer: https://portal.henrico.gov/GISViewer/ |
 | Chesterfield County VA | Token required | GeoSpace: https://geospace.chesterfield.gov/ |
-| City of Richmond VA | No public REST service | Parcel Mapper: https://www.rva.gov/assessor-real-estate/gismapping |
+| Virginia Beach VA | Portal migrated; old REST unreachable | New portal: https://data.virginiabeach.gov/ |
+| City of Hampton VA | Server unreachable (ECONNREFUSED) | City GIS: https://www.hampton.gov/1850/ |
+| City of Norfolk VA | Fields exist but queries fail | Web viewer at norfolk.gov GIS |
+| Albemarle County VA | Server unreachable (ECONNREFUSED) | GIS Web: https://gisweb.albemarle.org/ |
+| Stafford County VA | No parcel service in published endpoints | Assessor: https://va-stafford-assessor.publicaccessnow.com/ |
+| **Maryland** | | |
+| Montgomery County MD | No owner name in public REST | MCAtlas: https://mcatlas.org/viewer/ |
+| Prince George's County MD | No parcel REST with owner | PGAtlas: https://www.pgatlas.com/ |
+| Howard County MD | No owner in public REST | Interactive Map: https://data.howardcountymd.gov/ |
+| Frederick County MD | No owner in public REST | Property Explorer: https://www.frederickcountymd.gov/propertyexplorer |
+| All other MD counties | Use statewide (no owner name) | SDAT lookup: https://sdat.dat.maryland.gov/ |
+| **Pennsylvania** | | |
 | Montgomery County PA | Parcel geometry only | Property Records: https://propertyrecords.montcopa.org/ |
 | Delaware County PA | Parcel geometry only | Real Estate: http://delcorealestate.co.delaware.pa.us/ |
 | Allegheny County PA | Parcel geometry only | Real Estate: https://www2.alleghenycounty.us/RealEstate/ |
