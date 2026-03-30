@@ -2713,7 +2713,7 @@ function App({ onLogout }: { onLogout: () => void }) {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-black text-white">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-black text-white">
       <AppHeader
         activeView={activeView}
         onChangeView={setActiveView}

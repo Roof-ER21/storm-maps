@@ -34,7 +34,7 @@ export default function SharedReportPage({ slug }: { slug: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" />
       </div>
     );
@@ -42,7 +42,7 @@ export default function SharedReportPage({ slug }: { slug: string }) {
 
   if (error || !report) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center px-4">
+      <div className="min-h-screen overflow-y-auto bg-gradient-to-b from-slate-950 to-slate-900 flex items-center justify-center px-4">
         <div className="max-w-md rounded-3xl border border-slate-800 bg-slate-950 p-8 text-center">
           <p className="text-lg font-semibold text-white">Report Not Available</p>
           <p className="mt-2 text-sm text-slate-400">{error || 'This report may have expired or been removed.'}</p>

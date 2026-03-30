@@ -34,7 +34,7 @@ export default function OnboardingTour({ onComplete }: { onComplete: () => void 
   const isLast = step === STEPS.length - 1;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 backdrop-blur-sm py-4">
       <div className="w-full max-w-md mx-4 rounded-3xl border border-slate-800 bg-slate-950 p-6 sm:p-8">
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-6">

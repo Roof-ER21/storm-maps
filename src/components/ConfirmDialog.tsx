@@ -22,7 +22,7 @@ export default function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 backdrop-blur-sm py-4" onClick={onCancel}>
       <div className="w-full max-w-sm rounded-3xl border border-slate-800 bg-slate-950 p-6 mx-4" onClick={(e) => e.stopPropagation()}>
         <p className="text-lg font-semibold text-white">{title}</p>
         <p className="mt-2 text-sm text-slate-400">{message}</p>

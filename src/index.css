@@ -14,7 +14,6 @@ body,
 }
 
 body {
-  overflow: hidden;
   background:
     radial-gradient(circle at top, rgba(249, 115, 22, 0.12), transparent 22%),
     radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.14), transparent 24%),
