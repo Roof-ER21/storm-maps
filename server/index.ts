@@ -2,7 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
-import { db } from './db.js';
+import { db, sql as pgSql } from './db.js';
 import { leads, properties, evidence, archives, reps, shareableReports } from './schema.js';
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
@@ -26,6 +26,7 @@ const UPLOADS_DIR = path.join(__dirname, '../uploads');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const app = express();
+app.set('trust proxy', 1);
 const PORT = parseInt(process.env.PORT || '3000', 10);
 
 // Stripe webhook needs raw body — must be before express.json()
@@ -44,19 +45,16 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
       const userId = session.metadata?.userId;
       const plan = session.metadata?.plan || 'pro';
       if (userId) {
-        await db.execute(
-          `UPDATE users SET plan = $1, stripe_customer_id = $2, stripe_subscription_id = $3 WHERE id = $4`,
-          [plan, session.customer, session.subscription, parseInt(userId, 10)],
-        );
+        const uid = parseInt(userId, 10);
+        const cust = session.customer as string;
+        const subId = session.subscription as string;
+        await pgSql`UPDATE users SET plan = ${plan}, stripe_customer_id = ${cust}, stripe_subscription_id = ${subId} WHERE id = ${uid}`;
       }
     }
 
     if (event.type === 'customer.subscription.deleted') {
       const sub = event.data.object as Stripe.Subscription;
-      await db.execute(
-        `UPDATE users SET plan = 'free', stripe_subscription_id = NULL WHERE stripe_subscription_id = $1`,
-        [sub.id],
-      );
+      await pgSql`UPDATE users SET plan = 'free', stripe_subscription_id = NULL WHERE stripe_subscription_id = ${sub.id}`;
     }
 
     res.json({ received: true });
@@ -89,21 +87,17 @@ app.post('/api/auth/signup', async (req, res) => {
       return;
     }
 
-    const existing = await db.execute(
-      `SELECT id FROM users WHERE email = $1`,
-      [email.toLowerCase().trim()],
-    );
-    if ((existing as unknown[]).length > 0) {
+    const emailLower = email.toLowerCase().trim();
+    const existing = await pgSql`SELECT id FROM users WHERE email = ${emailLower}`;
+    if (existing.length > 0) {
       res.status(409).json({ error: 'Email already registered' });
       return;
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const result = await db.execute(
-      `INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id, email, name, plan`,
-      [email.toLowerCase().trim(), name.trim(), hash],
-    );
-    const user = (result as unknown[])[0] as { id: number; email: string; name: string; plan: string };
+    const nameTrimmed = name.trim();
+    const result = await pgSql`INSERT INTO users (email, name, password_hash) VALUES (${emailLower}, ${nameTrimmed}, ${hash}) RETURNING id, email, name, plan`;
+    const user = result[0] as { id: number; email: string; name: string; plan: string };
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
 
     res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan } });
@@ -120,11 +114,9 @@ app.post('/api/auth/login', async (req, res) => {
       return;
     }
 
-    const result = await db.execute(
-      `SELECT id, email, name, password_hash, plan FROM users WHERE email = $1`,
-      [email.toLowerCase().trim()],
-    );
-    const user = (result as unknown[])[0] as { id: number; email: string; name: string; password_hash: string; plan: string } | undefined;
+    const emailLower = email.toLowerCase().trim();
+    const result = await pgSql`SELECT id, email, name, password_hash, plan FROM users WHERE email = ${emailLower}`;
+    const user = result[0] as { id: number; email: string; name: string; password_hash: string; plan: string } | undefined;
     if (!user) {
       res.status(401).json({ error: 'Invalid email or password' });
       return;
@@ -151,11 +143,8 @@ app.get('/api/auth/me', async (req, res) => {
       return;
     }
     const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as { userId: number; email: string };
-    const result = await db.execute(
-      `SELECT id, email, name, plan FROM users WHERE id = $1`,
-      [decoded.userId],
-    );
-    const user = (result as unknown[])[0];
+    const result = await pgSql`SELECT id, email, name, plan FROM users WHERE id = ${decoded.userId}`;
+    const user = result[0];
     if (!user) {
       res.status(401).json({ error: 'User not found' });
       return;
@@ -226,8 +215,8 @@ app.post('/api/billing/portal', async (req, res) => {
   }
 
   try {
-    const result = await db.execute(`SELECT stripe_customer_id FROM users WHERE id = $1`, [user.userId]);
-    const row = (result as unknown[])[0] as { stripe_customer_id: string | null } | undefined;
+    const result = await pgSql`SELECT stripe_customer_id FROM users WHERE id = ${user.userId}`;
+    const row = result[0] as { stripe_customer_id: string | null } | undefined;
     if (!row?.stripe_customer_id) {
       res.status(400).json({ error: 'No billing account found. Subscribe first.' });
       return;
@@ -253,8 +242,8 @@ app.get('/api/billing/status', async (req, res) => {
   }
 
   try {
-    const result = await db.execute(`SELECT plan, stripe_customer_id, stripe_subscription_id FROM users WHERE id = $1`, [user.userId]);
-    const row = (result as unknown[])[0] as { plan: string; stripe_customer_id: string | null; stripe_subscription_id: string | null } | undefined;
+    const result = await pgSql`SELECT plan, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${user.userId}`;
+    const row = result[0] as { plan: string; stripe_customer_id: string | null; stripe_subscription_id: string | null } | undefined;
     res.json({
       plan: row?.plan || 'free',
       hasSubscription: Boolean(row?.stripe_subscription_id),
