@@ -538,10 +538,8 @@ function downloadRouteCsv(params: {
 
 const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
-const AuthPage = lazy(() => import('./components/AuthPage'));
 
-const AUTH_TOKEN_KEY = 'hail-yes:auth-token';
-const AUTH_USER_KEY = 'hail-yes:auth-user';
+const USER_NAME_KEY = 'hail-yes:user-name';
 
 function ReportRoute({ slug }: { slug: string }) {
   return (
@@ -552,39 +550,35 @@ function ReportRoute({ slug }: { slug: string }) {
 }
 
 function AppRouter() {
-  const [authState, setAuthState] = useState<'landing' | 'auth-login' | 'auth-signup' | 'app'>(() => {
-    const token = localStorage.getItem(AUTH_TOKEN_KEY);
-    return token ? 'app' : 'landing';
-  });
+  const [userName, setUserName] = useState(() => localStorage.getItem(USER_NAME_KEY) || '');
 
   const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
   if (reportSlug) return <ReportRoute slug={reportSlug} />;
 
-  const handleAuth = () => setAuthState('app');
-
-  const handleLogout = () => {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
-    setAuthState('landing');
-  };
-
-  if (authState === 'landing') {
+  if (!userName) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
-        <LandingPage onGetStarted={() => setAuthState('auth-signup')} onLogin={() => setAuthState('auth-login')} />
+        <LandingPage
+          onGetStarted={() => {
+            const name = window.prompt('What\'s your name?');
+            if (name?.trim()) {
+              localStorage.setItem(USER_NAME_KEY, name.trim());
+              setUserName(name.trim());
+            }
+          }}
+          onLogin={() => {
+            const name = window.prompt('What\'s your name?');
+            if (name?.trim()) {
+              localStorage.setItem(USER_NAME_KEY, name.trim());
+              setUserName(name.trim());
+            }
+          }}
+        />
       </Suspense>
     );
   }
 
-  if (authState === 'auth-login' || authState === 'auth-signup') {
-    return (
-      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
-        <AuthPage initialMode={authState === 'auth-login' ? 'login' : 'signup'} onAuth={handleAuth} onBack={() => setAuthState('landing')} />
-      </Suspense>
-    );
-  }
-
-  return <App onLogout={handleLogout} />;
+  return <App onLogout={() => { localStorage.removeItem(USER_NAME_KEY); setUserName(''); }} />;
 }
 
 function App({ onLogout }: { onLogout: () => void }) {
