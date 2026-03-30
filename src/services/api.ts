@@ -117,6 +117,53 @@ export async function seedDemoData(): Promise<boolean> {
   return result !== null;
 }
 
+// ── Billing ─────────────────────────────────────────────
+
+function getAuthToken(): string {
+  return localStorage.getItem('hail-yes:auth-token') || '';
+}
+
+export async function createCheckout(plan: 'pro' | 'company'): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/billing/checkout`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+      body: JSON.stringify({ plan }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.url;
+  } catch {
+    return null;
+  }
+}
+
+export async function openBillingPortal(): Promise<string | null> {
+  try {
+    const res = await fetch(`${API_BASE}/billing/portal`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAuthToken()}` },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.url;
+  } catch {
+    return null;
+  }
+}
+
+export async function getBillingStatus(): Promise<{ plan: string; hasSubscription: boolean } | null> {
+  try {
+    const res = await fetch(`${API_BASE}/billing/status`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function checkHealth(): Promise<boolean> {
   const result = await apiGet<{ ok: boolean }>('/health');
   return result?.ok === true;

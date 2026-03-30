@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { CanvassRouteStop, LeadStage } from '../types/storm';
 import type { RepProfile } from '../hooks/useRepProfile';
+import { createCheckout, openBillingPortal, getBillingStatus } from '../services/api';
 
 const TEAM_ROSTER_KEY = 'hail-yes:team-roster';
 
@@ -56,6 +57,14 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
   const [teamCode, setTeamCode] = useState(repProfile?.teamCode || '');
   const [role, setRole] = useState<'rep' | 'manager'>(repProfile?.role || 'rep');
   const [roster, setRoster] = useState<TeamMemberSnapshot[]>(loadRoster);
+  const [billingPlan, setBillingPlan] = useState<string>('free');
+  const [billingLoading, setBillingLoading] = useState(false);
+
+  useEffect(() => {
+    void getBillingStatus().then((status) => {
+      if (status) setBillingPlan(status.plan);
+    });
+  }, []);
 
   // Auto-sync own data to roster when profile exists
   useEffect(() => {
@@ -207,6 +216,67 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
               </>
             )}
           </div>
+          {/* Billing */}
+          <div className="mt-4 border-t border-slate-800 pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-3">Subscription</p>
+            <div className="flex items-center gap-3">
+              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
+                billingPlan === 'company' ? 'border-violet-400/30 bg-violet-500/15 text-violet-300' :
+                billingPlan === 'pro' ? 'border-orange-400/30 bg-orange-500/15 text-orange-300' :
+                'border-slate-700 bg-slate-800 text-slate-400'
+              }`}>
+                {billingPlan === 'company' ? 'Company' : billingPlan === 'pro' ? 'Pro' : 'Free'}
+              </span>
+              {billingPlan === 'free' ? (
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    disabled={billingLoading}
+                    onClick={async () => {
+                      setBillingLoading(true);
+                      const url = await createCheckout('pro');
+                      if (url) window.location.href = url;
+                      else window.alert('Stripe is not configured yet. Set STRIPE_SECRET_KEY and STRIPE_PRICE_PRO in Railway env vars.');
+                      setBillingLoading(false);
+                    }}
+                    className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
+                  >
+                    {billingLoading ? 'Loading...' : 'Upgrade to Pro — $49/mo'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={billingLoading}
+                    onClick={async () => {
+                      setBillingLoading(true);
+                      const url = await createCheckout('company');
+                      if (url) window.location.href = url;
+                      else window.alert('Stripe is not configured yet. Set STRIPE_SECRET_KEY and STRIPE_PRICE_COMPANY in Railway env vars.');
+                      setBillingLoading(false);
+                    }}
+                    className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  >
+                    Company — $149/mo
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  disabled={billingLoading}
+                  onClick={async () => {
+                    setBillingLoading(true);
+                    const url = await openBillingPortal();
+                    if (url) window.location.href = url;
+                    else window.alert('Could not open billing portal.');
+                    setBillingLoading(false);
+                  }}
+                  className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                >
+                  Manage Subscription
+                </button>
+              )}
+            </div>
+          </div>
+
           {onLogout && (
             <div className="mt-4 border-t border-slate-800 pt-4">
               <button type="button" onClick={onLogout} className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/20">

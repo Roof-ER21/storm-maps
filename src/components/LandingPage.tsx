@@ -5,7 +5,7 @@ interface LandingPageProps {
 
 export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen overflow-y-auto overflow-x-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
       {/* Nav */}
       <header className="border-b border-slate-800/50 bg-slate-950/80 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 py-4">

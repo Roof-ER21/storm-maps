@@ -56,7 +56,7 @@ export default function SharedReportPage({ slug }: { slug: string }) {
   const sizeDesc = hailNickname(report.maxHailInches);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen overflow-y-auto overflow-x-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* Header */}
       <header className="border-b border-slate-800/60 bg-slate-950/80 backdrop-blur px-4 py-4">
         <div className="mx-auto max-w-2xl flex items-center gap-3">

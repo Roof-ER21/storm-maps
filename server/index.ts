@@ -9,8 +9,17 @@ import crypto from 'crypto';
 import fs from 'fs';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import Stripe from 'stripe';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
+const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
+const stripe = STRIPE_SECRET ? new Stripe(STRIPE_SECRET) : null;
+
+const PRICE_IDS: Record<string, string> = {
+  pro: process.env.STRIPE_PRICE_PRO || '',
+  company: process.env.STRIPE_PRICE_COMPANY || '',
+};
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '../uploads');
@@ -18,6 +27,43 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
+
+// Stripe webhook needs raw body — must be before express.json()
+app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) {
+    res.status(503).json({ error: 'Stripe not configured' });
+    return;
+  }
+
+  try {
+    const sig = req.headers['stripe-signature'] as string;
+    const event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const userId = session.metadata?.userId;
+      const plan = session.metadata?.plan || 'pro';
+      if (userId) {
+        await db.execute(
+          `UPDATE users SET plan = $1, stripe_customer_id = $2, stripe_subscription_id = $3 WHERE id = $4`,
+          [plan, session.customer, session.subscription, parseInt(userId, 10)],
+        );
+      }
+    }
+
+    if (event.type === 'customer.subscription.deleted') {
+      const sub = event.data.object as Stripe.Subscription;
+      await db.execute(
+        `UPDATE users SET plan = 'free', stripe_subscription_id = NULL WHERE stripe_subscription_id = $1`,
+        [sub.id],
+      );
+    }
+
+    res.json({ received: true });
+  } catch {
+    res.status(400).json({ error: 'Webhook verification failed' });
+  }
+});
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -117,6 +163,104 @@ app.get('/api/auth/me', async (req, res) => {
     res.json(user);
   } catch {
     res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// ── Billing ─────────────────────────────────────────────
+function verifyToken(authHeader: string | undefined): { userId: number; email: string } | null {
+  if (!authHeader?.startsWith('Bearer ')) return null;
+  try {
+    return jwt.verify(authHeader.slice(7), JWT_SECRET) as { userId: number; email: string };
+  } catch {
+    return null;
+  }
+}
+
+app.post('/api/billing/checkout', async (req, res) => {
+  if (!stripe) {
+    res.status(503).json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY env var.' });
+    return;
+  }
+
+  const user = verifyToken(req.headers.authorization);
+  if (!user) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+
+  const plan = req.body.plan || 'pro';
+  const priceId = PRICE_IDS[plan];
+  if (!priceId) {
+    res.status(400).json({ error: `No Stripe price configured for plan: ${plan}. Set STRIPE_PRICE_PRO or STRIPE_PRICE_COMPANY env vars.` });
+    return;
+  }
+
+  try {
+    const origin = req.headers.origin || `https://${req.headers.host}`;
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{ price: priceId, quantity: 1 }],
+      success_url: `${origin}/?billing=success`,
+      cancel_url: `${origin}/?billing=cancel`,
+      metadata: { userId: String(user.userId), plan },
+      customer_email: user.email,
+    });
+
+    res.json({ url: session.url });
+  } catch {
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
+app.post('/api/billing/portal', async (req, res) => {
+  if (!stripe) {
+    res.status(503).json({ error: 'Stripe not configured' });
+    return;
+  }
+
+  const user = verifyToken(req.headers.authorization);
+  if (!user) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+
+  try {
+    const result = await db.execute(`SELECT stripe_customer_id FROM users WHERE id = $1`, [user.userId]);
+    const row = (result as unknown[])[0] as { stripe_customer_id: string | null } | undefined;
+    if (!row?.stripe_customer_id) {
+      res.status(400).json({ error: 'No billing account found. Subscribe first.' });
+      return;
+    }
+
+    const origin = req.headers.origin || `https://${req.headers.host}`;
+    const session = await stripe.billingPortal.sessions.create({
+      customer: row.stripe_customer_id,
+      return_url: origin,
+    });
+
+    res.json({ url: session.url });
+  } catch {
+    res.status(500).json({ error: 'Failed to create portal session' });
+  }
+});
+
+app.get('/api/billing/status', async (req, res) => {
+  const user = verifyToken(req.headers.authorization);
+  if (!user) {
+    res.status(401).json({ error: 'Not authenticated' });
+    return;
+  }
+
+  try {
+    const result = await db.execute(`SELECT plan, stripe_customer_id, stripe_subscription_id FROM users WHERE id = $1`, [user.userId]);
+    const row = (result as unknown[])[0] as { plan: string; stripe_customer_id: string | null; stripe_subscription_id: string | null } | undefined;
+    res.json({
+      plan: row?.plan || 'free',
+      hasSubscription: Boolean(row?.stripe_subscription_id),
+    });
+  } catch {
+    res.status(500).json({ error: 'Failed to check billing' });
   }
 });
 
