@@ -537,20 +537,57 @@ function downloadRouteCsv(params: {
 }
 
 const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
+const LandingPage = lazy(() => import('./components/LandingPage'));
+const AuthPage = lazy(() => import('./components/AuthPage'));
+
+const AUTH_TOKEN_KEY = 'hail-yes:auth-token';
+const AUTH_USER_KEY = 'hail-yes:auth-user';
+
+function ReportRoute({ slug }: { slug: string }) {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" /></div>}>
+      <SharedReportPage slug={slug} />
+    </Suspense>
+  );
+}
 
 function AppRouter() {
+  const [authState, setAuthState] = useState<'landing' | 'auth-login' | 'auth-signup' | 'app'>(() => {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    return token ? 'app' : 'landing';
+  });
+
   const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
-  if (reportSlug) {
+  if (reportSlug) return <ReportRoute slug={reportSlug} />;
+
+  const handleAuth = () => setAuthState('app');
+
+  const handleLogout = () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+    setAuthState('landing');
+  };
+
+  if (authState === 'landing') {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" /></div>}>
-        <SharedReportPage slug={reportSlug} />
+      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <LandingPage onGetStarted={() => setAuthState('auth-signup')} onLogin={() => setAuthState('auth-login')} />
       </Suspense>
     );
   }
-  return <App />;
+
+  if (authState === 'auth-login' || authState === 'auth-signup') {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
+        <AuthPage initialMode={authState === 'auth-login' ? 'login' : 'signup'} onAuth={handleAuth} onBack={() => setAuthState('landing')} />
+      </Suspense>
+    );
+  }
+
+  return <App onLogout={handleLogout} />;
 }
 
-function App() {
+function App({ onLogout }: { onLogout: () => void }) {
   const notificationsSupported = isNotificationSupported();
   const { profile: repProfile, updateProfile: updateRepProfile } = useRepProfile();
   const { showOnboarding, markComplete: completeOnboarding } = useOnboarding();
@@ -2833,6 +2870,7 @@ function App() {
             repProfile={repProfile}
             onUpdateProfile={updateRepProfile}
             searchLabel={searchSummary?.locationLabel ?? null}
+            onLogout={onLogout}
           />
         )}
         </Suspense>

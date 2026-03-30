@@ -7,6 +7,10 @@ import { leads, properties, evidence, archives, reps, shareableReports } from '.
 import { eq } from 'drizzle-orm';
 import crypto from 'crypto';
 import fs from 'fs';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '../uploads');
@@ -29,6 +33,92 @@ app.use('/api/', apiLimiter);
 
 // Serve Vite build
 app.use(express.static(path.join(__dirname, '../dist')));
+
+// ── Auth ────────────────────────────────────────────────
+app.post('/api/auth/signup', async (req, res) => {
+  try {
+    const { email, name, password } = req.body;
+    if (!email || !name || !password || password.length < 6) {
+      res.status(400).json({ error: 'Email, name, and password (6+ chars) required' });
+      return;
+    }
+
+    const existing = await db.execute(
+      `SELECT id FROM users WHERE email = $1`,
+      [email.toLowerCase().trim()],
+    );
+    if ((existing as unknown[]).length > 0) {
+      res.status(409).json({ error: 'Email already registered' });
+      return;
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const result = await db.execute(
+      `INSERT INTO users (email, name, password_hash) VALUES ($1, $2, $3) RETURNING id, email, name, plan`,
+      [email.toLowerCase().trim(), name.trim(), hash],
+    );
+    const user = (result as unknown[])[0] as { id: number; email: string; name: string; plan: string };
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan } });
+  } catch {
+    res.status(500).json({ error: 'Failed to create account' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      res.status(400).json({ error: 'Email and password required' });
+      return;
+    }
+
+    const result = await db.execute(
+      `SELECT id, email, name, password_hash, plan FROM users WHERE email = $1`,
+      [email.toLowerCase().trim()],
+    );
+    const user = (result as unknown[])[0] as { id: number; email: string; name: string; password_hash: string; plan: string } | undefined;
+    if (!user) {
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+
+    const valid = await bcrypt.compare(password, user.password_hash);
+    if (!valid) {
+      res.status(401).json({ error: 'Invalid email or password' });
+      return;
+    }
+
+    const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan } });
+  } catch {
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const auth = req.headers.authorization;
+    if (!auth?.startsWith('Bearer ')) {
+      res.status(401).json({ error: 'Not authenticated' });
+      return;
+    }
+    const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as { userId: number; email: string };
+    const result = await db.execute(
+      `SELECT id, email, name, plan FROM users WHERE id = $1`,
+      [decoded.userId],
+    );
+    const user = (result as unknown[])[0];
+    if (!user) {
+      res.status(401).json({ error: 'User not found' });
+      return;
+    }
+    res.json(user);
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
 
 // ── Health check ────────────────────────────────────────
 app.get('/api/health', (_req, res) => {

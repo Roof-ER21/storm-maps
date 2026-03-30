@@ -38,6 +38,7 @@ interface TeamPageProps {
   repProfile: RepProfile | null;
   onUpdateProfile: (profile: RepProfile) => void;
   searchLabel: string | null;
+  onLogout?: () => void;
 }
 
 const STAGE_LABELS: Record<LeadStage, string> = {
@@ -48,7 +49,7 @@ const STAGE_COLORS: Record<LeadStage, string> = {
   new: 'text-sky-300', contacted: 'text-amber-300', inspection_set: 'text-violet-300', won: 'text-emerald-300', lost: 'text-slate-400',
 };
 
-export default function TeamPage({ routeStops, repProfile, onUpdateProfile, searchLabel }: TeamPageProps) {
+export default function TeamPage({ routeStops, repProfile, onUpdateProfile, searchLabel, onLogout }: TeamPageProps) {
   const [name, setName] = useState(repProfile?.name || '');
   const [phone, setPhone] = useState(repProfile?.phone || '');
   const [companyName, setCompanyName] = useState(repProfile?.companyName || '');
@@ -206,6 +207,13 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
               </>
             )}
           </div>
+          {onLogout && (
+            <div className="mt-4 border-t border-slate-800 pt-4">
+              <button type="button" onClick={onLogout} className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/20">
+                Log Out
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Team stats */}

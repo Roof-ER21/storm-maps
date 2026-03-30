@@ -122,7 +122,20 @@ async function migrate() {
     )
   `;
 
-  console.log('[migrate] All 6 tables created successfully.');
+  await sql`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      plan TEXT DEFAULT 'free',
+      stripe_customer_id TEXT,
+      stripe_subscription_id TEXT,
+      created_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
+  console.log('[migrate] All 7 tables created successfully.');
   await sql.end();
 }
 
