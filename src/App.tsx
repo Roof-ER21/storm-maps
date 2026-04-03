@@ -80,8 +80,8 @@ const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
 const ALERT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
 
 /** Default center: US continental midpoint — zoomed out until user searches */
-const DEFAULT_CENTER: LatLng = { lat: 39.0, lng: -98.0 };
-const DEFAULT_ZOOM = 5;
+const DEFAULT_CENTER: LatLng = { lat: 38.9, lng: -77.2 };
+const DEFAULT_ZOOM = 8;
 const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
 const CANVASS_ROUTE_STORAGE_KEY = 'hail-yes:canvass-route';
@@ -2933,7 +2933,7 @@ function RouteQueuePanel({
   // Fully collapsed — just a small floating button
   if (!visible) {
     return (
-      <div className="absolute right-4 top-20 z-20">
+      <div className="absolute right-4 top-36 z-20">
         <button
           type="button"
           onClick={onToggleOpen}
@@ -2959,7 +2959,7 @@ function RouteQueuePanel({
       : 'Build a canvass route from top hail dates';
 
   return (
-    <div className="absolute right-4 top-20 z-20 w-[min(24rem,calc(100%-2rem))]">
+    <div className="absolute right-4 top-36 z-20 w-[min(24rem,calc(100%-2rem))]">
       <div className="overflow-hidden rounded-2xl border border-orange-500/20 bg-slate-950/92 shadow-[0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur">
         <button
           type="button"
