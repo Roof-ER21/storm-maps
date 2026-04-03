@@ -192,23 +192,26 @@ export default function EvidencePage({
           </p>
         </div>
 
-        {!searchSummary ? (
-          <div className="rounded-3xl border border-dashed border-gray-800 bg-black/30 p-8 text-center">
-            <p className="text-lg font-semibold text-white">No property is loaded yet</p>
-            <p className="mt-2 text-sm text-gray-500">
-              Open the Map page, search an address, then come back here to attach evidence.
-            </p>
-            <button type="button" onClick={onOpenMap} className="mt-5 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gray-100">
-              Go to Map
-            </button>
-          </div>
-        ) : (
+        {(() => {
+          const showControls = searchSummary || evidenceItems.length > 0;
+          if (!showControls) return (
+            <div className="rounded-3xl border border-dashed border-gray-800 bg-black/30 p-8 text-center">
+              <p className="text-lg font-semibold text-white">No property is loaded yet</p>
+              <p className="mt-2 text-sm text-gray-500">
+                Open the Map page, search an address, then come back here to attach evidence.
+              </p>
+              <button type="button" onClick={onOpenMap} className="mt-5 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gray-100">
+                Go to Map
+              </button>
+            </div>
+          );
+          return (
           <>
             {/* Upload + seeding controls */}
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.95fr_1.05fr]">
               <section className="rounded-3xl border border-gray-900 bg-gray-950/80 p-5">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Current Property</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">{searchSummary.locationLabel}</h3>
+                <h3 className="mt-2 text-xl font-semibold text-white">{searchSummary?.locationLabel || 'All Properties'}</h3>
 
                 <div className="mt-5 rounded-2xl border border-gray-900 bg-black/35 p-4">
                   <label htmlFor="evidence-storm-date" className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Attach to Storm Date</label>
@@ -340,7 +343,8 @@ export default function EvidencePage({
               </div>
             )}
           </>
-        )}
+          );
+        })()}
       </div>
 
       {/* Camera modal */}

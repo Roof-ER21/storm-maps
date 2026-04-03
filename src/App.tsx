@@ -801,6 +801,7 @@ function App({ onLogout }: { onLogout: () => void }) {
   }, [routeArchives]);
 
   useEffect(() => {
+    // Load from local IndexedDB first
     void listEvidenceItems()
       .then((items) => {
         setEvidenceItems(items.map(normalizeEvidenceItem));
@@ -808,6 +809,23 @@ function App({ onLogout }: { onLogout: () => void }) {
       .catch((error) => {
         console.error('[App] Failed to load evidence items:', error);
       });
+
+    // Then hydrate from server (Postgres) — merge any server-only evidence
+    void fetch('/api/evidence')
+      .then((res) => res.ok ? res.json() : [])
+      .then((serverItems: EvidenceItem[]) => {
+        if (!Array.isArray(serverItems) || serverItems.length === 0) return;
+        setEvidenceItems((local) => {
+          const localIds = new Set(local.map((e) => e.id));
+          const newFromServer = serverItems
+            .filter((e) => !localIds.has(e.id))
+            .map(normalizeEvidenceItem);
+          if (newFromServer.length === 0) return local;
+          console.log(`[sync] Hydrated ${newFromServer.length} evidence items from server`);
+          return [...local, ...newFromServer];
+        });
+      })
+      .catch(() => { /* offline — local only */ });
   }, []);
 
   // Hydrate from server — merge server leads into localStorage state
