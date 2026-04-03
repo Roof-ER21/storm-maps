@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LatLng, StormEvent } from '../types/storm';
 import { searchByCoordinates } from '../services/stormApi';
-import { fetchAlertsByArea, type NwsAlert } from '../services/nwsAlerts';
+import { fetchAlertsByArea } from '../services/nwsAlerts';
 import { showHailZoneNotification } from '../services/notificationService';
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
