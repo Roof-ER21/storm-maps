@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hail-yes-v1';
+const CACHE_NAME = 'hail-yes-v2';
 
 // Install: cache app shell
 self.addEventListener('install', (event) => {
@@ -26,20 +26,21 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   if (url.pathname.startsWith('/api/')) return;
 
+  // Network-first: always try fresh, fall back to cache when offline
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      const fetchPromise = fetch(event.request).then((response) => {
-        if (response.ok && (url.pathname.match(/\.(js|css|svg|png|jpg|woff2?)$/) || url.pathname === '/')) {
-          const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
-        }
-        return response;
-      }).catch(() => {
+    fetch(event.request).then((response) => {
+      if (response.ok) {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+      }
+      return response;
+    }).catch(() =>
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
         if (event.request.mode === 'navigate') return caches.match('/');
         return new Response('Offline', { status: 503 });
-      });
-      return cached || fetchPromise;
-    })
+      })
+    )
   );
 });
 
