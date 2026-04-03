@@ -492,7 +492,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-1', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15',
         stormLabel: 'Sun, Mar 15, 2026', lat: 38.9847, lng: -77.0947, locationLabel: 'Montgomery County, MD',
-        sourceLabel: 'NOAA SWDI', topHailInches: 2.0, reportCount: 14, evidenceCount: 4,
+        sourceLabel: 'NOAA SWDI', topHailInches: 2.0, reportCount: 14, evidenceCount: 5,
         priority: 'Knock now', status: 'completed', outcome: 'inspection_booked', leadStage: 'won',
         dealValue: 24500, notes: 'Full tear-off approved. GAF Timberline HDZ. Install crew booked April 10.',
         reminderAt: day(-2).slice(0, 10), assignedRep: 'Ahmed M.',
@@ -505,7 +505,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-2', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15',
         stormLabel: 'Sun, Mar 15, 2026', lat: 38.8628, lng: -77.0867, locationLabel: 'Arlington County, VA',
-        sourceLabel: 'NOAA SWDI', topHailInches: 1.75, reportCount: 9, evidenceCount: 3,
+        sourceLabel: 'NOAA SWDI', topHailInches: 1.75, reportCount: 9, evidenceCount: 4,
         priority: 'Knock now', status: 'visited', outcome: 'inspection_booked', leadStage: 'inspection_set',
         dealValue: 19800, notes: 'Adjuster meeting Friday 10 AM. Ridge caps cracked, gutters dented.',
         reminderAt: day(-1).slice(0, 10), assignedRep: 'Ahmed M.',
@@ -518,7 +518,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-3', propertyLabel: '9102 Riggs Rd, Adelphi, MD', stormDate: '2026-03-22',
         stormLabel: 'Sun, Mar 22, 2026', lat: 39.0015, lng: -76.9713, locationLabel: 'Prince George\'s County, MD',
-        sourceLabel: 'NOAA SWDI', topHailInches: 2.5, reportCount: 18, evidenceCount: 2,
+        sourceLabel: 'NOAA SWDI', topHailInches: 2.5, reportCount: 18, evidenceCount: 3,
         priority: 'Knock now', status: 'visited', outcome: 'follow_up', leadStage: 'contacted',
         notes: 'Left door hanger + storm report link. Neighbor confirmed they saw damage.',
         reminderAt: day(-2).slice(0, 10), assignedRep: 'Ahmed M.',
@@ -530,7 +530,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-4', propertyLabel: '6700 Georgia Ave NW, Washington, DC', stormDate: '2026-03-22',
         stormLabel: 'Sun, Mar 22, 2026', lat: 38.9612, lng: -77.0275, locationLabel: 'Washington, DC',
-        sourceLabel: 'NOAA SWDI', topHailInches: 1.5, reportCount: 7, evidenceCount: 1,
+        sourceLabel: 'NOAA SWDI', topHailInches: 1.5, reportCount: 7, evidenceCount: 2,
         priority: 'Monitor', status: 'queued', outcome: 'none', leadStage: 'new',
         notes: '', assignedRep: 'Ahmed M.',
         stageHistory: JSON.stringify([{ stage: 'new', at: day(2) }]),
@@ -539,7 +539,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-5', propertyLabel: '14300 Layhill Rd, Silver Spring, MD', stormDate: '2026-03-15',
         stormLabel: 'Sun, Mar 15, 2026', lat: 39.0812, lng: -77.0453, locationLabel: 'Montgomery County, MD',
-        sourceLabel: 'NOAA SWDI', topHailInches: 1.0, reportCount: 4, evidenceCount: 0,
+        sourceLabel: 'NOAA SWDI', topHailInches: 1.0, reportCount: 4, evidenceCount: 1,
         priority: 'Low', status: 'queued', outcome: 'none', leadStage: 'new',
         notes: '', assignedRep: '',
         stageHistory: JSON.stringify([{ stage: 'new', at: day(1) }]),
@@ -548,7 +548,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-6', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22',
         stormLabel: 'Sun, Mar 22, 2026', lat: 38.8882, lng: -77.0846, locationLabel: 'Arlington County, VA',
-        sourceLabel: 'NOAA SWDI', topHailInches: 3.0, reportCount: 22, evidenceCount: 5,
+        sourceLabel: 'NOAA SWDI', topHailInches: 3.0, reportCount: 22, evidenceCount: 7,
         priority: 'Knock now', status: 'completed', outcome: 'inspection_booked', leadStage: 'won',
         dealValue: 31200, notes: 'Insurance approved full replacement + gutters. CertainTeed Landmark Pro.',
         assignedRep: 'Ahmed M.',
@@ -561,7 +561,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-7', propertyLabel: '8450 Baltimore Ave, College Park, MD', stormDate: '2026-03-22',
         stormLabel: 'Sun, Mar 22, 2026', lat: 38.9807, lng: -76.9369, locationLabel: 'Prince George\'s County, MD',
-        sourceLabel: 'NOAA SWDI', topHailInches: 2.0, reportCount: 11, evidenceCount: 0,
+        sourceLabel: 'NOAA SWDI', topHailInches: 2.0, reportCount: 11, evidenceCount: 1,
         priority: 'Knock now', status: 'queued', outcome: 'interested', leadStage: 'contacted',
         notes: 'Spoke on phone, wants estimate this week.', assignedRep: 'Ahmed M.',
         stageHistory: JSON.stringify([
@@ -572,7 +572,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       {
         id: 'dmv-lead-8', propertyLabel: '5500 Franconia Rd, Alexandria, VA', stormDate: '2026-03-15',
         stormLabel: 'Sun, Mar 15, 2026', lat: 38.7722, lng: -77.1389, locationLabel: 'Fairfax County, VA',
-        sourceLabel: 'NOAA SWDI', topHailInches: 1.75, reportCount: 8, evidenceCount: 2,
+        sourceLabel: 'NOAA SWDI', topHailInches: 1.75, reportCount: 8, evidenceCount: 3,
         priority: 'Knock now', status: 'visited', outcome: 'inspection_booked', leadStage: 'inspection_set',
         dealValue: 16500, notes: 'Insurance adjuster scheduled Monday.',
         reminderAt: day(-3).slice(0, 10), assignedRep: 'Ahmed M.',
@@ -584,33 +584,82 @@ app.post('/api/demo/seed', async (_req, res) => {
       },
     ];
 
-    // Unsplash photo IDs for realistic roofing/construction/damage thumbnails
-    const thumb = (id: string) => `https://images.unsplash.com/photo-${id}?w=400&h=300&fit=crop&q=80`;
+    // Real photos: Google Street View for property exteriors, FEMA/Wikimedia for damage evidence
+    const MAPS_KEY = process.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyA7FH8xKPvLxUMcr6QrVCxMtGcCNjDZQyc';
+    const sv = (addr: string) => `https://maps.googleapis.com/maps/api/streetview?size=640x480&location=${encodeURIComponent(addr)}&key=${MAPS_KEY}`;
+
+    // FEMA & Wikimedia Commons — real hail damage (public domain / CC)
+    const FEMA = {
+      roofInspection:   'https://upload.wikimedia.org/wikipedia/commons/5/5f/FEMA_-_44371_-_FEMA_PA_inspection_of_a_hail_damaged_roof_in_OK.jpg',
+      documentDamage:   'https://upload.wikimedia.org/wikipedia/commons/d/de/FEMA_-_44372_-_FEMA_PA_officer_documenting_damage_to_a_hail_damaged_roof_in_OK.jpg',
+      metalRoofDents:   'https://upload.wikimedia.org/wikipedia/commons/d/d3/FEMA_-_44370_-_FEMA_PA_officer_documenting_damages_to_a_roof_in_OK.jpg',
+      dentedMetal:      'https://upload.wikimedia.org/wikipedia/commons/2/22/Pozega_20210625_ostecenja_na_dimnjacima_bolnice-1.jpg',
+      skylightHole:     'https://upload.wikimedia.org/wikipedia/commons/8/86/FEMA_-_44373_-_hail_hole_in_fiberglass_skylight.jpg',
+      crackedTiles1:    'https://upload.wikimedia.org/wikipedia/commons/e/e2/Telhado_danificado_por_granizo_22-11-2025_01.jpg',
+      crackedTiles2:    'https://upload.wikimedia.org/wikipedia/commons/8/87/Telhado_danificado_por_granizo_22-11-2025_02.jpg',
+      sidingSouth:      'https://upload.wikimedia.org/wikipedia/commons/6/6a/Einsiedeln.hail.damage.22.Jul.2010.JPG',
+      sidingWest:       'https://upload.wikimedia.org/wikipedia/commons/8/8e/Einsiedeln.hail.damage.JPG',
+      smashedWindow:    'https://upload.wikimedia.org/wikipedia/commons/a/af/Hailstone-smashed_window_from_4_July_2010_hailstorm_%282nd_floor_of_west-facing_side_of_a_motel%2C_Limon%2C_eastern_Colorado%2C_USA%29.jpg',
+      windshieldHail:   'https://upload.wikimedia.org/wikipedia/commons/7/79/FEMA_-_44376_-_truck_windshield_with_hail_damage_in_OK.jpg',
+      aerialTarps:      'https://upload.wikimedia.org/wikipedia/commons/d/d3/FEMA_-_24983_-_Photograph_by_Andrea_Booher_taken_on_09-19-2005_in_Mississippi.jpg',
+      beforeAfter:      'https://upload.wikimedia.org/wikipedia/commons/4/4e/21_CES_continues_hail_storm_repairs_%284644916%29.jpeg',
+      newShingles:      'https://upload.wikimedia.org/wikipedia/commons/4/40/On_base_housing_gets_new_shingles_for_roofs_%285566725%29.jpg',
+      surveyRoof:       'https://upload.wikimedia.org/wikipedia/commons/b/b2/FEMA_-_44375_-_surveying_hail_damage_to_municipal_building_roof.jpg',
+      teamOnRoof:       'https://upload.wikimedia.org/wikipedia/commons/c/c2/FEMA_-_44377_-_Preliminary_Damage_Assessment_partners_on_roof_in_OK.jpg',
+      concretePitting:  'https://upload.wikimedia.org/wikipedia/commons/d/da/Pozega_20210625_ostecenja_betonske_staze.jpg',
+      roofOverview:     'https://upload.wikimedia.org/wikipedia/commons/c/c4/PozegaDubrovacka_20210625-steta-od-tuce-na-krovu-i-boru-1.jpg',
+    };
+
     const demoEvidence = [
-      { id: 'dmv-ev-1', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Ridge cap cracking — south face', notes: 'Multiple shingles cracked along ridge line. Hail impact marks visible.', thumbnailUrl: thumb('1558618666-fcd25c85f1d7'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-2', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Gutter dents — front elevation', notes: 'Quarter-sized dents on aluminum gutters. Consistent with 2" hail.', thumbnailUrl: thumb('1632759145351-a8e35f31be67'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-3', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Soft metal test — downspout', notes: 'Clear hail dimpling on downspout elbow.', thumbnailUrl: thumb('1504307651254-35680f356dfd'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-4', kind: 'provider-query', provider: 'youtube', mediaType: 'video', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Bethesda MD Hail Storm March 2026', notes: 'Local news coverage of the storm.', externalUrl: 'https://www.youtube.com/watch?v=example1', thumbnailUrl: thumb('1527482937786-6c0d070ac4d7'), status: 'pending', includeInReport: false },
-      { id: 'dmv-ev-5', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Shingle bruising — 3-tab section', notes: 'Granule loss visible on east-facing slope. Test square marked.', thumbnailUrl: thumb('1635424709498-70ee7a0ff1d8'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-6', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Vent boot crack', notes: 'Pipe vent boot cracked from impact. Active leak risk.', thumbnailUrl: thumb('1600585154340-be6161a56a0c'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-7', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Siding impact marks', notes: 'Vinyl siding shows circular impact craters on north wall.', thumbnailUrl: thumb('1513584684374-8bab748fbf90'), status: 'pending', includeInReport: false },
-      { id: 'dmv-ev-8', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '9102 Riggs Rd, Adelphi, MD', stormDate: '2026-03-22', title: 'Chalk circle test — shingle mat exposed', notes: 'Marked 8 impacts in 10x10 test square. Mat visible through granule loss.', thumbnailUrl: thumb('1558618666-fcd25c85f1d7'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-9', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '9102 Riggs Rd, Adelphi, MD', stormDate: '2026-03-22', title: 'Window screen damage', notes: 'Holes punched through window screen by large hail.', thumbnailUrl: thumb('1600607687939-ce8a6c25118c'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-10', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '6700 Georgia Ave NW, Washington, DC', stormDate: '2026-03-22', title: 'Skylight seal damage', notes: 'Skylight flashing bent, sealant cracked.', thumbnailUrl: thumb('1600585154526-990dced4db0d'), status: 'pending', includeInReport: false },
-      { id: 'dmv-ev-11', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Full roof overview — drone shot', notes: 'Drone overview showing widespread granule loss across entire roof.', thumbnailUrl: thumb('1600596542815-ffad4c1539a9'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-12', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Ridge vent cracking', notes: 'Ridge vent plastic cracked in 3 locations.', thumbnailUrl: thumb('1635424709498-70ee7a0ff1d8'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-13', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'AC condenser fin damage', notes: 'Condenser fins bent/flattened from hail impact.', thumbnailUrl: thumb('1585771724684-38269d6639fd'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-14', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Fence cap rail dents', notes: 'Metal fence cap rail with clear hail dents. Good soft metal reference.', thumbnailUrl: thumb('1504307651254-35680f356dfd'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-15', kind: 'provider-query', provider: 'youtube', mediaType: 'video', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Arlington VA Tennis Ball Hail March 2026', notes: 'Resident video of 3" hail falling.', externalUrl: 'https://www.youtube.com/watch?v=example2', thumbnailUrl: thumb('1527482937786-6c0d070ac4d7'), status: 'pending', includeInReport: false },
-      { id: 'dmv-ev-16', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '5500 Franconia Rd, Alexandria, VA', stormDate: '2026-03-15', title: 'Shingle mat exposure — test square', notes: 'Test square showing 12 impacts with granule displacement.', thumbnailUrl: thumb('1632759145351-a8e35f31be67'), status: 'approved', includeInReport: true },
-      { id: 'dmv-ev-17', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '5500 Franconia Rd, Alexandria, VA', stormDate: '2026-03-15', title: 'Gutter splash guard dents', notes: 'Aluminum splash guards dented along entire front gutter run.', thumbnailUrl: thumb('1600585154340-be6161a56a0c'), status: 'approved', includeInReport: true },
+      // ── 4521 Elm St, Bethesda, MD (lead-1: 5 items) ──
+      { id: 'dmv-ev-sv1', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Property exterior — Street View', notes: 'Google Street View of 4521 Elm St, Bethesda, MD. Residential property.', thumbnailUrl: sv('4521 Elm St, Bethesda, MD'), status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-1', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Ridge cap cracking — south face', notes: 'Multiple shingles cracked along ridge line. Hail impact marks visible.', thumbnailUrl: FEMA.roofInspection, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-2', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Gutter dents — front elevation', notes: 'Quarter-sized dents on aluminum gutters. Consistent with 2" hail.', thumbnailUrl: FEMA.dentedMetal, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-3', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Soft metal test — downspout', notes: 'Clear hail dimpling on downspout elbow.', thumbnailUrl: FEMA.metalRoofDents, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-4', kind: 'provider-query', provider: 'youtube', mediaType: 'video', propertyLabel: '4521 Elm St, Bethesda, MD', stormDate: '2026-03-15', title: 'Bethesda MD Hail Storm March 2026', notes: 'Local news coverage of the storm.', externalUrl: 'https://www.youtube.com/watch?v=example1', thumbnailUrl: FEMA.beforeAfter, status: 'pending', includeInReport: false },
+
+      // ── 1825 Columbia Pike, Arlington, VA (lead-2: 4 items) ──
+      { id: 'dmv-ev-sv2', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Property exterior — Street View', notes: 'Google Street View of 1825 Columbia Pike, Arlington, VA.', thumbnailUrl: sv('1825 Columbia Pike, Arlington, VA'), status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-5', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Shingle bruising — 3-tab section', notes: 'Granule loss visible on east-facing slope. Test square marked.', thumbnailUrl: FEMA.documentDamage, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-6', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Vent boot crack', notes: 'Pipe vent boot cracked from impact. Active leak risk.', thumbnailUrl: FEMA.skylightHole, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-7', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '1825 Columbia Pike, Arlington, VA', stormDate: '2026-03-15', title: 'Siding impact marks', notes: 'Vinyl siding shows circular impact craters on north wall.', thumbnailUrl: FEMA.sidingSouth, status: 'pending', includeInReport: false },
+
+      // ── 9102 Riggs Rd, Adelphi, MD (lead-3: 3 items) ──
+      { id: 'dmv-ev-sv3', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '9102 Riggs Rd, Adelphi, MD', stormDate: '2026-03-22', title: 'Property exterior — Street View', notes: 'Google Street View of 9102 Riggs Rd, Adelphi, MD.', thumbnailUrl: sv('9102 Riggs Rd, Adelphi, MD'), status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-8', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '9102 Riggs Rd, Adelphi, MD', stormDate: '2026-03-22', title: 'Chalk circle test — shingle mat exposed', notes: 'Marked 8 impacts in 10x10 test square. Mat visible through granule loss.', thumbnailUrl: FEMA.surveyRoof, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-9', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '9102 Riggs Rd, Adelphi, MD', stormDate: '2026-03-22', title: 'Window screen damage', notes: 'Holes punched through window screen by large hail.', thumbnailUrl: FEMA.smashedWindow, status: 'approved', includeInReport: true },
+
+      // ── 6700 Georgia Ave NW, Washington, DC (lead-4: 2 items) ──
+      { id: 'dmv-ev-sv4', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '6700 Georgia Ave NW, Washington, DC', stormDate: '2026-03-22', title: 'Property exterior — Street View', notes: 'Google Street View of 6700 Georgia Ave NW, Washington, DC.', thumbnailUrl: sv('6700 Georgia Ave NW, Washington, DC'), status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-10', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '6700 Georgia Ave NW, Washington, DC', stormDate: '2026-03-22', title: 'Skylight seal damage', notes: 'Skylight flashing bent, sealant cracked.', thumbnailUrl: FEMA.skylightHole, status: 'pending', includeInReport: false },
+
+      // ── 14300 Layhill Rd, Silver Spring, MD (lead-5: 1 item) ──
+      { id: 'dmv-ev-sv5', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '14300 Layhill Rd, Silver Spring, MD', stormDate: '2026-03-15', title: 'Property exterior — Street View', notes: 'Google Street View of 14300 Layhill Rd, Silver Spring, MD.', thumbnailUrl: sv('14300 Layhill Rd, Silver Spring, MD'), status: 'approved', includeInReport: true },
+
+      // ── 2300 Wilson Blvd, Arlington, VA (lead-6: 6 items) ──
+      { id: 'dmv-ev-sv6', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Property exterior — Street View', notes: 'Google Street View of 2300 Wilson Blvd, Arlington, VA.', thumbnailUrl: sv('2300 Wilson Blvd, Arlington, VA'), status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-11', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Full roof overview — drone shot', notes: 'Drone overview showing widespread granule loss across entire roof.', thumbnailUrl: FEMA.aerialTarps, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-12', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Ridge vent cracking', notes: 'Ridge vent plastic cracked in 3 locations.', thumbnailUrl: FEMA.crackedTiles1, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-13', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'AC condenser fin damage', notes: 'Condenser fins bent/flattened from hail impact.', thumbnailUrl: FEMA.dentedMetal, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-14', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Fence cap rail dents', notes: 'Metal fence cap rail with clear hail dents. Good soft metal reference.', thumbnailUrl: FEMA.concretePitting, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-15', kind: 'provider-query', provider: 'youtube', mediaType: 'video', propertyLabel: '2300 Wilson Blvd, Arlington, VA', stormDate: '2026-03-22', title: 'Arlington VA Tennis Ball Hail March 2026', notes: 'Resident video of 3" hail falling.', externalUrl: 'https://www.youtube.com/watch?v=example2', thumbnailUrl: FEMA.newShingles, status: 'pending', includeInReport: false },
+
+      // ── 8450 Baltimore Ave, College Park, MD (lead-7: 1 item) ──
+      { id: 'dmv-ev-sv7', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '8450 Baltimore Ave, College Park, MD', stormDate: '2026-03-22', title: 'Property exterior — Street View', notes: 'Google Street View of 8450 Baltimore Ave, College Park, MD.', thumbnailUrl: sv('8450 Baltimore Ave, College Park, MD'), status: 'approved', includeInReport: true },
+
+      // ── 5500 Franconia Rd, Alexandria, VA (lead-8: 3 items) ──
+      { id: 'dmv-ev-sv8', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '5500 Franconia Rd, Alexandria, VA', stormDate: '2026-03-15', title: 'Property exterior — Street View', notes: 'Google Street View of 5500 Franconia Rd, Alexandria, VA.', thumbnailUrl: sv('5500 Franconia Rd, Alexandria, VA'), status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-16', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '5500 Franconia Rd, Alexandria, VA', stormDate: '2026-03-15', title: 'Shingle mat exposure — test square', notes: 'Test square showing 12 impacts with granule displacement.', thumbnailUrl: FEMA.teamOnRoof, status: 'approved', includeInReport: true },
+      { id: 'dmv-ev-17', kind: 'upload', provider: 'upload', mediaType: 'image', propertyLabel: '5500 Franconia Rd, Alexandria, VA', stormDate: '2026-03-15', title: 'Gutter splash guard dents', notes: 'Aluminum splash guards dented along entire front gutter run.', thumbnailUrl: FEMA.metalRoofDents, status: 'approved', includeInReport: true },
     ];
 
-    // Upsert leads
+    // Upsert leads (update evidence count + notes on re-seed)
     for (const lead of demoLeads) {
       const existing = await db.select().from(leads).where(eq(leads.id, lead.id));
       if (existing.length === 0) {
         await db.insert(leads).values(lead as typeof leads.$inferInsert);
+      } else {
+        await db.update(leads).set({ evidenceCount: lead.evidenceCount }).where(eq(leads.id, lead.id));
       }
     }
 
@@ -619,7 +668,7 @@ app.post('/api/demo/seed', async (_req, res) => {
       await pgSql`
         INSERT INTO evidence (id, kind, provider, media_type, property_label, storm_date, title, notes, external_url, thumbnail_url, status, include_in_report)
         VALUES (${ev.id}, ${ev.kind}, ${ev.provider}, ${ev.mediaType}, ${ev.propertyLabel}, ${ev.stormDate}, ${ev.title}, ${ev.notes || ''}, ${ev.externalUrl || ''}, ${ev.thumbnailUrl || ''}, ${ev.status}, ${ev.includeInReport})
-        ON CONFLICT (id) DO UPDATE SET thumbnail_url = EXCLUDED.thumbnail_url
+        ON CONFLICT (id) DO UPDATE SET thumbnail_url = EXCLUDED.thumbnail_url, title = EXCLUDED.title, notes = EXCLUDED.notes
       `;
     }
 
