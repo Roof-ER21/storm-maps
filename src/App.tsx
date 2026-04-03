@@ -2688,6 +2688,7 @@ function App({ onLogout }: { onLogout: () => void }) {
   ) : HAS_API_KEY ? (
     <APIProvider
       apiKey={API_KEY}
+      libraries={['visualization']}
       authReferrerPolicy="origin"
       onLoad={() => setMapLoadError(null)}
       onError={(error) => {

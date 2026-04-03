@@ -29,6 +29,7 @@ import type {
 } from '../types/storm';
 import { getHailSizeClass } from '../types/storm';
 import HailSwathLayer from './HailSwathLayer';
+import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
 import GpsTracker from './GpsTracker';
@@ -1034,31 +1035,11 @@ function MapContent({
         );
       })}
 
-      {/* Heatmap overlay */}
-      {showHeatmap && heatmapPoints && heatmapPoints.map((point, idx) => {
-        const intensity = Math.min(1, point.weight / 5);
-        const size = 20 + intensity * 40;
-        const r = Math.round(255 * intensity);
-        const g = Math.round(100 * (1 - intensity));
-        const b = Math.round(200 * (1 - intensity));
-        return (
-          <AdvancedMarker
-            key={`heat-${idx}`}
-            position={{ lat: point.lat, lng: point.lng }}
-            zIndex={100}
-          >
-            <div
-              style={{
-                width: size,
-                height: size,
-                borderRadius: '50%',
-                background: `radial-gradient(circle, rgba(${r},${g},${b},${0.3 + intensity * 0.35}) 0%, rgba(${r},${g},${b},0) 70%)`,
-                pointerEvents: 'none',
-              }}
-            />
-          </AdvancedMarker>
-        );
-      })}
+      {/* Heatmap overlay — real Google Maps visualization layer */}
+      <HeatmapLayer
+        points={heatmapPoints || []}
+        visible={Boolean(showHeatmap && heatmapPoints && heatmapPoints.length > 0)}
+      />
 
       {/* Evidence pins */}
       {evidencePins && evidencePins.map((pin) => (
