@@ -26,7 +26,7 @@ interface MRMSOverlayProps {
 export default function MRMSOverlay({
   visible,
   product,
-  opacity = 0.58,
+  opacity = 0.72,
   bounds,
   url,
   refreshMs = 5 * 60 * 1000,

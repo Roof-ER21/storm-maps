@@ -503,6 +503,245 @@ function parseLsrFeature(f: LsrFeature, idx: number): StormEvent {
 }
 
 // ---------------------------------------------------------------------------
+// SPC Storm Prediction Center — Same-Day / Rolling 7-Day Hail Reports
+// Published daily at:
+//   Today:     https://www.spc.noaa.gov/climo/reports/today_hail.csv
+//   Yesterday: https://www.spc.noaa.gov/climo/reports/yesterday_hail.csv
+//   Archive:   https://www.spc.noaa.gov/climo/reports/YYMMDD_rpts_hail.csv
+//
+// CSV format (header row present):
+//   Time,Size,Location,County,State,Lat,Lon,Comments
+//   Where Time is HHMM UTC, Size is hail diameter in hundredths of inches
+//   (e.g. 175 = 1.75"), Lat/Lon are decimal degrees (Lon is negative for W).
+// ---------------------------------------------------------------------------
+
+const SPC_TIMEOUT_MS = 12000;
+const SPC_CORS_PROXY = 'https://corsproxy.io/?url=';
+
+/**
+ * Build an ISO 8601 date string from a SPC YYMMDD date string and HHMM time.
+ * e.g. dateStr="260403", timeStr="1435" → "2026-04-03T14:35:00Z"
+ */
+function buildSpcIsoDate(dateStr: string, timeStr: string): string {
+  // dateStr is YYMMDD
+  const yy = dateStr.slice(0, 2);
+  const mm = dateStr.slice(2, 4);
+  const dd = dateStr.slice(4, 6);
+  const fullYear = `20${yy}`;
+  const hh = timeStr.slice(0, 2).padStart(2, '0');
+  const min = timeStr.slice(2, 4).padStart(2, '0');
+  return `${fullYear}-${mm}-${dd}T${hh}:${min}:00Z`;
+}
+
+/**
+ * Format a Date as YYMMDD for SPC archive URLs.
+ * e.g. 2026-04-03 → "260403"
+ */
+function formatSpcArchiveDate(d: Date): string {
+  const yy = String(d.getUTCFullYear()).slice(2);
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yy}${mm}${dd}`;
+}
+
+/**
+ * Parse a SPC hail CSV text into StormEvent[].
+ *
+ * @param csvText  - raw CSV content from SPC
+ * @param dateStr  - YYMMDD string representing the report date (used for ISO timestamp)
+ * @param idPrefix - prefix for generated event IDs to avoid collisions
+ */
+function parseSpcHailCsv(
+  csvText: string,
+  dateStr: string,
+  idPrefix: string,
+): StormEvent[] {
+  const lines = csvText.split('\n').map((l) => l.trim()).filter(Boolean);
+  if (lines.length === 0) return [];
+
+  // Detect and skip the header row (SPC uses "Time,Size,..." or similar)
+  let startIndex = 0;
+  const firstLine = lines[0].toLowerCase();
+  if (
+    firstLine.startsWith('time') ||
+    firstLine.includes('size') ||
+    firstLine.includes('location')
+  ) {
+    startIndex = 1;
+  }
+
+  const events: StormEvent[] = [];
+
+  for (let i = startIndex; i < lines.length; i++) {
+    const line = lines[i];
+    // SPC CSV can have quoted fields containing commas — do a simple split
+    // since none of the numeric/code fields contain commas
+    const parts = line.split(',');
+    if (parts.length < 7) continue;
+
+    const [timeRaw, sizeRaw, location, county, state, latRaw, lonRaw, ...commentParts] =
+      parts;
+
+    const time = (timeRaw ?? '').trim();
+    const sizeHundredths = parseFloat((sizeRaw ?? '').trim());
+    const lat = parseFloat((latRaw ?? '').trim());
+    const lon = parseFloat((lonRaw ?? '').trim());
+
+    // Skip rows with invalid coordinates or size
+    if (
+      Number.isNaN(lat) ||
+      Number.isNaN(lon) ||
+      Number.isNaN(sizeHundredths) ||
+      lat === 0 ||
+      lon === 0
+    ) {
+      continue;
+    }
+
+    // Convert hundredths-of-inches to inches (e.g. 175 → 1.75)
+    const sizeInches = sizeHundredths / 100;
+
+    const isoDate = buildSpcIsoDate(dateStr, time.padStart(4, '0'));
+    const locationStr = (location ?? '').trim();
+    const countyStr = (county ?? '').trim();
+    const stateStr = (state ?? '').trim();
+    const comments = commentParts.join(',').trim();
+
+    events.push({
+      id: `spc-${idPrefix}-${i}`,
+      eventType: 'Hail',
+      state: stateStr,
+      county: countyStr,
+      beginDate: isoDate,
+      endDate: isoDate,
+      beginLat: lat,
+      beginLon: lon,
+      endLat: lat,
+      endLon: lon,
+      magnitude: sizeInches,
+      magnitudeType: 'inches',
+      damageProperty: 0,
+      source: 'SPC Storm Report',
+      narrative:
+        comments
+          ? `SPC hail report: ${sizeInches}" near ${locationStr}, ${stateStr}. ${comments}`
+          : `SPC hail report: ${sizeInches}" near ${locationStr}, ${stateStr}`,
+    });
+  }
+
+  return events;
+}
+
+/**
+ * Fetch a single SPC hail CSV URL and return parsed events.
+ * Uses a CORS proxy since SPC does not send CORS headers.
+ *
+ * @param url      - full SPC CSV URL
+ * @param dateStr  - YYMMDD for timestamp construction
+ * @param idPrefix - unique prefix for event IDs
+ * @param signal   - optional AbortSignal
+ */
+async function fetchOneSpcCsv(
+  url: string,
+  dateStr: string,
+  idPrefix: string,
+  signal?: AbortSignal,
+): Promise<StormEvent[]> {
+  const proxiedUrl = `${SPC_CORS_PROXY}${encodeURIComponent(url)}`;
+  const res = await fetch(proxiedUrl, {
+    signal: getTimeoutSignal(SPC_TIMEOUT_MS, signal),
+  });
+
+  if (!res.ok) {
+    // 404 is normal for future archive dates — treat as empty
+    if (res.status === 404) return [];
+    throw new Error(`SPC CSV fetch returned ${res.status} for ${url}`);
+  }
+
+  const text = await res.text();
+  return parseSpcHailCsv(text, dateStr, idPrefix);
+}
+
+/**
+ * Fetch SPC Storm Prediction Center same-day hail reports plus a
+ * rolling 7-day archive.  Returns all events as StormEvent[].
+ *
+ * Data is available within hours of storm occurrence — far faster than
+ * NCEI/SWDI which can lag by weeks.
+ *
+ * Sources fetched in parallel:
+ *  - today_hail.csv   (current UTC day)
+ *  - yesterday_hail.csv
+ *  - YYMMDD_rpts_hail.csv for days 2-6 (rolling archive)
+ */
+export async function fetchSpcStormReports(
+  signal?: AbortSignal,
+): Promise<StormEvent[]> {
+  const SPC_BASE = 'https://www.spc.noaa.gov/climo/reports';
+
+  // Build the list of (url, dateStr, idPrefix) tuples to fetch in parallel
+  const now = new Date();
+  const fetchTargets: Array<{ url: string; dateStr: string; idPrefix: string }> = [];
+
+  // Today and yesterday use special named files
+  const todayStr = formatSpcArchiveDate(now);
+  fetchTargets.push({
+    url: `${SPC_BASE}/today_hail.csv`,
+    dateStr: todayStr,
+    idPrefix: `today-${todayStr}`,
+  });
+
+  const yesterdayDate = new Date(now);
+  yesterdayDate.setUTCDate(yesterdayDate.getUTCDate() - 1);
+  const yesterdayStr = formatSpcArchiveDate(yesterdayDate);
+  fetchTargets.push({
+    url: `${SPC_BASE}/yesterday_hail.csv`,
+    dateStr: yesterdayStr,
+    idPrefix: `yesterday-${yesterdayStr}`,
+  });
+
+  // Days 2-6 use the archive format YYMMDD_rpts_hail.csv
+  for (let daysAgo = 2; daysAgo <= 6; daysAgo++) {
+    const archiveDate = new Date(now);
+    archiveDate.setUTCDate(archiveDate.getUTCDate() - daysAgo);
+    const archiveDateStr = formatSpcArchiveDate(archiveDate);
+    fetchTargets.push({
+      url: `${SPC_BASE}/${archiveDateStr}_rpts_hail.csv`,
+      dateStr: archiveDateStr,
+      idPrefix: `arc-${archiveDateStr}`,
+    });
+  }
+
+  // Fetch all in parallel, failing gracefully per-source
+  const results = await Promise.allSettled(
+    fetchTargets.map(({ url, dateStr, idPrefix }) =>
+      fetchOneSpcCsv(url, dateStr, idPrefix, signal),
+    ),
+  );
+
+  const allEvents: StormEvent[] = [];
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    if (result.status === 'fulfilled') {
+      appendEvents(allEvents, result.value);
+    } else {
+      const reason = result.reason;
+      if (reason instanceof Error && reason.name === 'AbortError') {
+        // Propagate abort — caller will handle
+        return [];
+      }
+      // Non-fatal: log and continue with other sources
+      console.warn(
+        `[stormApi] SPC fetch failed for ${fetchTargets[i].url}:`,
+        reason,
+      );
+    }
+  }
+
+  return allEvents;
+}
+
+// ---------------------------------------------------------------------------
 // Legacy API signatures (kept for backward compatibility with existing hook)
 // ---------------------------------------------------------------------------
 

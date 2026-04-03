@@ -56,24 +56,24 @@ function getPolygonStyle(
 ) {
   if (highlightSelected) {
     return {
-      fillOpacity: 0.3,
-      strokeOpacity: 0.88,
-      strokeWeight: 3,
+      fillOpacity: 0.42,
+      strokeOpacity: 0.95,
+      strokeWeight: 6,
     };
   }
 
   if (isFocused) {
     return {
-      fillOpacity: 0.24,
-      strokeOpacity: 0.76,
-      strokeWeight: 2.5,
+      fillOpacity: 0.35,
+      strokeOpacity: 0.85,
+      strokeWeight: 5,
     };
   }
 
   return {
-    fillOpacity: 0.18,
-    strokeOpacity: 0.58,
-    strokeWeight: 2,
+    fillOpacity: 0.28,
+    strokeOpacity: 0.72,
+    strokeWeight: 4,
   };
 }
 

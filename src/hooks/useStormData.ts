@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { StormEvent, MeshSwath, StormDate } from '../types/storm';
-import { searchByCoordinates, fetchLocalStormReports } from '../services/stormApi';
+import { searchByCoordinates, fetchLocalStormReports, fetchSpcStormReports } from '../services/stormApi';
 import { fetchMeshSwathsByLocation } from '../services/nhpApi';
 import { getHailSizeClass } from '../types/storm';
 
@@ -123,8 +123,8 @@ export function useStormData({
     try {
       const effectiveMonths = getEffectiveMonths(months, sinceDate);
 
-      // Fetch SWDI hail reports, IEM LSR, and NHP swaths in parallel
-      const [swdiEvents, lsrEvents, nhpSwaths] = await Promise.allSettled([
+      // Fetch SWDI hail reports, IEM LSR, SPC same-day reports, and NHP swaths in parallel
+      const [swdiEvents, lsrEvents, spcEvents, nhpSwaths] = await Promise.allSettled([
         searchByCoordinates(
           lat,
           lng,
@@ -133,6 +133,7 @@ export function useStormData({
           controller.signal,
         ),
         fetchLocalStormReports(controller.signal),
+        fetchSpcStormReports(controller.signal),
         fetchMeshSwathsByLocation(
           lat,
           lng,
@@ -145,7 +146,7 @@ export function useStormData({
 
       if (controller.signal.aborted) return;
 
-      // Merge events from both sources
+      // Merge events from all sources
       const allEvents: StormEvent[] = [];
       if (swdiEvents.status === 'fulfilled') {
         appendStormEvents(allEvents, swdiEvents.value);
@@ -154,6 +155,12 @@ export function useStormData({
         appendStormEvents(
           allEvents,
           filterEventsByRadius(lsrEvents.value, lat, lng, radiusMiles),
+        );
+      }
+      if (spcEvents.status === 'fulfilled') {
+        appendStormEvents(
+          allEvents,
+          filterEventsByRadius(spcEvents.value, lat, lng, radiusMiles),
         );
       }
 
@@ -188,11 +195,13 @@ export function useStormData({
       const failures: string[] = [];
       if (swdiEvents.status === 'rejected') failures.push('NOAA SWDI');
       if (lsrEvents.status === 'rejected') failures.push('IEM LSR');
+      if (spcEvents.status === 'rejected') failures.push('SPC Reports');
       if (nhpSwaths.status === 'rejected') failures.push('NHP Swaths');
 
-      if (failures.length > 0 && failures.length < 3) {
+      const totalSources = 4;
+      if (failures.length > 0 && failures.length < totalSources) {
         console.warn(`[useStormData] Partial failure: ${failures.join(', ')}`);
-      } else if (failures.length === 3) {
+      } else if (failures.length === totalSources) {
         setError('All storm data sources are unavailable. Check your connection.');
       }
     } catch (err) {

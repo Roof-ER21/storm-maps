@@ -194,8 +194,21 @@ function inferCensusViewport(
 // ---------------------------------------------------------------------------
 
 /**
+ * Extract a city/state portion from an address query by taking the last
+ * 2-3 comma-separated segments (e.g. "123 Main St, Austin, TX" → "Austin, TX").
+ */
+function extractCityState(query: string): string | null {
+  const parts = query.split(',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  // Take last 2 parts (city + state) or last 3 if the address has a suite/unit segment
+  const cityParts = parts.slice(-Math.min(3, parts.length - 1));
+  return cityParts.join(', ');
+}
+
+/**
  * Geocode an address or ZIP code to lat/lng coordinates.
- * Tries Google Maps first, falls back to US Census Bureau geocoder.
+ * Tries Google Maps first, falls back to US Census Bureau geocoder,
+ * then falls back to geocoding just the city/state portion of the query.
  */
 export async function geocodeAddress(
   query: string,
@@ -214,6 +227,38 @@ export async function geocodeAddress(
   // Fallback to Census Bureau
   const censusResult = await geocodeWithCensus(searchQuery);
   if (censusResult) return censusResult;
+
+  // Third fallback: try geocoding just the city/state portion of the query
+  const cityQuery = extractCityState(cleaned);
+  if (cityQuery && cityQuery !== cleaned) {
+    const cityGoogleResult = await geocodeWithGoogle(cityQuery);
+    if (cityGoogleResult) {
+      return {
+        ...cityGoogleResult,
+        resultType: 'locality',
+        viewport: cityGoogleResult.viewport ?? {
+          north: cityGoogleResult.lat + 0.1,
+          south: cityGoogleResult.lat - 0.1,
+          east: cityGoogleResult.lng + 0.1,
+          west: cityGoogleResult.lng - 0.1,
+        },
+      };
+    }
+
+    const cityCensusResult = await geocodeWithCensus(cityQuery);
+    if (cityCensusResult) {
+      return {
+        ...cityCensusResult,
+        resultType: 'locality',
+        viewport: {
+          north: cityCensusResult.lat + 0.1,
+          south: cityCensusResult.lat - 0.1,
+          east: cityCensusResult.lng + 0.1,
+          west: cityCensusResult.lng - 0.1,
+        },
+      };
+    }
+  }
 
   return null;
 }
