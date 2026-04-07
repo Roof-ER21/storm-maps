@@ -612,7 +612,7 @@ app.post('/api/demo/seed', async (_req, res) => {
     ];
 
     // Real photos: Google Street View for property exteriors, FEMA/Wikimedia for damage evidence
-    const MAPS_KEY = process.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyA7FH8xKPvLxUMcr6QrVCxMtGcCNjDZQyc';
+    const MAPS_KEY = process.env.VITE_GOOGLE_MAPS_API_KEY || process.env.GOOGLE_MAPS_API_KEY || '';
     const sv = (addr: string) => `https://maps.googleapis.com/maps/api/streetview?size=640x480&location=${encodeURIComponent(addr)}&key=${MAPS_KEY}`;
 
     // FEMA & Wikimedia Commons — real hail damage (public domain / CC)

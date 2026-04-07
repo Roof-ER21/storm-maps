@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { analyzeProperty, getAnalysis } from '../services/aiApi';
+import { createShareableReport } from '../services/api';
 import type {
   AnalysisMode,
   AnalysisStatus,
@@ -119,6 +120,14 @@ function damageBadgeClass(severity: DamageIndicator['severity']): string {
     case 'moderate': return 'bg-amber-500/20 border-amber-500/40 text-amber-300';
     default:         return 'bg-sky-500/20 border-sky-500/40 text-sky-300';
   }
+}
+
+function formatCaptureDate(date: string | null | undefined): string | null {
+  if (!date) return null;
+  const [year, month] = date.split('-');
+  if (!year || !month) return date;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${months[parseInt(month, 10) - 1]} ${year}`;
 }
 
 const MODES: Array<{ id: AnalysisMode; label: string; desc: string }> = [
@@ -261,16 +270,19 @@ function PropertyImages({
     ? `data:${satImg.mimeType};base64,${satImg.imageData}`
     : (analysis.satelliteUrl ?? null);
 
-  const slots: Array<{ src: string | null; label: string }> = [
-    { src: streetSrc, label: 'Street View' },
-    { src: satSrc,    label: 'Satellite' },
+  const streetDate = formatCaptureDate(streetImg?.captureDate ?? analysis.streetViewDate);
+  const satDate    = formatCaptureDate(satImg?.captureDate ?? null);
+
+  const slots: Array<{ src: string | null; label: string; date: string | null }> = [
+    { src: streetSrc, label: 'Street View', date: streetDate },
+    { src: satSrc,    label: 'Satellite',   date: satDate },
   ];
 
   if (!streetSrc && !satSrc) return null;
 
   return (
     <div className="grid grid-cols-2 gap-2.5">
-      {slots.map(({ src, label }) =>
+      {slots.map(({ src, label, date }) =>
         src ? (
           <div key={label} className="relative overflow-hidden rounded-xl border border-zinc-800/60">
             <div className="aspect-video w-full">
@@ -288,6 +300,11 @@ function PropertyImages({
                 {label}
               </span>
             </div>
+            {date && (
+              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white/80">
+                {date}
+              </span>
+            )}
           </div>
         ) : null,
       )}
@@ -633,6 +650,8 @@ export default function AiSlideOver({
   const [analysis, setAnalysis]             = useState<PropertyAnalysis | null>(null);
   const [images, setImages]                 = useState<PropertyImage[]>([]);
   const [committedMode, setCommittedMode]   = useState<AnalysisMode>(initialMode);
+  const [sharing, setSharing]               = useState(false);
+  const [shared, setShared]                 = useState(false);
 
   const pollRef    = useRef<ReturnType<typeof setInterval> | null>(null);
   const inputRef   = useRef<HTMLInputElement>(null);
@@ -770,6 +789,46 @@ export default function AiSlideOver({
       onAddToPipeline(analysis);
     }
   }, [analysis, onAddToPipeline]);
+
+  const handleShare = useCallback(async () => {
+    if (!analysis || sharing) return;
+
+    setSharing(true);
+    try {
+      const stormVal = analysis.aiRawResponse?.storm;
+      const maxHailInches =
+        typeof stormVal === 'number' ? stormVal : 0;
+
+      const result = await createShareableReport({
+        address:       analysis.inputAddress,
+        lat:           analysis.lat ?? 0,
+        lng:           analysis.lng ?? 0,
+        stormDate:     new Date().toISOString().slice(0, 10),
+        stormLabel:    'AI Property Analysis',
+        maxHailInches,
+        maxWindMph:    0,
+        eventCount:    analysis.damageIndicators.length,
+        repName:       import.meta.env.VITE_REP_NAME    ?? '',
+        repPhone:      import.meta.env.VITE_REP_PHONE   ?? '',
+        companyName:   import.meta.env.VITE_COMPANY_NAME ?? '',
+        homeownerName: '',
+      });
+
+      if (!result) {
+        throw new Error('Failed to create shareable report.');
+      }
+
+      await navigator.clipboard.writeText(window.location.origin + result.url);
+      setShared(true);
+      setTimeout(() => setShared(false), 2000);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Could not create share link.',
+      );
+    } finally {
+      setSharing(false);
+    }
+  }, [analysis, sharing]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -987,16 +1046,18 @@ export default function AiSlideOver({
                 </button>
               )}
 
-              {/* Share report (future) */}
+              {/* Share report */}
               <button
                 type="button"
-                disabled
-                title="Coming soon"
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700/60 bg-zinc-900/80 px-3.5 py-2.5 text-sm font-semibold text-gray-500 transition hover:border-zinc-600 hover:text-gray-300 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
-                aria-label="Share report (coming soon)"
+                onClick={handleShare}
+                disabled={sharing}
+                aria-label={shared ? 'Link copied' : 'Share report'}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700/60 bg-zinc-900/80 px-3.5 py-2.5 text-sm font-semibold text-gray-400 transition hover:border-zinc-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
               >
                 <IconShare />
-                <span className="hidden sm:inline">Share</span>
+                <span className="hidden sm:inline">
+                  {sharing ? 'Sharing…' : shared ? 'Copied!' : 'Share'}
+                </span>
               </button>
 
               {/* Close */}

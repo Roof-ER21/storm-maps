@@ -1,5 +1,291 @@
 import type { EvidenceItem, ReportEvidenceItem, StormEvent } from '../types/storm';
+import type {
+  PropertyAnalysis,
+  RoofType,
+  SidingType,
+  ConditionRating,
+  DamageIndicator,
+} from '../types/analysis';
 import { HAIL_YES_HAIL_API_BASE } from './backendConfig';
+
+// ============================================================
+// AI analysis formatting helpers
+// ============================================================
+
+const ROOF_TYPE_LABELS: Record<RoofType, string> = {
+  three_tab_shingle: '3-Tab Shingle',
+  architectural_shingle: 'Architectural Shingle',
+  designer_shingle: 'Designer Shingle',
+  wood_shake: 'Wood Shake',
+  synthetic_shake: 'Synthetic Shake',
+  metal_standing_seam: 'Metal — Standing Seam',
+  metal_ribbed: 'Metal — Ribbed Panel',
+  tile_clay: 'Clay Tile',
+  tile_concrete: 'Concrete Tile',
+  slate: 'Slate',
+  flat_membrane: 'Flat / Membrane',
+  unknown: 'Unknown',
+};
+
+const SIDING_TYPE_LABELS: Record<SidingType, string> = {
+  aluminum: 'Aluminum',
+  vinyl: 'Vinyl',
+  wood: 'Wood',
+  fiber_cement: 'Fiber Cement',
+  brick: 'Brick',
+  stone: 'Stone',
+  stucco: 'Stucco',
+  composite: 'Composite',
+  unknown: 'Unknown',
+};
+
+const CONDITION_LABELS: Record<ConditionRating, string> = {
+  excellent: 'Excellent',
+  good: 'Good',
+  fair: 'Fair',
+  poor: 'Poor',
+  critical: 'Critical',
+  unknown: 'Unknown',
+};
+
+function formatRoofType(value: RoofType | null): string {
+  return value ? (ROOF_TYPE_LABELS[value] ?? value) : 'Not assessed';
+}
+
+function formatSidingType(value: SidingType | null): string {
+  return value ? (SIDING_TYPE_LABELS[value] ?? value) : 'Not assessed';
+}
+
+function formatCondition(value: ConditionRating | null): string {
+  return value ? (CONDITION_LABELS[value] ?? value) : 'Not assessed';
+}
+
+function formatScore(value: number | null): string {
+  return value !== null ? `${value}/100` : 'N/A';
+}
+
+function buildDamageIndicatorRows(indicators: DamageIndicator[]): string {
+  return indicators
+    .map(
+      (d) => `
+        <tr>
+          <td>${d.type}</td>
+          <td class="ai-severity ai-severity--${d.severity}">${d.severity.charAt(0).toUpperCase() + d.severity.slice(1)}</td>
+          <td>${d.location}</td>
+        </tr>`,
+    )
+    .join('');
+}
+
+/**
+ * Build the AI Property Intelligence HTML section.
+ * Returns an empty string when no analysis is provided.
+ */
+export function buildAiSectionHtml(analysis: PropertyAnalysis | null | undefined): string {
+  if (!analysis || analysis.status !== 'completed') return '';
+
+  const damageTable =
+    analysis.damageIndicators.length > 0
+      ? `
+    <div class="ai-damage">
+      <h3 class="ai-subheading">Damage Indicators</h3>
+      <table class="ai-table">
+        <thead>
+          <tr><th>Type</th><th>Severity</th><th>Location</th></tr>
+        </thead>
+        <tbody>
+          ${buildDamageIndicatorRows(analysis.damageIndicators)}
+        </tbody>
+      </table>
+    </div>`
+      : '';
+
+  const reasoningBlock = analysis.reasoning
+    ? `
+    <div class="ai-reasoning">
+      <h3 class="ai-subheading">AI Analysis Notes</h3>
+      <p>${analysis.reasoning}</p>
+    </div>`
+    : '';
+
+  const roofConfidenceText =
+    analysis.roofConfidence !== null
+      ? `<p><strong>Confidence:</strong> ${analysis.roofConfidence}%</p>`
+      : '';
+
+  return `
+<div class="ai-section">
+  <h2 class="ai-heading">Property Intelligence Report</h2>
+  <div class="ai-grid">
+    <div class="ai-card">
+      <h3 class="ai-card__title">Roof Assessment</h3>
+      <p><strong>Type:</strong> ${formatRoofType(analysis.roofType)}</p>
+      <p><strong>Condition:</strong> ${formatCondition(analysis.roofCondition)}</p>
+      <p><strong>Estimated Age:</strong> ${analysis.roofAgeEstimate !== null ? `${analysis.roofAgeEstimate} years` : 'Unknown'}</p>
+      ${roofConfidenceText}
+    </div>
+    <div class="ai-card">
+      <h3 class="ai-card__title">Siding Assessment</h3>
+      <p><strong>Type:</strong> ${formatSidingType(analysis.sidingType)}</p>
+      <p><strong>Condition:</strong> ${formatCondition(analysis.sidingCondition)}</p>
+      ${analysis.isAluminumSiding ? '<p class="ai-highlight"><strong>Aluminum siding detected</strong></p>' : ''}
+    </div>
+  </div>
+  <div class="ai-prospect-score">
+    <span class="ai-score-label">Prospect Score:</span>
+    <span class="ai-score-value">${formatScore(analysis.prospectScore)}</span>
+    ${analysis.isHighPriority ? '<span class="ai-badge ai-badge--priority">High Priority</span>' : ''}
+  </div>
+  ${damageTable}
+  ${reasoningBlock}
+</div>`;
+}
+
+/** Scoped CSS injected into the report document for the AI section. */
+const AI_SECTION_STYLES = `
+  .ai-section {
+    margin: 32px 0;
+    padding: 28px 32px;
+    background: #0f172a;
+    border: 1px solid #1e3a5f;
+    border-radius: 8px;
+    color: #e2e8f0;
+    font-family: inherit;
+    page-break-inside: avoid;
+  }
+  .ai-heading {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #38bdf8;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin: 0 0 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #1e3a5f;
+  }
+  .ai-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  .ai-card {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 16px 18px;
+  }
+  .ai-card__title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #7dd3fc;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 12px;
+  }
+  .ai-card p {
+    margin: 4px 0;
+    font-size: 0.9rem;
+    color: #cbd5e1;
+  }
+  .ai-card p strong {
+    color: #e2e8f0;
+  }
+  .ai-highlight {
+    color: #fbbf24 !important;
+  }
+  .ai-prospect-score {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+  }
+  .ai-score-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+  .ai-score-value {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #38bdf8;
+  }
+  .ai-badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .ai-badge--priority {
+    background: #7c3aed;
+    color: #ede9fe;
+  }
+  .ai-damage {
+    margin-bottom: 20px;
+  }
+  .ai-subheading {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #7dd3fc;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin: 0 0 10px;
+  }
+  .ai-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  .ai-table th {
+    text-align: left;
+    padding: 8px 12px;
+    background: #0f172a;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid #334155;
+  }
+  .ai-table td {
+    padding: 8px 12px;
+    color: #cbd5e1;
+    border-bottom: 1px solid #1e293b;
+  }
+  .ai-table tr:last-child td {
+    border-bottom: none;
+  }
+  .ai-severity {
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .ai-severity--minor   { color: #4ade80; }
+  .ai-severity--moderate { color: #fbbf24; }
+  .ai-severity--severe  { color: #f87171; }
+  .ai-reasoning {
+    background: #1e293b;
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 14px 18px;
+  }
+  .ai-reasoning p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #94a3b8;
+    line-height: 1.6;
+  }
+`;
+
+// ============================================================
+// End AI analysis helpers
+// ============================================================
 
 const REPORT_API_URL = `${HAIL_YES_HAIL_API_BASE}/generate-report`;
 const REPORT_USER_EMAIL =
@@ -21,6 +307,8 @@ interface GenerateStormReportParams {
   events: StormEvent[];
   dateOfLoss: string;
   evidenceItems?: EvidenceItem[];
+  /** Optional AI property analysis to embed as the "Property Intelligence" section. */
+  aiAnalysis?: PropertyAnalysis | null;
 }
 
 type RiskLevel = 'Low' | 'Moderate' | 'High' | 'Critical';
@@ -175,6 +463,7 @@ export async function generateStormReport({
   events,
   dateOfLoss,
   evidenceItems = [],
+  aiAnalysis,
 }: GenerateStormReportParams): Promise<void> {
   const datedEvents = events.filter(
     (event) => event.beginDate.slice(0, 10) === dateOfLoss,
@@ -214,6 +503,9 @@ export async function generateStormReport({
     }),
   );
 
+  // Build the AI section HTML when analysis data is present.
+  const aiSectionHtml = buildAiSectionHtml(aiAnalysis);
+
   const payload = {
     address,
     lat,
@@ -235,6 +527,14 @@ export async function generateStormReport({
     repEmail: REPORT_REP_EMAIL,
     companyName: REPORT_COMPANY_NAME,
     evidenceItems: preparedEvidenceItems,
+    // AI property intelligence — included only when analysis data is available.
+    ...(aiSectionHtml
+      ? {
+          aiAnalysis: aiAnalysis ?? null,
+          aiSectionHtml,
+          aiSectionStyles: AI_SECTION_STYLES,
+        }
+      : {}),
   };
 
   const response = await fetch(REPORT_API_URL, {
@@ -256,4 +556,16 @@ export async function generateStormReport({
     blob,
     `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`,
   );
+}
+
+/**
+ * Convenience wrapper that makes the `aiAnalysis` parameter required.
+ * Use this when calling from a context where AI analysis has already been run.
+ */
+export async function generateEnhancedReport(
+  params: Omit<GenerateStormReportParams, 'aiAnalysis'> & {
+    aiAnalysis: PropertyAnalysis;
+  },
+): Promise<void> {
+  return generateStormReport(params);
 }
