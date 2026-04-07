@@ -75,6 +75,7 @@ import { fetchEvidenceCandidates } from './services/evidenceApi';
 import { buildEvidenceQuerySeeds } from './services/evidenceProviders';
 import { buildDemoEvidencePack } from './services/demoEvidence';
 import { buildRegionalEvidenceSeeds } from './services/regionalEvidenceSeeds';
+import { scanAreaWithAi } from './services/aiApi';
 
 const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string;
 const HAS_API_KEY = API_KEY && API_KEY !== 'your_google_maps_api_key_here';
@@ -612,6 +613,8 @@ function App({ onLogout }: { onLogout: () => void }) {
   });
   const [generatingReport, setGeneratingReport] = useState(false);
   const [downloadingEvidencePack, setDownloadingEvidencePack] = useState(false);
+  const [scanningArea, setScanningArea] = useState(false);
+  const [areaScanCount, setAreaScanCount] = useState(0);
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>(getNotificationPermission);
   const [pinnedProperties, setPinnedProperties] = useState<PinnedProperty[]>([]);
@@ -1065,6 +1068,36 @@ function App({ onLogout }: { onLogout: () => void }) {
     setSelectedDate(null);
     setEventFilters(nextFilters);
   }, []);
+
+  const handleScanArea = useCallback(async () => {
+    const bounds = camera.bounds;
+    if (!bounds) {
+      alert('No map bounds available. Pan or zoom the map first.');
+      return;
+    }
+
+    setScanningArea(true);
+    setAreaScanCount(0);
+
+    try {
+      const result = await scanAreaWithAi(
+        { north: bounds.north, south: bounds.south, east: bounds.east, west: bounds.west },
+        'insurance',
+        10,
+      );
+      setAreaScanCount(result.analyzed);
+      alert(
+        result.analyzed > 0
+          ? `Scanned ${result.analyzed} of ${result.total} properties. Check the AI Prospects tab.`
+          : 'No scorable properties found in this area. Try zooming in closer to a neighborhood.',
+      );
+    } catch (err) {
+      console.error('[handleScanArea]', err);
+      alert('Area scan failed. Check your connection and try again.');
+    } finally {
+      setScanningArea(false);
+    }
+  }, [camera.bounds]);
 
   const handleGenerateReport = useCallback(async (dateOfLoss: string) => {
     if (!dateOfLoss) {
@@ -2815,6 +2848,9 @@ function App({ onLogout }: { onLogout: () => void }) {
                 setAiSlideAddress(address);
                 setAiSlideOpen(true);
               }}
+              onScanAreaWithAi={handleScanArea}
+              scanningArea={scanningArea}
+              areaScanCount={areaScanCount}
             />
 
             {mapWorkspace}

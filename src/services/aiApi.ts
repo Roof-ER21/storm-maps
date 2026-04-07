@@ -304,3 +304,34 @@ export async function getStoredImages(analysisId: string): Promise<PropertyImage
   );
   return handleResponse<PropertyImage[]>(res);
 }
+
+// ============================================================
+// Bulk swath / area scan
+// ============================================================
+
+export interface ScanAreaResult {
+  total: number;
+  analyzed: number;
+  results: Array<{ leadId: string; analysisId: string; score: number | null }>;
+}
+
+/**
+ * POST /api/ai/bridge/scan-area
+ * Discover NEW addresses within a bounding box via Overpass and run AI on each.
+ *
+ * @param bounds  Map bounding box { north, south, east, west }.
+ * @param mode    Audience context — affects scoring weights.
+ * @param limit   Max properties to analyse per call (default 10).
+ */
+export async function scanAreaWithAi(
+  bounds: { north: number; south: number; east: number; west: number },
+  mode: AnalysisMode = 'insurance',
+  limit = 10,
+): Promise<ScanAreaResult> {
+  const res = await fetch(`${API_BASE}/bridge/scan-area`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ ...bounds, mode, limit }),
+  });
+  return handleResponse<ScanAreaResult>(res);
+}

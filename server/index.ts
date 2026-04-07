@@ -12,6 +12,7 @@ import jwt from 'jsonwebtoken';
 import Stripe from 'stripe';
 
 // AI Property Analysis routes
+import { purgeExpiredCache } from './ai/services/enrichmentCache.js';
 import analysisRoutes from './ai/routes/analysisRoutes.js';
 import aiBatchRoutes from './ai/routes/batchRoutes.js';
 import aiHistoryRoutes from './ai/routes/historyRoutes.js';
@@ -718,3 +719,21 @@ app.get('{*path}', (_req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Hail Yes! running on port ${PORT}`);
 });
+
+// ── Cache cleanup ───────────────────────────────────────
+// Run once 30 s after startup (lets DB connections settle), then every 6 hours.
+setTimeout(async () => {
+  try {
+    const deleted = await purgeExpiredCache(db);
+    console.log(`[cache] Initial cleanup: ${deleted} expired entries purged`);
+  } catch { /* non-critical — ignore startup errors */ }
+}, 30_000);
+
+setInterval(async () => {
+  try {
+    const deleted = await purgeExpiredCache(db);
+    if (deleted > 0) console.log(`[cache] Purged ${deleted} expired entries`);
+  } catch (err) {
+    console.error('[cache] Cleanup failed:', err);
+  }
+}, 6 * 60 * 60 * 1000); // 6 hours

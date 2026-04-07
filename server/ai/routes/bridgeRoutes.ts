@@ -11,6 +11,7 @@ import { propertyAnalyses } from '../schema.js';
 import { eq, and, gte, lte } from 'drizzle-orm';
 import { analyzeProperty } from '../services/propertyAnalyzer.js';
 import type { AnalysisMode } from '../services/analysisMode.js';
+import { findNearbyBuildings } from '../services/neighborhoodService.js';
 
 const router = Router();
 
@@ -149,6 +150,125 @@ router.post('/analyze-swath', async (req, res) => {
   } catch (err) {
     console.error('[bridge] analyze-swath error:', err);
     res.status(500).json({ error: 'Failed to analyze swath' });
+  }
+});
+
+/**
+ * POST /api/ai/bridge/scan-area
+ * Discover NEW addresses in a bounding box via Overpass and run AI on each.
+ *
+ * Body: { north, south, east, west, mode?, limit? }
+ *
+ * Workflow:
+ *  1. Calculate the center of the bounding box.
+ *  2. Derive a search radius from the box dimensions.
+ *  3. Call findNearbyBuildings() (Overpass → residential grid fallback).
+ *  4. For each building with a usable address, insert a lead row and run
+ *     analyzeProperty() — up to `limit` properties, 2 at a time.
+ *  5. Return { total, analyzed, results }.
+ */
+router.post('/scan-area', async (req, res) => {
+  try {
+    const { north, south, east, west, mode = 'insurance', limit = 10 } = req.body as {
+      north?: number;
+      south?: number;
+      east?: number;
+      west?: number;
+      mode?: string;
+      limit?: number;
+    };
+
+    if (north == null || south == null || east == null || west == null) {
+      res.status(400).json({ error: 'Bounding box (north, south, east, west) required' });
+      return;
+    }
+
+    const config = getConfig();
+    if (!config.googleMapsApiKey || !config.geminiApiKey) {
+      res.status(500).json({ error: 'API keys not configured' });
+      return;
+    }
+
+    // 1. Derive center + radius from the bounding box
+    const centerLat = (north + south) / 2;
+    const centerLng = (east + west) / 2;
+
+    // Approximate the bounding box half-diagonal in metres for the Overpass radius.
+    // 1 degree lat ≈ 111 320 m; lng varies by latitude.
+    const mPerDegLat = 111_320;
+    const mPerDegLng = 111_320 * Math.cos((centerLat * Math.PI) / 180);
+    const halfLatM = ((north - south) / 2) * mPerDegLat;
+    const halfLngM = ((east - west) / 2) * mPerDegLng;
+    const radiusMeters = Math.min(Math.sqrt(halfLatM ** 2 + halfLngM ** 2), 2000);
+
+    const cap = Math.min(Number(limit) || 10, 20); // hard cap at 20
+
+    // 2. Find buildings near the center
+    const buildings = await findNearbyBuildings(centerLat, centerLng, radiusMeters, cap * 2);
+
+    // Keep only buildings that have at least coordinates (address optional)
+    const candidates = buildings.slice(0, cap);
+
+    const results: Array<{ leadId: string; analysisId: string; score: number | null }> = [];
+
+    const processBuilding = async (building: typeof candidates[0]) => {
+      try {
+        // Build the best available address string
+        const addressStr = building.address
+          ?? `Property at ${building.lat.toFixed(5)}, ${building.lng.toFixed(5)}`;
+
+        // Insert a lead row so results appear in the AI Prospects pipeline
+        const now = new Date();
+        const leadId = `scan_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+        await db.insert(leads).values({
+          id: leadId,
+          propertyLabel: addressStr,
+          stormDate: new Date().toISOString().slice(0, 10),
+          stormLabel: 'Area Scan',
+          lat: building.lat,
+          lng: building.lng,
+          locationLabel: addressStr,
+          sourceLabel: 'scan-area',
+          status: 'queued',
+          leadStage: 'new',
+        });
+
+        // Run AI analysis
+        const analysis = await analyzeProperty(addressStr, db, config, mode as AnalysisMode);
+
+        // Link the analysis back to the lead
+        await db.update(leads).set({
+          aiAnalysisId: analysis.id,
+          aiProspectScore: analysis.prospectScore,
+          aiRoofType: analysis.roofType,
+          aiRoofCondition: analysis.roofCondition,
+          updatedAt: now,
+        }).where(eq(leads.id, leadId));
+
+        results.push({ leadId, analysisId: analysis.id, score: analysis.prospectScore });
+      } catch (err) {
+        console.error('[bridge] scan-area: failed to process building:', err);
+      }
+    };
+
+    // 3. Process 2 at a time
+    const queue = [...candidates];
+    const workers = Array.from({ length: Math.min(2, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const building = queue.shift();
+        if (building) await processBuilding(building);
+      }
+    });
+    await Promise.all(workers);
+
+    res.json({
+      total: candidates.length,
+      analyzed: results.length,
+      results,
+    });
+  } catch (err) {
+    console.error('[bridge] scan-area error:', err);
+    res.status(500).json({ error: 'Failed to scan area' });
   }
 });
 

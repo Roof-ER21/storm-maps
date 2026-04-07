@@ -48,6 +48,9 @@ interface SidebarProps {
   onToggleStormRoute: (stormDate: StormDate) => void;
   onBuildKnockRoute: () => void;
   onAnalyzeProperty?: (address: string) => void;
+  onScanAreaWithAi?: () => void;
+  scanningArea?: boolean;
+  areaScanCount?: number;
 }
 
 type TabId = 'recent' | 'impact';
@@ -82,6 +85,9 @@ export default function Sidebar({
   onToggleStormRoute,
   onBuildKnockRoute,
   onAnalyzeProperty,
+  onScanAreaWithAi,
+  scanningArea = false,
+  areaScanCount = 0,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>('recent');
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -378,6 +384,53 @@ export default function Sidebar({
                 <path d="M7.702 1.368a.75.75 0 0 1 .597 0c.2.085 3.951 1.725 3.951 5.048 0 1.992-1.14 3.55-2.683 4.51a.75.75 0 0 1-.78 0C7.24 9.966 6.1 8.408 6.1 6.416c0-3.323 3.751-4.963 3.951-5.048h-.349Zm.298 1.563a5.14 5.14 0 0 0-.84.705A4.07 4.07 0 0 0 5.6 6.416c0 1.453.728 2.72 1.9 3.57C8.672 9.136 9.4 7.87 9.4 6.416a4.07 4.07 0 0 0-1.4-3.485ZM1.5 14.25a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 0 1.5H2.25a.75.75 0 0 1-.75-.75Z" />
               </svg>
               Analyze with AI
+            </button>
+          )}
+          {onScanAreaWithAi && searchSummary && (
+            <button
+              type="button"
+              onClick={onScanAreaWithAi}
+              disabled={scanningArea}
+              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-orange-500/20 px-3 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition-colors border border-orange-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {scanningArea ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="w-3.5 h-3.5 animate-spin"
+                    aria-hidden="true"
+                  >
+                    <path d="M21 12a9 9 0 1 1-6.219-8.56" />
+                  </svg>
+                  {areaScanCount > 0
+                    ? `Scanning ${areaScanCount} properties\u2026`
+                    : 'Scanning area\u2026'}
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 16 16"
+                    fill="currentColor"
+                    className="w-3.5 h-3.5"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M2 4.25A2.25 2.25 0 0 1 4.25 2h7.5A2.25 2.25 0 0 1 14 4.25v7.5A2.25 2.25 0 0 1 11.75 14h-7.5A2.25 2.25 0 0 1 2 11.75v-7.5Zm2.25-.75a.75.75 0 0 0-.75.75v7.5c0 .414.336.75.75.75h7.5a.75.75 0 0 0 .75-.75v-7.5a.75.75 0 0 0-.75-.75h-7.5Z"
+                      clipRule="evenodd"
+                    />
+                    <path d="M8.75 5.75a.75.75 0 0 0-1.5 0v1.5h-1.5a.75.75 0 0 0 0 1.5h1.5v1.5a.75.75 0 0 0 1.5 0v-1.5h1.5a.75.75 0 0 0 0-1.5h-1.5v-1.5Z" />
+                  </svg>
+                  Scan Area with AI
+                </>
+              )}
             </button>
           )}
         </div>
