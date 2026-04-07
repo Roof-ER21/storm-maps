@@ -442,6 +442,8 @@ function LayerStatusPanel({
   onSelectMrmsProduct: (product: MrmsOverlayProduct) => void;
   mrmsHistoricalMode: boolean;
 }) {
+  const [mrmsInfoCollapsed, setMrmsInfoCollapsed] = useState(false);
+
   if (!showNexrad && !showMrms) {
     return null;
   }
@@ -478,9 +480,28 @@ function LayerStatusPanel({
         </div>
       )}
 
-      {showMrms && (
-        <div className="rounded-xl border border-orange-700/70 bg-gray-950/88 p-3 text-white shadow-xl backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-3">
+      {showMrms && mrmsInfoCollapsed && (
+        <button
+          onClick={() => setMrmsInfoCollapsed(false)}
+          className="rounded-lg bg-zinc-900/90 border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-orange-300 backdrop-blur"
+        >
+          MRMS Info
+        </button>
+      )}
+
+      {showMrms && !mrmsInfoCollapsed && (
+        <div className="relative rounded-xl border border-orange-700/70 bg-gray-950/88 p-3 text-white shadow-xl backdrop-blur-sm">
+          <button
+            onClick={() => setMrmsInfoCollapsed(true)}
+            className="absolute top-2 right-2 text-zinc-400 hover:text-white"
+            aria-label="Collapse MRMS info"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+
+          <div className="flex items-center justify-between gap-3 pr-5">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-300">
                 MRMS
@@ -1164,7 +1185,7 @@ function MapContent({
       <MRMSOverlay
         visible={showMrms && !mrmsHistoricalMode}
         product={mrmsProduct}
-        opacity={mrmsProduct === 'mesh60' ? 0.72 : 0.6}
+        opacity={0.72}
         bounds={mrmsMeta?.bounds || null}
       />
 

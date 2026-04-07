@@ -56,6 +56,48 @@ interface SidebarProps {
 type TabId = 'recent' | 'impact';
 type DateListFilter = 'all' | 'major' | 'proof' | 'knock';
 
+function CollapsibleSection({
+  title,
+  defaultOpen = true,
+  children,
+  badge,
+}: {
+  title: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+  badge?: string | number;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div className="border-b border-zinc-800/60">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          {title}
+          {badge != null && (
+            <span className="rounded-full bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-bold text-orange-300 normal-case tracking-normal">
+              {badge}
+            </span>
+          )}
+        </span>
+        <svg
+          className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
+
 export default function Sidebar({
   stormDates,
   events,
@@ -538,10 +580,12 @@ export default function Sidebar({
                   : 'Add Route'}
               </button>
             </div>
+          </div>
+          <CollapsibleSection title="Actions" defaultOpen={false}>
             <button
               type="button"
               onClick={onOpenReports}
-              className="mt-2 w-full rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-orange-100/90 transition-colors hover:bg-black/25"
+              className="w-full rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-orange-100/90 transition-colors hover:bg-black/25"
             >
               Open Report Workspace
             </button>
@@ -558,7 +602,7 @@ export default function Sidebar({
                 {showSelectedStormDetails ? '−' : '+'}
               </span>
             </button>
-          </div>
+          </CollapsibleSection>
 
           {showSelectedStormDetails && (
             <>
@@ -621,14 +665,8 @@ export default function Sidebar({
         </div>
       )}
 
-      <div className="border-b border-gray-800 px-3 py-3">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-            Event Filters
-          </p>
-          <span className="text-[10px] text-gray-600">map + dates</span>
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
+      <CollapsibleSection title="Event Filters" defaultOpen={true}>
+        <div className="grid grid-cols-2 gap-2">
           <FilterButton
             active={eventFilters.hail}
             label="Hail"
@@ -650,11 +688,15 @@ export default function Sidebar({
             }
           />
         </div>
-      </div>
+      </CollapsibleSection>
 
       <div className="min-h-0">
-        <div className="border-b border-gray-800">
-          <div className="flex items-center border-b border-gray-800">
+        <CollapsibleSection
+          title="Storm Reports"
+          defaultOpen={true}
+          badge={sortedDates.length > 0 ? sortedDates.length : undefined}
+        >
+          <div className="flex -mx-4 border-b border-zinc-800/60 mb-3">
             <TabButton
               active={activeTab === 'recent'}
               onClick={() => setActiveTab('recent')}
@@ -666,12 +708,7 @@ export default function Sidebar({
               label="Impact"
             />
           </div>
-          <div className="px-3 py-2">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-              Hail Dates
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-1.5 px-3 pb-2">
+          <div className="flex flex-wrap gap-1.5">
             <ListFilterChip
               active={dateListFilter === 'all'}
               label={`All ${sortedDates.length}`}
@@ -693,78 +730,88 @@ export default function Sidebar({
               onClick={() => setDateListFilter('knock')}
             />
           </div>
-          {knockQueue.length > 0 && (
-            <div className="border-t border-gray-800 px-3 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-orange-200">
-                  Canvass Queue
-                </p>
+        </CollapsibleSection>
+
+        {knockQueue.length > 0 && (
+          <CollapsibleSection
+            title="Canvass Queue"
+            defaultOpen={false}
+            badge={knockQueue.length}
+          >
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <button
+                type="button"
+                onClick={onBuildKnockRoute}
+                className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-100 transition-colors hover:bg-orange-500/20"
+              >
+                Build Route
+              </button>
+            </div>
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {knockQueue.map((stormDate) => (
                 <button
+                  key={`queue-${stormDate.date}`}
                   type="button"
-                  onClick={onBuildKnockRoute}
-                  className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-100 transition-colors hover:bg-orange-500/20"
+                  onClick={() => handleDateClick(stormDate)}
+                  className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-semibold text-orange-100"
                 >
-                  Build Route
+                  {stormDate.label}
                 </button>
-              </div>
-              <div className="mt-1 flex gap-1.5 overflow-x-auto pb-1">
-                {knockQueue.map((stormDate) => (
-                  <button
-                    key={`queue-${stormDate.date}`}
-                    type="button"
-                    onClick={() => handleDateClick(stormDate)}
-                    className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-semibold text-orange-100"
-                  >
-                    {stormDate.label}
-                  </button>
-                ))}
-              </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        <CollapsibleSection
+          title="Storm Dates"
+          defaultOpen={true}
+          badge={displayedDates.length > 0 ? displayedDates.length : undefined}
+        >
+          {loading && (
+            <div className="py-4 text-center">
+              <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-600 border-t-orange-400" />
+              <p className="text-xs text-gray-500 mt-2">Loading storm data...</p>
             </div>
           )}
-        </div>
 
-        {loading && (
-          <div className="p-4 text-center">
-            <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-600 border-t-orange-400" />
-            <p className="text-xs text-gray-500 mt-2">Loading storm data...</p>
+          {error && (
+            <div className="rounded-lg border border-orange-500/30 bg-orange-950/25 p-3">
+              <p className="text-xs text-orange-300">{error}</p>
+            </div>
+          )}
+
+          {!loading && !error && displayedDates.length === 0 && (
+            <div className="py-4 text-center">
+              <p className="text-sm text-gray-500">No storm dates found</p>
+              <p className="text-xs text-gray-600 mt-1">
+                {searchSummary
+                  ? `Try 2Y or 5Y, or search a broader nearby area than ${searchSummary.locationLabel}.`
+                  : 'Search an address, city, or ZIP to load nearby hail dates.'}
+              </p>
+            </div>
+          )}
+
+          <div className="-mx-4">
+            {displayedDates.map((sd) => (
+              <StormDateCard
+                key={sd.date}
+                stormDate={sd}
+                isSelected={selectedDate?.date === sd.date}
+                isExpanded={expandedDate === sd.date}
+                compact={false}
+                events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
+                evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
+                generatingReport={generatingReport}
+                onGenerateReport={onGenerateReport}
+                onOpenEvidence={onOpenEvidence}
+                routeQueuedCount={queuedRouteCountsByDate[sd.date] || 0}
+                onToggleRoute={() => onToggleStormRoute(sd)}
+                onClick={() => handleDateClick(sd)}
+                onToggleExpand={(e) => toggleExpand(sd.date, e)}
+              />
+            ))}
           </div>
-        )}
-
-        {error && (
-          <div className="m-3 rounded-lg border border-orange-500/30 bg-orange-950/25 p-3">
-            <p className="text-xs text-orange-300">{error}</p>
-          </div>
-        )}
-
-        {!loading && !error && displayedDates.length === 0 && (
-          <div className="p-4 text-center">
-            <p className="text-sm text-gray-500">No storm dates found</p>
-            <p className="text-xs text-gray-600 mt-1">
-              {searchSummary
-                ? `Try 2Y or 5Y, or search a broader nearby area than ${searchSummary.locationLabel}.`
-                : 'Search an address, city, or ZIP to load nearby hail dates.'}
-            </p>
-          </div>
-        )}
-
-        {displayedDates.map((sd) => (
-          <StormDateCard
-            key={sd.date}
-            stormDate={sd}
-            isSelected={selectedDate?.date === sd.date}
-            isExpanded={expandedDate === sd.date}
-            compact={false}
-            events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
-            evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
-            generatingReport={generatingReport}
-            onGenerateReport={onGenerateReport}
-            onOpenEvidence={onOpenEvidence}
-            routeQueuedCount={queuedRouteCountsByDate[sd.date] || 0}
-            onToggleRoute={() => onToggleStormRoute(sd)}
-            onClick={() => handleDateClick(sd)}
-            onToggleExpand={(e) => toggleExpand(sd.date, e)}
-          />
-        ))}
+        </CollapsibleSection>
       </div>
 
       <div className="border-t border-gray-800 p-3">
