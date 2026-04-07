@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import type {
   CanvassRouteStop,
   EvidenceItem,
@@ -9,6 +9,8 @@ import type {
 } from '../types/storm';
 import type { StormAlert } from '../hooks/useStormAlerts';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
+import { getAiDashboard } from '../services/aiApi';
+import type { AiDashboardStats } from '../types/analysis';
 
 interface DashboardPageProps {
   searchSummary: PropertySearchSummary | null;
@@ -33,6 +35,7 @@ interface DashboardPageProps {
   onImportBackup: (file: File) => void;
   onSeedDemo: () => void;
   onImportHomeowners: () => void;
+  onOpenAiAnalysis?: (address?: string) => void;
 }
 
 export default function DashboardPage({
@@ -58,7 +61,17 @@ export default function DashboardPage({
   onImportBackup,
   onSeedDemo,
   onImportHomeowners,
+  onOpenAiAnalysis,
 }: DashboardPageProps) {
+  const [aiStats, setAiStats] = useState<AiDashboardStats | null>(null);
+  const [devToolsOpen, setDevToolsOpen] = useState(false);
+
+  useEffect(() => {
+    getAiDashboard()
+      .then((data) => setAiStats(data))
+      .catch(() => { /* AI stats are supplemental — swallow errors silently */ });
+  }, []);
+
   const hailEvents = events.filter((event) => event.eventType === 'Hail');
   const totalDamage = events.reduce(
     (sum, event) => sum + Math.max(0, event.damageProperty || 0),
@@ -95,10 +108,10 @@ export default function DashboardPage({
     .slice(0, 5);
 
   const heroLabel =
-    searchSummary?.locationLabel ?? 'VA, MD, PA hail reconnaissance workspace';
+    searchSummary?.locationLabel ?? 'DMV Storm Intelligence';
   const heroSubcopy = searchSummary
     ? `Current property workspace centered on ${searchSummary.locationLabel}.`
-    : 'Comprehensive hail and wind reconnaissance for Virginia, Maryland, and Pennsylvania.';
+    : 'Hail, wind, and property reconnaissance for the DC, Maryland & Virginia market.';
 
   return (
     <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.18),_transparent_24%),radial-gradient(circle_at_75%_10%,_rgba(124,58,237,0.18),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_42%,_#04020a_100%)] px-4 py-5 lg:px-6">
@@ -616,15 +629,123 @@ export default function DashboardPage({
             >
               Import Homeowner CSV
             </button>
+          </div>
+
+          {/* Developer Tools — collapsed by default so they don't dominate the UI */}
+          <div className="mt-5 border-t border-slate-800 pt-4">
             <button
               type="button"
-              onClick={onSeedDemo}
-              className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 sm:py-2.5 text-sm font-semibold text-amber-300 hover:bg-amber-500/20"
+              onClick={() => setDevToolsOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-400 transition-colors"
             >
-              Load Demo Data
+              <svg
+                className={`h-3 w-3 transition-transform ${devToolsOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              Developer tools
             </button>
+            {devToolsOpen && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onSeedDemo}
+                  className="rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-500 hover:border-slate-600 hover:text-slate-300 transition-colors"
+                >
+                  Load demo data
+                </button>
+              </div>
+            )}
           </div>
         </section>
+
+        {/* AI Intelligence section */}
+        {aiStats && aiStats.total > 0 ? (
+          <section className="rounded-[28px] border border-violet-500/20 bg-violet-500/[0.04] p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-400">
+                  AI Intelligence
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-white">
+                  Property analysis overview
+                </h3>
+              </div>
+              {onOpenAiAnalysis && (
+                <button
+                  type="button"
+                  onClick={() => onOpenAiAnalysis()}
+                  className="shrink-0 rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.2)] transition-opacity hover:opacity-90"
+                >
+                  Analyze a Property
+                </button>
+              )}
+            </div>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <MetricCard
+                label="Total Scans"
+                value={String(aiStats.total)}
+                tone="violet"
+                icon={<TrendIcon />}
+                compact
+              />
+              <MetricCard
+                label="Completed"
+                value={String(aiStats.completed)}
+                tone="orange"
+                icon={<CalendarIcon />}
+                compact
+              />
+              <MetricCard
+                label="High Priority"
+                value={String(aiStats.highPriority)}
+                tone="rose"
+                icon={<AlertIcon />}
+                compact
+              />
+              <MetricCard
+                label="Aluminum Siding"
+                value={String(aiStats.aluminumSiding)}
+                tone="amber"
+                icon={<HailIcon />}
+                compact
+              />
+            </div>
+          </section>
+        ) : aiStats !== null && onOpenAiAnalysis ? (
+          <section className="rounded-[28px] border border-violet-500/18 bg-[linear-gradient(135deg,rgba(124,58,237,0.06),rgba(249,115,22,0.04))] p-6">
+            <div className="flex flex-col items-center gap-5 text-center sm:flex-row sm:text-left">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-violet-500/15 text-violet-300 ring-1 ring-violet-400/15">
+                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-400">
+                  AI Intelligence
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-white">
+                  Know the roof before you knock the door
+                </h3>
+                <p className="mt-1.5 text-sm leading-6 text-slate-400">
+                  Instant condition scoring, material detection, and storm damage probability — powered by satellite imagery and AI.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenAiAnalysis()}
+                className="shrink-0 rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-5 py-3 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(124,58,237,0.25)] transition-opacity hover:opacity-90"
+              >
+                Analyze a Property
+              </button>
+            </div>
+          </section>
+        ) : null}
       </div>
     </section>
   );
@@ -706,10 +827,7 @@ function RecentEventCard({
   event: StormEvent;
   onClick: () => void;
 }) {
-  const severityValue =
-    event.eventType === 'Hail'
-      ? event.magnitude
-      : event.magnitude;
+  const severityValue = event.magnitude;
   const severityLabel =
     event.eventType === 'Hail'
       ? `${trimTrailingZeroes(event.magnitude)} in (${hailNickname(event.magnitude)})`
@@ -733,7 +851,7 @@ function RecentEventCard({
           </div>
           <p className="mt-1 text-sm text-slate-400">{severityLabel}</p>
         </div>
-        <div className="shrink-0">{renderSeverityStars(severityValue, event.eventType)}</div>
+        <div className="shrink-0">{renderSeverityPill(severityValue, event.eventType)}</div>
       </div>
 
       <div className="mt-5 space-y-2 text-sm text-slate-400">
@@ -857,20 +975,39 @@ function formatShortDate(value: string): string {
   });
 }
 
-function renderSeverityStars(value: number, eventType: StormEvent['eventType']) {
-  const normalized =
-    eventType === 'Hail'
-      ? Math.max(1, Math.min(5, Math.ceil(value / 0.5)))
-      : Math.max(1, Math.min(5, Math.ceil(value / 15)));
+function renderSeverityPill(value: number, eventType: StormEvent['eventType']) {
+  let label: string;
+  let colorClass: string;
+
+  if (eventType === 'Hail') {
+    if (value >= 2.0) {
+      label = 'Severe';
+      colorClass = 'border-red-400/30 bg-red-500/15 text-red-300';
+    } else if (value >= 1.0) {
+      label = 'Significant';
+      colorClass = 'border-amber-400/30 bg-amber-500/15 text-amber-300';
+    } else {
+      label = 'Minor';
+      colorClass = 'border-slate-600/40 bg-slate-800/60 text-slate-400';
+    }
+  } else {
+    // Wind
+    if (value >= 65) {
+      label = 'Severe';
+      colorClass = 'border-red-400/30 bg-red-500/15 text-red-300';
+    } else if (value >= 40) {
+      label = 'Moderate';
+      colorClass = 'border-amber-400/30 bg-amber-500/15 text-amber-300';
+    } else {
+      label = 'Low';
+      colorClass = 'border-slate-600/40 bg-slate-800/60 text-slate-400';
+    }
+  }
 
   return (
-    <div className="flex items-center gap-1 text-amber-300">
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className={index < normalized ? 'opacity-100' : 'opacity-25'}>
-          ★
-        </span>
-      ))}
-    </div>
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold tracking-wide ${colorClass}`}>
+      {label}
+    </span>
   );
 }
 

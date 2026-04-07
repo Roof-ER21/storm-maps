@@ -56,12 +56,8 @@ export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
 
 export type AppView =
   | 'dashboard'
-  | 'today'
   | 'map'
   | 'pipeline'
-  | 'canvass'
-  | 'leads'
-  | 'pinned'
   | 'reports'
   | 'evidence'
   | 'team';

@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { getAiLeads } from '../services/aiApi';
 import type {
   CanvassOutcome,
   CanvassRouteArchive,
@@ -13,8 +14,9 @@ import type {
 import PinnedPropertiesPage from './PinnedPropertiesPage';
 import CanvassPage from './CanvassPage';
 import LeadsPage from './LeadsPage';
+const AiLeadsPage = lazy(() => import('./AiLeadsPage'));
 
-type PipelineTab = 'targets' | 'route' | 'leads';
+type PipelineTab = 'targets' | 'route' | 'leads' | 'ai-prospects';
 
 interface PipelinePageProps {
   searchSummary: PropertySearchSummary | null;
@@ -52,17 +54,26 @@ interface PipelinePageProps {
   onLookupPropertyOwner: (stopId: string) => void;
 
   onOpenMap: () => void;
+  onOpenAiAnalysis?: (address: string) => void;
 }
 
 const TABS: Array<{ id: PipelineTab; label: string; desc: string }> = [
   { id: 'targets', label: 'Targets', desc: 'Pinned properties' },
   { id: 'route', label: 'Route', desc: 'Canvass stops' },
   { id: 'leads', label: 'Leads', desc: 'Sales pipeline' },
+  { id: 'ai-prospects', label: 'AI Prospects', desc: 'AI-analyzed leads' },
 ];
 
 export default function PipelinePage(props: PipelinePageProps) {
   const [activeTab, setActiveTab] = useState<PipelineTab>('leads');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [aiProspectCount, setAiProspectCount] = useState(0);
+
+  useEffect(() => {
+    getAiLeads({ limit: 1 })
+      .then((result) => setAiProspectCount(result.pagination.total))
+      .catch(() => { /* non-critical — leave count at 0 */ });
+  }, []);
 
   const activeLeadCount = props.routeStops.filter((s) =>
     s.outcome === 'interested' || s.outcome === 'follow_up' || s.outcome === 'inspection_booked',
@@ -78,7 +89,8 @@ export default function PipelinePage(props: PipelinePageProps) {
             const isActive = activeTab === tab.id;
             const count = tab.id === 'targets' ? props.pinnedProperties.length
               : tab.id === 'route' ? routeCount
-              : activeLeadCount;
+              : tab.id === 'leads' ? activeLeadCount
+              : aiProspectCount;
 
             return (
               <button
@@ -163,6 +175,20 @@ export default function PipelinePage(props: PipelinePageProps) {
             onUpdateLeadHomeowner={props.onUpdateStopHomeowner}
             onRestoreArchive={props.onRestoreArchive}
           />
+        )}
+
+        {activeTab === 'ai-prospects' && (
+          <Suspense fallback={
+            <div className="flex flex-1 items-center justify-center py-24 text-slate-500 text-sm">
+              Loading AI Prospects...
+            </div>
+          }>
+            <AiLeadsPage
+              onViewAnalysis={(address) => {
+                if (props.onOpenAiAnalysis) props.onOpenAiAnalysis(address);
+              }}
+            />
+          </Suspense>
         )}
       </div>
     </section>

@@ -12,16 +12,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "dev:server": "tsx watch server/index.ts",
+    "dev:server": "tsx watch --env-file=.env.local server/index.ts",
     "build": "tsc -b && vite build",
     "start": "node --import tsx server/migrate.ts && node --import tsx server/index.ts",
-    "db:migrate": "node --import tsx server/migrate.ts",
+    "db:migrate": "node --env-file=.env.local --import tsx server/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "lint": "eslint .",
     "preview": "vite preview"
   },
   "dependencies": {
+    "@google/genai": "^1.48.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
@@ -34,12 +35,14 @@
     "express-rate-limit": "^8.3.1",
     "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
+    "multer": "^2.1.1",
     "postgres": "^3.4.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "stripe": "^21.0.1",
     "tailwindcss": "^4.2.2",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

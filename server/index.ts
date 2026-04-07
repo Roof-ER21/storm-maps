@@ -11,6 +11,19 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import Stripe from 'stripe';
 
+// AI Property Analysis routes
+import analysisRoutes from './ai/routes/analysisRoutes.js';
+import aiBatchRoutes from './ai/routes/batchRoutes.js';
+import aiHistoryRoutes from './ai/routes/historyRoutes.js';
+import aiNeighborhoodRoutes from './ai/routes/neighborhoodRoutes.js';
+import aiZipScanRoutes from './ai/routes/zipScanRoutes.js';
+import aiLeadRoutes from './ai/routes/leadRoutes.js';
+import aiAutocompleteRoutes from './ai/routes/autocompleteRoutes.js';
+import aiImageProxy from './ai/routes/imageProxy.js';
+import aiDashboardRoutes from './ai/routes/dashboardRoutes.js';
+import aiBridgeRoutes from './ai/routes/bridgeRoutes.js';
+import { requireAuth, checkScanLimit } from './ai/authMiddleware.js';
+
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
@@ -27,7 +40,7 @@ if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const app = express();
 app.set('trust proxy', 1);
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '3100', 10);
 
 // Stripe webhook needs raw body — must be before express.json()
 app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -74,6 +87,20 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, try again later' },
 });
 app.use('/api/', apiLimiter);
+
+// ── AI Property Analysis API ───────────────────────────
+// Auth + scan limits on write endpoints (POST), reads are open
+app.use('/api/ai/analyze', requireAuth, checkScanLimit, analysisRoutes);
+app.use('/api/ai/batch', requireAuth, checkScanLimit, aiBatchRoutes);
+app.use('/api/ai/zip-scan', requireAuth, checkScanLimit, aiZipScanRoutes);
+app.use('/api/ai/bridge', requireAuth, checkScanLimit, aiBridgeRoutes);
+// Read-only endpoints — auth recommended but not required
+app.use('/api/ai/history', aiHistoryRoutes);
+app.use('/api/ai/neighborhood', aiNeighborhoodRoutes);
+app.use('/api/ai/property-leads', aiLeadRoutes);
+app.use('/api/ai/autocomplete', aiAutocompleteRoutes);
+app.use('/api/ai/images', aiImageProxy);
+app.use('/api/ai/dashboard', aiDashboardRoutes);
 
 // Serve Vite build
 app.use(express.static(path.join(__dirname, '../dist')));

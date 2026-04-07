@@ -62,6 +62,7 @@ const PipelinePage = lazy(() => import('./components/PipelinePage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
+const AiSlideOver = lazy(() => import('./components/AiSlideOver'));
 import { syncLeadsToServer, seedDemoData, createShareableReport, fetchLeadsFromServer, uploadEvidenceBlob } from './services/api';
 import { extractGpsFromBlob } from './services/exifGps';
 import { lookupProperty, type PropertyInfo } from './services/propertyLookup';
@@ -587,6 +588,8 @@ function App({ onLogout }: { onLogout: () => void }) {
   const { showOnboarding, markComplete: completeOnboarding } = useOnboarding();
   const [activeView, setActiveView] = useState<AppView>('dashboard');
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
+  const [aiSlideOpen, setAiSlideOpen] = useState(false);
+  const [aiSlideAddress, setAiSlideAddress] = useState('');
 
   // ---- Location state ----
   const [camera, setCamera] = useState<MapCameraState>({
@@ -2738,6 +2741,10 @@ function App({ onLogout }: { onLogout: () => void }) {
         onChangeView={setActiveView}
         pinnedCount={pinnedProperties.length}
         activeSearchLabel={searchSummary?.locationLabel ?? null}
+        onOpenAi={() => {
+          setAiSlideAddress('');
+          setAiSlideOpen(true);
+        }}
       />
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -2767,6 +2774,10 @@ function App({ onLogout }: { onLogout: () => void }) {
             onImportBackup={handleImportBackup}
             onSeedDemo={handleSeedDemo}
             onImportHomeowners={() => setShowHomeownerImport(true)}
+            onOpenAiAnalysis={(address) => {
+              setAiSlideAddress(address ?? '');
+              setAiSlideOpen(true);
+            }}
           />
         )}
 
@@ -2800,6 +2811,10 @@ function App({ onLogout }: { onLogout: () => void }) {
               queuedRouteCountsByDate={Object.fromEntries(routeQueuedCountsByDate)}
               onToggleStormRoute={handleToggleStormRoute}
               onBuildKnockRoute={handleBuildKnockRoute}
+              onAnalyzeProperty={(address) => {
+                setAiSlideAddress(address);
+                setAiSlideOpen(true);
+              }}
             />
 
             {mapWorkspace}
@@ -2836,6 +2851,10 @@ function App({ onLogout }: { onLogout: () => void }) {
             onUpdateLeadChecklist={handleUpdateRouteStopChecklist}
             onLookupPropertyOwner={handleLookupPropertyOwner}
             onOpenMap={() => setActiveView('map')}
+            onOpenAiAnalysis={(address) => {
+              setAiSlideAddress(address);
+              setAiSlideOpen(true);
+            }}
           />
         )}
 
@@ -2898,6 +2917,55 @@ function App({ onLogout }: { onLogout: () => void }) {
       )}
 
       {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+
+      <Suspense fallback={null}>
+        {aiSlideOpen && (
+          <AiSlideOver
+            open={aiSlideOpen}
+            onClose={() => setAiSlideOpen(false)}
+            initialAddress={aiSlideAddress}
+            onAddToPipeline={(analysis) => {
+              const now = new Date().toISOString();
+              const newStop: CanvassRouteStop = {
+                id: `ai-${analysis.id}`,
+                propertyLabel: analysis.inputAddress,
+                stormDate: now.slice(0, 10),
+                stormLabel: 'AI Analysis',
+                lat: analysis.lat ?? 0,
+                lng: analysis.lng ?? 0,
+                locationLabel: analysis.normalizedAddress ?? analysis.inputAddress,
+                sourceEventId: null,
+                sourceLabel: 'AI Property Intel',
+                topHailInches: 0,
+                reportCount: 0,
+                evidenceCount: 0,
+                priority: analysis.isHighPriority ? 'Knock now' : 'Monitor',
+                status: 'queued',
+                outcome: 'none',
+                leadStage: 'new',
+                notes: analysis.reasoning ?? '',
+                assignedRep: '',
+                dealValue: null,
+                stageHistory: [{ stage: 'new', at: now }],
+                homeownerName: '',
+                homeownerPhone: '',
+                homeownerEmail: '',
+                reminderAt: null,
+                visitedAt: null,
+                completedAt: null,
+                createdAt: now,
+                updatedAt: now,
+              };
+              setRouteStopsState((prev) => {
+                // Avoid adding a duplicate for the same analysis
+                if (prev.some((s) => s.id === newStop.id)) return prev;
+                return [...prev, newStop];
+              });
+              setAiSlideOpen(false);
+            }}
+          />
+        )}
+      </Suspense>
     </div>
   );
 }

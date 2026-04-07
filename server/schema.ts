@@ -49,6 +49,10 @@ export const leads = pgTable('leads', {
   homeownerName: text('homeowner_name').default(''),
   homeownerPhone: text('homeowner_phone').default(''),
   homeownerEmail: text('homeowner_email').default(''),
+  aiAnalysisId: text('ai_analysis_id'), // links to property_analyses.id
+  aiProspectScore: real('ai_prospect_score'), // cached from property_analyses for sorting
+  aiRoofType: text('ai_roof_type'), // cached for display without join
+  aiRoofCondition: text('ai_roof_condition'),
   createdAt: timestamp('created_at').defaultNow(),
   updatedAt: timestamp('updated_at').defaultNow(),
   visitedAt: timestamp('visited_at'),

@@ -1,4 +1,6 @@
 import postgres from 'postgres';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { ensureAiTables } from './ai/migrate.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/hailyes';
 const sql = postgres(connectionString);
@@ -135,7 +137,23 @@ async function migrate() {
     )
   `;
 
-  console.log('[migrate] All 7 tables created successfully.');
+  // Add AI bridge columns to leads table (idempotent)
+  await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_analysis_id TEXT`;
+  await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_prospect_score REAL`;
+  await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_roof_type TEXT`;
+  await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_roof_condition TEXT`;
+
+  // Add AI scan tracking to users table (idempotent)
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
+
+  console.log('[migrate] All 7 core tables created successfully.');
+
+  // Create AI property analysis tables
+  const aiDb = drizzle(sql);
+  await ensureAiTables(aiDb);
+
+  console.log('[migrate] All tables created successfully.');
   await sql.end();
 }
 

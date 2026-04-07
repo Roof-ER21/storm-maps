@@ -47,6 +47,7 @@ interface SidebarProps {
   queuedRouteCountsByDate: Record<string, number>;
   onToggleStormRoute: (stormDate: StormDate) => void;
   onBuildKnockRoute: () => void;
+  onAnalyzeProperty?: (address: string) => void;
 }
 
 type TabId = 'recent' | 'impact';
@@ -80,6 +81,7 @@ export default function Sidebar({
   queuedRouteCountsByDate,
   onToggleStormRoute,
   onBuildKnockRoute,
+  onAnalyzeProperty,
 }: SidebarProps) {
   const [activeTab, setActiveTab] = useState<TabId>('recent');
   const [expandedDate, setExpandedDate] = useState<string | null>(null);
@@ -359,6 +361,24 @@ export default function Sidebar({
             <p className="mt-2 text-xs text-green-300">
               Last hit {latestStorms[0].label} with {formatStormImpactSummary(latestStorms[0])}
             </p>
+          )}
+          {onAnalyzeProperty && searchSummary && (
+            <button
+              type="button"
+              onClick={() => onAnalyzeProperty(searchSummary.locationLabel)}
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600/20 px-3 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-600/30 transition-colors border border-violet-500/25"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                className="w-3.5 h-3.5"
+                aria-hidden="true"
+              >
+                <path d="M7.702 1.368a.75.75 0 0 1 .597 0c.2.085 3.951 1.725 3.951 5.048 0 1.992-1.14 3.55-2.683 4.51a.75.75 0 0 1-.78 0C7.24 9.966 6.1 8.408 6.1 6.416c0-3.323 3.751-4.963 3.951-5.048h-.349Zm.298 1.563a5.14 5.14 0 0 0-.84.705A4.07 4.07 0 0 0 5.6 6.416c0 1.453.728 2.72 1.9 3.57C8.672 9.136 9.4 7.87 9.4 6.416a4.07 4.07 0 0 0-1.4-3.485ZM1.5 14.25a.75.75 0 0 1 .75-.75h11.5a.75.75 0 0 1 0 1.5H2.25a.75.75 0 0 1-.75-.75Z" />
+              </svg>
+              Analyze with AI
+            </button>
           )}
         </div>
       )}

@@ -5,13 +5,13 @@ interface AppHeaderProps {
   onChangeView: (view: AppView) => void;
   pinnedCount: number;
   activeSearchLabel: string | null;
+  onOpenAi?: () => void;
 }
 
 const NAV_ITEMS: Array<{ id: AppView; label: string }> = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'map', label: 'Storm Map' },
   { id: 'pipeline', label: 'Pipeline' },
-  { id: 'evidence', label: 'Evidence' },
   { id: 'reports', label: 'Reports' },
 ];
 
@@ -20,9 +20,10 @@ export default function AppHeader({
   onChangeView,
   pinnedCount,
   activeSearchLabel,
+  onOpenAi,
 }: AppHeaderProps) {
   return (
-    <header className="border-b border-slate-800/80 bg-slate-950/95 backdrop-blur">
+    <header className="border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur">
       <div className="flex flex-col gap-3 px-4 py-3 lg:px-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -51,7 +52,7 @@ export default function AppHeader({
               className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
                 activeView === 'team'
                   ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
-                  : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white'
+                  : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white'
               }`}
             >
               <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -63,23 +64,29 @@ export default function AppHeader({
         </div>
 
         <nav className="-mx-1 flex gap-1.5 sm:gap-2 overflow-x-auto px-1 pb-1 scrollbar-none">
-          {NAV_ITEMS.map((item) => {
-            const active = item.id === activeView;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => onChangeView(item.id)}
-                className={`shrink-0 rounded-xl px-3 sm:px-4 py-2.5 sm:py-2 text-xs sm:text-sm font-semibold transition-colors ${
-                  active
-                    ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_10px_30px_rgba(124,58,237,0.28)]'
-                    : 'bg-slate-900 text-gray-300 hover:bg-slate-800 hover:text-white'
-                }`}
-              >
-                {item.label}
-              </button>
-            );
-          })}
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => onChangeView(item.id)}
+              className={`shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${
+                item.id === activeView
+                  ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_10px_30px_rgba(124,58,237,0.28)]'
+                  : 'bg-zinc-900 text-gray-300 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+          {onOpenAi && (
+            <button
+              type="button"
+              onClick={onOpenAi}
+              className="shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors bg-cyan-950/60 text-cyan-300 hover:bg-cyan-900/60 hover:text-white ring-1 ring-cyan-500/20"
+            >
+              AI Intel
+            </button>
+          )}
         </nav>
       </div>
     </header>
