@@ -24,6 +24,32 @@ export interface ClassificationResult {
   modelUsed: string;
 }
 
+export interface AllModeInsights {
+  retail: {
+    upgradeOpportunity: string;
+    crossSellPotential: string;
+    curbAppealScore: number;
+    talkingPoints: string[];
+  };
+  insurance: {
+    claimPotential: string;
+    visibleDamageTypes: string[];
+    supplementItems: string[];
+    materialObsolescence: string;
+    fullExteriorClaim: boolean;
+    adjusterNotes: string;
+  };
+  solar: {
+    solarCandidate: string;
+    bestRoofFace: string;
+    shadeObstruction: string;
+    materialCompatibility: string;
+    reroofFirst: boolean;
+    estimatedPanelCount: number;
+    talkingPoints: string[];
+  };
+}
+
 // ============================================================
 // PASS 1: Visual Feature Extraction
 // Forces the AI to carefully OBSERVE before classifying.
@@ -335,6 +361,65 @@ CONFIDENCE CALIBRATION:
   0.00-0.29: Cannot determine reliably`;
 
 // ============================================================
+// PASS 3: All-Mode Insights (single call, 3 modes in parallel JSON)
+// ============================================================
+
+const ALL_MODES_PROMPT = `You are a roofing industry expert analyzing a property for THREE different sales scenarios simultaneously.
+
+You have already identified the structural classification of this property:
+{{CLASSIFICATION}}
+
+Now provide targeted insights for all THREE sales modes in a single response.
+Each mode has a different buyer and goal.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RETAIL MODE — Roofing upgrade sales rep
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Focus on: upgrade opportunities, 3-tab to architectural upgrades, aluminum siding cross-sells,
+aging materials (15+ years = sales opportunity), curb appeal improvement potential.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSURANCE MODE — Insurance restoration rep
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Focus on: damage detection (hail dents/dimples, wind lift, impact cracks, water staining),
+supplement items commonly missed (gutters, window screens, fences, AC condenser, garage door,
+chimney, fascia/soffits), material obsolescence (3-tab discontinued), full exterior claim potential.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SOLAR MODE — Solar panel sales rep
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Focus on: roof orientation (south-facing = ideal), pitch (15-40deg optimal), unobstructed area,
+shade from trees/buildings, material compatibility (metal standing seam best, tile difficult),
+roof age (if roof needs replacement, recommend solar + re-roof bundle).
+
+Return ONLY valid JSON with this exact structure:
+{
+  "retail": {
+    "upgradeOpportunity": "<specific upgrade that would benefit this home>",
+    "crossSellPotential": "<siding, gutters, windows, or other items that also need work>",
+    "curbAppealScore": <1-10, how much would a new roof improve the look>,
+    "talkingPoints": ["<point 1>", "<point 2>", "<point 3>"]
+  },
+  "insurance": {
+    "claimPotential": "none|low|moderate|high|excellent",
+    "visibleDamageTypes": ["<damage type 1>", "<damage type 2>"],
+    "supplementItems": ["<item 1>", "<item 2>", "<item 3>"],
+    "materialObsolescence": "<is the current material discontinued or non-code-compliant?>",
+    "fullExteriorClaim": <true if roof + siding + gutters all show damage>,
+    "adjusterNotes": "<what to point out to the adjuster>"
+  },
+  "solar": {
+    "solarCandidate": "poor|fair|good|excellent",
+    "bestRoofFace": "<direction the best solar-facing slope points>",
+    "shadeObstruction": "none|minimal|moderate|heavy",
+    "materialCompatibility": "excellent|good|fair|poor",
+    "reroofFirst": <true if roof should be replaced before installing solar>,
+    "estimatedPanelCount": <rough estimate based on visible unobstructed area>,
+    "talkingPoints": ["<point 1>", "<point 2>", "<point 3>"]
+  }
+}`;
+
+// ============================================================
 // Two-Pass Classification Engine
 // ============================================================
 
@@ -476,4 +561,207 @@ export async function classifyProperty(
     notes: parsed.notes || "",
     modelUsed: "gemini-2.5-flash-2pass-v3",
   };
+}
+
+// ============================================================
+// All-Modes Analysis: Pass 1 + Pass 2 (base classification)
+// then Pass 3 (all mode insights in one Gemini call)
+// ============================================================
+
+export async function classifyPropertyAllModes(
+  streetViewBuffers: Buffer | Buffer[] | null,
+  satelliteBuffer: Buffer | null,
+  address: string,
+  apiKey: string,
+  streetViewAngles?: StreetViewAngle[],
+  satelliteCloseup?: Buffer | null
+): Promise<{ base: ClassificationResult; modeInsights: AllModeInsights }> {
+  const genAI = new GoogleGenAI({ apiKey });
+
+  // Build shared image parts (used across all passes)
+  const allImages: Array<{ buffer: Buffer; label: string; mime: string }> = [];
+
+  if (streetViewAngles && streetViewAngles.length > 0) {
+    for (const angle of streetViewAngles) {
+      allImages.push({
+        buffer: angle.buffer,
+        label: `Street View (${angle.label} side, heading ${angle.heading})`,
+        mime: "image/jpeg",
+      });
+    }
+  } else if (streetViewBuffers) {
+    const buffers = Array.isArray(streetViewBuffers)
+      ? streetViewBuffers
+      : [streetViewBuffers];
+    for (const buf of buffers) {
+      allImages.push({ buffer: buf, label: "Street View", mime: "image/jpeg" });
+    }
+  }
+
+  if (satelliteBuffer) {
+    allImages.push({
+      buffer: satelliteBuffer,
+      label: "Satellite/Aerial (top-down view of roof — use for overall roof color/tone uniformity)",
+      mime: "image/png",
+    });
+  }
+
+  if (satelliteCloseup) {
+    allImages.push({
+      buffer: satelliteCloseup,
+      label: "Satellite CLOSEUP (ultra-zoom of roof texture — use this to see individual shingle patterns, granule variation, and dimensional depth from above)",
+      mime: "image/png",
+    });
+  }
+
+  if (allImages.length === 0) {
+    throw new Error("No images available for analysis");
+  }
+
+  const imageParts = allImages.map((img) => ({
+    inlineData: { mimeType: img.mime, data: img.buffer.toString("base64") },
+  }));
+
+  const imageLabels = allImages
+    .map((img, i) => `Image ${i + 1}: ${img.label}`)
+    .join("\n");
+
+  // ========== PASS 1: Feature Extraction ==========
+  const pass1Response = await genAI.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          {
+            text: `${FEATURE_EXTRACTION_PROMPT}\n\nProperty: ${address}\n\n${imageLabels}\n\nExamine every image carefully. Describe what you see for each feature:`,
+          },
+          ...imageParts,
+        ],
+      },
+    ],
+  });
+
+  const pass1Text = pass1Response.text || "";
+  let extractedFeatures: any = {};
+  try {
+    const jsonMatch = pass1Text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) extractedFeatures = JSON.parse(jsonMatch[0]);
+  } catch {
+    extractedFeatures = { rawDescription: pass1Text.substring(0, 2000) };
+  }
+
+  // ========== PASS 2: Expert Classification + PASS 3: All-Mode Insights (parallel) ==========
+  const pass2Prompt = CLASSIFICATION_PROMPT.replace(
+    "{{FEATURES}}",
+    JSON.stringify(extractedFeatures, null, 2)
+  );
+
+  const [pass2Response, pass3Response] = await Promise.all([
+    // Pass 2: structural classification
+    genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${pass2Prompt}\n\nProperty: ${address}\n\n${imageLabels}\n\nWalk through the decision trees step by step:`,
+            },
+            ...imageParts,
+          ],
+        },
+      ],
+    }),
+    // Pass 3 (preliminary - use feature extraction context for mode insights)
+    // We run this in parallel but may refine with pass2 result below if needed
+    genAI.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: `${ALL_MODES_PROMPT.replace("{{CLASSIFICATION}}", JSON.stringify(extractedFeatures, null, 2))}\n\nProperty: ${address}\n\n${imageLabels}\n\nAnalyze for all three modes:`,
+            },
+            ...imageParts,
+          ],
+        },
+      ],
+    }),
+  ]);
+
+  // Parse Pass 2 (structural classification)
+  const pass2Text = pass2Response.text || "";
+  let parsedBase: any;
+  try {
+    const jsonMatch = pass2Text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      parsedBase = JSON.parse(jsonMatch[0]);
+    } else {
+      throw new Error("No JSON in classification response");
+    }
+  } catch (e) {
+    console.error("Pass 2 parse failed:", pass2Text.substring(0, 500));
+    throw new Error(`Classification parse failed: ${(e as Error).message}`);
+  }
+
+  const base: ClassificationResult = {
+    roofType: parsedBase.roofType || "unknown",
+    roofSubtype: parsedBase.roofSubtype || "",
+    roofCondition: parsedBase.roofCondition || "unknown",
+    roofAgeEstimate: parsedBase.roofAgeEstimate || 0,
+    roofConfidence: parsedBase.roofConfidence || 0,
+    roofColor: parsedBase.roofColor || "",
+    roofFeatures: Array.isArray(parsedBase.roofFeatures) ? parsedBase.roofFeatures : [],
+    sidingType: parsedBase.sidingType || "unknown",
+    isAluminumSiding: parsedBase.isAluminumSiding === true,
+    sidingCondition: parsedBase.sidingCondition || "unknown",
+    sidingConfidence: parsedBase.sidingConfidence || 0,
+    sidingFeatures: Array.isArray(parsedBase.sidingFeatures) ? parsedBase.sidingFeatures : [],
+    damageIndicators: Array.isArray(parsedBase.damageIndicators) ? parsedBase.damageIndicators : [],
+    reasoning: parsedBase.reasoning || "",
+    notes: parsedBase.notes || "",
+    modelUsed: "gemini-2.5-flash-3pass-allmode-v1",
+  };
+
+  // Parse Pass 3 (all-mode insights)
+  const pass3Text = pass3Response.text || "";
+  let parsedModes: any = {};
+  try {
+    const jsonMatch = pass3Text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) parsedModes = JSON.parse(jsonMatch[0]);
+  } catch {
+    console.error("Pass 3 (all-modes) parse failed:", pass3Text.substring(0, 500));
+    // Return safe defaults — the base classification is still valid
+    parsedModes = {};
+  }
+
+  const modeInsights: AllModeInsights = {
+    retail: {
+      upgradeOpportunity: parsedModes.retail?.upgradeOpportunity || "",
+      crossSellPotential: parsedModes.retail?.crossSellPotential || "",
+      curbAppealScore: parsedModes.retail?.curbAppealScore || 5,
+      talkingPoints: Array.isArray(parsedModes.retail?.talkingPoints) ? parsedModes.retail.talkingPoints : [],
+    },
+    insurance: {
+      claimPotential: parsedModes.insurance?.claimPotential || "low",
+      visibleDamageTypes: Array.isArray(parsedModes.insurance?.visibleDamageTypes) ? parsedModes.insurance.visibleDamageTypes : [],
+      supplementItems: Array.isArray(parsedModes.insurance?.supplementItems) ? parsedModes.insurance.supplementItems : [],
+      materialObsolescence: parsedModes.insurance?.materialObsolescence || "",
+      fullExteriorClaim: parsedModes.insurance?.fullExteriorClaim === true,
+      adjusterNotes: parsedModes.insurance?.adjusterNotes || "",
+    },
+    solar: {
+      solarCandidate: parsedModes.solar?.solarCandidate || "fair",
+      bestRoofFace: parsedModes.solar?.bestRoofFace || "",
+      shadeObstruction: parsedModes.solar?.shadeObstruction || "minimal",
+      materialCompatibility: parsedModes.solar?.materialCompatibility || "good",
+      reroofFirst: parsedModes.solar?.reroofFirst === true,
+      estimatedPanelCount: parsedModes.solar?.estimatedPanelCount || 0,
+      talkingPoints: Array.isArray(parsedModes.solar?.talkingPoints) ? parsedModes.solar.talkingPoints : [],
+    },
+  };
+
+  return { base, modeInsights };
 }

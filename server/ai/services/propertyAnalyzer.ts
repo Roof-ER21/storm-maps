@@ -3,7 +3,7 @@ import type { DB } from "../../db.js";
 import { propertyAnalyses } from "../schema.js";
 import { geocodeAddress } from "./geocodingService.js";
 import { fetchPropertyImages } from "./imageFetchService.js";
-import { classifyProperty } from "./aiClassificationService.js";
+import { classifyPropertyAllModes } from "./aiClassificationService.js";
 import {
   getBuildingInsights,
   estimateReplacementCost,
@@ -18,9 +18,9 @@ import {
 } from "./enrichmentCache.js";
 import {
   type AnalysisMode,
-  MODE_PROMPTS,
-  computeProspectScore,
+  computeAllModeScores,
   computeSolarEstimate,
+  formatStormEventsForInsurance,
 } from "./analysisMode.js";
 import { storeImages, type ImageToStore } from "./imageStorageService.js";
 import { logActivity } from "./activityLogger.js";
@@ -75,8 +75,9 @@ export async function analyzeProperty(
       });
       if (cached) {
         const isRecent = cached.analyzedAt && Date.now() - cached.analyzedAt.getTime() < cacheTtlMs;
-        // Insurance mode always re-analyzes (storm data changes), others use cache
-        if (isRecent && mode !== "insurance") {
+        // All modes are now stored in every analysis record — return cache for any mode.
+        // The cacheTtlMs controls freshness (default 30 days) which covers storm data updates.
+        if (isRecent) {
           await db
             .delete(propertyAnalyses)
             .where(eq(propertyAnalyses.id, record.id));
@@ -105,18 +106,15 @@ export async function analyzeProperty(
       .set({ status: "fetching_images" })
       .where(eq(propertyAnalyses.id, record.id));
 
+    // Always fetch storm + FEMA data — needed for all-mode scoring regardless of selected mode
     const [images, solarInsights, stormHistory, censusData, femaData, propertyData] = await Promise.all([
       fetchPropertyImages(geo.lat, geo.lng, config.googleMapsApiKey),
       getBuildingInsights(geo.lat, geo.lng, config.googleMapsApiKey).catch(
         () => null
       ),
-      mode === "insurance"
-        ? getStormHistory(geo.lat, geo.lng, 15, 3).catch(() => null)
-        : Promise.resolve(null),
+      getStormHistory(geo.lat, geo.lng, 15, 3).catch(() => null),
       getCachedCensusData(geo.lat, geo.lng, db).catch(() => null),
-      mode === "insurance"
-        ? getCachedFemaData(geo.lat, geo.lng, geo.state, geo.city, db).catch(() => null)
-        : Promise.resolve(null),
+      getCachedFemaData(geo.lat, geo.lng, geo.state, geo.city, db).catch(() => null),
       getCachedPropertyData(geo.lat, geo.lng, geo.normalizedAddress, db).catch(() => null),
     ]);
 
@@ -190,13 +188,14 @@ export async function analyzeProperty(
       }))!;
     }
 
-    // 4. AI Classification with mode-specific prompt
+    // 4. AI Classification — all 3 modes in one analysis pass
     await db
       .update(propertyAnalyses)
       .set({ status: "analyzing" })
       .where(eq(propertyAnalyses.id, record.id));
 
-    // Build context string with geo, solar, storm, property intel, and mode info
+    // Build context string with geo, solar, storm, and property intel
+    // Note: mode-specific instructions are handled inside classifyPropertyAllModes (Pass 3)
     const contextParts = [
       `Location: ${geo.city}, ${geo.state} ${geo.zip}`,
       solarInsights?.hasData
@@ -206,7 +205,7 @@ export async function analyzeProperty(
         ? "CONSTRAINT: Solar API confirms FLAT roof (pitch <5deg)."
         : null,
       stormHistory?.summary ? `Storm history: ${stormHistory.summary}` : null,
-      // Property records — use to cross-reference with visual estimates
+      // Property records — used to cross-reference with visual estimates
       propertyData?.hasData
         ? [
             `Property records:`,
@@ -235,12 +234,11 @@ export async function analyzeProperty(
       femaData?.hasDisasterData
         ? `FEMA disasters: ${femaData.disasterSummary}`
         : null,
-      MODE_PROMPTS[mode], // mode-specific instructions
     ].filter(Boolean);
 
     const addressWithContext = `${geo.normalizedAddress}. ${contextParts.join(". ")}`;
 
-    const classification = await classifyProperty(
+    const { base: classification, modeInsights } = await classifyPropertyAllModes(
       images.streetView,
       images.satellite,
       addressWithContext,
@@ -251,16 +249,16 @@ export async function analyzeProperty(
       images.satelliteCloseup
     );
 
-    // 5. Mode-specific scoring (with enriched data)
-    const { score, isHighPriority } = computeProspectScore(
+    // 5. Score all 3 modes at once — use the user-selected mode as primary score
+    const allModeScores = computeAllModeScores(
       classification,
-      mode,
       solarInsights,
       stormHistory,
       censusData,
       femaData,
       propertyData
     );
+    const { score, isHighPriority } = allModeScores[mode];
 
     // 6. Compute extras — detailed cost estimate with regional rates, pitch, waste
     const roofAreaM2 = solarInsights?.totalRoofAreaMeters2 || 0;
@@ -276,7 +274,62 @@ export async function analyzeProperty(
         ? computeSolarEstimate(solarInsights, geo.state)
         : null;
 
-    // 7. Store results
+    // 7. Store results — all 3 modes in aiRawResponse for instant frontend switching
+    const formattedStormData = formatStormEventsForInsurance(stormHistory);
+
+    // Shared enrichment data used across all modes
+    const sharedSolarInsights = solarInsights?.hasData
+      ? {
+          roofAreaM2: Math.round(roofAreaM2),
+          roofAreaSqFt: Math.round(roofAreaM2 * 10.764),
+          roofSquares: areaToSquares(roofAreaM2),
+          avgPitchDegrees: solarInsights.avgPitchDegrees,
+          avgPitch: degreesToPitch(solarInsights.avgPitchDegrees),
+          segmentCount: solarInsights.segmentCount,
+          measuredRoofType: solarInsights.roofType,
+        }
+      : null;
+
+    const sharedPropertyIntel = {
+      property: propertyData?.hasData
+        ? {
+            ownerName: propertyData.ownerName,
+            mailingAddress: propertyData.mailingAddress,
+            assessedValue: propertyData.assessedValue,
+            marketValue: propertyData.marketValue,
+            yearBuilt: propertyData.yearBuilt,
+            lotSizeSqFt: propertyData.lotSizeSqFt,
+            lotSizeAcres: propertyData.lotSizeAcres,
+            buildingSqFt: propertyData.buildingSqFt,
+            bedrooms: propertyData.bedrooms,
+            bathrooms: propertyData.bathrooms,
+            propertyClass: propertyData.propertyClass,
+            lastSaleDate: propertyData.lastSaleDate,
+            lastSalePrice: propertyData.lastSalePrice,
+            taxAmount: propertyData.taxAmount,
+            buildingLevels: propertyData.buildingLevels,
+            buildingMaterial: propertyData.buildingMaterial,
+            roofShape: propertyData.roofShape,
+            dataSource: propertyData.dataSource,
+          }
+        : null,
+      census: censusData?.hasData
+        ? {
+            medianHouseholdIncome: censusData.medianHouseholdIncome,
+            medianHomeValue: censusData.medianHomeValue,
+            ownerOccupiedPct: censusData.ownerOccupiedPct,
+            medianYearBuilt: censusData.medianYearBuilt,
+            totalHousingUnits: censusData.totalHousingUnits,
+            fipsTract: `${censusData.fipsState}-${censusData.fipsCounty}-${censusData.fipsTract}`,
+          }
+        : null,
+      fema: {
+        floodZone: femaData?.floodZone || null,
+        recentDisasters: femaData?.recentDisasters?.slice(0, 5) || [],
+        disasterSummary: femaData?.disasterSummary || null,
+      },
+    };
+
     await db
       .update(propertyAnalyses)
       .set({
@@ -296,21 +349,51 @@ export async function analyzeProperty(
         prospectScore: score,
         isHighPriority,
         aiRawResponse: {
+          // Base classification (shared across all modes)
           ...classification,
-          mode,
-          solarInsights: solarInsights?.hasData
-            ? {
-                roofAreaM2: Math.round(roofAreaM2),
-                roofAreaSqFt: Math.round(roofAreaM2 * 10.764),
-                roofSquares: areaToSquares(roofAreaM2),
-                avgPitchDegrees: solarInsights.avgPitchDegrees,
-                avgPitch: degreesToPitch(solarInsights.avgPitchDegrees),
-                segmentCount: solarInsights.segmentCount,
-                measuredRoofType: solarInsights.roofType,
-              }
-            : null,
+          // Which mode was selected when this analysis was requested
+          requestedMode: mode,
+          // Per-mode scores — frontend uses these to display score when user switches
+          modeScores: {
+            retail: allModeScores.retail.score,
+            insurance: allModeScores.insurance.score,
+            solar: allModeScores.solar.score,
+          },
+          modeHighPriority: {
+            retail: allModeScores.retail.isHighPriority,
+            insurance: allModeScores.insurance.isHighPriority,
+            solar: allModeScores.solar.isHighPriority,
+          },
+          // Per-mode AI insights — keyed so frontend can switch instantly
+          modes: {
+            retail: {
+              score: allModeScores.retail.score,
+              isHighPriority: allModeScores.retail.isHighPriority,
+              insights: modeInsights.retail,
+            },
+            insurance: {
+              score: allModeScores.insurance.score,
+              isHighPriority: allModeScores.insurance.isHighPriority,
+              insights: modeInsights.insurance,
+              // Full storm event history for insurance view
+              stormEvents: formattedStormData.stormEvents,
+              claimWindow: formattedStormData.claimWindow,
+              qualifyingEvents: formattedStormData.qualifyingEvents,
+              hasRecentHail: formattedStormData.hasRecentHail,
+              largestHailInches: formattedStormData.largestHailInches,
+              maxWindMph: formattedStormData.maxWindMph,
+              lastStormDate: formattedStormData.lastStormDate,
+            },
+            solar: {
+              score: allModeScores.solar.score,
+              isHighPriority: allModeScores.solar.isHighPriority,
+              insights: modeInsights.solar,
+              solarEstimate,
+            },
+          },
+          // Shared data (available regardless of mode)
+          solarInsights: sharedSolarInsights,
           costEstimate,
-          solarEstimate,
           stormHistory: stormHistory
             ? {
                 summary: stormHistory.summary,
@@ -331,46 +414,7 @@ export async function analyzeProperty(
                 })),
               }
             : null,
-          // New data enrichment
-          propertyIntel: {
-            property: propertyData?.hasData
-              ? {
-                  ownerName: propertyData.ownerName,
-                  mailingAddress: propertyData.mailingAddress,
-                  assessedValue: propertyData.assessedValue,
-                  marketValue: propertyData.marketValue,
-                  yearBuilt: propertyData.yearBuilt,
-                  lotSizeSqFt: propertyData.lotSizeSqFt,
-                  lotSizeAcres: propertyData.lotSizeAcres,
-                  buildingSqFt: propertyData.buildingSqFt,
-                  bedrooms: propertyData.bedrooms,
-                  bathrooms: propertyData.bathrooms,
-                  propertyClass: propertyData.propertyClass,
-                  lastSaleDate: propertyData.lastSaleDate,
-                  lastSalePrice: propertyData.lastSalePrice,
-                  taxAmount: propertyData.taxAmount,
-                  buildingLevels: propertyData.buildingLevels,
-                  buildingMaterial: propertyData.buildingMaterial,
-                  roofShape: propertyData.roofShape,
-                  dataSource: propertyData.dataSource,
-                }
-              : null,
-            census: censusData?.hasData
-              ? {
-                  medianHouseholdIncome: censusData.medianHouseholdIncome,
-                  medianHomeValue: censusData.medianHomeValue,
-                  ownerOccupiedPct: censusData.ownerOccupiedPct,
-                  medianYearBuilt: censusData.medianYearBuilt,
-                  totalHousingUnits: censusData.totalHousingUnits,
-                  fipsTract: `${censusData.fipsState}-${censusData.fipsCounty}-${censusData.fipsTract}`,
-                }
-              : null,
-            fema: {
-              floodZone: femaData?.floodZone || null,
-              recentDisasters: femaData?.recentDisasters?.slice(0, 5) || [],
-              disasterSummary: femaData?.disasterSummary || null,
-            },
-          },
+          propertyIntel: sharedPropertyIntel,
         } as any,
         aiModelUsed: classification.modelUsed,
         status: "completed",

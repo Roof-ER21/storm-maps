@@ -516,7 +516,6 @@ function parseLsrFeature(f: LsrFeature, idx: number): StormEvent {
 // ---------------------------------------------------------------------------
 
 const SPC_TIMEOUT_MS = 12000;
-const SPC_CORS_PROXY = 'https://corsproxy.io/?url=';
 
 /**
  * Build an ISO 8601 date string from a SPC YYMMDD date string and HHMM time.
@@ -647,7 +646,7 @@ async function fetchOneSpcCsv(
   idPrefix: string,
   signal?: AbortSignal,
 ): Promise<StormEvent[]> {
-  const proxiedUrl = `${SPC_CORS_PROXY}${encodeURIComponent(url)}`;
+  const proxiedUrl = `/api/spc-proxy?url=${encodeURIComponent(url)}`;
   const res = await fetch(proxiedUrl, {
     signal: getTimeoutSignal(SPC_TIMEOUT_MS, signal),
   });

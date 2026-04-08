@@ -435,6 +435,255 @@ function DamageTable({ indicators }: { indicators: DamageIndicator[] }) {
   );
 }
 
+// ── Typed helpers for new multi-mode raw response shape ──────────────────────
+
+interface RawRetailInsights {
+  upgradeOpportunity?: string;
+  crossSellPotential?: string | string[];
+  talkingPoints?: string | string[];
+}
+
+interface RawInsuranceInsights {
+  claimPotential?: string;
+  visibleDamageTypes?: string | string[];
+  supplementItems?: string | string[];
+}
+
+interface RawSolarInsights {
+  solarCandidate?: string;
+  estimatedPanelCount?: number;
+  talkingPoints?: string | string[];
+}
+
+interface RawSolarEstimate {
+  panelCount?: number;
+  systemSizeKw?: number;
+  annualKwh?: number;
+  annualSavings?: number;
+  paybackYears?: number;
+  co2OffsetTons?: number;
+}
+
+interface RawStormEvent {
+  date?: string;
+  type?: string;
+  size?: string;
+  speed?: string | number;
+  distance?: string | number;
+}
+
+interface RawModeData {
+  score?: number;
+  isHighPriority?: boolean;
+  insights?: Record<string, unknown>;
+  stormEvents?: RawStormEvent[];
+  claimWindow?: string;
+  qualifyingEvents?: number;
+  solarEstimate?: RawSolarEstimate;
+}
+
+interface MultiModeRaw {
+  requestedMode?: string;
+  modeScores?: Record<string, number>;
+  modeHighPriority?: Record<string, boolean>;
+  modes?: Record<string, RawModeData>;
+}
+
+function asMultiMode(raw: Record<string, unknown> | null): MultiModeRaw | null {
+  if (!raw || !raw['modes']) return null;
+  return raw as unknown as MultiModeRaw;
+}
+
+// ── Mode score strip (clickable, instant mode switch) ─────────────────────────
+
+function ModeScoreStrip({
+  raw,
+  displayMode,
+  onSwitch,
+}: {
+  raw: MultiModeRaw;
+  displayMode: AnalysisMode;
+  onSwitch: (m: AnalysisMode) => void;
+}) {
+  const modeIds: AnalysisMode[] = ['retail', 'insurance', 'solar'];
+
+  return (
+    <div className="flex gap-2">
+      {modeIds.map((id) => {
+        const score = raw.modeScores?.[id] ?? raw.modes?.[id]?.score ?? null;
+        const isHigh = raw.modeHighPriority?.[id] ?? raw.modes?.[id]?.isHighPriority ?? false;
+        const isActive = displayMode === id;
+
+        const label = MODES.find((m) => m.id === id)?.label ?? id;
+
+        let borderCls = 'border-zinc-700/60';
+        let textCls   = 'text-gray-400';
+        let bgCls     = 'bg-zinc-900/80';
+        if (isActive) {
+          borderCls = 'border-violet-500/60 shadow-[0_0_14px_rgba(124,58,237,0.3)]';
+          textCls   = 'text-white';
+          bgCls     = 'bg-violet-600/15';
+        }
+
+        let scoreColor = 'text-emerald-400';
+        if (score !== null && score >= 60) scoreColor = 'text-red-400';
+        else if (score !== null && score >= 40) scoreColor = 'text-amber-400';
+
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onSwitch(id)}
+            aria-pressed={isActive}
+            className={[
+              'flex flex-1 flex-col items-center rounded-xl border px-2 py-2.5 transition-all',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60',
+              borderCls, bgCls,
+            ].join(' ')}
+          >
+            <span className={`text-[9px] font-semibold uppercase tracking-wider ${textCls}`}>
+              {label}
+            </span>
+            {score !== null ? (
+              <span className={`text-xl font-black tabular-nums leading-none mt-0.5 ${scoreColor}`}>
+                {score}
+              </span>
+            ) : (
+              <span className="text-xl font-black leading-none mt-0.5 text-gray-600">—</span>
+            )}
+            {isHigh && (
+              <span className="mt-0.5 text-[8px] font-semibold text-red-400 uppercase tracking-wider">
+                ★ Priority
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Storm events table (insurance mode) ──────────────────────────────────────
+
+function StormEventsTable({
+  events,
+  claimWindow,
+  qualifyingEvents,
+}: {
+  events: RawStormEvent[];
+  claimWindow?: string;
+  qualifyingEvents?: number;
+}) {
+  if (events.length === 0) return null;
+
+  const withinWindow =
+    claimWindow ? /within/i.test(claimWindow) : false;
+
+  return (
+    <div className="rounded-xl border border-sky-500/25 bg-sky-500/[0.04] overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-sky-500/20">
+        <div className="flex items-center gap-2 text-sky-400">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round"
+              d="M3 15a4 4 0 004 4h9a5 5 0 10-4.5-6.5M3 15a4 4 0 010-8h.5" />
+          </svg>
+          <span className="text-[10px] font-semibold uppercase tracking-widest">
+            Storm History
+            {qualifyingEvents !== undefined && (
+              <span className="ml-1.5 text-sky-300/70">({qualifyingEvents} qualifying)</span>
+            )}
+          </span>
+        </div>
+        {claimWindow && (
+          <span
+            className={[
+              'rounded-full border px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider',
+              withinWindow
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                : 'border-red-500/40 bg-red-500/10 text-red-400',
+            ].join(' ')}
+          >
+            {withinWindow ? 'Within claim window' : 'Outside claim window'}
+          </span>
+        )}
+      </div>
+
+      {/* Table */}
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-sky-500/15">
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Date</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Type</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Size / Speed</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Distance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {events.map((ev, i) => {
+            const sizeSpeed = ev.size
+              ? ev.size
+              : ev.speed !== undefined
+              ? `${ev.speed} mph`
+              : '—';
+            const dist = ev.distance !== undefined ? String(ev.distance) : '—';
+            return (
+              <tr key={i} className="border-b border-sky-500/10 last:border-0">
+                <td className="px-4 py-2.5 text-gray-300">{ev.date ?? '—'}</td>
+                <td className="px-4 py-2.5 text-gray-300 capitalize">{ev.type ?? '—'}</td>
+                <td className="px-4 py-2.5 text-gray-300">{sizeSpeed}</td>
+                <td className="px-4 py-2.5 text-gray-400">{dist}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Solar estimate card ───────────────────────────────────────────────────────
+
+function SolarEstimateCard({ est }: { est: RawSolarEstimate }) {
+  const rows: Array<{ label: string; value: string }> = [];
+
+  if (est.panelCount !== undefined)
+    rows.push({ label: 'Panel Count', value: `${est.panelCount} panels` });
+  if (est.systemSizeKw !== undefined)
+    rows.push({ label: 'System Size', value: `${est.systemSizeKw} kW` });
+  if (est.annualKwh !== undefined)
+    rows.push({ label: 'Annual Output', value: `${est.annualKwh.toLocaleString()} kWh` });
+  if (est.annualSavings !== undefined)
+    rows.push({ label: 'Annual Savings', value: `$${est.annualSavings.toLocaleString()}` });
+  if (est.paybackYears !== undefined)
+    rows.push({ label: 'Payback Period', value: `${est.paybackYears} years` });
+  if (est.co2OffsetTons !== undefined)
+    rows.push({ label: 'CO2 Offset', value: `${est.co2OffsetTons} tons/yr` });
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.04] p-4">
+      <div className="flex items-center gap-2 text-amber-400 mb-3">
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <circle cx="12" cy="12" r="5" />
+          <path strokeLinecap="round" strokeLinejoin="round"
+            d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72 1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+        </svg>
+        <span className="text-[10px] font-semibold uppercase tracking-widest">Solar Estimate</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="rounded-xl border border-zinc-800/50 bg-zinc-950/60 px-3 py-2">
+            <p className="text-[9px] font-medium uppercase tracking-wide text-gray-500">{label}</p>
+            <p className="mt-0.5 text-sm font-semibold text-amber-300">{value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 // ── Mode-specific insights ────────────────────────────────────────────────────
 
 function ModeInsights({
@@ -447,16 +696,26 @@ function ModeInsights({
   const raw = analysis.aiRawResponse;
   if (!raw) return null;
 
+  // Prefer the nested multi-mode structure; fall back to flat legacy keys
+  const multi = asMultiMode(raw);
+  const modeData = multi?.modes?.[mode];
+  const nestedInsights = modeData?.insights ?? {};
+
   const entries: Array<{ label: string; value: string | string[] }> = [];
 
   if (mode === 'retail') {
-    const upgrade = raw.upgradeOpportunity ?? raw.upgrade_opportunity;
+    const ins = nestedInsights as RawRetailInsights;
+    const upgrade = ins.upgradeOpportunity ?? raw.upgradeOpportunity ?? raw.upgrade_opportunity;
     if (upgrade) entries.push({ label: 'Upgrade Opportunity', value: String(upgrade) });
 
-    const cross = raw.crossSellPotential ?? raw.cross_sell_potential;
-    if (cross) entries.push({ label: 'Cross-Sell Potential', value: String(cross) });
+    const cross = ins.crossSellPotential ?? raw.crossSellPotential ?? raw.cross_sell_potential;
+    if (Array.isArray(cross) && cross.length > 0) {
+      entries.push({ label: 'Cross-Sell Potential', value: cross.map(String) });
+    } else if (cross) {
+      entries.push({ label: 'Cross-Sell Potential', value: String(cross) });
+    }
 
-    const points = raw.talkingPoints ?? raw.talking_points;
+    const points = ins.talkingPoints ?? raw.talkingPoints ?? raw.talking_points;
     if (Array.isArray(points) && points.length > 0) {
       entries.push({ label: 'Talking Points', value: points.map(String) });
     } else if (typeof points === 'string' && points) {
@@ -465,17 +724,18 @@ function ModeInsights({
   }
 
   if (mode === 'insurance') {
-    const claim = raw.claimPotential ?? raw.claim_potential;
+    const ins = nestedInsights as RawInsuranceInsights;
+    const claim = ins.claimPotential ?? raw.claimPotential ?? raw.claim_potential;
     if (claim) entries.push({ label: 'Claim Potential', value: String(claim) });
 
-    const dmgTypes = raw.visibleDamageTypes ?? raw.visible_damage_types;
+    const dmgTypes = ins.visibleDamageTypes ?? raw.visibleDamageTypes ?? raw.visible_damage_types;
     if (Array.isArray(dmgTypes) && dmgTypes.length > 0) {
       entries.push({ label: 'Visible Damage Types', value: dmgTypes.map(String) });
     } else if (typeof dmgTypes === 'string' && dmgTypes) {
       entries.push({ label: 'Visible Damage Types', value: dmgTypes });
     }
 
-    const supps = raw.supplementItems ?? raw.supplement_items;
+    const supps = ins.supplementItems ?? raw.supplementItems ?? raw.supplement_items;
     if (Array.isArray(supps) && supps.length > 0) {
       entries.push({ label: 'Supplement Items', value: supps.map(String) });
     } else if (typeof supps === 'string' && supps) {
@@ -484,15 +744,21 @@ function ModeInsights({
   }
 
   if (mode === 'solar') {
-    const candidate = raw.solarCandidate ?? raw.solar_candidate ?? raw.solarCandidateRating ?? raw.solar_candidate_rating;
+    const ins = nestedInsights as RawSolarInsights;
+    const candidate =
+      ins.solarCandidate ??
+      (raw.solarCandidate as string | undefined) ??
+      (raw.solar_candidate as string | undefined) ??
+      (raw.solarCandidateRating as string | undefined) ??
+      (raw.solar_candidate_rating as string | undefined);
     if (candidate) entries.push({ label: 'Solar Candidate', value: String(candidate) });
 
-    const panels = raw.estimatedPanelCount ?? raw.estimated_panel_count;
+    const panels = ins.estimatedPanelCount ?? raw.estimatedPanelCount ?? raw.estimated_panel_count;
     if (panels !== undefined && panels !== null) {
       entries.push({ label: 'Estimated Panel Count', value: String(panels) });
     }
 
-    const points = raw.talkingPoints ?? raw.talking_points;
+    const points = ins.talkingPoints ?? raw.talkingPoints ?? raw.talking_points;
     if (Array.isArray(points) && points.length > 0) {
       entries.push({ label: 'Talking Points', value: points.map(String) });
     } else if (typeof points === 'string' && points) {
@@ -541,11 +807,29 @@ function AnalysisResults({
   analysis,
   images,
   mode,
+  displayMode,
+  onSwitchMode,
 }: {
   analysis: PropertyAnalysis;
   images: PropertyImage[];
   mode: AnalysisMode;
+  displayMode: AnalysisMode;
+  onSwitchMode: (m: AnalysisMode) => void;
 }) {
+  const multi = asMultiMode(analysis.aiRawResponse);
+  const modeData = multi?.modes?.[displayMode];
+
+  // Resolve score for the currently displayed mode
+  const displayScore =
+    multi?.modeScores?.[displayMode] ??
+    modeData?.score ??
+    (displayMode === mode ? (analysis.prospectScore ?? null) : null);
+
+  const displayIsHighPriority =
+    multi?.modeHighPriority?.[displayMode] ??
+    modeData?.isHighPriority ??
+    (displayMode === mode ? analysis.isHighPriority : false);
+
   return (
     <div className="flex flex-col gap-4">
       {/* Address header */}
@@ -559,19 +843,65 @@ function AnalysisResults({
           </p>
         </div>
         <span className="flex-shrink-0 rounded-full border border-violet-500/30 bg-violet-500/15 px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-violet-300 capitalize">
-          {mode}
+          analyzed as {mode}
         </span>
       </div>
 
       {/* Images */}
       <PropertyImages analysis={analysis} images={images} />
 
-      {/* Score strip */}
+      {/* Multi-mode score strip (instant switching) — shown when backend returns all modes */}
+      {multi?.modes ? (
+        <div className="flex flex-col gap-2">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+            View Mode
+          </p>
+          <ModeScoreStrip raw={multi} displayMode={displayMode} onSwitch={onSwitchMode} />
+        </div>
+      ) : (
+        /* Fallback: original score strip for single-mode responses */
+        <ScoreStrip analysis={analysis} />
+      )}
+
+      {/* Score badge for selected display mode (multi-mode only) */}
+      {multi?.modes && displayScore !== null && (() => {
+        const cfg = scoreConfig(displayScore);
+        return (
+          <div className={`flex items-center gap-3 rounded-xl border ${cfg.ring} ${cfg.glow} ${cfg.bg} px-4 py-3`}>
+            <div className="flex flex-col items-center min-w-[52px]">
+              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-500">Score</span>
+              <span className={`text-3xl font-black tabular-nums leading-none ${cfg.text}`}>{displayScore}</span>
+            </div>
+            <div className="flex flex-col">
+              <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
+              {displayIsHighPriority && (
+                <span className="text-[9px] text-gray-500 mt-0.5">High priority prospect</span>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Roof / siding cards */}
       <ScoreStrip analysis={analysis} />
 
       {/* Damage */}
       {analysis.damageIndicators.length > 0 && (
         <DamageTable indicators={analysis.damageIndicators} />
+      )}
+
+      {/* Insurance: storm events table */}
+      {displayMode === 'insurance' && modeData?.stormEvents && modeData.stormEvents.length > 0 && (
+        <StormEventsTable
+          events={modeData.stormEvents}
+          claimWindow={modeData.claimWindow}
+          qualifyingEvents={modeData.qualifyingEvents}
+        />
+      )}
+
+      {/* Solar: estimate card */}
+      {displayMode === 'solar' && modeData?.solarEstimate && (
+        <SolarEstimateCard est={modeData.solarEstimate} />
       )}
 
       {/* Reasoning */}
@@ -586,7 +916,7 @@ function AnalysisResults({
       )}
 
       {/* Mode insights */}
-      <ModeInsights analysis={analysis} mode={mode} />
+      <ModeInsights analysis={analysis} mode={displayMode} />
     </div>
   );
 }
@@ -650,6 +980,7 @@ export default function AiSlideOver({
   const [analysis, setAnalysis]             = useState<PropertyAnalysis | null>(null);
   const [images, setImages]                 = useState<PropertyImage[]>([]);
   const [committedMode, setCommittedMode]   = useState<AnalysisMode>(initialMode);
+  const [displayMode, setDisplayMode]       = useState<AnalysisMode>(initialMode);
   const [sharing, setSharing]               = useState(false);
   const [shared, setShared]                 = useState(false);
 
@@ -716,6 +1047,7 @@ export default function AiSlideOver({
             setAnalysis(result.analysis);
             setImages(result.images);
             setCommittedMode(resolvedMode);
+            setDisplayMode(resolvedMode);
             setLoading(false);
           } else if (result.analysis.status === 'failed') {
             stopPolling();
@@ -755,6 +1087,7 @@ export default function AiSlideOver({
         setAnalysis(full.analysis);
         setImages(full.images);
         setCommittedMode(resolvedMode);
+        setDisplayMode(resolvedMode);
         setLoading(false);
       } else if (result.status === 'failed') {
         setError(result.errorMessage ?? 'Analysis failed immediately. Please try again.');
@@ -925,9 +1258,17 @@ export default function AiSlideOver({
 
             {/* Mode segmented control */}
             <div className="mt-3.5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500 mb-1.5">
-                Analysis Mode
-              </p>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+                  Analysis Mode
+                </p>
+                {analysis && committedMode && (
+                  <p className="text-[9px] text-gray-600">
+                    analyzed as{' '}
+                    <span className="text-violet-400 capitalize">{committedMode}</span>
+                  </p>
+                )}
+              </div>
               <div className="flex gap-1.5">
                 {MODES.map((m) => (
                   <button
@@ -1007,6 +1348,8 @@ export default function AiSlideOver({
                 analysis={analysis}
                 images={images}
                 mode={committedMode}
+                displayMode={displayMode}
+                onSwitchMode={setDisplayMode}
               />
             </div>
           )}

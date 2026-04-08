@@ -325,17 +325,52 @@ app.delete('/api/leads/:id', async (req, res) => {
 app.post('/api/sync/leads', async (req, res) => {
   try {
     const items = req.body as Array<Record<string, unknown>>;
+    let synced = 0;
+    const errors: Array<{ id: unknown; error: string }> = [];
+
     for (const item of items) {
-      const id = item.id as string;
-      const existing = await db.select().from(leads).where(eq(leads.id, id));
-      if (existing.length === 0) {
-        await db.insert(leads).values(item as typeof leads.$inferInsert);
-      } else {
-        await db.update(leads).set({ ...item, updatedAt: new Date() }).where(eq(leads.id, id));
+      try {
+        const id = item.id as string;
+        if (!id) {
+          errors.push({ id: item.id, error: 'Missing id' });
+          continue;
+        }
+
+        // Sanitise fields that must be JSON objects, not strings
+        const safeItem: Record<string, unknown> = { ...item };
+        if (typeof safeItem.stageHistory === 'string') {
+          try { safeItem.stageHistory = JSON.parse(safeItem.stageHistory as string); }
+          catch { safeItem.stageHistory = []; }
+        }
+        if (typeof safeItem.tags === 'string') {
+          try { safeItem.tags = JSON.parse(safeItem.tags as string); }
+          catch { safeItem.tags = []; }
+        }
+
+        // Remove unknown AI columns that may not yet exist in the schema
+        const knownAiCols = ['aiAnalysisId', 'aiProspectScore', 'aiPropertyCondition', 'aiRecommendedAction', 'aiLastAnalyzedAt'];
+        for (const col of knownAiCols) {
+          if (!(col in (leads as Record<string, unknown>)) && col in safeItem) {
+            delete safeItem[col];
+          }
+        }
+
+        const existing = await db.select().from(leads).where(eq(leads.id, id));
+        if (existing.length === 0) {
+          await db.insert(leads).values(safeItem as typeof leads.$inferInsert);
+        } else {
+          await db.update(leads).set({ ...safeItem, updatedAt: new Date() }).where(eq(leads.id, id));
+        }
+        synced++;
+      } catch (itemErr) {
+        console.error('[sync/leads] Error on lead', item.id, ':', itemErr);
+        errors.push({ id: item.id, error: itemErr instanceof Error ? itemErr.message : String(itemErr) });
       }
     }
-    res.json({ ok: true, synced: items.length });
-  } catch {
+
+    res.json({ ok: true, synced, errors: errors.length ? errors : undefined });
+  } catch (err) {
+    console.error('[sync/leads] Error:', err);
     res.status(500).json({ error: 'Failed to sync leads' });
   }
 });
@@ -704,6 +739,29 @@ app.post('/api/demo/seed', async (_req, res) => {
   } catch (err) {
     console.error('Demo seed error:', err);
     res.status(500).json({ error: 'Failed to seed demo data' });
+  }
+});
+
+// ── SPC CSV proxy — avoids CORS issues with spc.noaa.gov ──
+app.get('/api/spc-proxy', async (req, res) => {
+  try {
+    const url = req.query.url as string;
+    if (!url || !url.startsWith('https://www.spc.noaa.gov/')) {
+      res.status(400).json({ error: 'Invalid SPC URL' });
+      return;
+    }
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
+    });
+    if (!response.ok) {
+      res.status(response.status).send(await response.text());
+      return;
+    }
+    const text = await response.text();
+    res.set('Content-Type', 'text/csv');
+    res.send(text);
+  } catch (err) {
+    res.status(502).json({ error: 'Failed to fetch SPC data' });
   }
 });
 

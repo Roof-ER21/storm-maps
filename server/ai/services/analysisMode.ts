@@ -5,7 +5,7 @@
 
 import type { ClassificationResult } from "./aiClassificationService.js";
 import type { SolarBuildingInsights } from "./solarApiService.js";
-import type { StormHistory } from "./stormDataService.js";
+import type { StormHistory, StormEvent } from "./stormDataService.js";
 import type { CensusData } from "./censusDataService.js";
 import type { FemaData } from "./femaDataService.js";
 import type { PropertyData } from "./propertyDataService.js";
@@ -232,6 +232,95 @@ export function computeProspectScore(
   score = Math.max(0, Math.min(100, score));
   const threshold = mode === "insurance" ? 50 : 60;
   return { score, isHighPriority: score >= threshold };
+}
+
+// ============================================================
+// ALL-MODE SCORING: compute scores for all 3 modes at once
+// ============================================================
+
+export function computeAllModeScores(
+  classification: ClassificationResult,
+  solarInsights?: SolarBuildingInsights | null,
+  stormHistory?: StormHistory | null,
+  censusData?: CensusData | null,
+  femaData?: FemaData | null,
+  propertyData?: PropertyData | null
+): Record<AnalysisMode, { score: number; isHighPriority: boolean }> {
+  return {
+    retail: computeProspectScore(classification, "retail", solarInsights, stormHistory, censusData, femaData, propertyData),
+    insurance: computeProspectScore(classification, "insurance", solarInsights, stormHistory, censusData, femaData, propertyData),
+    solar: computeProspectScore(classification, "solar", solarInsights, stormHistory, censusData, femaData, propertyData),
+  };
+}
+
+// ============================================================
+// STORM EVENT FORMATTER — for insurance mode aiRawResponse
+// ============================================================
+
+export interface FormattedStormEvent {
+  date: string;
+  type: string;
+  size?: string;       // hail only
+  speed?: string;      // wind only
+  distance: string;
+  location: string;
+  source: string;
+}
+
+export function formatStormEventsForInsurance(
+  stormHistory: StormHistory | null
+): {
+  stormEvents: FormattedStormEvent[];
+  claimWindow: string | null;
+  qualifyingEvents: number;
+  hasRecentHail: boolean;
+  largestHailInches: number;
+  maxWindMph: number;
+  lastStormDate: string | null;
+} {
+  if (!stormHistory) {
+    return {
+      stormEvents: [],
+      claimWindow: null,
+      qualifyingEvents: 0,
+      hasRecentHail: false,
+      largestHailInches: 0,
+      maxWindMph: 0,
+      lastStormDate: null,
+    };
+  }
+
+  const qualifying = stormHistory.events.filter(
+    (e: StormEvent) =>
+      (e.type === "hail" && parseFloat(e.magnitude) >= 1.0) ||
+      (e.type === "wind" && parseFloat(e.magnitude) >= 58)
+  );
+
+  const formatted: FormattedStormEvent[] = stormHistory.events.slice(0, 15).map((e: StormEvent) => {
+    const base: FormattedStormEvent = {
+      date: e.date,
+      type: e.type,
+      distance: `${e.distanceMiles} miles`,
+      location: e.location || e.county || e.state,
+      source: e.source,
+    };
+    if (e.type === "hail") {
+      base.size = `${e.magnitude} inches`;
+    } else {
+      base.speed = `${e.magnitude} mph`;
+    }
+    return base;
+  });
+
+  return {
+    stormEvents: formatted,
+    claimWindow: stormHistory.claimWindow,
+    qualifyingEvents: qualifying.length,
+    hasRecentHail: stormHistory.hasRecentHail,
+    largestHailInches: stormHistory.largestHailInches,
+    maxWindMph: stormHistory.maxWindMph,
+    lastStormDate: stormHistory.lastStormDate,
+  };
 }
 
 // ============================================================
