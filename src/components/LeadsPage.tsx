@@ -52,7 +52,7 @@ const STAGE_CONFIG: Record<LeadStage, { label: string; color: string; bg: string
   contacted: { label: 'Contacted', color: 'text-amber-300', bg: 'bg-amber-500/15', border: 'border-amber-400/30', ring: 'ring-amber-400/20', order: 1 },
   inspection_set: { label: 'Inspection Set', color: 'text-violet-300', bg: 'bg-violet-500/15', border: 'border-violet-400/30', ring: 'ring-violet-400/20', order: 2 },
   won: { label: 'Won', color: 'text-emerald-300', bg: 'bg-emerald-500/15', border: 'border-emerald-400/30', ring: 'ring-emerald-400/20', order: 3 },
-  lost: { label: 'Lost', color: 'text-slate-400', bg: 'bg-slate-500/10', border: 'border-slate-600/30', ring: 'ring-slate-500/15', order: 4 },
+  lost: { label: 'Lost', color: 'text-stone-500', bg: 'bg-slate-500/10', border: 'border-slate-600/30', ring: 'ring-slate-500/15', order: 4 },
 };
 
 function getQuickDate(preset: 'today' | 'tomorrow' | 'next_week'): string {
@@ -208,16 +208,16 @@ export default function LeadsPage({
   const topReps = Object.entries(repCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[#faf9f7] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-5">
-        <div className="rounded-[28px] border border-slate-800 bg-slate-950/88 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
+        <div className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">
             Lead Pipeline
           </p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
             Work booked inspections and follow-ups without losing storm context
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-500">
             {searchSummary
               ? `Lead view for ${searchSummary.locationLabel}.`
               : 'Track canvass outcomes, homeowner contact info, and archived route opportunities in one place.'}
@@ -233,7 +233,7 @@ export default function LeadsPage({
             <button
               type="button"
               onClick={onOpenMap}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+              className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100"
             >
               Back to Map
             </button>
@@ -247,9 +247,9 @@ export default function LeadsPage({
           <StageMetric stage="inspection_set" count={stageCounts.inspection_set || 0} />
           <StageMetric stage="won" count={stageCounts.won || 0} />
           <StageMetric stage="lost" count={stageCounts.lost || 0} />
-          <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-            <p className="text-3xl font-semibold tracking-tight text-white">{archivedLeads.length}</p>
-            <p className="mt-1 text-xs text-slate-500">Archived</p>
+          <div className="rounded-[24px] border border-stone-200 bg-white shadow-sm p-4">
+            <p className="text-3xl font-semibold tracking-tight text-stone-900">{archivedLeads.length}</p>
+            <p className="mt-1 text-xs text-stone-400">Archived</p>
           </div>
         </div>
 
@@ -263,36 +263,36 @@ export default function LeadsPage({
               <p className="text-xl sm:text-2xl font-semibold tracking-tight text-emerald-300">
                 {closedValue > 0 ? `$${(closedValue / 1000).toFixed(0)}k` : '--'}
               </p>
-              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Closed Revenue</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-stone-400">Closed Revenue</p>
             </div>
             <div className="rounded-[24px] border border-orange-500/20 bg-orange-500/[0.06] p-4">
-              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-orange-300">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-orange-600">
                 {pipelineValue > 0 ? `$${(pipelineValue / 1000).toFixed(0)}k` : '--'}
               </p>
-              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Pipeline Value</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-stone-400">Pipeline Value</p>
             </div>
-            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-white">
+            <div className="rounded-[24px] border border-stone-200 bg-white shadow-sm p-4">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
                 {winRate !== null ? `${winRate}%` : '--'}
               </p>
-              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Win Rate</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-stone-400">Win Rate</p>
             </div>
-            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-white">
+            <div className="rounded-[24px] border border-stone-200 bg-white shadow-sm p-4">
+              <p className="text-xl sm:text-2xl font-semibold tracking-tight text-stone-900">
                 {avgDaysInPipeline !== null ? `${avgDaysInPipeline}d` : '--'}
               </p>
-              <p className="mt-1 text-[10px] sm:text-xs text-slate-500">Avg Days</p>
+              <p className="mt-1 text-[10px] sm:text-xs text-stone-400">Avg Days</p>
             </div>
-            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-xs font-semibold text-slate-500 mb-2">Leads by Rep</p>
+            <div className="rounded-[24px] border border-stone-200 bg-white shadow-sm p-4">
+              <p className="text-xs font-semibold text-stone-400 mb-2">Leads by Rep</p>
               {topReps.map(([rep, count]) => (
                 <div key={rep} className="flex items-center justify-between text-xs mt-1">
-                  <span className="text-slate-300 truncate">{rep}</span>
-                  <span className="text-white font-semibold">{count}</span>
+                  <span className="text-stone-600 truncate">{rep}</span>
+                  <span className="text-stone-900 font-semibold">{count}</span>
                 </div>
               ))}
               {topReps.length === 0 && (
-                <p className="text-[11px] text-slate-600">No reps assigned yet</p>
+                <p className="text-[11px] text-stone-400">No reps assigned yet</p>
               )}
             </div>
           </div>
@@ -301,21 +301,21 @@ export default function LeadsPage({
 
         {/* Filter bar */}
         {allActiveLeads.length > 0 && (
-          <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-3 sm:p-4">
+          <div className="rounded-[24px] border border-stone-200 bg-white shadow-sm p-3 sm:p-4">
             <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
               <input
                 aria-label="Search leads"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search leads..."
-                className="w-full sm:min-w-[180px] sm:flex-1 rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none"
+                className="w-full sm:min-w-[180px] sm:flex-1 rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
               />
               <div className="grid grid-cols-2 gap-2 sm:contents">
               <select
                 aria-label="Filter by stage"
                 value={filterStage}
                 onChange={(e) => setFilterStage(e.target.value as LeadStage | 'all')}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-2 sm:px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+                className="rounded-xl border border-stone-200 bg-stone-50 px-2 sm:px-3 py-2 text-xs font-semibold text-stone-600 focus:border-orange-400/40 focus:outline-none"
               >
                 <option value="all">All Stages</option>
                 <option value="new">New</option>
@@ -328,7 +328,7 @@ export default function LeadsPage({
                 aria-label="Filter by outcome"
                 value={filterOutcome}
                 onChange={(e) => setFilterOutcome(e.target.value as CanvassOutcome | 'all')}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+                className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:border-orange-400/40 focus:outline-none"
               >
                 <option value="all">All Outcomes</option>
                 <option value="inspection_booked">Booked</option>
@@ -339,7 +339,7 @@ export default function LeadsPage({
                 aria-label="Filter by reminder urgency"
                 value={filterUrgency}
                 onChange={(e) => setFilterUrgency(e.target.value as 'all' | 'overdue' | 'today' | 'upcoming')}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+                className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:border-orange-400/40 focus:outline-none"
               >
                 <option value="all">All Reminders</option>
                 <option value="overdue">Overdue</option>
@@ -350,7 +350,7 @@ export default function LeadsPage({
                 aria-label="Filter by rep"
                 value={filterRep}
                 onChange={(e) => setFilterRep(e.target.value)}
-                className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 focus:border-orange-400/40 focus:outline-none"
+                className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:border-orange-400/40 focus:outline-none"
               >
                 <option value="all">All Reps</option>
                 <option value="__unassigned__">Unassigned</option>
@@ -363,14 +363,14 @@ export default function LeadsPage({
                 <button
                   type="button"
                   onClick={() => { setSearchQuery(''); setFilterStage('all'); setFilterUrgency('all'); setFilterRep('all'); setFilterOutcome('all'); }}
-                  className="w-full sm:w-auto rounded-xl border border-orange-400/30 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/20"
+                  className="w-full sm:w-auto rounded-xl border border-orange-400/30 bg-orange-500/10 px-3 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-500/20"
                 >
                   Clear Filters
                 </button>
               )}
             </div>
             {hasActiveFilters && (
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-stone-400">
                 Showing {activeLeads.length} of {allActiveLeads.length} leads
               </p>
             )}
@@ -392,16 +392,16 @@ export default function LeadsPage({
         )}
 
         {activeLeads.length === 0 && archivedLeads.length === 0 && !hasActiveFilters ? (
-          <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
-            <p className="text-lg font-semibold text-white">No lead pipeline yet</p>
-            <p className="mt-2 text-sm text-slate-500">
+          <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50 p-8 text-center">
+            <p className="text-lg font-semibold text-stone-900">No lead pipeline yet</p>
+            <p className="mt-2 text-sm text-stone-400">
               Leads are created when reps mark a route stop as Interested, Follow Up, or Inspection Booked.
             </p>
           </div>
         ) : activeLeads.length === 0 && hasActiveFilters ? (
-          <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
-            <p className="text-lg font-semibold text-white">No leads match filters</p>
-            <p className="mt-2 text-sm text-slate-500">
+          <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50 p-8 text-center">
+            <p className="text-lg font-semibold text-stone-900">No leads match filters</p>
+            <p className="mt-2 text-sm text-stone-400">
               Try adjusting your filters or clearing them to see all {allActiveLeads.length} leads.
             </p>
           </div>
@@ -409,11 +409,11 @@ export default function LeadsPage({
           <>
             {/* Active pipeline leads (not won/lost) */}
             {pipelineLeads.length > 0 && (
-              <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-300">
+              <section className="rounded-[28px] border border-stone-200 bg-white shadow-sm p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
                   Active Pipeline
                 </p>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-stone-500">
                   {pipelineLeads.length} lead{pipelineLeads.length === 1 ? '' : 's'} in progress
                 </p>
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -447,7 +447,7 @@ export default function LeadsPage({
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
                   Won Jobs
                 </p>
-                <p className="mt-2 text-sm text-slate-400">
+                <p className="mt-2 text-sm text-stone-500">
                   {wonLeads.length} closed deal{wonLeads.length === 1 ? '' : 's'} ready for follow-up
                 </p>
                 <div className="mt-5 grid gap-4 xl:grid-cols-2">
@@ -534,7 +534,7 @@ function StageMetric({ stage, count }: { stage: LeadStage; count: number }) {
   const cfg = STAGE_CONFIG[stage];
   return (
     <div className={`rounded-[24px] border ${cfg.border} ${cfg.bg} p-4`}>
-      <p className="text-3xl font-semibold tracking-tight text-white">{count}</p>
+      <p className="text-3xl font-semibold tracking-tight text-stone-900">{count}</p>
       <p className={`mt-1 text-xs font-semibold ${cfg.color}`}>{cfg.label}</p>
     </div>
   );
@@ -550,11 +550,11 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const borderClass = accent === 'emerald' ? 'border-emerald-500/15' : 'border-slate-800';
-  const textClass = accent === 'emerald' ? 'text-emerald-300' : 'text-slate-500';
+  const borderClass = accent === 'emerald' ? 'border-emerald-500/15' : 'border-stone-200';
+  const textClass = accent === 'emerald' ? 'text-emerald-300' : 'text-stone-400';
 
   return (
-    <section className={`rounded-[28px] border ${borderClass} bg-slate-950/82 p-5`}>
+    <section className={`rounded-[28px] border ${borderClass} bg-white shadow-sm p-5`}>
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -563,7 +563,7 @@ function CollapsibleSection({
         <p className={`text-xs font-semibold uppercase tracking-[0.18em] ${textClass}`}>
           {title}
         </p>
-        <span className="text-slate-500 text-xs">{open ? 'Hide' : 'Show'}</span>
+        <span className="text-stone-400 text-xs">{open ? 'Hide' : 'Show'}</span>
       </button>
       {open && children}
     </section>
@@ -619,7 +619,7 @@ function LeadCard({
         : '';
 
   return (
-    <article className={`rounded-3xl border p-4 transition-colors ${isSelected ? 'border-orange-400/40 bg-orange-500/[0.06]' : 'border-slate-800 bg-slate-900/72'}`}>
+    <article className={`rounded-3xl border p-4 transition-colors ${isSelected ? 'border-orange-400/40 bg-orange-500/[0.06]' : 'border-stone-200 bg-stone-50/72'}`}>
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <button
@@ -627,7 +627,7 @@ function LeadCard({
           onClick={onToggleSelect}
           aria-label={isSelected ? 'Deselect lead' : 'Select lead'}
           aria-pressed={isSelected}
-          className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${isSelected ? 'border-orange-400 bg-orange-500 text-white' : 'border-slate-700 bg-slate-950 text-transparent hover:border-slate-500'}`}
+          className={`mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${isSelected ? 'border-orange-400 bg-orange-500 text-white' : 'border-stone-300 bg-white text-transparent hover:border-stone-400'}`}
         >
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
         </button>
@@ -642,8 +642,8 @@ function LeadCard({
               </span>
             )}
           </div>
-          <p className="mt-2 text-base font-semibold text-white">{lead.stormLabel}</p>
-          <p className="mt-1 text-sm text-slate-400">{lead.locationLabel}</p>
+          <p className="mt-2 text-base font-semibold text-stone-900">{lead.stormLabel}</p>
+          <p className="mt-1 text-sm text-stone-500">{lead.locationLabel}</p>
         </div>
         <div className="flex gap-1.5">
           <button
@@ -656,7 +656,7 @@ function LeadCard({
           <button
             type="button"
             onClick={() => onFocusLead(lead)}
-            className="rounded-xl border border-slate-800 bg-slate-950 px-2.5 py-2 text-[10px] font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+            className="rounded-xl border border-stone-200 bg-stone-50 px-2.5 py-2 text-[10px] font-semibold text-stone-900 transition-colors hover:bg-stone-100"
           >
             Map
           </button>
@@ -665,20 +665,20 @@ function LeadCard({
 
       {/* Storm context badges */}
       <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
-        <span className="rounded-full border border-slate-800 bg-slate-950/80 px-2 py-0.5 text-slate-300">
+        <span className="rounded-full border border-stone-200 bg-stone-50/80 px-2 py-0.5 text-stone-600">
           {lead.reportCount} reports
         </span>
-        <span className="rounded-full border border-slate-800 bg-slate-950/80 px-2 py-0.5 text-slate-300">
+        <span className="rounded-full border border-stone-200 bg-stone-50/80 px-2 py-0.5 text-stone-600">
           {lead.topHailInches > 0 ? `${lead.topHailInches}" hail` : 'hail swath'}
         </span>
-        <span className="rounded-full border border-slate-800 bg-slate-950/80 px-2 py-0.5 text-slate-300">
+        <span className="rounded-full border border-stone-200 bg-stone-50/80 px-2 py-0.5 text-stone-600">
           {lead.evidenceCount} proof
         </span>
-        <span className="rounded-full border border-orange-400/25 bg-orange-500/10 px-2 py-0.5 text-orange-200">
+        <span className="rounded-full border border-orange-400/25 bg-orange-500/10 px-2 py-0.5 text-orange-600">
           {lead.priority}
         </span>
         {lead.assignedRep && (
-          <span className="rounded-full border border-violet-400/25 bg-violet-500/10 px-2 py-0.5 text-violet-200">
+          <span className="rounded-full border border-violet-400/25 bg-violet-500/10 px-2 py-0.5 text-violet-600">
             {lead.assignedRep}
           </span>
         )}
@@ -686,7 +686,7 @@ function LeadCard({
 
       {/* Stage pipeline - visual progression */}
       <div className="mt-4">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-2">Stage</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400 mb-2">Stage</p>
         <div className="grid grid-cols-3 gap-1 sm:grid-cols-5">
           {(['new', 'contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => {
             const cfg = STAGE_CONFIG[stage];
@@ -701,8 +701,8 @@ function LeadCard({
                   isActive
                     ? `${cfg.border} ${cfg.bg} ${cfg.color} ring-1 ${cfg.ring}`
                     : isPast
-                      ? 'border-slate-700 bg-slate-800/50 text-slate-400'
-                      : 'border-slate-800 bg-slate-950 text-slate-600 hover:border-slate-700 hover:text-slate-400'
+                      ? 'border-stone-300 bg-stone-100 text-stone-500'
+                      : 'border-stone-200 bg-stone-50 text-stone-400 hover:text-stone-600'
                 }`}
               >
                 {cfg.label}
@@ -731,14 +731,14 @@ function LeadCard({
             onClick={() => onUpdateLeadStatus(lead.id, status)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
               lead.status === status
-                ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
-                : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+                ? 'border-orange-400/40 bg-orange-500/20 text-orange-700'
+                : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
             }`}
           >
             {label}
           </button>
         ))}
-        <span className="mx-1 border-l border-slate-800" />
+        <span className="mx-1 border-l border-stone-200" />
         {(
           [
             ['interested', 'Interested'],
@@ -752,8 +752,8 @@ function LeadCard({
             onClick={() => onUpdateLeadOutcome(lead.id, outcome)}
             className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
               lead.outcome === outcome
-                ? 'border-violet-400/40 bg-violet-500/20 text-violet-100'
-                : 'border-slate-800 bg-slate-950 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+                ? 'border-violet-400/40 bg-violet-500/20 text-violet-700'
+                : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
             }`}
           >
             {label}
@@ -764,7 +764,7 @@ function LeadCard({
       {/* Rep + Deal Value + Reminder row */}
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <div>
-          <label htmlFor={`rep-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <label htmlFor={`rep-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">
             Assigned Rep
           </label>
           <input
@@ -772,11 +772,11 @@ function LeadCard({
             value={lead.assignedRep || ''}
             onChange={(event) => onUpdateLeadAssignedRep(lead.id, event.target.value)}
             placeholder="Rep name"
-            className="mt-1 w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
+            className="mt-1 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-violet-400/40 focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor={`deal-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <label htmlFor={`deal-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">
             Deal Value ($)
           </label>
           <input
@@ -785,11 +785,11 @@ function LeadCard({
             value={lead.dealValue ?? ''}
             onChange={(event) => onUpdateLeadDealValue(lead.id, event.target.value ? parseFloat(event.target.value) : null)}
             placeholder="0"
-            className="mt-1 w-full rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-emerald-400/40 focus:outline-none"
+            className="mt-1 w-full rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-emerald-400/40 focus:outline-none"
           />
         </div>
         <div>
-          <label htmlFor={`reminder-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+          <label htmlFor={`reminder-${lead.id}`} className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-400">
             Reminder
           </label>
           <div className="mt-1 flex gap-1.5">
@@ -798,26 +798,26 @@ function LeadCard({
               type="date"
               value={lead.reminderAt || ''}
               onChange={(event) => onUpdateLeadReminder(lead.id, event.target.value)}
-              className="min-w-0 flex-1 rounded-2xl border border-slate-800 bg-slate-950 px-2.5 py-2 text-sm text-white focus:border-orange-400/40 focus:outline-none"
+              className="min-w-0 flex-1 rounded-2xl border border-stone-200 bg-stone-50 px-2.5 py-2 text-sm text-stone-900 focus:border-orange-400/40 focus:outline-none"
             />
             <button
               type="button"
               onClick={() => onUpdateLeadReminder(lead.id, getQuickDate('today'))}
-              className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:border-amber-400/30 hover:text-amber-300"
+              className="rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-[10px] font-semibold text-stone-500 hover:border-amber-400/30 hover:text-amber-300"
             >
               Today
             </button>
             <button
               type="button"
               onClick={() => onUpdateLeadReminder(lead.id, getQuickDate('tomorrow'))}
-              className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:border-amber-400/30 hover:text-amber-300"
+              className="rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-[10px] font-semibold text-stone-500 hover:border-amber-400/30 hover:text-amber-300"
             >
               Tmrw
             </button>
             <button
               type="button"
               onClick={() => onUpdateLeadReminder(lead.id, getQuickDate('next_week'))}
-              className="rounded-xl border border-slate-800 bg-slate-950 px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:border-amber-400/30 hover:text-amber-300"
+              className="rounded-xl border border-stone-200 bg-stone-50 px-2 py-1.5 text-[10px] font-semibold text-stone-500 hover:border-amber-400/30 hover:text-amber-300"
             >
               +7d
             </button>
@@ -835,7 +835,7 @@ function LeadCard({
           Lookup Owner
         </button>
         {!lead.homeownerName && (
-          <p className="text-[10px] text-slate-600">Auto-fill owner name from public records</p>
+          <p className="text-[10px] text-stone-400">Auto-fill owner name from public records</p>
         )}
       </div>
       <div className="mt-2 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
@@ -846,7 +846,7 @@ function LeadCard({
             onUpdateLeadHomeowner(lead.id, 'homeownerName', event.target.value)
           }
           placeholder="Homeowner name"
-          className="rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
         />
         <input
           aria-label="Phone number"
@@ -855,7 +855,7 @@ function LeadCard({
             onUpdateLeadHomeowner(lead.id, 'homeownerPhone', event.target.value)
           }
           placeholder="Phone number"
-          className="rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
         />
         <input
           aria-label="Email address"
@@ -864,7 +864,7 @@ function LeadCard({
             onUpdateLeadHomeowner(lead.id, 'homeownerEmail', event.target.value)
           }
           placeholder="Email address"
-          className="rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
         />
       </div>
 
@@ -910,11 +910,11 @@ function LeadCard({
                 <button
                   type="button"
                   onClick={() => onUpdateLeadChecklist(lead.id, item.key, !item.done)}
-                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${item.done ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-700 bg-slate-950 text-transparent group-hover:border-emerald-400/50'}`}
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${item.done ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-stone-300 bg-white text-transparent group-hover:border-emerald-400/50'}`}
                 >
                   <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
                 </button>
-                <span className={`text-xs ${item.done ? 'text-slate-500 line-through' : 'text-slate-300'}`}>
+                <span className={`text-xs ${item.done ? 'text-stone-400 line-through' : 'text-stone-600'}`}>
                   {item.label}
                 </span>
               </label>
@@ -928,7 +928,7 @@ function LeadCard({
         value={lead.notes}
         onChange={(event) => onUpdateLeadNotes(lead.id, event.target.value)}
         placeholder="Lead notes, scheduling details, next touch..."
-        className="mt-4 h-20 w-full resize-none rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+        className="mt-4 h-20 w-full resize-none rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
       />
     </article>
   );
@@ -946,41 +946,41 @@ function ArchivedLeadCard({
   const stageCfg = STAGE_CONFIG[lead.stop.leadStage];
 
   return (
-    <article className="rounded-3xl border border-slate-800 bg-slate-900/72 p-4">
+    <article className="rounded-3xl border border-stone-200 bg-stone-50/72 p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${stageCfg.border} ${stageCfg.bg} ${stageCfg.color}`}>
               {stageCfg.label}
             </span>
-            <span className="rounded-full border border-slate-800 bg-slate-950 px-2 py-0.5 text-[10px] font-semibold text-slate-400">
+            <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-[10px] font-semibold text-stone-500">
               Archived
             </span>
           </div>
-          <p className="mt-2 text-base font-semibold text-white">{lead.stop.stormLabel}</p>
-          <p className="mt-1 text-sm text-slate-400">{lead.stop.locationLabel}</p>
+          <p className="mt-2 text-base font-semibold text-stone-900">{lead.stop.stormLabel}</p>
+          <p className="mt-1 text-sm text-stone-500">{lead.stop.locationLabel}</p>
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
+      <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
         <span>{formatOutcomeLabel(lead.stop.outcome)}</span>
         <span>{lead.summaryLabel}</span>
         <span>{formatArchiveDate(lead.archivedAt)}</span>
       </div>
 
       {(lead.stop.homeownerName || lead.stop.homeownerPhone || lead.stop.homeownerEmail) && (
-        <div className="mt-4 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3 text-sm text-slate-300">
-          <p className="font-semibold text-white">
+        <div className="mt-4 rounded-2xl border border-violet-500/15 bg-violet-500/5 p-3 text-sm text-stone-600">
+          <p className="font-semibold text-stone-900">
             {lead.stop.homeownerName || 'Homeowner'}
           </p>
-          <p className="mt-1 text-slate-400">
+          <p className="mt-1 text-stone-500">
             {lead.stop.homeownerPhone || 'No phone'} · {lead.stop.homeownerEmail || 'No email'}
           </p>
         </div>
       )}
 
       {lead.stop.notes && (
-        <p className="mt-4 rounded-2xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm leading-6 text-slate-300">
+        <p className="mt-4 rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm leading-6 text-stone-600">
           {lead.stop.notes}
         </p>
       )}
@@ -989,14 +989,14 @@ function ArchivedLeadCard({
         <button
           type="button"
           onClick={() => onFocusLead(lead.stop)}
-          className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+          className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-900 transition-colors hover:bg-stone-100"
         >
           Open on Map
         </button>
         <button
           type="button"
           onClick={() => onRestoreArchive(lead.archiveId)}
-          className="rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+          className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-900 transition-colors hover:bg-stone-100"
         >
           Restore Route Day
         </button>
@@ -1027,20 +1027,20 @@ function BulkActionBar({
   const [bulkRep, setBulkRep] = useState('');
 
   return (
-    <div className="sticky top-0 z-20 rounded-[24px] border border-orange-400/30 bg-slate-950/95 p-3 sm:p-4 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-sm">
+    <div className="sticky top-0 z-20 rounded-[24px] border border-orange-400/30 bg-white/95 backdrop-blur p-3 sm:p-4 shadow-lg backdrop-blur-sm">
       <div className="space-y-2 sm:space-y-3">
         {/* Selection controls */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <p className="text-sm font-semibold text-orange-300">{count} selected</p>
+          <p className="text-sm font-semibold text-orange-600">{count} selected</p>
           {count < totalVisible && (
-            <button type="button" onClick={onSelectAll} className="text-xs text-slate-400 hover:text-white underline">Select all {totalVisible}</button>
+            <button type="button" onClick={onSelectAll} className="text-xs text-stone-500 hover:text-stone-900 underline">Select all {totalVisible}</button>
           )}
-          <button type="button" onClick={onClearSelection} className="text-xs text-slate-400 hover:text-white underline">Clear</button>
+          <button type="button" onClick={onClearSelection} className="text-xs text-stone-500 hover:text-stone-900 underline">Clear</button>
         </div>
 
         {/* Stage + Reminder row */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-          <span className="text-[10px] font-semibold uppercase text-slate-600 shrink-0">Stage:</span>
+          <span className="text-[10px] font-semibold uppercase text-stone-400 shrink-0">Stage:</span>
           {(['contacted', 'inspection_set', 'won', 'lost'] as LeadStage[]).map((stage) => (
             <button
               key={stage}
@@ -1051,23 +1051,23 @@ function BulkActionBar({
               {STAGE_CONFIG[stage].label}
             </button>
           ))}
-          <span className="hidden sm:block mx-1 h-5 border-l border-slate-700" />
-          <span className="text-[10px] font-semibold uppercase text-slate-600 shrink-0">Remind:</span>
-          <button type="button" onClick={() => onBulkSetReminder('today')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Today</button>
-          <button type="button" onClick={() => onBulkSetReminder('tomorrow')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-slate-300 hover:text-amber-300">Tmrw</button>
-          <button type="button" onClick={() => onBulkSetReminder('next_week')} className="rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[10px] font-semibold text-slate-300 hover:text-amber-300">+7d</button>
+          <span className="hidden sm:block mx-1 h-5 border-l border-stone-200" />
+          <span className="text-[10px] font-semibold uppercase text-stone-400 shrink-0">Remind:</span>
+          <button type="button" onClick={() => onBulkSetReminder('today')} className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-[10px] font-semibold text-stone-600 hover:text-amber-300">Today</button>
+          <button type="button" onClick={() => onBulkSetReminder('tomorrow')} className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-[10px] font-semibold text-stone-600 hover:text-amber-300">Tmrw</button>
+          <button type="button" onClick={() => onBulkSetReminder('next_week')} className="rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-[10px] font-semibold text-stone-600 hover:text-amber-300">+7d</button>
         </div>
 
         {/* Rep assignment row */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
-          <span className="text-[10px] font-semibold uppercase text-slate-600 shrink-0">Rep:</span>
+          <span className="text-[10px] font-semibold uppercase text-stone-400 shrink-0">Rep:</span>
           <div className="flex items-center gap-1 flex-1">
             <input
               value={bulkRep}
               onChange={(e) => setBulkRep(e.target.value)}
               placeholder="Name"
               list="bulk-rep-options"
-              className="flex-1 sm:w-24 sm:flex-none rounded-lg border border-slate-800 bg-slate-900 px-2 py-1.5 text-[11px] text-white placeholder:text-slate-600 focus:border-violet-400/40 focus:outline-none"
+              className="flex-1 sm:w-24 sm:flex-none rounded-lg border border-stone-200 bg-stone-50 px-2 py-1.5 text-[11px] text-stone-900 placeholder:text-stone-400 focus:border-violet-400/40 focus:outline-none"
             />
             <datalist id="bulk-rep-options">
               {availableReps.map((rep) => <option key={rep} value={rep} />)}
@@ -1088,8 +1088,8 @@ function BulkActionBar({
 
 function StageTimeline({ history }: { history: LeadStageEntry[] }) {
   return (
-    <div className="mt-3 rounded-2xl border border-slate-800/60 bg-slate-950/50 px-3 py-2">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-1.5">Activity</p>
+    <div className="mt-3 rounded-2xl border border-stone-200/60 bg-stone-50 px-3 py-2">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-stone-400 mb-1.5">Activity</p>
       <div className="flex flex-wrap gap-x-3 gap-y-1">
         {history.map((entry, i) => {
           const cfg = STAGE_CONFIG[entry.stage];
@@ -1102,9 +1102,9 @@ function StageTimeline({ history }: { history: LeadStageEntry[] }) {
             : d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
           return (
             <div key={`${entry.stage}-${entry.at}`} className="flex items-center gap-1.5">
-              {i > 0 && <span className="text-slate-700 text-[10px]">&rarr;</span>}
+              {i > 0 && <span className="text-stone-400 text-[10px]">&rarr;</span>}
               <span className={`text-[10px] font-bold ${cfg.color}`}>{cfg.label}</span>
-              <span className="text-[9px] text-slate-600">{dateStr} {timeStr}</span>
+              <span className="text-[9px] text-stone-400">{dateStr} {timeStr}</span>
             </div>
           );
         })}

@@ -35,14 +35,14 @@ export default function OnboardingTour({ onComplete }: { onComplete: () => void 
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/80 backdrop-blur-sm py-4">
-      <div className="w-full max-w-md mx-4 rounded-3xl border border-slate-800 bg-slate-950 p-6 sm:p-8">
+      <div className="w-full max-w-md mx-4 rounded-3xl border border-stone-200 bg-white shadow-xl p-6 sm:p-8">
         {/* Progress dots */}
         <div className="flex justify-center gap-2 mb-6">
           {STEPS.map((_, i) => (
             <div
               key={i}
               className={`h-1.5 rounded-full transition-all ${
-                i === step ? 'w-6 bg-orange-400' : i < step ? 'w-1.5 bg-orange-400/40' : 'w-1.5 bg-slate-700'
+                i === step ? 'w-6 bg-orange-400' : i < step ? 'w-1.5 bg-orange-400/40' : 'w-1.5 bg-stone-200'
               }`}
             />
           ))}
@@ -56,11 +56,11 @@ export default function OnboardingTour({ onComplete }: { onComplete: () => void 
         </div>
 
         {/* Content */}
-        <h2 className="text-center text-xl sm:text-2xl font-bold text-white">{current.title}</h2>
-        <p className="mt-3 text-center text-sm leading-relaxed text-slate-400">{current.body}</p>
+        <h2 className="text-center text-xl sm:text-2xl font-bold text-stone-900">{current.title}</h2>
+        <p className="mt-3 text-center text-sm leading-relaxed text-stone-500">{current.body}</p>
 
         {/* Step counter */}
-        <p className="mt-4 text-center text-xs text-slate-600">{step + 1} of {STEPS.length}</p>
+        <p className="mt-4 text-center text-xs text-stone-400">{step + 1} of {STEPS.length}</p>
 
         {/* Actions */}
         <div className="mt-6 flex gap-3">
@@ -68,7 +68,7 @@ export default function OnboardingTour({ onComplete }: { onComplete: () => void 
             <button
               type="button"
               onClick={() => setStep(step - 1)}
-              className="flex-1 rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm font-semibold text-white hover:bg-slate-800"
+              className="flex-1 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm font-semibold text-stone-900 hover:bg-stone-100"
             >
               Back
             </button>
@@ -90,7 +90,7 @@ export default function OnboardingTour({ onComplete }: { onComplete: () => void 
           <button
             type="button"
             onClick={onComplete}
-            className="mt-3 w-full text-center text-xs text-slate-600 hover:text-slate-400"
+            className="mt-3 w-full text-center text-xs text-stone-400 hover:text-stone-600"
           >
             Skip tour
           </button>

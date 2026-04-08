@@ -56,16 +56,16 @@ export default function CanvassPage({
   const followUps = routeStops.filter((stop) => stop.outcome === 'follow_up');
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[#faf9f7] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
-        <div className="rounded-[28px] border border-slate-800 bg-slate-950/88 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.45)]">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
+        <div className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">
             Canvass Workspace
           </p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
             Route, knock, log, and export the day
           </h2>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-stone-500">
             {searchSummary
               ? `Working route for ${searchSummary.locationLabel}.`
               : 'Build a route from the Storm Map and use this page as the rep field log.'}
@@ -82,7 +82,7 @@ export default function CanvassPage({
               type="button"
               onClick={onOpenNavigation}
               disabled={pendingStops.length === 0}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Turn-by-Turn
             </button>
@@ -90,7 +90,7 @@ export default function CanvassPage({
               type="button"
               onClick={onExportSummary}
               disabled={routeStops.length === 0}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Summary
             </button>
@@ -98,14 +98,14 @@ export default function CanvassPage({
               type="button"
               onClick={onExportCsv}
               disabled={routeStops.length === 0}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               CSV
             </button>
             <button
               type="button"
               onClick={onOpenMap}
-              className="col-span-2 sm:col-span-1 rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+              className="col-span-2 sm:col-span-1 rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100"
             >
               Back to Map
             </button>
@@ -121,9 +121,9 @@ export default function CanvassPage({
         </div>
 
         {routeStops.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
-            <p className="text-lg font-semibold text-white">No canvass route yet</p>
-            <p className="mt-2 text-sm text-slate-500">
+          <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50 p-8 text-center">
+            <p className="text-lg font-semibold text-stone-900">No canvass route yet</p>
+            <p className="mt-2 text-sm text-stone-400">
               Build a route from knock-now storm dates, then use this page to track outcomes and notes.
             </p>
           </div>
@@ -137,27 +137,27 @@ export default function CanvassPage({
                     ? 'border-emerald-500/20 bg-emerald-500/5'
                     : stop.status === 'visited'
                       ? 'border-sky-500/20 bg-sky-500/5'
-                      : 'border-slate-800 bg-slate-950/82'
+                      : 'border-stone-200 bg-white shadow-sm'
                 }`}
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-sm font-bold text-orange-100">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-sm font-bold text-orange-700">
                         {index + 1}
                       </span>
                       <div>
-                        <p className="text-lg font-semibold text-white">{stop.stormLabel}</p>
-                        <p className="text-sm text-slate-400">
+                        <p className="text-lg font-semibold text-stone-900">{stop.stormLabel}</p>
+                        <p className="text-sm text-stone-500">
                           {stop.locationLabel} · {stop.sourceLabel}
                         </p>
                       </div>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-300">
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-stone-600">
                       <span>{stop.reportCount} reports</span>
                       <span>{stop.topHailInches > 0 ? `${stop.topHailInches}" hail` : 'hail swath'}</span>
                       <span>{stop.evidenceCount} proof</span>
-                      <span className="text-orange-200">{stop.priority}</span>
+                      <span className="text-orange-600">{stop.priority}</span>
                       <span>{formatOutcomeLabel(stop.outcome)}</span>
                     </div>
                   </div>
@@ -165,14 +165,14 @@ export default function CanvassPage({
                     <button
                       type="button"
                       onClick={() => onFocusStop(stop)}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+                      className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-900 transition-colors hover:bg-stone-100"
                     >
                       Open on Map
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveStop(stop.id)}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
+                      className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 transition-colors hover:bg-stone-100"
                     >
                       Remove
                     </button>
@@ -181,7 +181,7 @@ export default function CanvassPage({
 
                 <div className="mt-4 grid gap-4 md:grid-cols-[0.52fr_0.48fr]">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
                       Stop Status
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5 sm:gap-2">
@@ -198,8 +198,8 @@ export default function CanvassPage({
                           onClick={() => onUpdateStopStatus(stop.id, status)}
                           className={`rounded-full border px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold transition-colors ${
                             stop.status === status
-                              ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
-                              : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+                              ? 'border-orange-400/40 bg-orange-500/20 text-orange-700'
+                              : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
                           }`}
                         >
                           {label}
@@ -207,7 +207,7 @@ export default function CanvassPage({
                       ))}
                     </div>
 
-                    <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
                       Outcome
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1.5 sm:gap-2">
@@ -226,8 +226,8 @@ export default function CanvassPage({
                           onClick={() => onUpdateStopOutcome(stop.id, outcome)}
                           className={`rounded-full border px-2.5 sm:px-3 py-1.5 text-[11px] sm:text-xs font-semibold transition-colors ${
                             stop.outcome === outcome
-                              ? 'border-violet-400/40 bg-violet-500/20 text-violet-100'
-                              : 'border-slate-800 bg-slate-900 text-slate-300 hover:border-slate-700 hover:bg-slate-800'
+                              ? 'border-violet-400/40 bg-violet-500/20 text-violet-700'
+                              : 'border-stone-200 bg-stone-50 text-stone-600 hover:bg-stone-100'
                           }`}
                         >
                           {label}
@@ -237,7 +237,7 @@ export default function CanvassPage({
                   </div>
 
                   <div>
-                    <label htmlFor={`notes-${stop.id}`} className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <label htmlFor={`notes-${stop.id}`} className="text-[11px] font-semibold uppercase tracking-[0.16em] text-stone-400">
                       Rep Notes
                     </label>
                     <textarea
@@ -245,7 +245,7 @@ export default function CanvassPage({
                       value={stop.notes}
                       onChange={(event) => onUpdateStopNotes(stop.id, event.target.value)}
                       placeholder="Gate code, homeowner name, roof age, follow-up timing..."
-                      className="mt-2 h-28 w-full resize-none rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                      className="mt-2 h-28 w-full resize-none rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                     />
                     {(stop.outcome === 'inspection_booked' || stop.homeownerName || stop.homeownerPhone || stop.homeownerEmail) && (
                       <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
@@ -256,7 +256,7 @@ export default function CanvassPage({
                             onUpdateStopHomeowner(stop.id, 'homeownerName', event.target.value)
                           }
                           placeholder="Homeowner name"
-                          className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                         />
                         <input
                           aria-label="Phone number"
@@ -265,7 +265,7 @@ export default function CanvassPage({
                             onUpdateStopHomeowner(stop.id, 'homeownerPhone', event.target.value)
                           }
                           placeholder="Phone number"
-                          className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                         />
                         <input
                           aria-label="Email address"
@@ -274,7 +274,7 @@ export default function CanvassPage({
                             onUpdateStopHomeowner(stop.id, 'homeownerEmail', event.target.value)
                           }
                           placeholder="Email address"
-                          className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-white placeholder:text-slate-500 focus:border-orange-400/40 focus:outline-none"
+                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                         />
                       </div>
                     )}
@@ -286,22 +286,22 @@ export default function CanvassPage({
         )}
 
         {routeArchives.length > 0 && (
-          <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+          <div className="rounded-[28px] border border-stone-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
               Route Archive
             </p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">
+            <h3 className="mt-2 text-2xl font-semibold text-stone-900">
               Reopen completed canvass days
             </h3>
             <div className="mt-4 grid gap-3">
               {routeArchives.slice(0, 6).map((archive) => (
                 <div
                   key={archive.id}
-                  className="flex flex-col gap-3 rounded-2xl border border-slate-800 bg-slate-900/65 p-4 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-3 rounded-2xl border border-stone-200 bg-stone-50/65 p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-white">{archive.summaryLabel}</p>
-                    <p className="mt-1 text-xs text-slate-400">
+                    <p className="text-sm font-semibold text-stone-900">{archive.summaryLabel}</p>
+                    <p className="mt-1 text-xs text-stone-500">
                       {archive.stops.length} stop{archive.stops.length === 1 ? '' : 's'} · archived{' '}
                       {new Date(archive.archivedAt).toLocaleDateString('en-US', {
                         month: 'short',
@@ -314,14 +314,14 @@ export default function CanvassPage({
                     <button
                       type="button"
                       onClick={() => onRestoreArchive(archive.id)}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800"
+                      className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-900 transition-colors hover:bg-stone-100"
                     >
                       Restore
                     </button>
                     <button
                       type="button"
                       onClick={() => onRemoveArchive(archive.id)}
-                      className="rounded-xl border border-slate-800 bg-slate-900 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
+                      className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 transition-colors hover:bg-stone-100"
                     >
                       Remove
                     </button>
@@ -337,7 +337,7 @@ export default function CanvassPage({
             <button
               type="button"
               onClick={onClearRoute}
-              className="rounded-2xl border border-slate-800 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-slate-300 transition-colors hover:border-slate-700 hover:bg-slate-800"
+              className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm font-semibold text-stone-600 transition-colors hover:bg-stone-100"
             >
               Clear Route
             </button>
@@ -356,9 +356,9 @@ function CanvassMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-5">
-      <p className="text-3xl font-semibold tracking-tight text-white">{value}</p>
-      <p className="mt-1 text-sm text-slate-400">{label}</p>
+    <div className="rounded-[24px] border border-stone-200 bg-white p-5">
+      <p className="text-3xl font-semibold tracking-tight text-stone-900">{value}</p>
+      <p className="mt-1 text-sm text-stone-500">{label}</p>
     </div>
   );
 }

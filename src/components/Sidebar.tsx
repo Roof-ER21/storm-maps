@@ -1001,7 +1001,7 @@ function FilterButton({
   const activeClass =
     label === 'Wind'
       ? 'bg-violet-500 text-white'
-      : 'bg-orange-400 text-gray-950';
+      : 'bg-orange-400 text-stone-900';
 
   return (
     <button

@@ -451,7 +451,7 @@ function LayerStatusPanel({
   return (
     <div className="absolute bottom-20 left-4 z-20 flex flex-col gap-3 max-w-sm">
       {showNexrad && (
-        <div className="rounded-xl border border-green-700/70 bg-gray-950/88 p-3 text-white shadow-xl backdrop-blur-sm">
+        <div className="rounded-xl border border-stone-200 bg-white/95 p-3 text-stone-900 shadow-lg backdrop-blur">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-green-300">
@@ -461,19 +461,19 @@ function LayerStatusPanel({
                 {selectedDate ? 'Historical NEXRAD' : 'Live NEXRAD'}
               </p>
             </div>
-            <span className="rounded-full bg-green-600/20 px-2 py-1 text-[11px] text-green-200">
+            <span className="rounded-full bg-green-600/20 px-2 py-1 text-[11px] text-green-700">
               {selectedDate
                 ? formatDateBadge(selectedDate)
                 : `${formatEasternTimestamp(radarTimestamp)} ET`}
             </span>
           </div>
-          <p className="mt-2 text-xs text-gray-300">
+          <p className="mt-2 text-xs text-stone-600">
             {selectedDate
               ? `Bounded to the selected storm on ${selectedDate}.`
               : 'Following the current map extent.'}
           </p>
           {selectedDate && (
-            <p className="mt-2 text-[11px] text-green-100">
+            <p className="mt-2 text-[11px] text-green-700">
               Historical mode composites the strongest hail-report radar scans for this date.
             </p>
           )}
@@ -483,17 +483,17 @@ function LayerStatusPanel({
       {showMrms && mrmsInfoCollapsed && (
         <button
           onClick={() => setMrmsInfoCollapsed(false)}
-          className="rounded-lg bg-zinc-900/90 border border-zinc-700 px-3 py-1.5 text-xs font-semibold text-orange-300 backdrop-blur"
+          className="rounded-lg bg-white/95 backdrop-blur border border-stone-200 px-3 py-1.5 text-xs font-semibold text-orange-300 backdrop-blur"
         >
           MRMS Info
         </button>
       )}
 
       {showMrms && !mrmsInfoCollapsed && (
-        <div className="relative rounded-xl border border-orange-700/70 bg-gray-950/88 p-3 text-white shadow-xl backdrop-blur-sm">
+        <div className="relative rounded-xl border border-stone-200 bg-white/95 p-3 text-stone-900 shadow-lg backdrop-blur">
           <button
             onClick={() => setMrmsInfoCollapsed(true)}
-            className="absolute top-2 right-2 text-zinc-400 hover:text-white"
+            className="absolute top-2 right-2 text-stone-400 hover:text-stone-900"
             aria-label="Collapse MRMS info"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -511,17 +511,17 @@ function LayerStatusPanel({
               </p>
             </div>
             {mrmsHistoricalMode ? (
-              <span className="rounded-full bg-orange-500/20 px-2 py-1 text-[11px] text-orange-100">
+              <span className="rounded-full bg-orange-500/20 px-2 py-1 text-[11px] text-orange-700">
                 {selectedDate || 'Historical'}
               </span>
             ) : (
-              <div className="flex gap-1 rounded-lg bg-gray-900 p-1">
+              <div className="flex gap-1 rounded-lg bg-stone-100 p-1">
                 <button
                   onClick={() => onSelectMrmsProduct('mesh60')}
                   className={`rounded px-2 py-1 text-[11px] font-semibold ${
                     mrmsProduct === 'mesh60'
-                      ? 'bg-orange-500 text-gray-950'
-                      : 'text-gray-300'
+                      ? 'bg-orange-500 text-stone-900'
+                      : 'text-stone-600'
                   }`}
                 >
                   60m
@@ -530,8 +530,8 @@ function LayerStatusPanel({
                   onClick={() => onSelectMrmsProduct('mesh1440')}
                   className={`rounded px-2 py-1 text-[11px] font-semibold ${
                     mrmsProduct === 'mesh1440'
-                      ? 'bg-orange-500 text-gray-950'
-                      : 'text-gray-300'
+                      ? 'bg-orange-500 text-stone-900'
+                      : 'text-stone-600'
                   }`}
                 >
                   24h
@@ -542,11 +542,11 @@ function LayerStatusPanel({
 
           {mrmsHistoricalMode && (
             <>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-200">
+              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-600">
                 Selected storm mode
               </p>
               {mrmsLoading && (
-                <p className="mt-2 text-xs text-gray-300">
+                <p className="mt-2 text-xs text-stone-600">
                   Loading archived MRMS hail raster for {selectedDate}...
                 </p>
               )}
@@ -555,7 +555,7 @@ function LayerStatusPanel({
               )}
               {mrmsMeta && !mrmsLoading && !mrmsError && (
                 <>
-                  <p className="mt-2 text-xs text-gray-300">
+                  <p className="mt-2 text-xs text-stone-600">
                     Archived MRMS MESH for {selectedDate} · source time{' '}
                     {formatEasternTimestamp(
                       mrmsMeta.ref_time || mrmsMeta.generated_at || new Date().toISOString(),
@@ -565,7 +565,7 @@ function LayerStatusPanel({
                       ? ` · max ${mrmsMeta.max_mesh_inches.toFixed(2)}" hail`
                       : ''}
                   </p>
-                  <p className="mt-1 text-xs text-orange-100">
+                  <p className="mt-1 text-xs text-orange-700">
                     {mrmsMeta.has_hail
                       ? 'Showing archived MRMS hail pixels only. Transparent areas were not hit by hail in this raster.'
                       : 'Archived MRMS did not report hail pixels inside the selected storm bounds.'}
@@ -576,7 +576,7 @@ function LayerStatusPanel({
           )}
 
           {!mrmsHistoricalMode && mrmsLoading && (
-            <p className="mt-2 text-xs text-gray-300">
+            <p className="mt-2 text-xs text-stone-600">
               Loading live MRMS metadata...
             </p>
           )}
@@ -587,13 +587,13 @@ function LayerStatusPanel({
 
           {!mrmsHistoricalMode && mrmsMeta && !mrmsLoading && !mrmsError && (
             <>
-              <p className="mt-2 text-xs text-gray-300">
+              <p className="mt-2 text-xs text-stone-600">
                 Updated {formatEasternTimestamp(mrmsMeta.ref_time || mrmsMeta.generated_at || new Date().toISOString())} ET
                 {mrmsMeta.max_mesh_inches
                   ? ` · max ${mrmsMeta.max_mesh_inches.toFixed(2)}" hail`
                   : ''}
               </p>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-stone-500">
                 {mrmsMeta.has_hail
                   ? 'Live-only layer. If you do not see hail here, there is probably no current hail near this view.'
                   : 'No live hail pixels reported in the current MRMS product.'}
@@ -1372,7 +1372,7 @@ function StormMapPlaceholder({
   return (
     <div
       id="map"
-      className="flex-1 bg-gray-900 relative overflow-hidden"
+      className="flex-1 bg-stone-100 relative overflow-hidden"
       role="region"
       aria-label="Storm map"
     >

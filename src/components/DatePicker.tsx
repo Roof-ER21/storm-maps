@@ -6,8 +6,8 @@
 
 export default function DatePicker() {
   return (
-    <div className="p-3 bg-gray-900 rounded-lg border border-gray-700">
-      <p className="text-xs text-gray-500">Date picker coming soon</p>
+    <div className="p-3 bg-stone-50 rounded-lg border border-stone-200">
+      <p className="text-xs text-stone-400">Date picker coming soon</p>
     </div>
   );
 }

@@ -28,17 +28,17 @@ export default function PinnedPropertiesPage({
   onOpenMap,
 }: PinnedPropertiesPageProps) {
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.15),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[#faf9f7] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">
               Pinned Properties
             </p>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
               Saved addresses reps can reopen instantly
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-gray-400">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-stone-500">
               Use this as the working queue for neighborhoods and addresses worth
               returning to. Each pin preserves the search context so the map can jump
               back into that property history without rebuilding it by hand.
@@ -47,16 +47,16 @@ export default function PinnedPropertiesPage({
           <button
             type="button"
             onClick={onOpenMap}
-            className="rounded-2xl border border-gray-800 bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-gray-700 hover:bg-gray-800"
+            className="rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100"
           >
             Pin from Map
           </button>
         </div>
 
         {pinnedProperties.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-gray-800 bg-black/30 p-8 text-center">
-            <p className="text-lg font-semibold text-white">No pinned properties yet</p>
-            <p className="mt-2 text-sm text-gray-500">
+          <div className="rounded-3xl border border-dashed border-stone-200 bg-stone-50 p-8 text-center">
+            <p className="text-lg font-semibold text-stone-900">No pinned properties yet</p>
+            <p className="mt-2 text-sm text-stone-400">
               Search an address on the Map page, then pin it so it becomes part of the
               rep workflow.
             </p>
@@ -66,7 +66,7 @@ export default function PinnedPropertiesPage({
             {pinnedProperties.map((property) => (
               <article
                 key={property.id}
-                className="rounded-3xl border border-gray-900 bg-gray-950/80 p-5 shadow-xl shadow-black/20"
+                className="rounded-3xl border border-stone-200 bg-white shadow-sm p-5 shadow-sm"
               >
                 {(() => {
                   const routeCounts = routeCountsByPropertyId[property.id] || {
@@ -84,17 +84,17 @@ export default function PinnedPropertiesPage({
                     <>
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-lg font-semibold text-white">
+                    <p className="text-lg font-semibold text-stone-900">
                       {property.locationLabel}
                     </p>
-                    <p className="mt-1 text-xs text-gray-500">
+                    <p className="mt-1 text-xs text-stone-400">
                       {property.lat.toFixed(4)}, {property.lng.toFixed(4)}
                     </p>
                   </div>
                   <button
                     type="button"
                     onClick={() => onRemoveProperty(property.id)}
-                    className="rounded-xl border border-gray-800 px-2.5 py-2 text-xs font-semibold text-gray-400 hover:border-orange-500/30 hover:text-orange-300"
+                    className="rounded-xl border border-stone-200 px-2.5 py-2 text-xs font-semibold text-stone-500 hover:border-orange-500/30 hover:text-orange-600"
                   >
                     Remove
                   </button>
@@ -134,12 +134,12 @@ export default function PinnedPropertiesPage({
                   routeCounts.inspectionSet > 0 ||
                   routeCounts.won > 0) && (
                   <div className={`mt-4 rounded-2xl border p-3 ${routeCounts.won > 0 ? 'border-emerald-500/18 bg-emerald-500/[0.04]' : 'border-violet-500/15 bg-violet-500/5'}`}>
-                    <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${routeCounts.won > 0 ? 'text-emerald-300' : 'text-violet-200'}`}>
+                    <p className={`text-[11px] font-semibold uppercase tracking-[0.16em] ${routeCounts.won > 0 ? 'text-emerald-700' : 'text-violet-700'}`}>
                       {routeCounts.won > 0 ? 'Pipeline + Won' : 'Canvass Activity'}
                     </p>
-                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-slate-300">
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-stone-600">
                       {routeCounts.won > 0 && (
-                        <span className="rounded-full border border-emerald-400/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                        <span className="rounded-full border border-emerald-400/25 bg-emerald-500/12 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
                           {routeCounts.won} won
                         </span>
                       )}
@@ -148,7 +148,7 @@ export default function PinnedPropertiesPage({
                       {routeCounts.followUp > 0 && <span>{routeCounts.followUp} follow-up</span>}
                       {routeCounts.contacted > 0 && <span>{routeCounts.contacted} contacted</span>}
                       {routeCounts.inspectionSet > 0 && <span>{routeCounts.inspectionSet} inspection set</span>}
-                      {routeCounts.lost > 0 && <span className="text-slate-500">{routeCounts.lost} lost</span>}
+                      {routeCounts.lost > 0 && <span className="text-stone-400">{routeCounts.lost} lost</span>}
                     </div>
                   </div>
                 )}
@@ -157,7 +157,7 @@ export default function PinnedPropertiesPage({
                   <button
                     type="button"
                     onClick={() => onOpenProperty(property)}
-                    className="flex-1 rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold text-gray-950 transition-colors hover:bg-gray-100"
+                    className="flex-1 rounded-2xl bg-white px-3 py-2.5 text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100"
                   >
                     Open on Map
                   </button>
@@ -182,11 +182,11 @@ function PinnedMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-2xl border border-gray-900 bg-black/40 p-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+    <div className="rounded-2xl border border-stone-200 bg-stone-50 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">
         {label}
       </p>
-      <p className="mt-2 text-sm font-semibold text-white">{value}</p>
+      <p className="mt-2 text-sm font-semibold text-stone-900">{value}</p>
     </div>
   );
 }

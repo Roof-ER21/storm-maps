@@ -166,7 +166,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
 
           {/* Search icon */}
           <svg
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-500 pointer-events-none"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -192,7 +192,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
             <button
               type="button"
               onClick={handleClear}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none focus:text-gray-700"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-gray-600 focus:outline-none focus:text-gray-700"
               aria-label="Clear search"
             >
               <svg
@@ -228,7 +228,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
       {/* Recent searches dropdown */}
       {showRecents && (
         <div className="mt-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
-          <div className="px-3 py-1.5 text-[10px] text-gray-400 uppercase tracking-wider border-b border-gray-100">
+          <div className="px-3 py-1.5 text-[10px] text-stone-500 uppercase tracking-wider border-b border-gray-100">
             Recent Searches
           </div>
           {recentSearches.map((result) => (
@@ -238,7 +238,7 @@ export default function SearchBar({ onResult }: SearchBarProps) {
               className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors focus:outline-none focus:bg-gray-50"
             >
               <svg
-                className="w-3.5 h-3.5 text-gray-400 flex-shrink-0"
+                className="w-3.5 h-3.5 text-stone-500 flex-shrink-0"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
