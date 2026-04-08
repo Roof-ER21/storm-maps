@@ -69,16 +69,16 @@ function CollapsibleSection({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="border-b border-zinc-800/60">
+    <div className="border-b border-stone-200">
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold uppercase tracking-widest text-zinc-400 hover:text-white transition-colors"
+        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors"
       >
         <span className="flex items-center gap-2">
           {title}
           {badge != null && (
-            <span className="rounded-full bg-orange-500/20 px-1.5 py-0.5 text-[10px] font-bold text-orange-300 normal-case tracking-normal">
+            <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-600 normal-case tracking-normal">
               {badge}
             </span>
           )}
@@ -272,11 +272,11 @@ export default function Sidebar({
   }, [selectedDate?.date]);
 
   return (
-    <aside className="flex w-full shrink-0 flex-col overflow-y-auto border-b border-slate-800 bg-slate-950 text-white min-h-0 lg:w-80 lg:border-b-0 lg:border-r">
-      <div className="border-b border-slate-800 p-4">
+    <aside className="flex w-full shrink-0 flex-col overflow-y-auto border-b border-stone-200 bg-white text-stone-900 min-h-0 lg:w-80 lg:border-b-0 lg:border-r">
+      <div className="border-b border-stone-200 p-4">
         <div className="flex items-center gap-2">
           <svg
-            className="h-5 w-5 flex-shrink-0 text-orange-300"
+            className="h-5 w-5 flex-shrink-0 text-orange-500"
             fill="none"
             viewBox="0 0 20 20"
             aria-hidden="true"
@@ -296,15 +296,15 @@ export default function Sidebar({
             />
           </svg>
           <div className="flex-1">
-            <h1 className="text-lg font-bold tracking-tight">Hail Yes!</h1>
-            <p className="text-xs text-gray-400">
+            <h1 className="text-lg font-bold tracking-tight text-stone-900">Hail Yes!</h1>
+            <p className="text-xs text-stone-500">
               Property hail intelligence for roofing reps
             </p>
           </div>
         </div>
       </div>
 
-      <form onSubmit={handleSearch} className="p-3 border-b border-gray-800">
+      <form onSubmit={handleSearch} className="p-3 border-b border-stone-200">
         <div className="relative">
           <input
             key={activeSearchLabel ?? 'search-location'}
@@ -312,11 +312,11 @@ export default function Sidebar({
             type="text"
             defaultValue={activeSearchLabel ?? ''}
             placeholder="Address, city, or ZIP..."
-            className="w-full rounded-lg border border-gray-700 bg-gray-900 py-2 pl-9 pr-3 text-sm text-white placeholder-gray-500 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+            className="w-full rounded-lg border border-stone-300 bg-stone-50 py-2 pl-9 pr-3 text-sm text-stone-900 placeholder-stone-400 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
             aria-label="Search location"
           />
           <svg
-            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500"
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -332,7 +332,7 @@ export default function Sidebar({
         </div>
 
         <div className="mt-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
             History Range
           </p>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
@@ -367,7 +367,7 @@ export default function Sidebar({
               type="date"
               value={sinceDate}
               onChange={(e) => onSinceDateChange(e.target.value)}
-              className="mt-2 w-full rounded-lg border border-gray-700 bg-gray-900 px-3 py-2 text-sm text-white focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
               aria-label="Show storms since date"
             />
           )}
@@ -375,16 +375,16 @@ export default function Sidebar({
       </form>
 
       {searchSummary && (
-        <div className="border-b border-gray-800 px-3 py-3">
+        <div className="border-b border-stone-200 px-3 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                 Property History
               </p>
-              <p className="mt-1 text-sm font-semibold text-white">
+              <p className="mt-1 text-sm font-semibold text-stone-900">
                 {searchSummary.locationLabel}
               </p>
-              <p className="mt-1 text-xs text-gray-400">
+              <p className="mt-1 text-xs text-stone-500">
                 {loading
                   ? `Searching within ${searchSummary.radiusMiles} miles...`
                   : stormDates.length > 0
@@ -398,15 +398,15 @@ export default function Sidebar({
               disabled={!canPinProperty}
               className={`rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${
                 isPinned
-                  ? 'bg-amber-500 text-gray-950'
-                  : 'bg-gray-900 text-white hover:bg-gray-800'
-              } disabled:cursor-not-allowed disabled:bg-gray-900 disabled:text-gray-500`}
+                  ? 'bg-amber-500 text-white'
+                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
+              } disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400`}
             >
               {isPinned ? 'Pinned' : 'Pin'}
             </button>
           </div>
           {!loading && latestStorms[0] && (
-            <p className="mt-2 text-xs text-green-300">
+            <p className="mt-2 text-xs text-emerald-600">
               Last hit {latestStorms[0].label} with {formatStormImpactSummary(latestStorms[0])}
             </p>
           )}
@@ -414,7 +414,7 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => onAnalyzeProperty(searchSummary.locationLabel)}
-              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-600/20 px-3 py-2 text-xs font-semibold text-violet-300 hover:bg-violet-600/30 transition-colors border border-violet-500/25"
+              className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg bg-violet-50 px-3 py-2 text-xs font-semibold text-violet-700 hover:bg-violet-100 transition-colors border border-violet-200"
             >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -433,7 +433,7 @@ export default function Sidebar({
               type="button"
               onClick={onScanAreaWithAi}
               disabled={scanningArea}
-              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-orange-500/20 px-3 py-2 text-xs font-semibold text-orange-300 hover:bg-orange-500/30 transition-colors border border-orange-500/30 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-1.5 flex w-full items-center justify-center gap-1.5 rounded-lg bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-600 hover:bg-orange-100 transition-colors border border-orange-200 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {scanningArea ? (
                 <>
@@ -479,18 +479,18 @@ export default function Sidebar({
       )}
 
       {canvassingAlert?.inHailZone && (
-        <div className="mx-3 mt-3 rounded-lg border border-orange-500/30 bg-[linear-gradient(135deg,rgba(249,115,22,0.18),rgba(124,58,237,0.18))] p-3">
+        <div className="mx-3 mt-3 rounded-lg border border-orange-300 bg-orange-50 p-3">
           <div className="flex items-center gap-2 mb-1">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-orange-300" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-orange-200">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
+            <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">
               Hail Zone Alert
             </span>
           </div>
-          <p className="text-sm font-medium text-white">
+          <p className="text-sm font-medium text-stone-900">
             {canvassingAlert.estimatedHailSize}" hail detected nearby
           </p>
           {canvassingAlert.talkingPoints.length > 0 && (
-            <p className="mt-1 text-xs text-orange-100/90">
+            <p className="mt-1 text-xs text-orange-700">
               {canvassingAlert.talkingPoints[0]}
             </p>
           )}
@@ -498,17 +498,17 @@ export default function Sidebar({
       )}
 
       {selectedDate && (
-        <div className="border-b border-gray-800 px-3 py-3">
-          <div className="rounded-2xl border border-orange-500/20 bg-[linear-gradient(135deg,rgba(249,115,22,0.16),rgba(124,58,237,0.14))] p-3">
+        <div className="border-b border-stone-200 px-3 py-3">
+          <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-200">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-orange-600">
                   Selected Storm
                 </p>
-                <h3 className="mt-1 text-base font-semibold text-white">
+                <h3 className="mt-1 text-base font-semibold text-stone-900">
                   {selectedDate.label}
                 </h3>
-                <p className="mt-1 text-xs text-orange-50/90">
+                <p className="mt-1 text-xs text-stone-600">
                   Historical MRMS is now the primary hail footprint for this storm on the map.
                 </p>
               </div>
@@ -543,7 +543,7 @@ export default function Sidebar({
             </div>
 
             {selectedStormSources.length > 0 && (
-              <p className="mt-3 text-[11px] text-orange-50/80">
+              <p className="mt-3 text-[11px] text-stone-500">
                 Primary sources: {selectedStormSources.join(' · ')}
               </p>
             )}
@@ -555,14 +555,14 @@ export default function Sidebar({
                   void onGenerateReport(selectedDate.date);
                 }}
                 disabled={generatingReport}
-                className="rounded-xl bg-white px-3 py-2 text-sm font-semibold text-gray-950 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50"
+                className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
               >
                 {generatingReport ? 'Generating...' : 'Generate PDF'}
               </button>
               <button
                 type="button"
                 onClick={onOpenEvidence}
-                className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-black/30"
+                className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
               >
                 Open Evidence
               </button>
@@ -571,8 +571,8 @@ export default function Sidebar({
                 onClick={() => onToggleStormRoute(selectedDate)}
                 className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
                   (queuedRouteCountsByDate[selectedDate.date] || 0) > 0
-                    ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
-                    : 'border-white/10 bg-black/20 text-white hover:bg-black/30'
+                    ? 'border-orange-300 bg-orange-100 text-orange-700'
+                    : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
                 }`}
               >
                 {(queuedRouteCountsByDate[selectedDate.date] || 0) > 0
@@ -585,7 +585,7 @@ export default function Sidebar({
             <button
               type="button"
               onClick={onOpenReports}
-              className="w-full rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-orange-100/90 transition-colors hover:bg-black/25"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-700 transition-colors hover:bg-stone-100"
             >
               Open Report Workspace
             </button>
@@ -593,12 +593,12 @@ export default function Sidebar({
             <button
               type="button"
               onClick={() => setShowSelectedStormDetails((current) => !current)}
-              className="mt-2 flex w-full items-center justify-between rounded-xl border border-white/10 bg-black/15 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-black/25"
+              className="mt-2 flex w-full items-center justify-between rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-stone-700 transition-colors hover:bg-stone-100"
             >
               <span>
                 {showSelectedStormDetails ? 'Hide' : 'Show'} Storm Details
               </span>
-              <span className="text-orange-200">
+              <span className="text-orange-500">
                 {showSelectedStormDetails ? '−' : '+'}
               </span>
             </button>
@@ -606,12 +606,12 @@ export default function Sidebar({
 
           {showSelectedStormDetails && (
             <>
-              <div className="mt-3 rounded-2xl border border-gray-800 bg-gray-950/80 p-3">
+              <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50 p-3">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
                     Strongest Hits
                   </p>
-                  <span className="text-[10px] text-gray-600">
+                  <span className="text-[10px] text-stone-400">
                     top {rankedStormHits.length}
                   </span>
                 </div>
@@ -621,29 +621,29 @@ export default function Sidebar({
                     {rankedStormHits.map((event) => (
                       <div
                         key={event.id}
-                        className="rounded-xl border border-gray-800 bg-black/20 px-3 py-2"
+                        className="rounded-xl border border-stone-200 bg-white px-3 py-2"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="min-w-0">
-                            <p className="text-sm font-semibold text-white">
+                            <p className="text-sm font-semibold text-stone-900">
                               {formatEventMagnitude(event)}
                             </p>
-                            <p className="mt-1 text-xs text-gray-400">
+                            <p className="mt-1 text-xs text-stone-500">
                               {formatEventLocation(event)}
                             </p>
                           </div>
-                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-gray-300">
+                          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-1 text-[11px] text-stone-600">
                             {formatEventTime(event.beginDate)}
                           </span>
                         </div>
-                        <p className="mt-2 line-clamp-2 text-[11px] text-gray-500">
+                        <p className="mt-2 line-clamp-2 text-[11px] text-stone-400">
                           {event.narrative || event.source}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-3 text-xs text-gray-500">
+                  <p className="mt-3 text-xs text-stone-400">
                     No ranked storm reports are available for this selected date yet.
                   </p>
                 )}
@@ -696,7 +696,7 @@ export default function Sidebar({
           defaultOpen={true}
           badge={sortedDates.length > 0 ? sortedDates.length : undefined}
         >
-          <div className="flex -mx-4 border-b border-zinc-800/60 mb-3">
+          <div className="flex -mx-4 border-b border-stone-200 mb-3">
             <TabButton
               active={activeTab === 'recent'}
               onClick={() => setActiveTab('recent')}
@@ -742,7 +742,7 @@ export default function Sidebar({
               <button
                 type="button"
                 onClick={onBuildKnockRoute}
-                className="rounded-full border border-orange-500/30 bg-orange-500/10 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-100 transition-colors hover:bg-orange-500/20"
+                className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-700 transition-colors hover:bg-orange-100"
               >
                 Build Route
               </button>
@@ -753,7 +753,7 @@ export default function Sidebar({
                   key={`queue-${stormDate.date}`}
                   type="button"
                   onClick={() => handleDateClick(stormDate)}
-                  className="shrink-0 rounded-full border border-orange-500/30 bg-orange-500/10 px-2.5 py-1.5 text-xs font-semibold text-orange-100"
+                  className="shrink-0 rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700"
                 >
                   {stormDate.label}
                 </button>
@@ -769,21 +769,21 @@ export default function Sidebar({
         >
           {loading && (
             <div className="py-4 text-center">
-              <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-gray-600 border-t-orange-400" />
-              <p className="text-xs text-gray-500 mt-2">Loading storm data...</p>
+              <div className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-stone-300 border-t-orange-500" />
+              <p className="text-xs text-stone-400 mt-2">Loading storm data...</p>
             </div>
           )}
 
           {error && (
-            <div className="rounded-lg border border-orange-500/30 bg-orange-950/25 p-3">
-              <p className="text-xs text-orange-300">{error}</p>
+            <div className="rounded-lg border border-orange-300 bg-orange-50 p-3">
+              <p className="text-xs text-orange-700">{error}</p>
             </div>
           )}
 
           {!loading && !error && displayedDates.length === 0 && (
             <div className="py-4 text-center">
-              <p className="text-sm text-gray-500">No storm dates found</p>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-sm text-stone-500">No storm dates found</p>
+              <p className="text-xs text-stone-400 mt-1">
                 {searchSummary
                   ? `Try 2Y or 5Y, or search a broader nearby area than ${searchSummary.locationLabel}.`
                   : 'Search an address, city, or ZIP to load nearby hail dates.'}
@@ -817,17 +817,17 @@ export default function Sidebar({
           <button
             onClick={openDateOfLossModal}
             disabled={stormDates.length === 0 || generatingReport}
-            className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
+            className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
           >
             {generatingReport ? 'Generating Report...' : 'Gen Report'}
           </button>
-          <p className="mt-2 text-center text-[11px] text-gray-500">
+          <p className="mt-2 text-center text-[11px] text-stone-400">
             Choose the loss date, then download the NOAA-forward PDF.
           </p>
         </div>
       </div>
 
-      <div className="p-3 border-t border-gray-800 text-xs text-gray-500">
+      <div className="p-3 border-t border-stone-200 text-xs text-stone-400">
         <div className="flex justify-between">
           <span>
             {stormDates.length} {getFilterSummaryLabel(eventFilters, stormDates.length)}
@@ -837,20 +837,20 @@ export default function Sidebar({
       </div>
 
       {showDateOfLossModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-md rounded-2xl border border-gray-800 bg-gray-950 p-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-stone-200 bg-white p-4 shadow-2xl">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-semibold text-white">
+              <h3 className="text-base font-semibold text-stone-900">
                 Select Date of Loss
               </h3>
               <button
                 onClick={() => setShowDateOfLossModal(false)}
-                className="rounded-md p-1 text-gray-400 hover:bg-gray-900 hover:text-white"
+                className="rounded-md p-1 text-stone-400 hover:bg-stone-100 hover:text-stone-900"
               >
                 x
               </button>
             </div>
-            <p className="mt-2 text-sm text-gray-400">
+            <p className="mt-2 text-sm text-stone-500">
               Choose the storm date to include as the Date of Loss in the PDF report.
             </p>
             <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
@@ -861,33 +861,33 @@ export default function Sidebar({
                     onClick={() => setSelectedDateOfLoss(stormDate.date)}
                     className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                       selectedDateOfLoss === stormDate.date
-                        ? 'border-orange-400/70 bg-orange-500/10'
-                        : 'border-gray-800 bg-gray-900/70 hover:bg-gray-900'
+                        ? 'border-orange-400 bg-orange-50'
+                        : 'border-stone-200 bg-stone-50 hover:bg-stone-100'
                     }`}
                   >
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-stone-900">
                       {stormDate.label}
                     </p>
-                    <p className="mt-1 text-xs text-gray-400">
+                    <p className="mt-1 text-xs text-stone-500">
                       {stormDate.eventCount} event{stormDate.eventCount === 1 ? '' : 's'} · {formatStormImpactSummary(stormDate)}
                     </p>
                   </button>
                 ))
               ) : (
-                <p className="text-sm text-gray-500">No storm dates available.</p>
+                <p className="text-sm text-stone-400">No storm dates available.</p>
               )}
             </div>
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => setShowDateOfLossModal(false)}
-                className="rounded-lg border border-gray-700 px-3 py-2 text-sm text-gray-300 hover:bg-gray-900"
+                className="rounded-lg border border-stone-300 px-3 py-2 text-sm text-stone-600 hover:bg-stone-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleGenerateReportClick}
                 disabled={!selectedDateOfLoss || generatingReport}
-                className="rounded-lg bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:cursor-not-allowed disabled:bg-gray-700"
+                className="rounded-lg bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
               >
                 {generatingReport ? 'Generating...' : 'Gen PDF Report'}
               </button>
@@ -907,11 +907,11 @@ function SelectedStormMetric({
   value: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-100/70">
+    <div className="rounded-xl border border-orange-200 bg-white px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-orange-600/70">
         {label}
       </p>
-      <p className="mt-1 text-sm font-semibold text-white">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-stone-900">{value}</p>
     </div>
   );
 }
@@ -931,8 +931,8 @@ function ListFilterChip({
       onClick={onClick}
       className={`shrink-0 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
         active
-          ? 'border-orange-400/60 bg-orange-500/15 text-orange-100'
-          : 'border-gray-800 bg-gray-900 text-gray-400 hover:bg-gray-800'
+          ? 'border-orange-400 bg-orange-50 text-orange-700'
+          : 'border-stone-200 bg-stone-50 text-stone-500 hover:bg-stone-100'
       }`}
     >
       {label}
@@ -954,8 +954,8 @@ function TabButton({
       onClick={onClick}
       className={`flex-1 py-3 text-xs font-semibold uppercase tracking-wider transition-colors ${
         active
-          ? 'text-white border-b-2 border-orange-400'
-          : 'text-gray-500 hover:text-gray-300'
+          ? 'text-stone-900 border-b-2 border-orange-400'
+          : 'text-stone-400 hover:text-stone-700'
       }`}
       role="tab"
       aria-selected={active}
@@ -981,7 +981,7 @@ function RangeButton({
       className={`rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
         active
           ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
-          : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
+          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
       }`}
     >
       {label}
@@ -1008,7 +1008,7 @@ function FilterButton({
       type="button"
       onClick={onClick}
       className={`rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
-        active ? activeClass : 'bg-gray-900 text-gray-300 hover:bg-gray-800'
+        active ? activeClass : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
       }`}
     >
       {label}
@@ -1141,10 +1141,10 @@ function StormDateCard({
 
   return (
     <div
-      className={`border-b border-gray-800 cursor-pointer transition-colors ${
+      className={`border-b border-stone-200 cursor-pointer transition-colors ${
         isSelected
-          ? 'bg-gray-800/80 border-l-2 border-l-orange-400'
-          : 'hover:bg-gray-900/60 border-l-2 border-l-transparent'
+          ? 'bg-orange-50 border-l-2 border-l-orange-400'
+          : 'hover:bg-stone-50 border-l-2 border-l-transparent'
       }`}
       onClick={onClick}
       role="button"
@@ -1166,28 +1166,28 @@ function StormDateCard({
                 style={{ backgroundColor: severityColor }}
                 title={sizeClass?.label || 'Unknown size'}
               />
-              <span className="text-sm font-medium text-white truncate">
+              <span className="text-sm font-medium text-stone-900 truncate">
                 {stormDate.label}
               </span>
             </div>
             <div className={`mt-1 ml-4.5 flex flex-wrap items-center ${compact ? 'gap-2' : 'gap-3'}`}>
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-stone-500">
                 {stormDate.eventCount > 0
                   ? `${stormDate.eventCount} report${stormDate.eventCount !== 1 ? 's' : ''}`
                   : 'Swath data'}
               </span>
               {evidenceCount > 0 && (
-                <span className="text-xs text-violet-300">
+                <span className="text-xs text-violet-600">
                   {evidenceCount} proof
                 </span>
               )}
               {stormDate.statesAffected.length > 0 && (
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-stone-400">
                   {stormDate.statesAffected.slice(0, 3).join(', ')}
                 </span>
               )}
               {stormDate.maxWindMph > 0 && (
-                <span className="text-xs text-sky-300">
+                <span className="text-xs text-sky-600">
                   {stormDate.maxWindMph.toFixed(0)} mph
                 </span>
               )}
@@ -1198,10 +1198,10 @@ function StormDateCard({
             <span
               className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
                 canvassPriority === 'Knock now'
-                  ? 'bg-orange-500/20 text-orange-200'
+                  ? 'bg-orange-100 text-orange-700'
                   : canvassPriority === 'Monitor'
-                    ? 'bg-violet-500/20 text-violet-200'
-                    : 'bg-gray-800 text-gray-400'
+                    ? 'bg-violet-100 text-violet-700'
+                    : 'bg-stone-100 text-stone-500'
               }`}
             >
               {canvassPriority}
@@ -1217,7 +1217,7 @@ function StormDateCard({
             </span>
             <button
               onClick={onToggleExpand}
-              className="p-0.5 text-gray-500 hover:text-gray-300 transition-colors"
+              className="p-0.5 text-stone-400 hover:text-stone-700 transition-colors"
               aria-label={isExpanded ? 'Collapse details' : 'Expand details'}
             >
               <svg
@@ -1241,7 +1241,7 @@ function StormDateCard({
       </div>
 
       {isSelected && (
-        <div className="border-t border-gray-800/60 px-3 pb-2">
+        <div className="border-t border-stone-200 px-3 pb-2">
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -1250,7 +1250,7 @@ function StormDateCard({
                 void onGenerateReport(stormDate.date);
               }}
               disabled={generatingReport}
-              className="rounded-lg bg-white px-2.5 py-1.5 text-[11px] font-semibold text-gray-950 transition-colors hover:bg-orange-50 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/50"
+              className="rounded-lg bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
             >
               {generatingReport ? 'Generating...' : 'PDF'}
             </button>
@@ -1260,7 +1260,7 @@ function StormDateCard({
                 event.stopPropagation();
                 onOpenEvidence();
               }}
-              className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-black/30"
+              className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 transition-colors hover:bg-stone-50"
             >
               Proof
             </button>
@@ -1272,8 +1272,8 @@ function StormDateCard({
               }}
               className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
                 routeQueuedCount > 0
-                  ? 'border-orange-400/40 bg-orange-500/20 text-orange-100'
-                  : 'border-white/10 bg-black/20 text-white hover:bg-black/30'
+                  ? 'border-orange-300 bg-orange-100 text-orange-700'
+                  : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
               }`}
             >
               {routeQueuedCount > 0 ? `Queued ${routeQueuedCount}` : 'Route'}
@@ -1281,7 +1281,7 @@ function StormDateCard({
             <button
               type="button"
               onClick={onToggleExpand}
-              className="rounded-lg border border-white/10 bg-black/20 px-2.5 py-1.5 text-[11px] font-semibold text-gray-300 transition-colors hover:bg-black/30"
+              className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-600 transition-colors hover:bg-stone-50"
             >
               {isExpanded ? 'Hide Hits' : 'Show Hits'}
             </button>
@@ -1290,7 +1290,7 @@ function StormDateCard({
       )}
 
       {isExpanded && (
-        <div className="px-3 pb-3 border-t border-gray-800/50">
+        <div className="px-3 pb-3 border-t border-stone-200">
           {dateEvents.length > 0 ? (
             <div className="mt-2 space-y-1.5">
               {dateEvents.slice(0, 10).map((event) => (
@@ -1302,20 +1302,20 @@ function StormDateCard({
                         getHailSizeClass(event.magnitude)?.color || '#888',
                     }}
                   />
-                  <span className="text-gray-400 truncate flex-1">
+                  <span className="text-stone-500 truncate flex-1">
                     {event.magnitude > 0 ? `${event.magnitude}"` : ''}{' '}
                     {event.county && `${event.county},`} {event.state || event.source}
                   </span>
                 </div>
               ))}
               {dateEvents.length > 10 && (
-                <p className="text-xs text-gray-600 ml-3.5">
+                <p className="text-xs text-stone-400 ml-3.5">
                   +{dateEvents.length - 10} more reports
                 </p>
               )}
             </div>
           ) : (
-            <p className="mt-2 text-xs text-gray-500">
+            <p className="mt-2 text-xs text-stone-400">
               MESH swath data available (no individual reports)
             </p>
           )}

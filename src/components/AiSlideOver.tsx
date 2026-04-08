@@ -73,7 +73,7 @@ function conditionColor(c: ConditionRating | null): string {
     case 'fair':      return 'text-amber-400 bg-amber-500/15 border-amber-500/30';
     case 'poor':      return 'text-orange-400 bg-orange-500/15 border-orange-500/30';
     case 'critical':  return 'text-red-400 bg-red-500/15 border-red-500/30';
-    default:          return 'text-gray-500 bg-zinc-800/50 border-zinc-700/50';
+    default:          return 'text-stone-500 bg-stone-100 border-stone-300';
   }
 }
 
@@ -158,10 +158,10 @@ function ConfidenceBar({ value }: { value: number | null }) {
   return (
     <div className="mt-2">
       <div className="mb-1 flex items-center justify-between">
-        <span className="text-[10px] font-medium uppercase tracking-wide text-gray-500">Confidence</span>
-        <span className="text-xs font-semibold text-gray-400">{pct}%</span>
+        <span className="text-[10px] font-medium uppercase tracking-wide text-stone-500">Confidence</span>
+        <span className="text-xs font-semibold text-stone-500">{pct}%</span>
       </div>
-      <div className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-stone-200">
         <div
           className={`h-full rounded-full transition-all duration-500 ${color}`}
           style={{ width: `${pct}%` }}
@@ -284,7 +284,7 @@ function PropertyImages({
     <div className="grid grid-cols-2 gap-2.5">
       {slots.map(({ src, label, date }) =>
         src ? (
-          <div key={label} className="relative overflow-hidden rounded-xl border border-zinc-800/60">
+          <div key={label} className="relative overflow-hidden rounded-xl border border-stone-200">
             <div className="aspect-video w-full">
               <img
                 src={src}
@@ -295,8 +295,8 @@ function PropertyImages({
                 }}
               />
             </div>
-            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-zinc-950/90 to-transparent px-3 py-1.5">
-              <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-3 py-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-widest text-stone-500">
                 {label}
               </span>
             </div>
@@ -331,7 +331,7 @@ function ScoreStrip({
           <div
             className={`flex flex-col items-center justify-center rounded-xl border ${cfg.ring} ${cfg.glow} ${cfg.bg} px-4 py-3 min-w-[88px]`}
           >
-            <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-500">Score</span>
+            <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-500">Score</span>
             <span className={`text-3xl font-black tabular-nums leading-none ${cfg.text}`}>
               {analysis.prospectScore}
             </span>
@@ -344,12 +344,12 @@ function ScoreStrip({
 
       {/* Roof card */}
       {hasRoof && (
-        <div className="flex flex-1 flex-col justify-between rounded-xl border border-zinc-800/60 bg-zinc-900/80 px-3.5 py-3 min-w-[110px]">
-          <div className="flex items-center gap-1.5 text-gray-500">
+        <div className="flex flex-1 flex-col justify-between rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 min-w-[110px]">
+          <div className="flex items-center gap-1.5 text-stone-500">
             <IconRoof />
             <span className="text-[9px] font-semibold uppercase tracking-widest">Roof</span>
           </div>
-          <p className="mt-1.5 text-xs font-semibold text-white leading-tight">
+          <p className="mt-1.5 text-xs font-semibold text-stone-900 leading-tight">
             {fmtRoof(analysis.roofType)}
           </p>
           {analysis.roofCondition && (
@@ -360,7 +360,7 @@ function ScoreStrip({
             </span>
           )}
           {analysis.roofAgeEstimate !== null && (
-            <p className="mt-1 text-[10px] text-gray-500">
+            <p className="mt-1 text-[10px] text-stone-500">
               Est. {analysis.roofAgeEstimate} yrs
             </p>
           )}
@@ -370,12 +370,12 @@ function ScoreStrip({
 
       {/* Siding card */}
       {hasSiding && (
-        <div className="flex flex-1 flex-col justify-between rounded-xl border border-zinc-800/60 bg-zinc-900/80 px-3.5 py-3 min-w-[110px]">
-          <div className="flex items-center gap-1.5 text-gray-500">
+        <div className="flex flex-1 flex-col justify-between rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-3 min-w-[110px]">
+          <div className="flex items-center gap-1.5 text-stone-500">
             <IconWall />
             <span className="text-[9px] font-semibold uppercase tracking-widest">Siding</span>
           </div>
-          <p className="mt-1.5 text-xs font-semibold text-white leading-tight">
+          <p className="mt-1.5 text-xs font-semibold text-stone-900 leading-tight">
             {fmtSiding(analysis.sidingType)}
           </p>
           {analysis.sidingCondition && (
@@ -400,23 +400,23 @@ function ScoreStrip({
 function DamageTable({ indicators }: { indicators: DamageIndicator[] }) {
   if (indicators.length === 0) return null;
   return (
-    <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/80 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-zinc-800/60 text-amber-400">
+    <div className="rounded-xl border border-stone-200 bg-stone-50 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-stone-200 text-amber-400">
         <IconWarning />
         <span className="text-[10px] font-semibold uppercase tracking-widest">Damage Indicators</span>
       </div>
       <table className="w-full text-xs">
         <thead>
-          <tr className="border-b border-zinc-800/40">
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Type</th>
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Severity</th>
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Location</th>
+          <tr className="border-b border-stone-200">
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Type</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Severity</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Location</th>
           </tr>
         </thead>
         <tbody>
           {indicators.map((d, i) => (
-            <tr key={`${d.type}-${i}`} className="border-b border-zinc-800/30 last:border-0">
-              <td className="px-4 py-2.5 capitalize text-gray-300">
+            <tr key={`${d.type}-${i}`} className="border-b border-stone-100 last:border-0">
+              <td className="px-4 py-2.5 capitalize text-stone-600">
                 {d.type.replace(/_/g, ' ')}
               </td>
               <td className="px-4 py-2.5">
@@ -426,7 +426,7 @@ function DamageTable({ indicators }: { indicators: DamageIndicator[] }) {
                   {d.severity}
                 </span>
               </td>
-              <td className="px-4 py-2.5 text-gray-500 capitalize">{d.location}</td>
+              <td className="px-4 py-2.5 text-stone-500 capitalize">{d.location}</td>
             </tr>
           ))}
         </tbody>
@@ -516,12 +516,12 @@ function ModeScoreStrip({
 
         const label = MODES.find((m) => m.id === id)?.label ?? id;
 
-        let borderCls = 'border-zinc-700/60';
-        let textCls   = 'text-gray-400';
-        let bgCls     = 'bg-zinc-900/80';
+        let borderCls = 'border-stone-200';
+        let textCls   = 'text-stone-500';
+        let bgCls     = 'bg-stone-50';
         if (isActive) {
           borderCls = 'border-violet-500/60 shadow-[0_0_14px_rgba(124,58,237,0.3)]';
-          textCls   = 'text-white';
+          textCls   = 'text-stone-900';
           bgCls     = 'bg-violet-600/15';
         }
 
@@ -549,7 +549,7 @@ function ModeScoreStrip({
                 {score}
               </span>
             ) : (
-              <span className="text-xl font-black leading-none mt-0.5 text-gray-600">—</span>
+              <span className="text-xl font-black leading-none mt-0.5 text-stone-400">—</span>
             )}
             {isHigh && (
               <span className="mt-0.5 text-[8px] font-semibold text-red-400 uppercase tracking-wider">
@@ -613,10 +613,10 @@ function StormEventsTable({
       <table className="w-full text-xs">
         <thead>
           <tr className="border-b border-sky-500/15">
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Date</th>
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Type</th>
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Size / Speed</th>
-            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-gray-600">Distance</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Date</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Type</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Size / Speed</th>
+            <th className="px-4 py-2 text-left text-[9px] font-semibold uppercase tracking-widest text-stone-400">Distance</th>
           </tr>
         </thead>
         <tbody>
@@ -629,10 +629,10 @@ function StormEventsTable({
             const dist = ev.distance !== undefined ? String(ev.distance) : '—';
             return (
               <tr key={i} className="border-b border-sky-500/10 last:border-0">
-                <td className="px-4 py-2.5 text-gray-300">{ev.date ?? '—'}</td>
-                <td className="px-4 py-2.5 text-gray-300 capitalize">{ev.type ?? '—'}</td>
-                <td className="px-4 py-2.5 text-gray-300">{sizeSpeed}</td>
-                <td className="px-4 py-2.5 text-gray-400">{dist}</td>
+                <td className="px-4 py-2.5 text-stone-600">{ev.date ?? '—'}</td>
+                <td className="px-4 py-2.5 text-stone-600 capitalize">{ev.type ?? '—'}</td>
+                <td className="px-4 py-2.5 text-stone-600">{sizeSpeed}</td>
+                <td className="px-4 py-2.5 text-stone-500">{dist}</td>
               </tr>
             );
           })}
@@ -674,8 +674,8 @@ function SolarEstimateCard({ est }: { est: RawSolarEstimate }) {
       </div>
       <div className="grid grid-cols-2 gap-2">
         {rows.map(({ label, value }) => (
-          <div key={label} className="rounded-xl border border-zinc-800/50 bg-zinc-950/60 px-3 py-2">
-            <p className="text-[9px] font-medium uppercase tracking-wide text-gray-500">{label}</p>
+          <div key={label} className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2">
+            <p className="text-[9px] font-medium uppercase tracking-wide text-stone-500">{label}</p>
             <p className="mt-0.5 text-sm font-semibold text-amber-300">{value}</p>
           </div>
         ))}
@@ -772,27 +772,27 @@ function ModeInsights({
 
   return (
     <div className="rounded-xl border border-violet-500/25 bg-violet-500/[0.05] p-4">
-      <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-violet-300/80 mb-3">
+      <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-violet-600 mb-3">
         {modeLabel} Insights
       </p>
       <div className="flex flex-col gap-2">
         {entries.map(({ label, value }) => (
           <div
             key={label}
-            className="rounded-xl border border-zinc-800/50 bg-zinc-950/60 px-3.5 py-2.5"
+            className="rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5"
           >
-            <p className="text-[9px] font-medium uppercase tracking-wide text-gray-500">{label}</p>
+            <p className="text-[9px] font-medium uppercase tracking-wide text-stone-500">{label}</p>
             {Array.isArray(value) ? (
               <ul className="mt-1 flex flex-col gap-0.5 list-none">
                 {value.map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-1.5 text-xs text-gray-200">
+                  <li key={idx} className="flex items-start gap-1.5 text-xs text-stone-700">
                     <span className="mt-1.5 h-1 w-1 flex-shrink-0 rounded-full bg-violet-400/60" />
                     {item}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-1 text-xs text-gray-200">{value}</p>
+              <p className="mt-1 text-xs text-stone-700">{value}</p>
             )}
           </div>
         ))}
@@ -835,14 +835,14 @@ function AnalysisResults({
       {/* Address header */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-violet-300/80">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-violet-600">
             Analysis Complete
           </p>
-          <p className="mt-0.5 truncate text-sm font-semibold text-white">
+          <p className="mt-0.5 truncate text-sm font-semibold text-stone-900">
             {analysis.normalizedAddress ?? analysis.inputAddress}
           </p>
         </div>
-        <span className="flex-shrink-0 rounded-full border border-violet-500/30 bg-violet-500/15 px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-violet-300 capitalize">
+        <span className="flex-shrink-0 rounded-full border border-violet-500/30 bg-violet-500/15 px-2.5 py-0.5 text-[9px] font-semibold uppercase tracking-widest text-violet-600 capitalize">
           analyzed as {mode}
         </span>
       </div>
@@ -853,7 +853,7 @@ function AnalysisResults({
       {/* Multi-mode score strip (instant switching) — shown when backend returns all modes */}
       {multi?.modes ? (
         <div className="flex flex-col gap-2">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+          <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-stone-500">
             View Mode
           </p>
           <ModeScoreStrip raw={multi} displayMode={displayMode} onSwitch={onSwitchMode} />
@@ -869,13 +869,13 @@ function AnalysisResults({
         return (
           <div className={`flex items-center gap-3 rounded-xl border ${cfg.ring} ${cfg.glow} ${cfg.bg} px-4 py-3`}>
             <div className="flex flex-col items-center min-w-[52px]">
-              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-gray-500">Score</span>
+              <span className="text-[9px] font-semibold uppercase tracking-[0.2em] text-stone-500">Score</span>
               <span className={`text-3xl font-black tabular-nums leading-none ${cfg.text}`}>{displayScore}</span>
             </div>
             <div className="flex flex-col">
               <span className={`text-xs font-semibold ${cfg.text}`}>{cfg.label}</span>
               {displayIsHighPriority && (
-                <span className="text-[9px] text-gray-500 mt-0.5">High priority prospect</span>
+                <span className="text-[9px] text-stone-500 mt-0.5">High priority prospect</span>
               )}
             </div>
           </div>
@@ -906,12 +906,12 @@ function AnalysisResults({
 
       {/* Reasoning */}
       {analysis.reasoning && (
-        <div className="rounded-xl border border-zinc-800/60 bg-zinc-900/80 p-4">
+        <div className="rounded-xl border border-stone-200 bg-stone-50 p-4">
           <div className="flex items-center gap-2 text-violet-400 mb-3">
             <IconBrain />
             <span className="text-[10px] font-semibold uppercase tracking-widest">AI Reasoning</span>
           </div>
-          <p className="text-sm leading-6 text-gray-300">{analysis.reasoning}</p>
+          <p className="text-sm leading-6 text-stone-600">{analysis.reasoning}</p>
         </div>
       )}
 
@@ -932,33 +932,33 @@ function LoadingSkeleton({ status }: { status: string }) {
       className="flex flex-col gap-5 px-5 py-6"
     >
       {/* Status row */}
-      <div className="flex items-center gap-3 rounded-xl border border-zinc-800/60 bg-zinc-900/80 px-4 py-3.5">
+      <div className="flex items-center gap-3 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3.5">
         <PulsingDot />
-        <p className="text-sm font-medium text-white">{status}</p>
+        <p className="text-sm font-medium text-stone-900">{status}</p>
       </div>
 
       {/* Image skeleton */}
       <div className="grid grid-cols-2 gap-2.5">
-        <div className="aspect-video w-full animate-pulse rounded-xl bg-zinc-800/60" />
-        <div className="aspect-video w-full animate-pulse rounded-xl bg-zinc-800/60" />
+        <div className="aspect-video w-full animate-pulse rounded-xl bg-stone-200" />
+        <div className="aspect-video w-full animate-pulse rounded-xl bg-stone-200" />
       </div>
 
       {/* Score / card skeleton */}
       <div className="flex gap-2.5">
-        <div className="h-24 w-24 animate-pulse rounded-xl bg-zinc-800/60" />
-        <div className="flex-1 animate-pulse rounded-xl bg-zinc-800/60" />
-        <div className="flex-1 animate-pulse rounded-xl bg-zinc-800/60" />
+        <div className="h-24 w-24 animate-pulse rounded-xl bg-stone-200" />
+        <div className="flex-1 animate-pulse rounded-xl bg-stone-200" />
+        <div className="flex-1 animate-pulse rounded-xl bg-stone-200" />
       </div>
 
       {/* Text lines */}
       <div className="flex flex-col gap-2">
-        <div className="h-3 w-3/4 animate-pulse rounded bg-zinc-800/60" />
-        <div className="h-3 w-full animate-pulse rounded bg-zinc-800/60" />
-        <div className="h-3 w-5/6 animate-pulse rounded bg-zinc-800/60" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-zinc-800/60" />
+        <div className="h-3 w-3/4 animate-pulse rounded bg-stone-200" />
+        <div className="h-3 w-full animate-pulse rounded bg-stone-200" />
+        <div className="h-3 w-5/6 animate-pulse rounded bg-stone-200" />
+        <div className="h-3 w-2/3 animate-pulse rounded bg-stone-200" />
       </div>
 
-      <p className="text-center text-xs text-gray-600">This usually takes 10–20 seconds</p>
+      <p className="text-center text-xs text-stone-400">This usually takes 10–20 seconds</p>
     </div>
   );
 }
@@ -1171,7 +1171,7 @@ export default function AiSlideOver({
         aria-hidden="true"
         onClick={handleClose}
         className={[
-          'fixed inset-0 z-40 bg-black/50 backdrop-blur-sm',
+          'fixed inset-0 z-40 bg-black/30 backdrop-blur-sm',
           'transition-opacity duration-300',
           open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
         ].join(' ')}
@@ -1187,7 +1187,7 @@ export default function AiSlideOver({
           // Base layout
           'fixed inset-y-0 right-0 z-50 flex flex-col',
           'w-full max-w-lg',
-          'bg-zinc-950 border-l border-zinc-800 shadow-2xl',
+          'bg-white border-l border-stone-200 shadow-2xl',
           'overflow-y-auto',
           // Mobile: full screen, no left border
           'max-sm:inset-0 max-sm:max-w-none max-sm:border-l-0',
@@ -1198,21 +1198,21 @@ export default function AiSlideOver({
       >
         {/* ── Mobile drag handle ──────────────────────────────────────────── */}
         <div className="sm:hidden flex justify-center pt-3 pb-1 flex-shrink-0">
-          <div className="h-1 w-10 rounded-full bg-zinc-700" />
+          <div className="h-1 w-10 rounded-full bg-stone-300" />
         </div>
 
         {/* ── Sticky header ───────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-10 flex-shrink-0 bg-zinc-950/95 backdrop-blur border-b border-zinc-800/60 px-5 py-4">
+        <header className="sticky top-0 z-10 flex-shrink-0 bg-white/95 backdrop-blur border-b border-stone-200 px-5 py-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(124,58,237,0.3),rgba(249,115,22,0.22))] text-violet-300 ring-1 ring-violet-400/20">
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-[linear-gradient(180deg,rgba(124,58,237,0.12),rgba(249,115,22,0.10))] text-violet-600 ring-1 ring-violet-300/30">
                 <IconBrain />
               </div>
               <div>
-                <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-violet-300/80">
+                <p className="text-[9px] font-semibold uppercase tracking-[0.24em] text-violet-600">
                   Hail Yes
                 </p>
-                <h2 className="text-base font-semibold tracking-tight text-white leading-tight">
+                <h2 className="text-base font-semibold tracking-tight text-stone-900 leading-tight">
                   AI Property Intel
                 </h2>
               </div>
@@ -1221,7 +1221,7 @@ export default function AiSlideOver({
               type="button"
               onClick={handleClose}
               aria-label="Close panel"
-              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-zinc-800 bg-zinc-900 text-gray-400 transition hover:bg-zinc-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
+              className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-stone-200 bg-stone-50 text-stone-400 transition hover:bg-stone-100 hover:text-stone-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
             >
               <IconClose />
             </button>
@@ -1232,14 +1232,14 @@ export default function AiSlideOver({
         <div className="flex-1 min-h-0">
 
           {/* ── Search form ─────────────────────────────────────────────── */}
-          <div className="px-5 pt-5 pb-4 border-b border-zinc-800/40">
+          <div className="px-5 pt-5 pb-4 border-b border-stone-200">
             {/* Address input */}
             <label className="block">
-              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                 Property Address
               </span>
               <div className="relative mt-1.5">
-                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-stone-500">
                   <IconHome />
                 </span>
                 <input
@@ -1251,7 +1251,7 @@ export default function AiSlideOver({
                   placeholder="123 Main St, Anytown, VA 20001"
                   disabled={loading}
                   aria-label="Property address"
-                  className="w-full rounded-xl border border-zinc-700/60 bg-zinc-900/80 py-2.5 pl-9 pr-4 text-sm text-white placeholder-gray-600 outline-none transition focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/30 disabled:opacity-50"
+                  className="w-full rounded-xl border border-stone-300 bg-stone-50 py-2.5 pl-9 pr-4 text-sm text-stone-900 placeholder-stone-400 outline-none transition focus:border-violet-500/60 focus:ring-1 focus:ring-violet-500/30 disabled:opacity-50"
                 />
               </div>
             </label>
@@ -1259,11 +1259,11 @@ export default function AiSlideOver({
             {/* Mode segmented control */}
             <div className="mt-3.5">
               <div className="flex items-baseline justify-between mb-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-gray-500">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-stone-500">
                   Analysis Mode
                 </p>
                 {analysis && committedMode && (
-                  <p className="text-[9px] text-gray-600">
+                  <p className="text-[9px] text-stone-400">
                     analyzed as{' '}
                     <span className="text-violet-400 capitalize">{committedMode}</span>
                   </p>
@@ -1284,7 +1284,7 @@ export default function AiSlideOver({
                       'disabled:opacity-50',
                       mode === m.id
                         ? 'bg-violet-600 text-white shadow-[0_0_16px_rgba(124,58,237,0.4)]'
-                        : 'bg-zinc-800/80 text-gray-400 hover:bg-zinc-700 hover:text-white',
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900',
                     ].join(' ')}
                   >
                     {m.label}
@@ -1357,12 +1357,12 @@ export default function AiSlideOver({
           {/* ── Empty state ─────────────────────────────────────────────── */}
           {!analysis && !loading && !error && (
             <div className="flex flex-col items-center gap-3 py-14 px-5 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-zinc-800/60 text-gray-500">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-200 text-stone-500">
                 <IconBrain />
               </div>
               <div>
-                <p className="text-sm font-semibold text-gray-400">No analysis yet</p>
-                <p className="mt-1 text-xs text-gray-600 max-w-[220px]">
+                <p className="text-sm font-semibold text-stone-500">No analysis yet</p>
+                <p className="mt-1 text-xs text-stone-400 max-w-[220px]">
                   Enter an address above and choose a mode to get started.
                 </p>
               </div>
@@ -1375,7 +1375,7 @@ export default function AiSlideOver({
 
         {/* ── Sticky footer ───────────────────────────────────────────────── */}
         {analysis && !loading && (
-          <footer className="sticky bottom-0 z-10 flex-shrink-0 bg-zinc-950/95 backdrop-blur border-t border-zinc-800/60 px-5 py-4">
+          <footer className="sticky bottom-0 z-10 flex-shrink-0 bg-white/95 backdrop-blur border-t border-stone-200 px-5 py-4">
             <div className="flex items-center gap-2.5">
               {/* Add to pipeline */}
               {onAddToPipeline && (
@@ -1395,7 +1395,7 @@ export default function AiSlideOver({
                 onClick={handleShare}
                 disabled={sharing}
                 aria-label={shared ? 'Link copied' : 'Share report'}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700/60 bg-zinc-900/80 px-3.5 py-2.5 text-sm font-semibold text-gray-400 transition hover:border-zinc-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm font-semibold text-stone-500 transition hover:border-stone-300 hover:text-stone-900 disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
               >
                 <IconShare />
                 <span className="hidden sm:inline">
@@ -1407,7 +1407,7 @@ export default function AiSlideOver({
               <button
                 type="button"
                 onClick={handleClose}
-                className="flex items-center justify-center gap-1.5 rounded-xl border border-zinc-700/60 bg-zinc-900/80 px-3.5 py-2.5 text-sm font-semibold text-gray-400 transition hover:bg-zinc-800 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 bg-stone-50 px-3.5 py-2.5 text-sm font-semibold text-stone-500 transition hover:bg-stone-100 hover:text-stone-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/60"
                 aria-label="Close panel"
               >
                 <IconClose />

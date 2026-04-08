@@ -23,26 +23,26 @@ export default function AppHeader({
   onOpenAi,
 }: AppHeaderProps) {
   return (
-    <header className="border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur">
+    <header className="border-b border-stone-200 bg-white/95 backdrop-blur">
       <div className="flex flex-col gap-3 px-4 py-3 lg:px-6">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.24),rgba(124,58,237,0.22))] text-orange-300 ring-1 ring-orange-400/20 shadow-[0_0_30px_rgba(168,85,247,0.24)]">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.15),rgba(124,58,237,0.12))] text-orange-500 ring-1 ring-orange-300/30">
               <svg className="h-5 w-5" fill="none" viewBox="0 0 20 20" aria-hidden="true">
                 <path d="M5.5 12.5a3 3 0 0 1 .2-6 4.5 4.5 0 0 1 8.72 1.3 2.6 2.6 0 0 1 .08 5.2H5.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                 <path d="M7.2 13.8 6.4 16M10 13.8 9.2 16.6M12.8 13.8 12 16.3" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold tracking-tight text-white">Hail Yes!</h1>
-              <p className="truncate text-sm text-gray-400">
+              <h1 className="text-lg font-semibold tracking-tight text-stone-900">Hail Yes!</h1>
+              <p className="truncate text-sm text-stone-500">
                 {activeSearchLabel || 'Storm intelligence for roofing professionals'}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <span className="rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-xs font-semibold text-violet-200">
+            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">
               {pinnedCount} pinned
             </span>
             <button
@@ -52,7 +52,7 @@ export default function AppHeader({
               className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
                 activeView === 'team'
                   ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
-                  : 'bg-zinc-900 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                  : 'bg-stone-100 text-stone-400 hover:bg-stone-200 hover:text-stone-900'
               }`}
             >
               <svg className="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
@@ -72,7 +72,7 @@ export default function AppHeader({
               className={`shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors ${
                 item.id === activeView
                   ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_10px_30px_rgba(124,58,237,0.28)]'
-                  : 'bg-zinc-900 text-gray-300 hover:bg-zinc-800 hover:text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
               }`}
             >
               {item.label}
@@ -82,7 +82,7 @@ export default function AppHeader({
             <button
               type="button"
               onClick={onOpenAi}
-              className="shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors bg-cyan-950/60 text-cyan-300 hover:bg-cyan-900/60 hover:text-white ring-1 ring-cyan-500/20"
+              className="shrink-0 rounded-xl px-4 py-2.5 text-xs sm:text-sm font-semibold transition-colors bg-orange-50 text-orange-600 hover:bg-orange-100 ring-1 ring-orange-200"
             >
               AI Intel
             </button>

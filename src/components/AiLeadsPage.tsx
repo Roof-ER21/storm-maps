@@ -46,11 +46,11 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
 const STATUS_COLORS: Record<LeadStatus, string> = {
   new: 'text-sky-300 bg-sky-500/15 border-sky-400/30',
   knocked: 'text-amber-300 bg-amber-500/15 border-amber-400/30',
-  not_home: 'text-zinc-400 bg-zinc-500/10 border-zinc-600/30',
+  not_home: 'text-stone-500 bg-stone-100 border-stone-300',
   callback: 'text-violet-300 bg-violet-500/15 border-violet-400/30',
   pitched: 'text-orange-300 bg-orange-500/15 border-orange-400/30',
   sold: 'text-emerald-300 bg-emerald-500/15 border-emerald-400/30',
-  skip: 'text-zinc-500 bg-zinc-600/10 border-zinc-700/30',
+  skip: 'text-stone-400 bg-stone-100 border-stone-300',
 };
 
 const PAGE_SIZE = 20;
@@ -58,7 +58,7 @@ const PAGE_SIZE = 20;
 // ── Score pill ───────────────────────────────────────────────
 
 function ScorePill({ score }: { score: number | null }) {
-  if (score == null) return <span className="text-xs text-zinc-500">—</span>;
+  if (score == null) return <span className="text-xs text-stone-400">--</span>;
   const color =
     score >= 80
       ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
@@ -66,7 +66,7 @@ function ScorePill({ score }: { score: number | null }) {
         ? 'bg-orange-500/20 text-orange-300 border-orange-400/30'
         : score >= 40
           ? 'bg-amber-500/20 text-amber-300 border-amber-400/30'
-          : 'bg-zinc-500/15 text-zinc-400 border-zinc-600/30';
+          : 'bg-stone-100 text-stone-500 border-stone-300';
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-semibold ${color}`}
@@ -113,11 +113,11 @@ function LeadCard({
   const displayAddress = lead.normalizedAddress ?? lead.inputAddress;
 
   return (
-    <article className="bg-zinc-900/80 border border-zinc-800/60 rounded-2xl p-4 sm:p-5 flex flex-col gap-3">
+    <article className="bg-white border border-stone-200 rounded-2xl shadow-sm p-4 sm:p-5 flex flex-col gap-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-white text-sm leading-snug truncate" title={displayAddress}>
+          <p className="font-semibold text-stone-900 text-sm leading-snug truncate" title={displayAddress}>
             {displayAddress}
           </p>
           <div className="flex flex-wrap items-center gap-2 mt-1.5">
@@ -137,7 +137,7 @@ function LeadCard({
           className={`shrink-0 rounded-lg p-2.5 min-h-[44px] min-w-[44px] flex items-center justify-center transition-colors ${
             lead.starred
               ? 'text-amber-400 hover:text-amber-300'
-              : 'text-zinc-600 hover:text-zinc-400'
+              : 'text-stone-400 hover:text-stone-600'
           }`}
         >
           <svg
@@ -157,24 +157,24 @@ function LeadCard({
       {/* Property details grid */}
       <dl className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
         <div>
-          <dt className="text-gray-500 uppercase tracking-wide text-[10px]">Roof</dt>
-          <dd className="text-gray-300 font-medium capitalize">
+          <dt className="text-stone-400 uppercase tracking-wide text-[10px]">Roof</dt>
+          <dd className="text-stone-600 font-medium capitalize">
             {lead.roofType ? lead.roofType.replace(/_/g, ' ') : '—'}
           </dd>
         </div>
         <div>
-          <dt className="text-gray-500 uppercase tracking-wide text-[10px]">Roof Cond.</dt>
-          <dd className="text-gray-300 font-medium capitalize">{lead.roofCondition ?? '—'}</dd>
+          <dt className="text-stone-400 uppercase tracking-wide text-[10px]">Roof Cond.</dt>
+          <dd className="text-stone-600 font-medium capitalize">{lead.roofCondition ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-gray-500 uppercase tracking-wide text-[10px]">Siding</dt>
-          <dd className="text-gray-300 font-medium capitalize">
+          <dt className="text-stone-400 uppercase tracking-wide text-[10px]">Siding</dt>
+          <dd className="text-stone-600 font-medium capitalize">
             {lead.sidingType ? lead.sidingType.replace(/_/g, ' ') : '—'}
           </dd>
         </div>
         <div>
-          <dt className="text-gray-500 uppercase tracking-wide text-[10px]">Siding Cond.</dt>
-          <dd className="text-gray-300 font-medium capitalize">{lead.sidingCondition ?? '—'}</dd>
+          <dt className="text-stone-400 uppercase tracking-wide text-[10px]">Siding Cond.</dt>
+          <dd className="text-stone-600 font-medium capitalize">{lead.sidingCondition ?? '—'}</dd>
         </div>
       </dl>
 
@@ -182,7 +182,7 @@ function LeadCard({
       <div className="flex items-center gap-2">
         <label
           htmlFor={`status-${lead.id}`}
-          className="text-[10px] uppercase tracking-wide text-gray-500 shrink-0"
+          className="text-[10px] uppercase tracking-wide text-stone-400 shrink-0"
         >
           Status
         </label>
@@ -190,10 +190,10 @@ function LeadCard({
           id={`status-${lead.id}`}
           value={lead.leadStatus}
           onChange={(e) => onStatusChange(lead.id, e.target.value as LeadStatus)}
-          className={`flex-1 rounded-lg border px-2 py-1 text-xs font-medium bg-zinc-950/60 min-h-[44px] focus:outline-none focus:ring-1 focus:ring-zinc-500 ${STATUS_COLORS[lead.leadStatus]}`}
+          className={`flex-1 rounded-lg border px-2 py-1 text-xs font-medium bg-stone-50 min-h-[44px] focus:outline-none focus:ring-1 focus:ring-stone-400 ${STATUS_COLORS[lead.leadStatus]}`}
         >
           {LEAD_STATUSES.map((s) => (
-            <option key={s} value={s} className="bg-zinc-900 text-gray-200">
+            <option key={s} value={s} className="bg-stone-50 text-stone-700">
               {STATUS_LABELS[s]}
             </option>
           ))}
@@ -204,7 +204,7 @@ function LeadCard({
       <div>
         <button
           onClick={() => setNotesOpen((o) => !o)}
-          className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
           aria-expanded={notesOpen}
         >
           <svg
@@ -229,7 +229,7 @@ function LeadCard({
             onChange={(e) => handleNotesChange(e.target.value)}
             rows={3}
             placeholder="Rep notes..."
-            className="mt-2 w-full rounded-lg border border-zinc-700/60 bg-zinc-950/50 px-3 py-2 text-xs text-gray-300 placeholder-zinc-600 resize-none focus:outline-none focus:ring-1 focus:ring-zinc-500"
+            className="mt-2 w-full rounded-lg border border-stone-300 bg-stone-50 px-3 py-2 text-xs text-stone-600 placeholder-stone-400 resize-none focus:outline-none focus:ring-1 focus:ring-stone-400"
             aria-label="Rep notes"
           />
         )}
@@ -238,7 +238,7 @@ function LeadCard({
       {/* View Details */}
       <button
         onClick={() => onViewAnalysis?.(lead.normalizedAddress ?? lead.inputAddress)}
-        className="mt-1 w-full rounded-xl border border-zinc-700/50 bg-zinc-800/50 py-2 text-xs font-medium text-gray-300 transition-colors hover:bg-zinc-700/60 hover:text-white focus:outline-none focus:ring-1 focus:ring-zinc-500"
+        className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-100 py-2 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-200 hover:text-stone-900 focus:outline-none focus:ring-1 focus:ring-stone-400"
       >
         View Details
       </button>
@@ -331,8 +331,8 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
     <div className="flex flex-col gap-6 p-4 sm:p-6 min-h-0">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-bold text-white">AI Leads</h1>
-        <p className="text-sm text-gray-400 mt-0.5">
+        <h1 className="text-xl font-bold text-stone-900">AI Leads</h1>
+        <p className="text-sm text-stone-500 mt-0.5">
           {loading ? 'Loading...' : `${total} propert${total === 1 ? 'y' : 'ies'} analyzed`}
         </p>
       </div>
@@ -343,7 +343,7 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
         <div
           role="tablist"
           aria-label="Lead filters"
-          className="flex items-center rounded-xl bg-zinc-900/60 border border-zinc-800/60 p-1 gap-1"
+          className="flex items-center rounded-xl bg-stone-50 border border-stone-200 p-1 gap-1"
         >
           {TABS.map((tab) => (
             <button
@@ -351,10 +351,10 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
               role="tab"
               aria-selected={activeTab === tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-zinc-500 ${
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors focus:outline-none focus:ring-1 focus:ring-stone-400 ${
                 activeTab === tab.id
-                  ? 'bg-zinc-700 text-white shadow-sm'
-                  : 'text-gray-400 hover:text-gray-200'
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'text-stone-500 hover:text-stone-700'
               }`}
             >
               {tab.label}
@@ -367,11 +367,11 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as LeadStatus | '')}
           aria-label="Filter by lead status"
-          className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-zinc-500"
+          className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs text-stone-600 focus:outline-none focus:ring-1 focus:ring-stone-400"
         >
           <option value="">All Statuses</option>
           {LEAD_STATUSES.map((s) => (
-            <option key={s} value={s} className="bg-zinc-900">
+            <option key={s} value={s} className="bg-stone-50">
               {STATUS_LABELS[s]}
             </option>
           ))}
@@ -382,7 +382,7 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-800/40 bg-red-900/20 px-4 py-3 text-sm text-red-300"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
         </div>
@@ -394,7 +394,7 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="bg-zinc-900/80 border border-zinc-800/60 rounded-2xl p-5 h-52 animate-pulse"
+              className="bg-white border border-stone-200 rounded-2xl p-5 h-52 animate-pulse"
               aria-hidden="true"
             />
           ))}
@@ -404,14 +404,14 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
       {/* Empty state */}
       {!loading && !error && leads.length === 0 && (
         <div className="flex flex-col items-center justify-center py-20 text-center">
-          <div className="mb-4 rounded-full bg-zinc-800/60 p-5">
+          <div className="mb-4 rounded-full bg-stone-100 p-5">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
               strokeWidth={1.2}
               stroke="currentColor"
-              className="w-10 h-10 text-zinc-500"
+              className="w-10 h-10 text-stone-400"
               aria-hidden="true"
             >
               <path
@@ -421,8 +421,8 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
               />
             </svg>
           </div>
-          <p className="text-gray-300 font-medium">No AI analyses yet.</p>
-          <p className="text-gray-500 text-sm mt-1">Run your first property scan.</p>
+          <p className="text-stone-600 font-medium">No AI analyses yet.</p>
+          <p className="text-stone-400 text-sm mt-1">Run your first property scan.</p>
         </div>
       )}
 
@@ -451,18 +451,18 @@ export default function AiLeadsPage({ onViewAnalysis }: AiLeadsPageProps) {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-gray-400 transition-colors hover:bg-zinc-800/60 hover:text-white disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus:ring-1 focus:ring-zinc-500 min-h-[44px] min-w-[44px]"
+            className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus:ring-1 focus:ring-stone-400 min-h-[44px] min-w-[44px]"
           >
             Previous
           </button>
-          <span className="text-xs text-gray-400">
-            Page <span className="font-semibold text-white">{page}</span> of{' '}
-            <span className="font-semibold text-white">{totalPages}</span>
+          <span className="text-xs text-stone-500">
+            Page <span className="font-semibold text-stone-900">{page}</span> of{' '}
+            <span className="font-semibold text-stone-900">{totalPages}</span>
           </span>
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
-            className="rounded-xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-2 text-xs font-medium text-gray-400 transition-colors hover:bg-zinc-800/60 hover:text-white disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus:ring-1 focus:ring-zinc-500 min-h-[44px] min-w-[44px]"
+            className="rounded-xl border border-stone-200 bg-stone-50 px-4 py-2 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-900 disabled:pointer-events-none disabled:opacity-40 focus:outline-none focus:ring-1 focus:ring-stone-400 min-h-[44px] min-w-[44px]"
           >
             Next
           </button>

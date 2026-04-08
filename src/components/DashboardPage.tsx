@@ -114,30 +114,30 @@ export default function DashboardPage({
     : 'Hail, wind, and property reconnaissance for the DC, Maryland & Virginia market.';
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.18),_transparent_24%),radial-gradient(circle_at_75%_10%,_rgba(124,58,237,0.18),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_42%,_#04020a_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[#faf9f7] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-7">
-        <section className="relative overflow-hidden rounded-[30px] border border-slate-800 bg-slate-950/88 p-6 shadow-[0_24px_80px_rgba(2,6,23,0.55)]">
-          <div className="absolute -right-16 top-0 h-56 w-56 rounded-full bg-orange-500/14 blur-3xl" />
-          <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-violet-500/14 blur-3xl" />
+        <section className="relative overflow-hidden rounded-[30px] border border-stone-200 bg-white p-6 shadow-sm">
+          <div className="absolute -right-16 top-0 h-56 w-56 rounded-full bg-orange-500/8 blur-3xl" />
+          <div className="absolute bottom-0 left-1/3 h-44 w-44 rounded-full bg-violet-500/8 blur-3xl" />
 
           <div className="relative flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
               <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.22),rgba(124,58,237,0.22))] text-orange-300 ring-1 ring-orange-400/15 shadow-[0_0_35px_rgba(168,85,247,0.24)]">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[linear-gradient(180deg,rgba(249,115,22,0.12),rgba(124,58,237,0.10))] text-orange-500 ring-1 ring-orange-300/30">
                   <BrandCloudIcon />
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300/90">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">
                     Dashboard
                   </p>
-                  <p className="text-sm text-slate-400">{heroLabel}</p>
+                  <p className="text-sm text-stone-500">{heroLabel}</p>
                 </div>
               </div>
 
-              <h2 className="mt-5 text-4xl font-semibold tracking-tight text-white sm:text-5xl">
+              <h2 className="mt-5 text-4xl font-semibold tracking-tight text-stone-900 sm:text-5xl">
                 Hail <span className="bg-[linear-gradient(135deg,#fb923c,#a855f7)] bg-clip-text text-transparent">Intelligence</span>
               </h2>
-              <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-400 sm:text-base">
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-500 sm:text-base">
                 {heroSubcopy} Use the map, pinned targets, evidence queue, and
                 NOAA-forward reports as one focused hail reconnaissance workflow.
               </p>
@@ -167,10 +167,10 @@ export default function DashboardPage({
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-300">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-red-600">
                     New Storm Activity {stormAlertsChecking ? '(checking...)' : ''}
                   </p>
-                  <p className="mt-1 text-sm text-white">
+                  <p className="mt-1 text-sm text-stone-900">
                     {stormAlerts.length} alert{stormAlerts.length === 1 ? '' : 's'} in your territory
                   </p>
                 </div>
@@ -178,17 +178,17 @@ export default function DashboardPage({
               <button
                 type="button"
                 onClick={onDismissAllStormAlerts}
-                className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-300 hover:bg-red-500/20"
+                className="rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20"
               >
                 Dismiss All
               </button>
             </div>
             <div className="mt-4 grid gap-2">
               {stormAlerts.slice(0, 5).map((alert) => (
-                <div key={alert.id} className="flex items-center justify-between rounded-2xl border border-red-500/15 bg-slate-950/60 px-4 py-3">
+                <div key={alert.id} className="flex items-center justify-between rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm text-white">{alert.message}</p>
-                    <p className="mt-1 text-[10px] text-slate-500">
+                    <p className="text-sm text-stone-900">{alert.message}</p>
+                    <p className="mt-1 text-[10px] text-stone-400">
                       Detected {new Date(alert.detectedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                     </p>
                   </div>
@@ -196,7 +196,7 @@ export default function DashboardPage({
                     <button
                       type="button"
                       onClick={onOpenMap}
-                      className="rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-300 hover:bg-red-500/25"
+                      className="rounded-lg bg-red-500/15 px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-500/25"
                     >
                       View Map
                     </button>
@@ -204,7 +204,7 @@ export default function DashboardPage({
                       type="button"
                       onClick={() => onDismissStormAlert(alert.id)}
                       aria-label="Dismiss storm alert"
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center text-slate-600 hover:text-slate-400"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center text-stone-400 hover:text-stone-600"
                     >
                       <svg className="h-5 w-5" aria-hidden="true" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
@@ -220,23 +220,23 @@ export default function DashboardPage({
           <section className="rounded-[28px] border border-amber-500/20 bg-amber-500/[0.04] p-4 sm:p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-300">
+                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-amber-600">
                   Your Day
                 </p>
                 <div className="flex gap-2 text-xs">
                   {overdueLeads.length > 0 && (
-                    <span className="rounded-full border border-red-400/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-300">
+                    <span className="rounded-full border border-red-400/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-600">
                       {overdueLeads.length} overdue
                     </span>
                   )}
                   {dueTodayLeads.length > 0 && (
-                    <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                    <span className="rounded-full border border-amber-400/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-600">
                       {dueTodayLeads.length} due today
                     </span>
                   )}
                 </div>
               </div>
-              <button type="button" onClick={onOpenLeads} className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20">
+              <button type="button" onClick={onOpenLeads} className="rounded-xl border border-amber-400/20 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-600 hover:bg-amber-500/20">
                 Open Leads
               </button>
             </div>
@@ -246,13 +246,13 @@ export default function DashboardPage({
                   key={lead.id}
                   type="button"
                   onClick={onOpenLeads}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/60 px-3 py-2.5 text-left hover:border-slate-700"
+                  className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-left hover:border-stone-300"
                 >
-                  <p className="text-sm font-semibold text-white truncate">{lead.homeownerName || lead.locationLabel}</p>
-                  <p className="mt-1 text-xs text-slate-400 truncate">
+                  <p className="text-sm font-semibold text-stone-900 truncate">{lead.homeownerName || lead.locationLabel}</p>
+                  <p className="mt-1 text-xs text-stone-500 truncate">
                     {lead.stormLabel}
                     {lead.reminderAt && lead.reminderAt < today && (
-                      <span className="ml-1 text-red-300">overdue</span>
+                      <span className="ml-1 text-red-600">overdue</span>
                     )}
                   </p>
                 </button>
@@ -261,418 +261,15 @@ export default function DashboardPage({
           </section>
         )}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <MetricCard
-            label="Total Events"
-            value={String(events.length)}
-            tone="orange"
-            icon={<TrendIcon />}
-            onClick={onOpenMap}
-          />
-          <MetricCard
-            label="Hail Events"
-            value={String(hailEvents.length)}
-            tone="violet"
-            icon={<HailIcon />}
-            onClick={onOpenMap}
-          />
-          <MetricCard
-            label="Active Canvass Stops"
-            value={String(activeRouteStops.length)}
-            tone="plum"
-            icon={<MapPinIcon />}
-            onClick={onOpenCanvass}
-          />
-          <MetricCard
-            label="Inspections Booked"
-            value={String(bookedStops.length)}
-            tone="rose"
-            icon={<CalendarIcon />}
-            onClick={onOpenLeads}
-          />
-          <MetricCard
-            label="Follow Ups"
-            value={String(followUpStops.length)}
-            tone="amber"
-            icon={<AlertIcon />}
-            onClick={onOpenLeads}
-          />
-        </section>
-
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Recent Storm Events
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-white">
-                  Latest hail and wind activity
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={onOpenMap}
-                className="rounded-2xl border border-violet-500/20 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-orange-200 transition-colors hover:border-violet-400/30 hover:bg-slate-800"
-              >
-                Open Map
-              </button>
-            </div>
-
-            <div className="mt-5 grid gap-4 md:grid-cols-2">
-              {recentEvents.length > 0 ? (
-                recentEvents.map((event) => (
-                  <RecentEventCard key={event.id} event={event} onClick={onOpenMap} />
-                ))
-              ) : (
-                <EmptyPanel
-                  title="No storm events loaded yet"
-                  body="Search an address in the Storm Map workspace to populate the dashboard with real hail and wind history."
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-5">
-            <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Quick Actions
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-white">
-                Work the next step fast
-              </h3>
-              <div className="mt-5 grid gap-3">
-                <ActionTile
-                  title="Interactive Storm Map"
-                  body="Explore storm dates, swaths, MRMS overlays, and search-driven property history."
-                  onClick={onOpenMap}
-                  icon={<MapPinIcon />}
-                />
-                <ActionTile
-                  title="Pinned Targets"
-                  body="Return to saved properties and canvassing opportunities without another search."
-                  onClick={onOpenPinned}
-                  icon={<PinIcon />}
-                />
-                <ActionTile
-                  title="Evidence Workspace"
-                  body="Review uploads, public samples, and report-ready proof for the current property."
-                  onClick={onOpenEvidence}
-                  icon={<HailIcon />}
-                />
-                <ActionTile
-                  title="Lead Pipeline"
-                  body="Work booked inspections, follow-ups, and homeowner contacts without losing storm context."
-                  onClick={onOpenLeads}
-                  icon={<CalendarIcon />}
-                />
-                <ActionTile
-                  title="Generate Reports"
-                  body="Create PDFs and evidence packs from the exact storm date you want to document."
-                  onClick={onOpenReports}
-                  icon={<DollarIcon />}
-                />
-              </div>
-            </section>
-
-            <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Lead Pipeline
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-white">
-                Stage movement across active route stops
-              </h3>
-              <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                <MetricCard
-                  label="Contacted"
-                  value={String(contactedStops.length)}
-                  tone="plum"
-                  icon={<TrendIcon />}
-                  onClick={onOpenLeads}
-                  compact
-                />
-                <MetricCard
-                  label="Inspection Set"
-                  value={String(inspectionSetStops.length)}
-                  tone="orange"
-                  icon={<CalendarIcon />}
-                  onClick={onOpenLeads}
-                  compact
-                />
-                <MetricCard
-                  label="Won"
-                  value={String(wonStops.length)}
-                  tone="violet"
-                  icon={<PinIcon />}
-                  onClick={onOpenLeads}
-                  compact
-                />
-                <MetricCard
-                  label="Lost"
-                  value={String(lostStops.length)}
-                  tone="plum"
-                  icon={<AlertIcon />}
-                  onClick={onOpenLeads}
-                  compact
-                />
-                <MetricCard
-                  label="Tracked Damage"
-                  value={formatCurrencyCompact(totalDamage)}
-                  tone="amber"
-                  icon={<DollarIcon />}
-                  onClick={onOpenReports}
-                  compact
-                />
-              </div>
-            </section>
-
-            {wonStops.length > 0 && (
-              <section className="rounded-[28px] border border-emerald-500/18 bg-emerald-500/[0.04] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-300">
-                  Won Jobs
-                </p>
-                <h3 className="mt-2 text-2xl font-semibold text-white">
-                  {wonStops.length} closed deal{wonStops.length === 1 ? '' : 's'}
-                </h3>
-                <div className="mt-4 grid gap-3">
-                  {wonStops.slice(0, 4).map((stop) => (
-                    <button
-                      type="button"
-                      key={stop.id}
-                      onClick={onOpenLeads}
-                      className="rounded-2xl border border-emerald-500/12 bg-slate-900/60 p-4 text-left transition-colors hover:border-emerald-400/25 hover:bg-slate-900"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-white">
-                            {stop.homeownerName || stop.locationLabel}
-                          </p>
-                          <p className="mt-1 text-xs text-slate-400">
-                            {stop.stormLabel} · {stop.homeownerPhone || 'No phone'}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
-                          Won
-                        </span>
-                      </div>
-                      {stop.assignedRep && (
-                        <p className="mt-2 text-xs text-violet-200">Rep: {stop.assignedRep}</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Events by State
-              </p>
-              <h3 className="mt-2 text-2xl font-semibold text-white">
-                Where the current search window hits hardest
-              </h3>
-              <div className="mt-5 grid gap-3">
-                {stateCounts.length > 0 ? (
-                  stateCounts.map(([state, count]) => (
-                    <StateRow key={state} state={state} count={count} onClick={onOpenMap} />
-                  ))
-                ) : (
-                  <EmptyPanel
-                    title="No state summary yet"
-                    body="Once events load, the strongest states in the current search window will show here."
-                  />
-                )}
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.95fr_1.05fr]">
-          <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Latest Hits
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">
-              Most recent storm dates for this workspace
-            </h3>
-            <div className="mt-5 grid gap-3">
-              {stormDates.slice(0, 4).map((stormDate) => (
-                <button
-                  type="button"
-                  key={stormDate.date}
-                  onClick={() => onOpenStormDate(stormDate)}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-base font-semibold text-white">
-                        {stormDate.label}
-                      </p>
-                      <p className="mt-1 text-sm text-slate-400">
-                        {stormDate.eventCount} report
-                        {stormDate.eventCount === 1 ? '' : 's'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-amber-300">
-                        {stormDate.maxHailInches > 0
-                          ? `${stormDate.maxHailInches.toFixed(2)}" hail`
-                          : 'No hail'}
-                      </p>
-                      <p className="mt-1 text-sm text-violet-200">
-                        {stormDate.maxWindMph > 0
-                          ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
-                          : 'No wind'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <EvidenceThumbnailStrip
-                      items={evidenceItems.filter((item) => item.stormDate === stormDate.date)}
-                      title="Evidence Preview"
-                      subtitle="Attached proof for this storm date."
-                      emptyLabel="No storm-date evidence attached yet."
-                      compact
-                      prioritizeIncluded
-                    />
-                  </div>
-                </button>
-              ))}
-
-              {stormDates.length === 0 && (
-                <EmptyPanel
-                  title="No recent storm dates yet"
-                  body="Search a property in the map view and this section will fill with the latest documented storm hits."
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-              Saved Targets
-            </p>
-            <h3 className="mt-2 text-2xl font-semibold text-white">
-              Pinned properties to revisit
-            </h3>
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              {pinnedProperties.slice(0, 4).map((property) => (
-                <button
-                  type="button"
-                  key={property.id}
-                  onClick={() => onOpenPinnedProperty(property)}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/65 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
-                >
-                  <p className="text-base font-semibold text-white">
-                    {property.locationLabel}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    {property.stormDateCount} storm date
-                    {property.stormDateCount === 1 ? '' : 's'}
-                  </p>
-                  <p className="mt-3 text-sm text-violet-200">
-                    {property.latestStormDate
-                      ? `Latest hit ${formatShortDate(property.latestStormDate)}`
-                      : 'No hit date saved yet'}
-                  </p>
-                </button>
-              ))}
-
-              {pinnedProperties.length === 0 && (
-                <EmptyPanel
-                  title="No pinned targets yet"
-                  body="Pin searched addresses from the map workspace to build your canvassing and reporting queue."
-                />
-              )}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-            Data Management
-          </p>
-          <h3 className="mt-2 text-2xl font-semibold text-white">
-            Backup and restore all app data
-          </h3>
-          <p className="mt-2 text-sm text-slate-400">
-            Import homeowner lists from any data provider (Cole Info, ListSource, ATTOM, PropertyRadar)
-            to create leads matched to storm zones. Export and restore all app data as JSON backup.
-          </p>
-          <div className="mt-5 flex flex-wrap gap-3">
-            <button
-              type="button"
-              onClick={onExportBackup}
-              className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
-            >
-              Export Backup
-            </button>
-            <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white transition-colors hover:border-slate-700 hover:bg-slate-800">
-              Import Backup
-              <input
-                type="file"
-                accept=".json"
-                className="hidden"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    onImportBackup(file);
-                    e.target.value = '';
-                  }
-                }}
-              />
-            </label>
-            <button
-              type="button"
-              onClick={onImportHomeowners}
-              className="rounded-2xl bg-emerald-500 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-emerald-600"
-            >
-              Import Homeowner CSV
-            </button>
-          </div>
-
-          {/* Developer Tools — collapsed by default so they don't dominate the UI */}
-          <div className="mt-5 border-t border-slate-800 pt-4">
-            <button
-              type="button"
-              onClick={() => setDevToolsOpen((prev) => !prev)}
-              className="flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-400 transition-colors"
-            >
-              <svg
-                className={`h-3 w-3 transition-transform ${devToolsOpen ? 'rotate-90' : ''}`}
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-                aria-hidden="true"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-              </svg>
-              Developer tools
-            </button>
-            {devToolsOpen && (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={onSeedDemo}
-                  className="rounded-xl border border-slate-700/60 bg-slate-900/60 px-3 py-2 text-xs font-medium text-slate-500 hover:border-slate-600 hover:text-slate-300 transition-colors"
-                >
-                  Load demo data
-                </button>
-              </div>
-            )}
-          </div>
-        </section>
-
         {/* AI Intelligence section */}
         {aiStats && aiStats.total > 0 ? (
           <section className="rounded-[28px] border border-violet-500/20 bg-violet-500/[0.04] p-5">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
                   AI Intelligence
                 </p>
-                <h3 className="mt-2 text-2xl font-semibold text-white">
+                <h3 className="mt-2 text-2xl font-semibold text-stone-900">
                   Property analysis overview
                 </h3>
               </div>
@@ -726,13 +323,13 @@ export default function DashboardPage({
                 </svg>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-400">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-600">
                   AI Intelligence
                 </p>
-                <h3 className="mt-1 text-xl font-semibold text-white">
+                <h3 className="mt-1 text-xl font-semibold text-stone-900">
                   Know the roof before you knock the door
                 </h3>
-                <p className="mt-1.5 text-sm leading-6 text-slate-400">
+                <p className="mt-1.5 text-sm leading-6 text-stone-500">
                   Instant condition scoring, material detection, and storm damage probability — powered by satellite imagery and AI.
                 </p>
               </div>
@@ -746,6 +343,410 @@ export default function DashboardPage({
             </div>
           </section>
         ) : null}
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          <MetricCard
+            label="Total Events"
+            value={String(events.length)}
+            tone="orange"
+            icon={<TrendIcon />}
+            onClick={onOpenMap}
+          />
+          <MetricCard
+            label="Hail Events"
+            value={String(hailEvents.length)}
+            tone="violet"
+            icon={<HailIcon />}
+            onClick={onOpenMap}
+          />
+          <MetricCard
+            label="Active Canvass Stops"
+            value={String(activeRouteStops.length)}
+            tone="plum"
+            icon={<MapPinIcon />}
+            onClick={onOpenCanvass}
+          />
+          <MetricCard
+            label="Inspections Booked"
+            value={String(bookedStops.length)}
+            tone="rose"
+            icon={<CalendarIcon />}
+            onClick={onOpenLeads}
+          />
+          <MetricCard
+            label="Follow Ups"
+            value={String(followUpStops.length)}
+            tone="amber"
+            icon={<AlertIcon />}
+            onClick={onOpenLeads}
+          />
+        </section>
+
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr]">
+          <div className="rounded-[28px] border border-stone-200 bg-white p-5">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+                  Recent Storm Events
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+                  Latest hail and wind activity
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={onOpenMap}
+                className="rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-700 transition-colors hover:border-violet-300 hover:bg-violet-100"
+              >
+                Open Map
+              </button>
+            </div>
+
+            <div className="mt-5 grid gap-4 md:grid-cols-2">
+              {recentEvents.length > 0 ? (
+                recentEvents.map((event) => (
+                  <RecentEventCard key={event.id} event={event} onClick={onOpenMap} />
+                ))
+              ) : (
+                <EmptyPanel
+                  title="No storm events loaded yet"
+                  body="Search an address in the Storm Map workspace to populate the dashboard with real hail and wind history."
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-5">
+            <section className="rounded-[28px] border border-stone-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+                Quick Actions
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+                Work the next step fast
+              </h3>
+              <div className="mt-5 grid gap-3">
+                <ActionTile
+                  title="Interactive Storm Map"
+                  body="Explore storm dates, swaths, MRMS overlays, and search-driven property history."
+                  onClick={onOpenMap}
+                  icon={<MapPinIcon />}
+                />
+                <ActionTile
+                  title="Pinned Targets"
+                  body="Return to saved properties and canvassing opportunities without another search."
+                  onClick={onOpenPinned}
+                  icon={<PinIcon />}
+                />
+                <ActionTile
+                  title="Evidence Workspace"
+                  body="Review uploads, public samples, and report-ready proof for the current property."
+                  onClick={onOpenEvidence}
+                  icon={<HailIcon />}
+                />
+                <ActionTile
+                  title="Lead Pipeline"
+                  body="Work booked inspections, follow-ups, and homeowner contacts without losing storm context."
+                  onClick={onOpenLeads}
+                  icon={<CalendarIcon />}
+                />
+                <ActionTile
+                  title="Generate Reports"
+                  body="Create PDFs and evidence packs from the exact storm date you want to document."
+                  onClick={onOpenReports}
+                  icon={<DollarIcon />}
+                />
+              </div>
+            </section>
+
+            <section className="rounded-[28px] border border-stone-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+                Lead Pipeline
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+                Stage movement across active route stops
+              </h3>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <MetricCard
+                  label="Contacted"
+                  value={String(contactedStops.length)}
+                  tone="plum"
+                  icon={<TrendIcon />}
+                  onClick={onOpenLeads}
+                  compact
+                />
+                <MetricCard
+                  label="Inspection Set"
+                  value={String(inspectionSetStops.length)}
+                  tone="orange"
+                  icon={<CalendarIcon />}
+                  onClick={onOpenLeads}
+                  compact
+                />
+                <MetricCard
+                  label="Won"
+                  value={String(wonStops.length)}
+                  tone="violet"
+                  icon={<PinIcon />}
+                  onClick={onOpenLeads}
+                  compact
+                />
+                <MetricCard
+                  label="Lost"
+                  value={String(lostStops.length)}
+                  tone="plum"
+                  icon={<AlertIcon />}
+                  onClick={onOpenLeads}
+                  compact
+                />
+                <MetricCard
+                  label="Tracked Damage"
+                  value={formatCurrencyCompact(totalDamage)}
+                  tone="amber"
+                  icon={<DollarIcon />}
+                  onClick={onOpenReports}
+                  compact
+                />
+              </div>
+            </section>
+
+            {wonStops.length > 0 && (
+              <section className="rounded-[28px] border border-emerald-500/18 bg-emerald-500/[0.04] p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-600">
+                  Won Jobs
+                </p>
+                <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+                  {wonStops.length} closed deal{wonStops.length === 1 ? '' : 's'}
+                </h3>
+                <div className="mt-4 grid gap-3">
+                  {wonStops.slice(0, 4).map((stop) => (
+                    <button
+                      type="button"
+                      key={stop.id}
+                      onClick={onOpenLeads}
+                      className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left transition-colors hover:border-emerald-300 hover:bg-emerald-100"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-stone-900">
+                            {stop.homeownerName || stop.locationLabel}
+                          </p>
+                          <p className="mt-1 text-xs text-stone-500">
+                            {stop.stormLabel} · {stop.homeownerPhone || 'No phone'}
+                          </p>
+                        </div>
+                        <span className="rounded-full border border-emerald-400/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600">
+                          Won
+                        </span>
+                      </div>
+                      {stop.assignedRep && (
+                        <p className="mt-2 text-xs text-violet-600">Rep: {stop.assignedRep}</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="rounded-[28px] border border-stone-200 bg-white p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+                Events by State
+              </p>
+              <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+                Where the current search window hits hardest
+              </h3>
+              <div className="mt-5 grid gap-3">
+                {stateCounts.length > 0 ? (
+                  stateCounts.map(([state, count]) => (
+                    <StateRow key={state} state={state} count={count} onClick={onOpenMap} />
+                  ))
+                ) : (
+                  <EmptyPanel
+                    title="No state summary yet"
+                    body="Once events load, the strongest states in the current search window will show here."
+                  />
+                )}
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[28px] border border-stone-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+              Latest Hits
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+              Most recent storm dates for this workspace
+            </h3>
+            <div className="mt-5 grid gap-3">
+              {stormDates.slice(0, 4).map((stormDate) => (
+                <button
+                  type="button"
+                  key={stormDate.date}
+                  onClick={() => onOpenStormDate(stormDate)}
+                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-base font-semibold text-stone-900">
+                        {stormDate.label}
+                      </p>
+                      <p className="mt-1 text-sm text-stone-500">
+                        {stormDate.eventCount} report
+                        {stormDate.eventCount === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-amber-600">
+                        {stormDate.maxHailInches > 0
+                          ? `${stormDate.maxHailInches.toFixed(2)}" hail`
+                          : 'No hail'}
+                      </p>
+                      <p className="mt-1 text-sm text-violet-600">
+                        {stormDate.maxWindMph > 0
+                          ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
+                          : 'No wind'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <EvidenceThumbnailStrip
+                      items={evidenceItems.filter((item) => item.stormDate === stormDate.date)}
+                      title="Evidence Preview"
+                      subtitle="Attached proof for this storm date."
+                      emptyLabel="No storm-date evidence attached yet."
+                      compact
+                      prioritizeIncluded
+                    />
+                  </div>
+                </button>
+              ))}
+
+              {stormDates.length === 0 && (
+                <EmptyPanel
+                  title="No recent storm dates yet"
+                  body="Search a property in the map view and this section will fill with the latest documented storm hits."
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[28px] border border-stone-200 bg-white p-5">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+              Saved Targets
+            </p>
+            <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+              Pinned properties to revisit
+            </h3>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              {pinnedProperties.slice(0, 4).map((property) => (
+                <button
+                  type="button"
+                  key={property.id}
+                  onClick={() => onOpenPinnedProperty(property)}
+                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
+                >
+                  <p className="text-base font-semibold text-stone-900">
+                    {property.locationLabel}
+                  </p>
+                  <p className="mt-1 text-sm text-stone-500">
+                    {property.stormDateCount} storm date
+                    {property.stormDateCount === 1 ? '' : 's'}
+                  </p>
+                  <p className="mt-3 text-sm text-violet-600">
+                    {property.latestStormDate
+                      ? `Latest hit ${formatShortDate(property.latestStormDate)}`
+                      : 'No hit date saved yet'}
+                  </p>
+                </button>
+              ))}
+
+              {pinnedProperties.length === 0 && (
+                <EmptyPanel
+                  title="No pinned targets yet"
+                  body="Pin searched addresses from the map workspace to build your canvassing and reporting queue."
+                />
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="rounded-[28px] border border-stone-200 bg-white p-5">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+            Data Management
+          </p>
+          <h3 className="mt-2 text-2xl font-semibold text-stone-900">
+            Backup and restore all app data
+          </h3>
+          <p className="mt-2 text-sm text-stone-500">
+            Import homeowner lists from any data provider (Cole Info, ListSource, ATTOM, PropertyRadar)
+            to create leads matched to storm zones. Export and restore all app data as JSON backup.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={onExportBackup}
+              className="rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 sm:py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.18)] transition-opacity hover:opacity-95"
+            >
+              Export Backup
+            </button>
+            <label className="cursor-pointer rounded-2xl border border-stone-200 bg-stone-50 px-4 py-3 sm:py-2.5 text-sm font-semibold text-stone-900 transition-colors hover:border-stone-300 hover:bg-stone-100">
+              Import Backup
+              <input
+                type="file"
+                accept=".json"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    onImportBackup(file);
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={onImportHomeowners}
+              className="rounded-2xl bg-emerald-500 px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-emerald-600"
+            >
+              Import Homeowner CSV
+            </button>
+          </div>
+
+          {/* Developer Tools — collapsed by default so they don't dominate the UI */}
+          <div className="mt-5 border-t border-stone-200 pt-4">
+            <button
+              type="button"
+              onClick={() => setDevToolsOpen((prev) => !prev)}
+              className="flex items-center gap-1.5 text-xs text-stone-400 hover:text-stone-600 transition-colors"
+            >
+              <svg
+                className={`h-3 w-3 transition-transform ${devToolsOpen ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+              Developer tools
+            </button>
+            {devToolsOpen && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={onSeedDemo}
+                  className="rounded-xl border border-stone-200 bg-stone-50 px-3 py-2 text-xs font-medium text-stone-500 hover:border-stone-300 hover:text-stone-700 transition-colors"
+                >
+                  Load demo data
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+
       </div>
     </section>
   );
@@ -764,10 +765,10 @@ function HeroAction({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[24px] border border-slate-800 bg-slate-900/80 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
+      className="rounded-[24px] border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
     >
-      <p className="text-sm font-semibold text-white">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
+      <p className="text-sm font-semibold text-stone-900">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-stone-500">{body}</p>
     </button>
   );
 }
@@ -788,24 +789,24 @@ function MetricCard({
   compact?: boolean;
 }) {
   const toneClasses = {
-    orange: 'border-orange-500/18 bg-orange-500/[0.07] text-orange-300',
-    violet: 'border-violet-500/18 bg-violet-500/[0.07] text-violet-200',
-    plum: 'border-fuchsia-500/18 bg-fuchsia-500/[0.07] text-fuchsia-200',
-    rose: 'border-rose-500/18 bg-rose-500/[0.07] text-rose-300',
-    amber: 'border-amber-500/18 bg-amber-500/[0.07] text-amber-300',
+    orange: 'border-orange-200 bg-orange-50 text-orange-600',
+    violet: 'border-violet-200 bg-violet-50 text-violet-600',
+    plum: 'border-fuchsia-200 bg-fuchsia-50 text-fuchsia-600',
+    rose: 'border-rose-200 bg-rose-50 text-rose-600',
+    amber: 'border-amber-200 bg-amber-50 text-amber-600',
   };
 
   const className = `rounded-[24px] border ${compact ? 'p-4' : 'p-5'} ${toneClasses[tone]} ${
-    onClick ? 'cursor-pointer transition-colors hover:bg-white/[0.06]' : ''
+    onClick ? 'cursor-pointer transition-colors hover:bg-stone-50' : ''
   }`;
 
   const content = (
     <>
-      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950/60">
+      <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-stone-100">
         {icon}
       </div>
-      <p className="mt-4 text-4xl font-semibold tracking-tight text-white">{value}</p>
-      <p className="mt-1 text-sm text-slate-400">{label}</p>
+      <p className="mt-4 text-4xl font-semibold tracking-tight text-stone-900">{value}</p>
+      <p className="mt-1 text-sm text-stone-500">{label}</p>
     </>
   );
 
@@ -837,24 +838,24 @@ function RecentEventCard({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[24px] border border-slate-800 bg-slate-900/70 p-5 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
+      className="rounded-[24px] border border-stone-200 bg-stone-50 p-5 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-orange-300">
+            <span className="text-orange-500">
               {event.eventType === 'Hail' ? <HailIcon /> : <WindIcon />}
             </span>
-            <p className="truncate text-lg font-semibold text-white">
+            <p className="truncate text-lg font-semibold text-stone-900">
               {event.eventType}
             </p>
           </div>
-          <p className="mt-1 text-sm text-slate-400">{severityLabel}</p>
+          <p className="mt-1 text-sm text-stone-500">{severityLabel}</p>
         </div>
         <div className="shrink-0">{renderSeverityPill(severityValue, event.eventType)}</div>
       </div>
 
-      <div className="mt-5 space-y-2 text-sm text-slate-400">
+      <div className="mt-5 space-y-2 text-sm text-stone-500">
         <DetailRow icon={<MapPinIcon />} text={formatEventLocation(event)} />
         <DetailRow icon={<CalendarIcon />} text={formatLongDate(event.beginDate)} />
         <DetailRow
@@ -885,13 +886,13 @@ function ActionTile({
     <button
       type="button"
       onClick={onClick}
-      className="rounded-[22px] border border-slate-800 bg-slate-900/65 p-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
+      className="rounded-[22px] border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
     >
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-slate-800/80 text-orange-300">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-stone-100 text-orange-500">
         {icon}
       </div>
-      <p className="mt-4 text-lg font-semibold text-white">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
+      <p className="mt-4 text-lg font-semibold text-stone-900">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-stone-500">{body}</p>
     </button>
   );
 }
@@ -909,22 +910,22 @@ function StateRow({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center justify-between rounded-[22px] border border-slate-800 bg-slate-900/65 px-4 py-4 text-left transition-colors hover:border-slate-700 hover:bg-slate-900"
+      className="flex w-full items-center justify-between rounded-[22px] border border-stone-200 bg-stone-50 px-4 py-4 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
     >
       <div>
-        <p className="text-lg font-semibold text-white">{stateName(state)}</p>
-        <p className="text-sm text-slate-500">{state}</p>
+        <p className="text-lg font-semibold text-stone-900">{stateName(state)}</p>
+        <p className="text-sm text-stone-400">{state}</p>
       </div>
-      <p className="text-4xl sm:text-5xl font-semibold tracking-tight text-orange-300">{count}</p>
+      <p className="text-4xl sm:text-5xl font-semibold tracking-tight text-orange-500">{count}</p>
     </button>
   );
 }
 
 function EmptyPanel({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-[22px] border border-dashed border-slate-800 bg-slate-900/35 p-5">
-      <p className="text-base font-semibold text-white">{title}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{body}</p>
+    <div className="rounded-[22px] border border-dashed border-stone-300 bg-stone-50 p-5">
+      <p className="text-base font-semibold text-stone-900">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-stone-400">{body}</p>
     </div>
   );
 }
@@ -938,7 +939,7 @@ function DetailRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-slate-500">{icon}</span>
+      <span className="text-stone-400">{icon}</span>
       <span>{text}</span>
     </div>
   );
@@ -982,25 +983,25 @@ function renderSeverityPill(value: number, eventType: StormEvent['eventType']) {
   if (eventType === 'Hail') {
     if (value >= 2.0) {
       label = 'Severe';
-      colorClass = 'border-red-400/30 bg-red-500/15 text-red-300';
+      colorClass = 'border-red-400/30 bg-red-500/15 text-red-600';
     } else if (value >= 1.0) {
       label = 'Significant';
-      colorClass = 'border-amber-400/30 bg-amber-500/15 text-amber-300';
+      colorClass = 'border-amber-400/30 bg-amber-500/15 text-amber-600';
     } else {
       label = 'Minor';
-      colorClass = 'border-slate-600/40 bg-slate-800/60 text-slate-400';
+      colorClass = 'border-stone-300 bg-stone-100 text-stone-500';
     }
   } else {
     // Wind
     if (value >= 65) {
       label = 'Severe';
-      colorClass = 'border-red-400/30 bg-red-500/15 text-red-300';
+      colorClass = 'border-red-400/30 bg-red-500/15 text-red-600';
     } else if (value >= 40) {
       label = 'Moderate';
-      colorClass = 'border-amber-400/30 bg-amber-500/15 text-amber-300';
+      colorClass = 'border-amber-400/30 bg-amber-500/15 text-amber-600';
     } else {
       label = 'Low';
-      colorClass = 'border-slate-600/40 bg-slate-800/60 text-slate-400';
+      colorClass = 'border-stone-300 bg-stone-100 text-stone-500';
     }
   }
 
