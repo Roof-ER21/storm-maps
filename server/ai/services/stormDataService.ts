@@ -47,15 +47,16 @@ export async function getStormHistory(
 ): Promise<StormHistory> {
   const events: StormEvent[] = [];
 
-  // Run all sources in parallel
-  const [nwsEvents, spcRecentEvents, spcArchiveEvents, seededEvents] = await Promise.all([
+  // Run all sources in parallel (NCEI SWDI is the best source for recent hail)
+  const [nwsEvents, swdiEvents, spcRecentEvents, spcArchiveEvents, seededEvents] = await Promise.all([
     queryNWSAlerts(lat, lng).catch(() => []),
+    queryNCEI_SWDI(lat, lng, radiusMiles, yearsBack).catch(() => []),
     querySPCRecentReports(lat, lng, radiusMiles).catch(() => []),
     querySPCArchive(lat, lng, radiusMiles, yearsBack).catch(() => []),
     Promise.resolve(getSeededEvents(lat, lng, radiusMiles)),
   ]);
 
-  events.push(...nwsEvents, ...spcRecentEvents, ...spcArchiveEvents, ...seededEvents);
+  events.push(...nwsEvents, ...swdiEvents, ...spcRecentEvents, ...spcArchiveEvents, ...seededEvents);
 
   // Deduplicate by date + type + approximate location
   const unique = deduplicateEvents(events);
@@ -155,6 +156,80 @@ export async function getStormHistory(
     summary: summaryParts.join(". "),
     claimWindow,
   };
+}
+
+// ============================================================
+// Source 0: NCEI SWDI — best source for radar-detected hail (recent + historical)
+// ============================================================
+
+async function queryNCEI_SWDI(
+  lat: number,
+  lng: number,
+  radiusMiles: number,
+  yearsBack: number
+): Promise<StormEvent[]> {
+  const events: StormEvent[] = [];
+  const now = new Date();
+  const endDate = now.toISOString().split("T")[0].replace(/-/g, "");
+  const startDate = new Date(now.getFullYear() - yearsBack, now.getMonth(), now.getDate())
+    .toISOString().split("T")[0].replace(/-/g, "");
+
+  // Convert radius to approximate bounding box
+  const latDelta = radiusMiles / 69.0;
+  const lngDelta = radiusMiles / (69.0 * Math.cos((lat * Math.PI) / 180));
+  const bbox = `${(lng - lngDelta).toFixed(4)},${(lat - latDelta).toFixed(4)},${(lng + lngDelta).toFixed(4)},${(lat + latDelta).toFixed(4)}`;
+
+  // Query NEXRAD hail detection
+  const url = `https://www.ncei.noaa.gov/swdiws/json/nx3hail/${startDate}:${endDate}?bbox=${bbox}`;
+
+  try {
+    const res = await fetch(url, {
+      signal: AbortSignal.timeout(20000),
+      headers: { "User-Agent": "HailYes/1.0" },
+    });
+    if (!res.ok) return events;
+    const data = await res.json();
+
+    const results = data?.result || [];
+    for (const r of results) {
+      try {
+        const reportLat = parseFloat(r.LAT || r.lat || "0");
+        const reportLng = parseFloat(r.LON || r.lon || "0");
+        const maxSize = parseFloat(r.MAXSIZE || r.maxsize || "0");
+        const dist = haversineDistanceMiles(lat, lng, reportLat, reportLng);
+        if (dist > radiusMiles || maxSize <= 0) continue;
+
+        // Parse date from WSR_ID timestamp or ZTIME
+        let dateStr = "";
+        if (r.ZTIME) {
+          // Format: YYYYMMDDHHMMSS or ISO
+          const z = String(r.ZTIME);
+          if (z.length >= 8) {
+            dateStr = `${z.slice(0, 4)}-${z.slice(4, 6)}-${z.slice(6, 8)}`;
+          }
+        }
+        if (!dateStr && r.BEGIN_DATE) dateStr = r.BEGIN_DATE;
+        if (!dateStr) continue;
+
+        events.push({
+          type: "hail",
+          date: dateStr,
+          magnitude: `${maxSize.toFixed(2)} inches`,
+          lat: reportLat,
+          lng: reportLng,
+          distance: Math.round(dist * 10) / 10,
+          source: `NEXRAD ${r.WSR_ID || ""}`.trim(),
+          location: r.COUNTY || r.STATE || "",
+        });
+      } catch {
+        continue;
+      }
+    }
+  } catch {
+    // SWDI may be slow or unavailable — fail gracefully
+  }
+
+  return events;
 }
 
 // ============================================================
@@ -271,7 +346,8 @@ async function querySPCArchive(
   // These have full-year data and go back to ~2000
   const fetches: Promise<void>[] = [];
 
-  for (let year = currentYear - 1; year >= currentYear - yearsBack; year--) {
+  // Include current year (annual CSV may not exist yet, but try anyway)
+  for (let year = currentYear; year >= currentYear - yearsBack; year--) {
     for (const type of ["hail", "wind"] as const) {
       fetches.push(
         (async () => {
