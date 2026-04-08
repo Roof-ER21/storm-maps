@@ -449,7 +449,7 @@ function LayerStatusPanel({
   }
 
   return (
-    <div className="absolute top-4 left-4 z-20 flex flex-col gap-3 max-w-sm">
+    <div className="absolute bottom-20 left-4 z-20 flex flex-col gap-3 max-w-sm">
       {showNexrad && (
         <div className="rounded-xl border border-green-700/70 bg-gray-950/88 p-3 text-white shadow-xl backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3">

@@ -154,6 +154,21 @@ async function migrate() {
   await ensureAiTables(aiDb);
 
   console.log('[migrate] All tables created successfully.');
+
+  // Seed admin user (idempotent)
+  const adminEmail = 'ahmed@theroofdocs.com';
+  const adminExists = await sql`SELECT id FROM users WHERE email = ${adminEmail}`;
+  if (adminExists.length === 0) {
+    const bcrypt = await import('bcryptjs');
+    const hash = await bcrypt.hash('RoofER21!admin', 10);
+    await sql`INSERT INTO users (email, name, password_hash, plan) VALUES (${adminEmail}, ${'Ahmed Mahmoud'}, ${hash}, ${'company'})`;
+    console.log('[migrate] Admin user created');
+  } else {
+    // Ensure admin has company plan
+    await sql`UPDATE users SET plan = 'company' WHERE email = ${adminEmail}`;
+    console.log('[migrate] Admin user already exists — plan confirmed as company');
+  }
+
   await sql.end();
 }
 

@@ -25,30 +25,26 @@ interface TokenPayload {
 }
 
 /**
- * Middleware that requires a valid JWT and attaches user info to req.
- * Read-only routes (GET) always pass.
- * Write routes (POST/PATCH) check scan limits for 'free' plan.
+ * Middleware that optionally validates a JWT and attaches user info to req.
+ * Requests without a token (or with an invalid token) are allowed through as
+ * anonymous — scan limits and IP-based rate limiting handle abuse prevention.
+ *
+ * Authenticated users: plan-based monthly limits apply.
+ * Anonymous users: generous free tier enforced by the IP rate limiter.
  */
 export function requireAuth(req: Request, res: Response, next: NextFunction): void {
   const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) {
-    // In dev mode with no auth configured, allow requests through
-    if (!process.env.JWT_SECRET) {
-      next();
-      return;
+  if (auth?.startsWith('Bearer ')) {
+    try {
+      const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as TokenPayload;
+      (req as any).userId = decoded.userId;
+      (req as any).userEmail = decoded.email;
+    } catch {
+      // Invalid token — continue as anonymous
     }
-    res.status(401).json({ error: 'Authentication required. Sign up or log in.' });
-    return;
   }
-
-  try {
-    const decoded = jwt.verify(auth.slice(7), JWT_SECRET) as TokenPayload;
-    (req as any).userId = decoded.userId;
-    (req as any).userEmail = decoded.email;
-    next();
-  } catch {
-    res.status(401).json({ error: 'Invalid or expired token' });
-  }
+  // Always allow through — scan limits handle abuse prevention
+  next();
 }
 
 /**

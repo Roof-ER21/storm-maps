@@ -812,19 +812,19 @@ export default function Sidebar({
             ))}
           </div>
         </CollapsibleSection>
-      </div>
 
-      <div className="border-t border-gray-800 p-3">
-        <button
-          onClick={openDateOfLossModal}
-          disabled={stormDates.length === 0 || generatingReport}
-          className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
-        >
-          {generatingReport ? 'Generating Report...' : 'Gen Report'}
-        </button>
-        <p className="mt-2 text-center text-[11px] text-gray-500">
-          Choose the loss date, then download the NOAA-forward PDF.
-        </p>
+        <div className="p-3">
+          <button
+            onClick={openDateOfLossModal}
+            disabled={stormDates.length === 0 || generatingReport}
+            className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-gray-800 disabled:text-gray-500 disabled:shadow-none"
+          >
+            {generatingReport ? 'Generating Report...' : 'Gen Report'}
+          </button>
+          <p className="mt-2 text-center text-[11px] text-gray-500">
+            Choose the loss date, then download the NOAA-forward PDF.
+          </p>
+        </div>
       </div>
 
       <div className="p-3 border-t border-gray-800 text-xs text-gray-500">
