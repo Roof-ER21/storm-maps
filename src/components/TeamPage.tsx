@@ -47,7 +47,7 @@ const STAGE_LABELS: Record<LeadStage, string> = {
 };
 
 const STAGE_COLORS: Record<LeadStage, string> = {
-  new: 'text-sky-300', contacted: 'text-amber-300', inspection_set: 'text-violet-300', won: 'text-emerald-300', lost: 'text-slate-400',
+  new: 'text-sky-600', contacted: 'text-amber-600', inspection_set: 'text-violet-600', won: 'text-emerald-600', lost: 'text-stone-400',
 };
 
 export default function TeamPage({ routeStops, repProfile, onUpdateProfile, searchLabel, onLogout }: TeamPageProps) {
@@ -157,14 +157,14 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
   const totalOverdue = teamMembers.reduce((sum, m) => sum + m.overdueReminders, 0);
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[#faf9f7] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-5xl flex-col gap-5">
-        <div className="rounded-[28px] border border-slate-800 bg-slate-950/88 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-300">Team</p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+        <div className="rounded-[28px] border border-stone-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-orange-600">Team</p>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
             {repProfile ? `${repProfile.name}'s Team` : 'Set Up Your Profile'}
           </h2>
-          <p className="mt-3 text-sm text-slate-400">
+          <p className="mt-3 text-sm text-stone-600">
             {repProfile
               ? 'Share your data with the team and import others to see the full picture.'
               : 'Create your rep profile to start tracking team activity.'}
@@ -172,30 +172,30 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
         </div>
 
         {/* Profile setup / edit */}
-        <div className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+        <div className="rounded-[28px] border border-stone-200 bg-white p-5 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
             {repProfile ? 'Your Profile' : 'Quick Setup'}
           </p>
           <div className="mt-4 grid gap-2 sm:grid-cols-2 md:grid-cols-3">
             <div>
-              <label htmlFor="team-rep-name" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Name</label>
-              <input id="team-rep-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+              <label htmlFor="team-rep-name" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Name</label>
+              <input id="team-rep-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className="mt-1 w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-500 focus:outline-none" />
             </div>
             <div>
-              <label htmlFor="team-phone" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Phone</label>
-              <input id="team-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your phone number" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+              <label htmlFor="team-phone" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Phone</label>
+              <input id="team-phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Your phone number" className="mt-1 w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-500 focus:outline-none" />
             </div>
             <div>
-              <label htmlFor="team-company" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Company</label>
-              <input id="team-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your company name" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+              <label htmlFor="team-company" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Company</label>
+              <input id="team-company" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Your company name" className="mt-1 w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-500 focus:outline-none" />
             </div>
             <div>
-              <label htmlFor="team-code" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Team Code</label>
-              <input id="team-code" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} placeholder="e.g. HAILYES-DFW" className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-orange-400/40 focus:outline-none" />
+              <label htmlFor="team-code" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Team Code</label>
+              <input id="team-code" value={teamCode} onChange={(e) => setTeamCode(e.target.value)} placeholder="e.g. HAILYES-DFW" className="mt-1 w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-500 focus:outline-none" />
             </div>
             <div>
-              <label htmlFor="team-role" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600">Role</label>
-              <select id="team-role" value={role} onChange={(e) => setRole(e.target.value as 'rep' | 'manager')} className="mt-1 w-full rounded-xl border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:outline-none">
+              <label htmlFor="team-role" className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">Role</label>
+              <select id="team-role" value={role} onChange={(e) => setRole(e.target.value as 'rep' | 'manager')} className="mt-1 w-full rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 focus:outline-none">
                 <option value="rep">Sales Rep</option>
                 <option value="manager">Sales Manager</option>
               </select>
@@ -207,10 +207,10 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
             </button>
             {repProfile && (
               <>
-                <button type="button" onClick={handleExportMyData} className="rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                <button type="button" onClick={handleExportMyData} className="rounded-2xl border border-stone-200 bg-stone-100 px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-stone-900 hover:bg-stone-200">
                   Export My Data
                 </button>
-                <label className="cursor-pointer rounded-2xl border border-slate-800 bg-slate-900 px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-white hover:bg-slate-800">
+                <label className="cursor-pointer rounded-2xl border border-stone-200 bg-stone-100 px-3 sm:px-4 py-3 sm:py-2.5 text-sm font-semibold text-stone-900 hover:bg-stone-200">
                   Import Team Member
                   <input type="file" accept=".json" className="hidden" onChange={handleImportTeamData} />
                 </label>
@@ -218,13 +218,13 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
             )}
           </div>
           {/* Billing */}
-          <div className="mt-4 border-t border-slate-800 pt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-600 mb-3">Subscription</p>
+          <div className="mt-4 border-t border-stone-200 pt-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 mb-3">Subscription</p>
             <div className="flex items-center gap-3">
               <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
-                billingPlan === 'company' ? 'border-violet-400/30 bg-violet-500/15 text-violet-300' :
-                billingPlan === 'pro' ? 'border-orange-400/30 bg-orange-500/15 text-orange-300' :
-                'border-slate-700 bg-slate-800 text-slate-400'
+                billingPlan === 'company' ? 'border-violet-300 bg-violet-50 text-violet-700' :
+                billingPlan === 'pro' ? 'border-orange-300 bg-orange-50 text-orange-700' :
+                'border-stone-300 bg-stone-100 text-stone-500'
               }`}>
                 {billingPlan === 'company' ? 'Company' : billingPlan === 'pro' ? 'Pro' : 'Free'}
               </span>
@@ -256,7 +256,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                       else { console.log('Stripe not configured (company)'); setBillingMsg('Upgrades coming soon!'); }
                       setBillingLoading(false);
                     }}
-                    className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                    className="rounded-xl border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
                   >
                     Company — $149/mo
                   </button>
@@ -273,20 +273,20 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                     else { console.log('Billing portal not available'); setBillingMsg('Billing portal coming soon!'); }
                     setBillingLoading(false);
                   }}
-                  className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
+                  className="rounded-xl border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
                 >
                   Manage Subscription
                 </button>
               )}
             </div>
             {billingMsg && (
-              <p className="mt-2 text-xs text-orange-300">{billingMsg}</p>
+              <p className="mt-2 text-xs text-orange-600">{billingMsg}</p>
             )}
           </div>
 
           {onLogout && (
-            <div className="mt-4 border-t border-slate-800 pt-4">
-              <button type="button" onClick={onLogout} className="rounded-2xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-semibold text-red-300 hover:bg-red-500/20">
+            <div className="mt-4 border-t border-stone-200 pt-4">
+              <button type="button" onClick={onLogout} className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100">
                 Log Out
               </button>
             </div>
@@ -296,64 +296,64 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
         {/* Team stats */}
         {teamMembers.length > 0 && (
           <div className="grid gap-2 grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-2xl font-semibold text-white">{teamMembers.length}</p>
-              <p className="mt-1 text-xs text-slate-500">Team Members</p>
+            <div className="rounded-[24px] border border-stone-200 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-semibold text-stone-900">{teamMembers.length}</p>
+              <p className="mt-1 text-xs text-stone-400">Team Members</p>
             </div>
-            <div className="rounded-[24px] border border-slate-800 bg-slate-950/82 p-4">
-              <p className="text-2xl font-semibold text-white">{totalLeads}</p>
-              <p className="mt-1 text-xs text-slate-500">Total Leads</p>
+            <div className="rounded-[24px] border border-stone-200 bg-white p-4 shadow-sm">
+              <p className="text-2xl font-semibold text-stone-900">{totalLeads}</p>
+              <p className="mt-1 text-xs text-stone-400">Total Leads</p>
             </div>
-            <div className="rounded-[24px] border border-emerald-500/20 bg-emerald-500/[0.06] p-4">
-              <p className="text-2xl font-semibold text-emerald-300">{totalWon}</p>
-              <p className="mt-1 text-xs text-slate-500">Total Won</p>
+            <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 p-4 shadow-sm">
+              <p className="text-2xl font-semibold text-emerald-700">{totalWon}</p>
+              <p className="mt-1 text-xs text-stone-400">Total Won</p>
             </div>
-            <div className={`rounded-[24px] border p-4 ${totalOverdue > 0 ? 'border-red-500/20 bg-red-500/[0.06]' : 'border-slate-800 bg-slate-950/82'}`}>
-              <p className={`text-2xl font-semibold ${totalOverdue > 0 ? 'text-red-300' : 'text-white'}`}>{totalOverdue}</p>
-              <p className="mt-1 text-xs text-slate-500">Overdue Across Team</p>
+            <div className={`rounded-[24px] border p-4 shadow-sm ${totalOverdue > 0 ? 'border-red-200 bg-red-50' : 'border-stone-200 bg-white'}`}>
+              <p className={`text-2xl font-semibold ${totalOverdue > 0 ? 'text-red-600' : 'text-stone-900'}`}>{totalOverdue}</p>
+              <p className="mt-1 text-xs text-stone-400">Overdue Across Team</p>
             </div>
           </div>
         )}
 
         {/* Team roster */}
         {teamMembers.length > 0 && (
-          <section className="rounded-[28px] border border-slate-800 bg-slate-950/82 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Team Roster</p>
+          <section className="rounded-[28px] border border-stone-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Team Roster</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {teamMembers.map((member) => {
                 const isMe = repProfile?.id === member.repId;
                 return (
-                  <div key={member.repId} className={`rounded-2xl border p-4 ${isMe ? 'border-orange-400/25 bg-orange-500/[0.04]' : 'border-slate-800 bg-slate-900/60'}`}>
+                  <div key={member.repId} className={`rounded-2xl border p-4 ${isMe ? 'border-orange-300 bg-orange-50' : 'border-stone-200 bg-stone-50'}`}>
                     <div className="flex items-start justify-between">
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-semibold text-white truncate">{member.repName}</p>
-                          {isMe && <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[9px] font-bold text-orange-300">YOU</span>}
-                          <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[9px] font-semibold text-slate-400">
+                          <p className="text-sm font-semibold text-stone-900 truncate">{member.repName}</p>
+                          {isMe && <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[9px] font-bold text-orange-700">YOU</span>}
+                          <span className="rounded-full border border-stone-200 px-2 py-0.5 text-[9px] font-semibold text-stone-500">
                             {member.role === 'manager' ? 'Manager' : 'Rep'}
                           </span>
                         </div>
                         {member.territories.length > 0 && (
-                          <p className="mt-1 text-xs text-slate-500 truncate">{member.territories.join(', ')}</p>
+                          <p className="mt-1 text-xs text-stone-400 truncate">{member.territories.join(', ')}</p>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-600">
+                      <p className="text-[10px] text-stone-400">
                         {formatTimeAgo(member.snapshotAt)}
                       </p>
                     </div>
 
                     <div className="mt-3 grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2">
-                      <div className="rounded-lg border border-slate-800 bg-slate-950/60 p-2 text-center">
-                        <p className="text-lg font-semibold text-white">{member.totalLeads}</p>
-                        <p className="text-[9px] text-slate-500">Leads</p>
+                      <div className="rounded-lg border border-stone-200 bg-white p-2 text-center">
+                        <p className="text-lg font-semibold text-stone-900">{member.totalLeads}</p>
+                        <p className="text-[9px] text-stone-400">Leads</p>
                       </div>
-                      <div className="rounded-lg border border-emerald-500/15 bg-emerald-500/[0.04] p-2 text-center">
-                        <p className="text-lg font-semibold text-emerald-300">{member.leadsByStage.won || 0}</p>
-                        <p className="text-[9px] text-slate-500">Won</p>
+                      <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2 text-center">
+                        <p className="text-lg font-semibold text-emerald-700">{member.leadsByStage.won || 0}</p>
+                        <p className="text-[9px] text-stone-400">Won</p>
                       </div>
-                      <div className={`rounded-lg border p-2 text-center ${member.overdueReminders > 0 ? 'border-red-500/15 bg-red-500/[0.04]' : 'border-slate-800 bg-slate-950/60'}`}>
-                        <p className={`text-lg font-semibold ${member.overdueReminders > 0 ? 'text-red-300' : 'text-white'}`}>{member.overdueReminders}</p>
-                        <p className="text-[9px] text-slate-500">Overdue</p>
+                      <div className={`rounded-lg border p-2 text-center ${member.overdueReminders > 0 ? 'border-red-200 bg-red-50' : 'border-stone-200 bg-white'}`}>
+                        <p className={`text-lg font-semibold ${member.overdueReminders > 0 ? 'text-red-600' : 'text-stone-900'}`}>{member.overdueReminders}</p>
+                        <p className="text-[9px] text-stone-400">Overdue</p>
                       </div>
                     </div>
 
@@ -374,9 +374,9 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
         )}
 
         {teamMembers.length === 0 && repProfile && (
-          <div className="rounded-3xl border border-dashed border-slate-800 bg-black/30 p-8 text-center">
-            <p className="text-lg font-semibold text-white">No team data yet</p>
-            <p className="mt-2 text-sm text-slate-500">
+          <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-8 text-center shadow-sm">
+            <p className="text-lg font-semibold text-stone-900">No team data yet</p>
+            <p className="mt-2 text-sm text-stone-500">
               Export your data and share it with teammates. Import their files to build the team view.
             </p>
           </div>

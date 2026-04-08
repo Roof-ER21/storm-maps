@@ -177,16 +177,16 @@ export default function EvidencePage({
   }, [onUploadFiles, selectedStormDate]);
 
   return (
-    <section className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.12),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_22%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)] px-4 py-5 lg:px-6">
+    <section className="flex-1 overflow-y-auto bg-[#faf9f7] px-4 py-5 lg:px-6">
       <div className="mx-auto flex max-w-6xl flex-col gap-5">
-        <div className="rounded-3xl border border-gray-900 bg-gray-950/80 p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-400">
+        <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-600">
             Evidence Workspace
           </p>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-white">
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-stone-900">
             Capture, organize, and stage proof for reports
           </h2>
-          <p className="mt-3 max-w-4xl text-sm leading-6 text-gray-400">
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-stone-600">
             Upload photos, snap from camera, annotate damage, and pull public media.
             Approved evidence flows directly into PDF reports and evidence packs.
           </p>
@@ -195,12 +195,12 @@ export default function EvidencePage({
         {(() => {
           const showControls = searchSummary || evidenceItems.length > 0;
           if (!showControls) return (
-            <div className="rounded-3xl border border-dashed border-gray-800 bg-black/30 p-8 text-center">
-              <p className="text-lg font-semibold text-white">No property is loaded yet</p>
-              <p className="mt-2 text-sm text-gray-500">
+            <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-8 text-center shadow-sm">
+              <p className="text-lg font-semibold text-stone-900">No property is loaded yet</p>
+              <p className="mt-2 text-sm text-stone-500">
                 Open the Map page, search an address, then come back here to attach evidence.
               </p>
-              <button type="button" onClick={onOpenMap} className="mt-5 rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gray-100">
+              <button type="button" onClick={onOpenMap} className="mt-5 rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-stone-900 hover:bg-orange-600">
                 Go to Map
               </button>
             </div>
@@ -209,52 +209,52 @@ export default function EvidencePage({
           <>
             {/* Upload + seeding controls */}
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[0.95fr_1.05fr]">
-              <section className="rounded-3xl border border-gray-900 bg-gray-950/80 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Current Property</p>
-                <h3 className="mt-2 text-xl font-semibold text-white">{searchSummary?.locationLabel || 'All Properties'}</h3>
+              <section className="rounded-3xl border border-stone-200 bg-white shadow-sm p-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Current Property</p>
+                <h3 className="mt-2 text-xl font-semibold text-stone-900">{searchSummary?.locationLabel || 'All Properties'}</h3>
 
-                <div className="mt-5 rounded-2xl border border-gray-900 bg-black/35 p-4">
-                  <label htmlFor="evidence-storm-date" className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Attach to Storm Date</label>
-                  <select id="evidence-storm-date" value={selectedStormDate} onChange={(e) => setSelectedStormDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-gray-800 bg-gray-900 px-3 py-2.5 text-sm text-white outline-none focus:border-amber-400">
+                <div className="mt-5 rounded-2xl border border-stone-200 bg-stone-50 p-4">
+                  <label htmlFor="evidence-storm-date" className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Attach to Storm Date</label>
+                  <select id="evidence-storm-date" value={selectedStormDate} onChange={(e) => setSelectedStormDate(e.target.value)} className="mt-2 w-full rounded-2xl border border-stone-300 bg-stone-50 px-3 py-2.5 text-sm text-stone-900 outline-none focus:border-amber-500">
                     <option value="">No specific date</option>
                     {stormDates.map((sd) => <option key={sd.date} value={sd.date}>{sd.label}</option>)}
                   </select>
 
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-gray-700 bg-gray-900/70 px-4 py-5 text-center hover:border-amber-400/60">
-                      <span className="text-sm font-semibold text-white">{uploading ? 'Saving...' : 'Upload Files'}</span>
-                      <span className="mt-1 text-[10px] text-gray-500">JPEG, PNG, HEIC, MP4, MOV</span>
+                    <label className="flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5 text-center hover:border-amber-400/60">
+                      <span className="text-sm font-semibold text-stone-900">{uploading ? 'Saving...' : 'Upload Files'}</span>
+                      <span className="mt-1 text-[10px] text-stone-400">JPEG, PNG, HEIC, MP4, MOV</span>
                       <input type="file" accept="image/*,video/*" multiple className="hidden" onChange={handleFileChange} />
                     </label>
-                    <button type="button" onClick={() => setShowCamera(true)} className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-700 bg-gray-900/70 px-4 py-5 text-center hover:border-orange-400/60">
+                    <button type="button" onClick={() => setShowCamera(true)} className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-stone-50 px-4 py-5 text-center hover:border-orange-400/60">
                       <CameraIcon />
-                      <span className="mt-2 text-sm font-semibold text-white">Take Photo</span>
-                      <span className="mt-1 text-[10px] text-gray-500">Use device camera</span>
+                      <span className="mt-2 text-sm font-semibold text-stone-900">Take Photo</span>
+                      <span className="mt-1 text-[10px] text-stone-400">Use device camera</span>
                     </button>
                   </div>
                 </div>
 
                 <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-3">
-                  <button type="button" onClick={handleSeedDemoPack} disabled={seedingDemo} className="rounded-2xl bg-amber-400 px-3 py-2.5 text-xs font-semibold text-gray-950 hover:bg-amber-300 disabled:bg-gray-800 disabled:text-gray-500">
+                  <button type="button" onClick={handleSeedDemoPack} disabled={seedingDemo} className="rounded-2xl bg-amber-400 px-3 py-2.5 text-xs font-semibold text-stone-950 hover:bg-amber-300 disabled:bg-stone-200 disabled:text-stone-400">
                     {seedingDemo ? 'Seeding...' : 'Demo Pack'}
                   </button>
-                  <button type="button" onClick={handleSeedRegionalPack} disabled={seedingRegional} className="rounded-2xl bg-violet-400 px-3 py-2.5 text-xs font-semibold text-gray-950 hover:bg-violet-300 disabled:bg-gray-800 disabled:text-gray-500">
+                  <button type="button" onClick={handleSeedRegionalPack} disabled={seedingRegional} className="rounded-2xl bg-violet-400 px-3 py-2.5 text-xs font-semibold text-stone-950 hover:bg-violet-300 disabled:bg-stone-200 disabled:text-stone-400">
                     {seedingRegional ? 'Seeding...' : 'Regional Samples'}
                   </button>
-                  <button type="button" onClick={handleFetchCandidates} disabled={seeding} className="rounded-2xl bg-gray-900 px-3 py-2.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:bg-gray-800 disabled:text-gray-500">
+                  <button type="button" onClick={handleFetchCandidates} disabled={seeding} className="rounded-2xl bg-stone-100 border border-stone-200 px-3 py-2.5 text-xs font-semibold text-stone-900 hover:bg-stone-200 disabled:bg-stone-200 disabled:text-stone-400">
                     {seeding ? 'Fetching...' : 'Fetch Candidates'}
                   </button>
                 </div>
-                <p className="mt-2 text-[10px] text-gray-600">YouTube: {providerStatus.youtube} · Flickr: {providerStatus.flickr}</p>
+                <p className="mt-2 text-[10px] text-stone-400">YouTube: {providerStatus.youtube} · Flickr: {providerStatus.flickr}</p>
               </section>
 
-              <section className="rounded-3xl border border-gray-900 bg-gray-950/80 p-5">
+              <section className="rounded-3xl border border-stone-200 bg-white shadow-sm p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">Ready for Reports</p>
-                    <h3 className="mt-2 text-xl font-semibold text-white">Approved evidence queue</h3>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">Ready for Reports</p>
+                    <h3 className="mt-2 text-xl font-semibold text-stone-900">Approved evidence queue</h3>
                   </div>
-                  <button type="button" onClick={onOpenReports} className="rounded-2xl bg-white px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gray-100">Open Reports</button>
+                  <button type="button" onClick={onOpenReports} className="rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600">Open Reports</button>
                 </div>
                 <div className="mt-4 grid gap-2 grid-cols-2 lg:grid-cols-4">
                   <SummaryCard label="Uploads" value={String(propertyEvidence.filter((i) => i.kind === 'upload').length)} />
@@ -269,50 +269,50 @@ export default function EvidencePage({
             </div>
 
             {/* Filter bar */}
-            <div className="rounded-[24px] border border-gray-900 bg-gray-950/80 p-3 sm:p-4">
+            <div className="rounded-[24px] border border-stone-200 bg-white shadow-sm p-3 sm:p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
-                <input aria-label="Search evidence" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search evidence..." className="w-full sm:min-w-[160px] sm:flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:border-amber-400/40 focus:outline-none" />
+                <input aria-label="Search evidence" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search evidence..." className="w-full sm:min-w-[160px] sm:flex-1 rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-amber-500 focus:outline-none" />
                 <div className="grid grid-cols-2 gap-2 sm:contents">
-                <select aria-label="Filter by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:outline-none">
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
                 </select>
-                <select aria-label="Filter by media type" value={filterMedia} onChange={(e) => setFilterMedia(e.target.value as FilterMedia)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by media type" value={filterMedia} onChange={(e) => setFilterMedia(e.target.value as FilterMedia)} className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:outline-none">
                   <option value="all">All Media</option>
                   <option value="image">Images</option>
                   <option value="video">Videos</option>
                   <option value="link">Links</option>
                 </select>
-                <select aria-label="Filter by source" value={filterProvider} onChange={(e) => setFilterProvider(e.target.value as FilterProvider)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by source" value={filterProvider} onChange={(e) => setFilterProvider(e.target.value as FilterProvider)} className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:outline-none">
                   <option value="all">All Sources</option>
                   <option value="upload">Uploads</option>
                   <option value="youtube">YouTube</option>
                   <option value="flickr">Flickr</option>
                 </select>
-                <select aria-label="Filter by storm date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-xs font-semibold text-gray-300 focus:outline-none">
+                <select aria-label="Filter by storm date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)} className="rounded-xl border border-stone-300 bg-stone-50 px-3 py-2 text-xs font-semibold text-stone-600 focus:outline-none">
                   <option value="all">All Dates</option>
                   <option value="__none__">No Date</option>
                   {stormDates.map((sd) => <option key={sd.date} value={sd.date}>{sd.label}</option>)}
                 </select>
                 </div>
                 {hasActiveFilters && (
-                  <button type="button" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterMedia('all'); setFilterProvider('all'); setFilterDate('all'); }} className="w-full sm:w-auto rounded-xl border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20">Clear</button>
+                  <button type="button" onClick={() => { setSearchQuery(''); setFilterStatus('all'); setFilterMedia('all'); setFilterProvider('all'); setFilterDate('all'); }} className="w-full sm:w-auto rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-100">Clear</button>
                 )}
               </div>
-              {hasActiveFilters && <p className="mt-2 text-xs text-gray-500">Showing {filteredEvidence.length} of {propertyEvidence.length} items</p>}
+              {hasActiveFilters && <p className="mt-2 text-xs text-stone-500">Showing {filteredEvidence.length} of {propertyEvidence.length} items</p>}
             </div>
 
             {/* Bulk action bar */}
             {selectedIds.size > 0 && (
-              <div className="sticky top-0 z-20 rounded-[24px] border border-amber-400/30 bg-gray-950/95 p-4 shadow-lg backdrop-blur-sm">
+              <div className="sticky top-0 z-20 rounded-[24px] border border-amber-300 bg-white/95 p-4 shadow-lg backdrop-blur-sm">
                 <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-sm font-semibold text-amber-300">{selectedIds.size} selected</p>
+                  <p className="text-sm font-semibold text-amber-700">{selectedIds.size} selected</p>
                   {selectedIds.size < filteredEvidence.length && (
-                    <button type="button" onClick={selectAllVisible} className="text-xs text-gray-400 underline hover:text-white">Select all {filteredEvidence.length}</button>
+                    <button type="button" onClick={selectAllVisible} className="text-xs text-stone-500 underline hover:text-stone-900">Select all {filteredEvidence.length}</button>
                   )}
-                  <button type="button" onClick={clearSelection} className="text-xs text-gray-400 underline hover:text-white">Clear</button>
-                  <span className="mx-1 h-5 border-l border-gray-700" />
+                  <button type="button" onClick={clearSelection} className="text-xs text-stone-500 underline hover:text-stone-900">Clear</button>
+                  <span className="mx-1 h-5 border-l border-stone-300" />
                   <button type="button" onClick={() => void bulkApprove()} className="rounded-lg border border-violet-400/30 bg-violet-500/15 px-3 py-1.5 text-xs font-bold text-violet-300 hover:bg-violet-500/25">Approve All</button>
                   <button type="button" onClick={() => void bulkInclude()} className="rounded-lg border border-amber-400/30 bg-amber-500/15 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/25">Include in Report</button>
                   <button type="button" onClick={() => void bulkRemove()} className="rounded-lg border border-red-400/30 bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-300 hover:bg-red-500/20">Remove</button>
@@ -338,7 +338,7 @@ export default function EvidencePage({
             </div>
 
             {filteredEvidence.length === 0 && (
-              <div className="rounded-2xl border border-dashed border-gray-800 bg-black/30 p-8 text-center text-sm text-gray-500">
+              <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-8 text-center text-sm text-stone-500">
                 {hasActiveFilters ? `No evidence matches your filters. ${propertyEvidence.length} items total.` : 'No evidence yet. Upload photos, take a snapshot, or fetch public candidates above.'}
               </div>
             )}
@@ -394,7 +394,7 @@ function EvidenceCard({
   const hasPreview = (item.mediaType === 'image' || item.mediaType === 'video') && (previewUrl || item.thumbnailUrl);
 
   return (
-    <article className={`overflow-hidden rounded-3xl border transition-colors ${isSelected ? 'border-amber-400/40 bg-amber-500/[0.04]' : 'border-gray-900 bg-black/35'}`}>
+    <article className={`overflow-hidden rounded-3xl border transition-colors ${isSelected ? 'border-amber-400 bg-amber-50' : 'border-stone-200 bg-white shadow-sm'}`}>
       {/* Selection checkbox */}
       <div className="relative">
         <button
@@ -402,13 +402,13 @@ function EvidenceCard({
           onClick={onToggleSelect}
           aria-label={isSelected ? 'Deselect evidence item' : 'Select evidence item'}
           aria-pressed={isSelected}
-          className={`absolute left-3 top-3 z-10 flex h-5 w-5 items-center justify-center rounded border transition-colors ${isSelected ? 'border-amber-400 bg-amber-500 text-white' : 'border-gray-600 bg-gray-900/80 text-transparent hover:border-gray-400'}`}
+          className={`absolute left-3 top-3 z-10 flex h-5 w-5 items-center justify-center rounded border transition-colors ${isSelected ? 'border-amber-400 bg-amber-500 text-white' : 'border-stone-300 bg-white/80 text-transparent hover:border-stone-400'}`}
         >
           <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
         </button>
 
         {/* Preview */}
-        <div className="aspect-[4/3] bg-gray-900">
+        <div className="aspect-[4/3] bg-stone-100">
           {item.mediaType === 'image' && (previewUrl || item.thumbnailUrl) && (
             <img src={previewUrl || item.thumbnailUrl || ''} alt={item.title} className="h-full w-full object-cover" />
           )}
@@ -419,7 +419,7 @@ function EvidenceCard({
             <img src={item.thumbnailUrl} alt={item.title} className="h-full w-full object-cover" />
           )}
           {!hasPreview && (
-            <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-gray-900 to-gray-950 text-gray-600">
+            <div className="flex h-full flex-col items-center justify-center bg-gradient-to-br from-stone-100 to-stone-200 text-stone-400">
               <span className="text-3xl">{item.mediaType === 'link' ? '🔗' : '📄'}</span>
               <span className="mt-2 text-xs">{item.provider.toUpperCase()}</span>
             </div>
@@ -438,34 +438,34 @@ function EvidenceCard({
       </div>
 
       <div className="p-4">
-        <p className="truncate text-sm font-semibold text-white">{item.title}</p>
+        <p className="truncate text-sm font-semibold text-stone-800">{item.title}</p>
         <div className="mt-1 flex flex-wrap gap-1.5 text-[10px]">
-          <span className="rounded-full border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-400">{item.provider.toUpperCase()}</span>
-          <span className="rounded-full border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-400">{item.mediaType}</span>
-          <span className="rounded-full border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-400">{item.stormDate || 'No date'}</span>
-          {item.sizeBytes ? <span className="rounded-full border border-gray-800 bg-gray-950 px-2 py-0.5 text-gray-400">{formatBytes(item.sizeBytes)}</span> : null}
+          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-stone-500">{item.provider.toUpperCase()}</span>
+          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-stone-500">{item.mediaType}</span>
+          <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-stone-500">{item.stormDate || 'No date'}</span>
+          {item.sizeBytes ? <span className="rounded-full border border-stone-200 bg-stone-50 px-2 py-0.5 text-stone-500">{formatBytes(item.sizeBytes)}</span> : null}
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
-          <button type="button" onClick={onToggleStatus} className="rounded-lg bg-gray-900 px-2.5 py-1.5 text-[10px] font-semibold text-white hover:bg-gray-800">
+          <button type="button" onClick={onToggleStatus} className="rounded-lg bg-stone-100 border border-stone-200 px-2.5 py-1.5 text-[10px] font-semibold text-stone-700 hover:bg-stone-200">
             {item.status === 'approved' ? 'Pending' : 'Approve'}
           </button>
           {item.status === 'approved' && (
-            <button type="button" onClick={onToggleInReport} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-semibold ${item.includeInReport ? 'bg-violet-500/15 text-violet-300' : 'border border-gray-800 text-gray-400 hover:text-violet-300'}`}>
+            <button type="button" onClick={onToggleInReport} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-semibold ${item.includeInReport ? 'bg-violet-500/15 text-violet-300' : 'border border-stone-200 text-stone-500 hover:text-violet-600'}`}>
               {item.includeInReport ? '- Report' : '+ Report'}
             </button>
           )}
           {onAnnotate && (
-            <button type="button" onClick={onAnnotate} className="rounded-lg border border-gray-800 px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 hover:border-amber-400/30 hover:text-amber-300">
+            <button type="button" onClick={onAnnotate} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-[10px] font-semibold text-stone-500 hover:border-amber-300 hover:text-amber-700">
               Annotate
             </button>
           )}
           {item.externalUrl && (
-            <a href={item.externalUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-white px-2.5 py-1.5 text-[10px] font-semibold text-gray-950 hover:bg-gray-100">
+            <a href={item.externalUrl} target="_blank" rel="noopener noreferrer" className="rounded-lg bg-orange-500 px-2.5 py-1.5 text-[10px] font-semibold text-white hover:bg-orange-600">
               Source
             </a>
           )}
-          <button type="button" onClick={onRemove} className="rounded-lg border border-gray-800 px-2.5 py-1.5 text-[10px] font-semibold text-gray-400 hover:border-red-400/30 hover:text-red-300">
+          <button type="button" onClick={onRemove} className="rounded-lg border border-stone-200 px-2.5 py-1.5 text-[10px] font-semibold text-stone-500 hover:border-red-300 hover:text-red-600">
             Remove
           </button>
         </div>
@@ -516,10 +516,10 @@ function CameraCapture({ onCapture, onClose }: { onCapture: (blob: Blob) => Prom
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative w-full max-w-2xl rounded-3xl border border-gray-800 bg-gray-950 p-3 sm:p-4 mx-3 sm:mx-0" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-2xl rounded-3xl border border-stone-700 bg-stone-900 p-3 sm:p-4 mx-3 sm:mx-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-semibold text-white">Camera Capture</p>
-          <button type="button" onClick={onClose} aria-label="Close camera" className="flex h-8 w-8 items-center justify-center text-gray-400 hover:text-white text-xl">&times;</button>
+          <button type="button" onClick={onClose} aria-label="Close camera" className="flex h-8 w-8 items-center justify-center text-stone-400 hover:text-white text-xl">&times;</button>
         </div>
         {error ? (
           <p className="text-sm text-red-400 p-8 text-center">{error}</p>
@@ -687,34 +687,34 @@ function AnnotationCanvas({ imageUrl, onSave, onClose }: { imageUrl: string; onS
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm" onClick={onClose}>
-      <div className="relative flex max-h-[95vh] w-full max-w-4xl flex-col rounded-3xl border border-gray-800 bg-gray-950 p-3 sm:p-4 mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
+      <div className="relative flex max-h-[95vh] w-full max-w-4xl flex-col rounded-3xl border border-stone-700 bg-stone-900 p-3 sm:p-4 mx-2 sm:mx-0" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm font-semibold text-white">Annotate Evidence</p>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-white text-xl">&times;</button>
+          <button type="button" onClick={onClose} className="text-stone-400 hover:text-white text-xl">&times;</button>
         </div>
 
         {/* Toolbar */}
         <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2 sm:mb-3">
           {(['freehand', 'arrow', 'circle', 'text'] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setTool(t)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tool === t ? 'bg-amber-500 text-gray-950' : 'bg-gray-900 text-gray-300 hover:bg-gray-800'}`}>
+            <button key={t} type="button" onClick={() => setTool(t)} className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${tool === t ? 'bg-amber-500 text-white' : 'bg-stone-800 text-stone-300 hover:bg-stone-700'}`}>
               {t === 'freehand' ? 'Draw' : t === 'arrow' ? 'Arrow' : t === 'circle' ? 'Circle' : 'Text'}
             </button>
           ))}
-          <span className="mx-1 h-5 border-l border-gray-700" />
+          <span className="mx-1 h-5 border-l border-stone-300" />
           {['#ff4444', '#ffaa00', '#44ff44', '#4488ff', '#ffffff'].map((c) => (
-            <button key={c} type="button" onClick={() => setColor(c)} className={`h-6 w-6 rounded-full border-2 ${color === c ? 'border-white' : 'border-gray-700'}`} style={{ backgroundColor: c }} />
+            <button key={c} type="button" onClick={() => setColor(c)} className={`h-6 w-6 rounded-full border-2 ${color === c ? 'border-white' : 'border-stone-600'}`} style={{ backgroundColor: c }} />
           ))}
-          <span className="mx-1 h-5 border-l border-gray-700" />
-          <button type="button" onClick={handleReset} className="rounded-lg border border-gray-800 px-3 py-1.5 text-xs font-semibold text-gray-400 hover:text-white">Reset</button>
+          <span className="mx-1 h-5 border-l border-stone-300" />
+          <button type="button" onClick={handleReset} className="rounded-lg border border-stone-600 px-3 py-1.5 text-xs font-semibold text-stone-400 hover:text-white">Reset</button>
           <button type="button" onClick={handleSave} className="rounded-lg bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-1.5 text-xs font-semibold text-white">Save</button>
         </div>
 
         {/* Text input */}
         {textPos && (
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 mb-2 sm:mb-3">
-            <input value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Type annotation text..." autoFocus className="flex-1 rounded-xl border border-gray-800 bg-gray-900 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); }} />
-            <button type="button" onClick={handleTextSubmit} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-gray-950">Place</button>
-            <button type="button" onClick={() => setTextPos(null)} className="rounded-xl border border-gray-800 px-3 py-2 text-xs font-semibold text-gray-400">Cancel</button>
+            <input value={textInput} onChange={(e) => setTextInput(e.target.value)} placeholder="Type annotation text..." autoFocus className="flex-1 rounded-xl border border-stone-600 bg-stone-800 px-3 py-2 text-sm text-white focus:border-amber-400 focus:outline-none" onKeyDown={(e) => { if (e.key === 'Enter') handleTextSubmit(); }} />
+            <button type="button" onClick={handleTextSubmit} className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-semibold text-white">Place</button>
+            <button type="button" onClick={() => setTextPos(null)} className="rounded-xl border border-stone-600 px-3 py-2 text-xs font-semibold text-stone-400">Cancel</button>
           </div>
         )}
 
@@ -748,9 +748,9 @@ function CameraIcon() {
 
 function SummaryCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-gray-900 bg-black/35 p-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-gray-500">{label}</p>
-      <p className="mt-2 text-xl font-semibold text-white">{value}</p>
+    <div className="rounded-2xl border border-stone-200 bg-stone-50 p-4">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-stone-400">{label}</p>
+      <p className="mt-2 text-xl font-semibold text-stone-900">{value}</p>
     </div>
   );
 }

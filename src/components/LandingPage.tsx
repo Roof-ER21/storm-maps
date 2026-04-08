@@ -97,12 +97,12 @@ function AuthModal({
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl mx-4 relative">
+      <div className="w-full max-w-md rounded-3xl border border-stone-800 bg-stone-950 p-8 shadow-2xl mx-4 relative">
         {/* Close button */}
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors p-1"
+          className="absolute top-4 right-4 text-stone-500 hover:text-white transition-colors p-1"
           aria-label="Close"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -117,18 +117,18 @@ function AuthModal({
         </div>
 
         {/* Tab switcher */}
-        <div className="flex rounded-xl bg-zinc-900 p-1 mb-6">
+        <div className="flex rounded-xl bg-stone-900 p-1 mb-6">
           <button
             type="button"
             onClick={() => switchTab('signup')}
-            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'signup' ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'}`}
+            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'signup' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white'}`}
           >
             Sign Up
           </button>
           <button
             type="button"
             onClick={() => switchTab('login')}
-            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'login' ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'}`}
+            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'login' ? 'bg-orange-500 text-white' : 'text-stone-400 hover:text-white'}`}
           >
             Log In
           </button>
@@ -144,7 +144,7 @@ function AuthModal({
                 onChange={(e) => setName(e.target.value)}
                 required
                 autoComplete="name"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-xl border border-stone-800 bg-stone-900 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
               />
             </div>
             <div>
@@ -155,7 +155,7 @@ function AuthModal({
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-xl border border-stone-800 bg-stone-900 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
               />
             </div>
             <div>
@@ -167,7 +167,7 @@ function AuthModal({
                 required
                 minLength={6}
                 autoComplete="new-password"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-xl border border-stone-800 bg-stone-900 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
               />
             </div>
             {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
@@ -190,7 +190,7 @@ function AuthModal({
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 autoComplete="email"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-xl border border-stone-800 bg-stone-900 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
               />
             </div>
             <div>
@@ -201,7 +201,7 @@ function AuthModal({
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 autoComplete="current-password"
-                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+                className="w-full rounded-xl border border-stone-800 bg-stone-900 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
               />
             </div>
             {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
@@ -235,7 +235,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
   function openLogin() { setModal('login'); }
 
   return (
-    <div className="min-h-screen overflow-y-auto overflow-x-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen overflow-y-auto overflow-x-hidden bg-gradient-to-b from-stone-950 via-stone-900 to-stone-950 text-white">
       {modal && (
         <AuthModal
           initialTab={modal}
@@ -245,14 +245,14 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
       )}
 
       {/* Nav */}
-      <header className="border-b border-slate-800/50 bg-slate-950/80 backdrop-blur sticky top-0 z-20">
+      <header className="border-b border-stone-800/50 bg-stone-950/80 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white font-bold text-sm">H!</div>
             <span className="text-lg font-bold">Hail Yes!</span>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={openLogin} className="text-sm font-semibold text-slate-400 hover:text-white">Log In</button>
+            <button type="button" onClick={openLogin} className="text-sm font-semibold text-stone-400 hover:text-white">Log In</button>
             <button type="button" onClick={openSignup} className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2 text-sm font-semibold text-white shadow-lg">Start Free</button>
           </div>
         </div>
@@ -266,7 +266,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
           <span className="bg-[linear-gradient(135deg,#fb923c,#a855f7)] bg-clip-text text-transparent">Knock the right doors.</span><br />
           Close more deals.
         </h1>
-        <p className="mt-6 mx-auto max-w-2xl text-lg text-slate-400 leading-relaxed">
+        <p className="mt-6 mx-auto max-w-2xl text-lg text-stone-400 leading-relaxed">
           NOAA storm maps, canvassing routes, lead pipeline, evidence capture, and free property owner
           lookups — all in one app that works on your phone. No contracts. No per-seat pricing.
         </p>
@@ -274,17 +274,17 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
           <button type="button" onClick={openSignup} className="w-full sm:w-auto rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-8 py-4 text-base font-semibold text-white shadow-[0_10px_40px_rgba(124,58,237,0.3)] hover:opacity-95">
             Start Free Trial
           </button>
-          <button type="button" onClick={openLogin} className="w-full sm:w-auto rounded-2xl border border-slate-700 px-8 py-4 text-base font-semibold text-white hover:bg-slate-800">
+          <button type="button" onClick={openLogin} className="w-full sm:w-auto rounded-2xl border border-stone-700 px-8 py-4 text-base font-semibold text-white hover:bg-stone-800">
             Log In
           </button>
         </div>
-        <p className="mt-4 text-xs text-slate-600">No credit card required. Free for 14 days.</p>
+        <p className="mt-4 text-xs text-stone-600">No credit card required. Free for 14 days.</p>
       </section>
 
       {/* Competitor callout */}
       <section className="mx-auto max-w-4xl px-4 pb-16">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900/50 p-6 sm:p-8 text-center">
-          <p className="text-sm text-slate-400">
+        <div className="rounded-3xl border border-stone-800 bg-stone-900/50 p-6 sm:p-8 text-center">
+          <p className="text-sm text-stone-400">
             Roofers using HailTrace + SPOTIO + AccuLynx pay <span className="text-white font-semibold">$400+/month</span> for
             storm maps, canvassing, and CRM — and still can't capture evidence or look up property owners.
           </p>
@@ -296,7 +296,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
 
       {/* Features */}
       <section className="mx-auto max-w-6xl px-4 pb-20">
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Everything you need</p>
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">Everything you need</p>
         <h2 className="mt-3 text-center text-3xl font-bold">One app. Zero excuses.</h2>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -314,7 +314,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
 
       {/* Pricing */}
       <section className="mx-auto max-w-5xl px-4 pb-20" id="pricing">
-        <p className="text-center text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Simple pricing</p>
+        <p className="text-center text-xs font-semibold uppercase tracking-[0.3em] text-stone-500">Simple pricing</p>
         <h2 className="mt-3 text-center text-3xl font-bold">No per-seat fees. No surprises.</h2>
 
         <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -354,14 +354,14 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
       {/* Final CTA */}
       <section className="mx-auto max-w-3xl px-4 pb-20 text-center">
         <h2 className="text-3xl font-bold">Ready to beat your competitors to the door?</h2>
-        <p className="mt-4 text-slate-400">Start free. No credit card. Upgrade when you're closing deals.</p>
+        <p className="mt-4 text-stone-400">Start free. No credit card. Upgrade when you're closing deals.</p>
         <button type="button" onClick={openSignup} className="mt-8 rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-10 py-4 text-base font-semibold text-white shadow-[0_10px_40px_rgba(124,58,237,0.3)]">
           Get Started Free
         </button>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-slate-800/50 py-8 text-center text-xs text-slate-600">
+      <footer className="border-t border-stone-800/50 py-8 text-center text-xs text-stone-600">
         <p>Hail Yes! by Roof-ER21. Storm data from NOAA. Property data from public county records.</p>
       </footer>
     </div>
@@ -370,12 +370,12 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
 
 function FeatureCard({ icon, title, desc }: { icon: string; title: string; desc: string }) {
   return (
-    <div className="rounded-3xl border border-slate-800 bg-slate-900/50 p-6">
+    <div className="rounded-3xl border border-stone-800 bg-stone-900/50 p-6">
       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(249,115,22,0.15),rgba(124,58,237,0.15))] text-orange-300">
         <FeatureIcon name={icon} />
       </div>
       <h3 className="mt-4 text-lg font-semibold text-white">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-400">{desc}</p>
+      <p className="mt-2 text-sm leading-relaxed text-stone-400">{desc}</p>
     </div>
   );
 }
@@ -385,20 +385,20 @@ function PricingCard({ name, price, period, desc, features, cta, onCta, highligh
   features: string[]; cta: string; onCta: () => void; highlighted: boolean;
 }) {
   return (
-    <div className={`rounded-3xl border p-6 sm:p-8 ${highlighted ? 'border-orange-500/30 bg-[linear-gradient(180deg,rgba(249,115,22,0.08),rgba(124,58,237,0.06))] ring-1 ring-orange-500/20' : 'border-slate-800 bg-slate-900/50'}`}>
+    <div className={`rounded-3xl border p-6 sm:p-8 ${highlighted ? 'border-orange-500/30 bg-[linear-gradient(180deg,rgba(249,115,22,0.08),rgba(124,58,237,0.06))] ring-1 ring-orange-500/20' : 'border-stone-800 bg-stone-900/50'}`}>
       {highlighted && <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300 mb-4">Most Popular</p>}
-      <p className="text-sm font-semibold text-slate-400">{name}</p>
+      <p className="text-sm font-semibold text-stone-400">{name}</p>
       <div className="mt-2 flex items-baseline gap-1">
         <span className="text-4xl font-bold text-white">{price}</span>
-        <span className="text-sm text-slate-500">{period}</span>
+        <span className="text-sm text-stone-500">{period}</span>
       </div>
-      <p className="mt-2 text-sm text-slate-500">{desc}</p>
-      <button type="button" onClick={onCta} className={`mt-6 w-full rounded-2xl px-4 py-3 text-sm font-semibold ${highlighted ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-lg' : 'border border-slate-700 text-white hover:bg-slate-800'}`}>
+      <p className="mt-2 text-sm text-stone-500">{desc}</p>
+      <button type="button" onClick={onCta} className={`mt-6 w-full rounded-2xl px-4 py-3 text-sm font-semibold ${highlighted ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-lg' : 'border border-stone-700 text-white hover:bg-stone-800'}`}>
         {cta}
       </button>
       <ul className="mt-6 space-y-2.5">
         {features.map((f) => (
-          <li key={f} className="flex items-start gap-2 text-sm text-slate-300">
+          <li key={f} className="flex items-start gap-2 text-sm text-stone-300">
             <svg className="h-4 w-4 mt-0.5 shrink-0 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
             {f}
           </li>

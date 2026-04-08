@@ -81,9 +81,9 @@ export default function PipelinePage(props: PipelinePageProps) {
   const routeCount = props.routeStops.filter((s) => s.status !== 'completed').length;
 
   return (
-    <section ref={scrollRef} className="flex-1 overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(249,115,22,0.14),_transparent_20%),radial-gradient(circle_at_80%_0%,_rgba(124,58,237,0.16),_transparent_24%),linear-gradient(180deg,_#12071d_0%,_#090412_40%,_#04020a_100%)]">
+    <section ref={scrollRef} className="flex-1 overflow-y-auto bg-[#faf9f7]">
       {/* Sticky tab nav */}
-      <div className="sticky top-0 z-10 border-b border-slate-800/60 bg-slate-950/95 backdrop-blur px-4 py-3 lg:px-6">
+      <div className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 backdrop-blur px-4 py-3 lg:px-6">
         <div className="mx-auto flex max-w-7xl items-center gap-2">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
@@ -103,13 +103,13 @@ export default function PipelinePage(props: PipelinePageProps) {
                 className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
                   isActive
                     ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white shadow-[0_8px_24px_rgba(124,58,237,0.25)]'
-                    : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white'
+                    : 'bg-stone-100 text-stone-600 hover:bg-stone-200 hover:text-stone-900'
                 }`}
               >
                 {tab.label}
                 {count > 0 && (
                   <span className={`flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-bold ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-slate-800 text-slate-400'
+                    isActive ? 'bg-white/20 text-white' : 'bg-stone-200 text-stone-500'
                   }`}>
                     {count}
                   </span>
@@ -179,7 +179,7 @@ export default function PipelinePage(props: PipelinePageProps) {
 
         {activeTab === 'ai-prospects' && (
           <Suspense fallback={
-            <div className="flex flex-1 items-center justify-center py-24 text-slate-500 text-sm">
+            <div className="flex flex-1 items-center justify-center py-24 text-stone-400 text-sm">
               Loading AI Prospects...
             </div>
           }>
