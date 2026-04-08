@@ -1,11 +1,249 @@
+import { useState } from 'react';
+
+const TOKEN_KEY = 'hailyes_token';
+
+interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  plan: string;
+}
+
 interface LandingPageProps {
-  onGetStarted: () => void;
-  onLogin: () => void;
+  onGetStarted: (user: AuthUser) => void;
+  onLogin: (user: AuthUser) => void;
+}
+
+type ModalTab = 'signup' | 'login';
+
+function AuthModal({
+  initialTab,
+  onSuccess,
+  onClose,
+}: {
+  initialTab: ModalTab;
+  onSuccess: (user: AuthUser) => void;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<ModalTab>(initialTab);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  async function handleSignup(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    if (password.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, name, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || data.message || 'Signup failed. Please try again.');
+      } else {
+        localStorage.setItem(TOKEN_KEY, data.token);
+        onSuccess(data.user);
+      }
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || data.message || 'Invalid email or password.');
+      } else {
+        localStorage.setItem(TOKEN_KEY, data.token);
+        onSuccess(data.user);
+      }
+    } catch {
+      setError('Network error. Please check your connection.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function switchTab(next: ModalTab) {
+    setTab(next);
+    setError('');
+    setName('');
+    setEmail('');
+    setPassword('');
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="w-full max-w-md rounded-3xl border border-zinc-800 bg-zinc-950 p-8 shadow-2xl mx-4 relative">
+        {/* Close button */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-zinc-500 hover:text-white transition-colors p-1"
+          aria-label="Close"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white font-bold text-sm">H!</div>
+          <span className="text-white font-bold">Hail Yes!</span>
+        </div>
+
+        {/* Tab switcher */}
+        <div className="flex rounded-xl bg-zinc-900 p-1 mb-6">
+          <button
+            type="button"
+            onClick={() => switchTab('signup')}
+            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'signup' ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'}`}
+          >
+            Sign Up
+          </button>
+          <button
+            type="button"
+            onClick={() => switchTab('login')}
+            className={`flex-1 px-4 py-2 text-sm font-semibold rounded-lg transition-all ${tab === 'login' ? 'bg-orange-500 text-white' : 'text-zinc-400 hover:text-white'}`}
+          >
+            Log In
+          </button>
+        </div>
+
+        {tab === 'signup' ? (
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="Your name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoComplete="name"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="Password (min 6 characters)"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete="new-password"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 text-sm font-semibold text-white shadow-lg disabled:opacity-60 hover:opacity-95 transition-opacity mt-2"
+            >
+              {loading ? 'Creating account...' : 'Create Account'}
+            </button>
+            <p className="text-xs text-zinc-600 text-center mt-2">No credit card required. Free for 14 days.</p>
+          </form>
+        ) : (
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="email"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+                className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-white placeholder:text-zinc-500 focus:border-orange-500 focus:outline-none"
+              />
+            </div>
+            {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 text-sm font-semibold text-white shadow-lg disabled:opacity-60 hover:opacity-95 transition-opacity mt-2"
+            >
+              {loading ? 'Logging in...' : 'Log In'}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps) {
+  const [modal, setModal] = useState<ModalTab | null>(null);
+
+  function handleAuthSuccess(user: AuthUser) {
+    setModal(null);
+    if (modal === 'signup') {
+      onGetStarted(user);
+    } else {
+      onLogin(user);
+    }
+  }
+
+  function openSignup() { setModal('signup'); }
+  function openLogin() { setModal('login'); }
+
   return (
     <div className="min-h-screen overflow-y-auto overflow-x-hidden bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-white">
+      {modal && (
+        <AuthModal
+          initialTab={modal}
+          onSuccess={handleAuthSuccess}
+          onClose={() => setModal(null)}
+        />
+      )}
+
       {/* Nav */}
       <header className="border-b border-slate-800/50 bg-slate-950/80 backdrop-blur sticky top-0 z-20">
         <div className="mx-auto max-w-6xl flex items-center justify-between px-4 py-4">
@@ -14,8 +252,8 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
             <span className="text-lg font-bold">Hail Yes!</span>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onLogin} className="text-sm font-semibold text-slate-400 hover:text-white">Log In</button>
-            <button type="button" onClick={onGetStarted} className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2 text-sm font-semibold text-white shadow-lg">Start Free</button>
+            <button type="button" onClick={openLogin} className="text-sm font-semibold text-slate-400 hover:text-white">Log In</button>
+            <button type="button" onClick={openSignup} className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-2 text-sm font-semibold text-white shadow-lg">Start Free</button>
           </div>
         </div>
       </header>
@@ -33,10 +271,10 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
           lookups — all in one app that works on your phone. No contracts. No per-seat pricing.
         </p>
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <button type="button" onClick={onGetStarted} className="w-full sm:w-auto rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-8 py-4 text-base font-semibold text-white shadow-[0_10px_40px_rgba(124,58,237,0.3)] hover:opacity-95">
+          <button type="button" onClick={openSignup} className="w-full sm:w-auto rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-8 py-4 text-base font-semibold text-white shadow-[0_10px_40px_rgba(124,58,237,0.3)] hover:opacity-95">
             Start Free Trial
           </button>
-          <button type="button" onClick={onLogin} className="w-full sm:w-auto rounded-2xl border border-slate-700 px-8 py-4 text-base font-semibold text-white hover:bg-slate-800">
+          <button type="button" onClick={openLogin} className="w-full sm:w-auto rounded-2xl border border-slate-700 px-8 py-4 text-base font-semibold text-white hover:bg-slate-800">
             Log In
           </button>
         </div>
@@ -87,7 +325,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
             desc="For solo reps trying it out"
             features={['Storm maps + NOAA history', 'Up to 10 active leads', 'Evidence capture + camera', 'Property owner lookups', 'Shareable reports']}
             cta="Start Free"
-            onCta={onGetStarted}
+            onCta={openSignup}
             highlighted={false}
           />
           <PricingCard
@@ -97,7 +335,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
             desc="For active storm chasers"
             features={['Unlimited leads + pipeline', 'CSV homeowner import', 'Deal value tracking', 'Storm alerts + push notifications', 'Team sync + rep profiles', 'Post-win checklists', 'Priority support']}
             cta="Start 14-Day Trial"
-            onCta={onGetStarted}
+            onCta={openSignup}
             highlighted
           />
           <PricingCard
@@ -107,7 +345,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
             desc="For roofing companies with teams"
             features={['Everything in Pro', 'Unlimited team members', 'Multi-territory management', 'Data export + backup', 'Dedicated onboarding', 'Custom branding (coming soon)']}
             cta="Start 14-Day Trial"
-            onCta={onGetStarted}
+            onCta={openSignup}
             highlighted={false}
           />
         </div>
@@ -117,7 +355,7 @@ export default function LandingPage({ onGetStarted, onLogin }: LandingPageProps)
       <section className="mx-auto max-w-3xl px-4 pb-20 text-center">
         <h2 className="text-3xl font-bold">Ready to beat your competitors to the door?</h2>
         <p className="mt-4 text-slate-400">Start free. No credit card. Upgrade when you're closing deals.</p>
-        <button type="button" onClick={onGetStarted} className="mt-8 rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-10 py-4 text-base font-semibold text-white shadow-[0_10px_40px_rgba(124,58,237,0.3)]">
+        <button type="button" onClick={openSignup} className="mt-8 rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-10 py-4 text-base font-semibold text-white shadow-[0_10px_40px_rgba(124,58,237,0.3)]">
           Get Started Free
         </button>
       </section>

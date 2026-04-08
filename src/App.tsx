@@ -542,6 +542,15 @@ const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
 const LandingPage = lazy(() => import('./components/LandingPage'));
 
 const USER_NAME_KEY = 'hail-yes:user-name';
+const TOKEN_KEY = 'hailyes_token';
+const USER_KEY = 'hailyes_user';
+
+interface AuthUser {
+  id: number;
+  email: string;
+  name: string;
+  plan: string;
+}
 
 function ReportRoute({ slug }: { slug: string }) {
   return (
@@ -552,35 +561,46 @@ function ReportRoute({ slug }: { slug: string }) {
 }
 
 function AppRouter() {
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    const stored = localStorage.getItem(USER_KEY);
+    return stored ? (JSON.parse(stored) as AuthUser) : null;
+  });
+
+  // Keep old name key working for backwards compat
   const [userName, setUserName] = useState(() => localStorage.getItem(USER_NAME_KEY) || '');
 
   const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
   if (reportSlug) return <ReportRoute slug={reportSlug} />;
 
-  if (!userName) {
+  // Show landing if neither auth method has a user
+  if (!user && !userName) {
     return (
       <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
         <LandingPage
-          onGetStarted={() => {
-            const name = window.prompt('What\'s your name?');
-            if (name?.trim()) {
-              localStorage.setItem(USER_NAME_KEY, name.trim());
-              setUserName(name.trim());
-            }
+          onGetStarted={(authUser) => {
+            localStorage.setItem(USER_KEY, JSON.stringify(authUser));
+            localStorage.setItem(USER_NAME_KEY, authUser.name);
+            setUser(authUser);
+            setUserName(authUser.name);
           }}
-          onLogin={() => {
-            const name = window.prompt('What\'s your name?');
-            if (name?.trim()) {
-              localStorage.setItem(USER_NAME_KEY, name.trim());
-              setUserName(name.trim());
-            }
+          onLogin={(authUser) => {
+            localStorage.setItem(USER_KEY, JSON.stringify(authUser));
+            localStorage.setItem(USER_NAME_KEY, authUser.name);
+            setUser(authUser);
+            setUserName(authUser.name);
           }}
         />
       </Suspense>
     );
   }
 
-  return <App onLogout={() => { localStorage.removeItem(USER_NAME_KEY); setUserName(''); }} />;
+  return <App onLogout={() => {
+    localStorage.removeItem(USER_NAME_KEY);
+    localStorage.removeItem(USER_KEY);
+    localStorage.removeItem(TOKEN_KEY);
+    setUserName('');
+    setUser(null);
+  }} />;
 }
 
 function App({ onLogout }: { onLogout: () => void }) {

@@ -59,6 +59,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
   const [roster, setRoster] = useState<TeamMemberSnapshot[]>(loadRoster);
   const [billingPlan, setBillingPlan] = useState<string>('free');
   const [billingLoading, setBillingLoading] = useState(false);
+  const [billingMsg, setBillingMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void getBillingStatus().then((status) => {
@@ -234,9 +235,10 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                     disabled={billingLoading}
                     onClick={async () => {
                       setBillingLoading(true);
+                      setBillingMsg(null);
                       const url = await createCheckout('pro');
                       if (url) window.location.href = url;
-                      else window.alert('Stripe is not configured yet. Set STRIPE_SECRET_KEY and STRIPE_PRICE_PRO in Railway env vars.');
+                      else { console.log('Stripe not configured (pro)'); setBillingMsg('Upgrades coming soon!'); }
                       setBillingLoading(false);
                     }}
                     className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
@@ -248,9 +250,10 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                     disabled={billingLoading}
                     onClick={async () => {
                       setBillingLoading(true);
+                      setBillingMsg(null);
                       const url = await createCheckout('company');
                       if (url) window.location.href = url;
-                      else window.alert('Stripe is not configured yet. Set STRIPE_SECRET_KEY and STRIPE_PRICE_COMPANY in Railway env vars.');
+                      else { console.log('Stripe not configured (company)'); setBillingMsg('Upgrades coming soon!'); }
                       setBillingLoading(false);
                     }}
                     className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
@@ -264,9 +267,10 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                   disabled={billingLoading}
                   onClick={async () => {
                     setBillingLoading(true);
+                    setBillingMsg(null);
                     const url = await openBillingPortal();
                     if (url) window.location.href = url;
-                    else window.alert('Could not open billing portal.');
+                    else { console.log('Billing portal not available'); setBillingMsg('Billing portal coming soon!'); }
                     setBillingLoading(false);
                   }}
                   className="rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-50"
@@ -275,6 +279,9 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
                 </button>
               )}
             </div>
+            {billingMsg && (
+              <p className="mt-2 text-xs text-orange-300">{billingMsg}</p>
+            )}
           </div>
 
           {onLogout && (
