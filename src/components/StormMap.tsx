@@ -36,8 +36,10 @@ import GpsTracker from './GpsTracker';
 import {
   fetchMrmsMetadata,
   fetchHistoricalMrmsMetadata,
+  fetchSwathPolygons,
   getHistoricalMrmsOverlayUrl,
   type MrmsOverlayProduct,
+  type SwathPolygonCollection,
 } from '../services/mrmsApi';
 
 interface FitBoundsRequest {
@@ -633,6 +635,7 @@ function MapContent({
   const [mrmsMeta, setMrmsMeta] = useState<MrmsStatus | null>(null);
   const [mrmsLoading, setMrmsLoading] = useState(false);
   const [mrmsError, setMrmsError] = useState<string | null>(null);
+  const [vectorSwaths, setVectorSwaths] = useState<MeshSwath[]>([]);
   const [selectedDistanceMiles, setSelectedDistanceMiles] = useState<number | null>(null);
   const radarAutoFitKeyRef = useRef<string | null>(null);
   const mrmsAutoFitKeyRef = useRef<string | null>(null);
@@ -721,7 +724,13 @@ function MapContent({
     [selectedDate, swaths],
   );
   const swathsToRender = useMemo(() => {
+    // When we have vector polygons from MRMS, use those — they're the highest quality
+    if (vectorSwaths.length > 0) {
+      return vectorSwaths;
+    }
+
     if (mrmsHistoricalMode && mrmsMeta?.has_hail) {
+      // MRMS raster is showing — hide NHP swaths to avoid visual clutter
       return [];
     }
 
@@ -739,6 +748,7 @@ function MapContent({
     mrmsMeta?.has_hail,
     polygonSwathsForSelectedDate,
     swaths,
+    vectorSwaths,
   ]);
 
   const handleMrmsToggle = useCallback(() => {
@@ -880,6 +890,40 @@ function MapContent({
       cancelled = true;
     };
   }, [historicalMrmsParams, mrmsHistoricalMode, showMrms]);
+
+  // Fetch vector swath polygons when a storm date is selected
+  useEffect(() => {
+    if (!mrmsHistoricalMode || !historicalMrmsParams || !selectedDate) {
+      setVectorSwaths([]);
+      return;
+    }
+
+    let cancelled = false;
+
+    fetchSwathPolygons(historicalMrmsParams).then((result) => {
+      if (cancelled || !result) return;
+
+      // Convert SwathPolygonCollection features to MeshSwath format.
+      // Preserve the IHM-matched color and label from the backend so the 10-band
+      // palette renders instead of the legacy 7-band damage palette.
+      const converted: MeshSwath[] = result.features.map((feature, i) => ({
+        id: `mrms-vector-${selectedDate}-${feature.properties.level}-${i}`,
+        date: selectedDate,
+        geometry: feature.geometry,
+        sourceGeometryType: 'polygon' as const,
+        maxMeshInches: feature.properties.sizeInches,
+        avgMeshInches: feature.properties.sizeInches,
+        areaSqMiles: 0,
+        statesAffected: [],
+        displayColor: feature.properties.color,
+        displayLabel: feature.properties.label,
+      }));
+
+      setVectorSwaths(converted);
+    });
+
+    return () => { cancelled = true; };
+  }, [mrmsHistoricalMode, historicalMrmsParams, selectedDate]);
 
   const handleMarkerClick = useCallback(
     (event: StormEvent) => {
@@ -1172,9 +1216,7 @@ function MapContent({
       />
 
       <MRMSOverlay
-        visible={
-          canRenderHistoricalMrms
-        }
+        visible={canRenderHistoricalMrms && vectorSwaths.length === 0}
         product="mesh1440"
         opacity={0.72}
         bounds={historicalMrmsBounds}

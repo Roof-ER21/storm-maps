@@ -133,6 +133,62 @@ export function getHistoricalMrmsOverlayUrl(params: HistoricalMrmsParams): strin
   return `${HAIL_YES_HAIL_API_BASE}/mrms-historical-image?${toHistoricalQuery(params)}`;
 }
 
+// ---------------------------------------------------------------------------
+// Vector Swath Polygons — 10-level contour polygons from MRMS MESH grid
+// ---------------------------------------------------------------------------
+
+export interface SwathPolygonFeature {
+  type: 'Feature';
+  properties: {
+    level: number;
+    sizeInches: number;
+    sizeMm: number;
+    label: string;
+    color: string;
+    severity: string;
+  };
+  geometry: {
+    type: 'MultiPolygon';
+    coordinates: number[][][][];
+  };
+}
+
+export interface SwathPolygonCollection {
+  type: 'FeatureCollection';
+  features: SwathPolygonFeature[];
+  metadata: {
+    date: string;
+    refTime: string;
+    maxMeshInches: number;
+    hailCells: number;
+    bounds: BoundingBox;
+    sourceFiles: string[];
+    generatedAt: string;
+  };
+}
+
+/**
+ * Fetch vector swath polygons for a storm date — crisp, clickable,
+ * 10-level hail contours derived from MRMS MESH radar data.
+ */
+export async function fetchSwathPolygons(
+  params: HistoricalMrmsParams,
+): Promise<SwathPolygonCollection | null> {
+  try {
+    const res = await fetch(
+      `${HAIL_YES_HAIL_API_BASE}/mrms-swath-polygons?${toHistoricalQuery(params)}`,
+      { signal: AbortSignal.timeout(45000) },
+    );
+    if (!res.ok) {
+      throw new Error(`Swath polygons returned ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('[mrmsApi] Failed to fetch swath polygons:', err);
+    return null;
+  }
+}
+
 /**
  * Get the MRMS overlay image URL for the given product.
  */

@@ -133,6 +133,10 @@ export interface MeshSwath {
   maxWidthLine?: [LatLng, LatLng] | null;
   /** States affected */
   statesAffected: string[];
+  /** Optional render color override (hex). Used for MRMS vector swaths that carry their own 10-band palette. */
+  displayColor?: string;
+  /** Optional display label override (e.g. "1½\""). Used for MRMS vector swaths. */
+  displayLabel?: string;
 }
 
 /** Individual MESH tile for raster overlay */

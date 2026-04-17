@@ -26,21 +26,32 @@ function classifyGeometry(geom: MeshSwath['geometry']): GeometryKind {
   return 'unknown';
 }
 
-function geoJsonToGooglePaths(swath: MeshSwath): google.maps.LatLngLiteral[][] {
+/**
+ * For polygon/multipolygon geometry, return one group of rings per polygon.
+ * The first ring is the outer ring; subsequent rings are holes. Each group
+ * becomes its own google.maps.Polygon so disconnected regions in a MultiPolygon
+ * do not get reinterpreted as holes of each other.
+ */
+function geoJsonToPolygonGroups(swath: MeshSwath): google.maps.LatLngLiteral[][][] {
+  const geom = swath.geometry;
+  const groups: google.maps.LatLngLiteral[][][] = [];
+
+  if (geom.type === 'Polygon') {
+    groups.push(geom.coordinates.map((ring) => ring.map(([lng, lat]) => ({ lat, lng }))));
+  } else if (geom.type === 'MultiPolygon') {
+    for (const polygon of geom.coordinates) {
+      groups.push(polygon.map((ring) => ring.map(([lng, lat]) => ({ lat, lng }))));
+    }
+  }
+
+  return groups;
+}
+
+function geoJsonToLinePaths(swath: MeshSwath): google.maps.LatLngLiteral[][] {
   const geom = swath.geometry;
   const paths: google.maps.LatLngLiteral[][] = [];
 
-  if (geom.type === 'Polygon') {
-    for (const ring of geom.coordinates) {
-      paths.push(ring.map(([lng, lat]) => ({ lat, lng })));
-    }
-  } else if (geom.type === 'MultiPolygon') {
-    for (const polygon of geom.coordinates) {
-      for (const ring of polygon) {
-        paths.push(ring.map(([lng, lat]) => ({ lat, lng })));
-      }
-    }
-  } else if (geom.type === 'LineString') {
+  if (geom.type === 'LineString') {
     paths.push(geom.coordinates.map(([lng, lat]) => ({ lat, lng })));
   } else if (geom.type === 'MultiLineString') {
     for (const line of geom.coordinates) {
@@ -94,18 +105,25 @@ function getLineStyle(
 
 function createInfoContent(swath: MeshSwath, color: string): string {
   const sizeClass = getHailSizeClass(swath.maxMeshInches);
+  const isVector = Boolean(swath.displayLabel);
   const severity = sizeClass
     ? `${sizeClass.label} (severity ${sizeClass.damageSeverity}/5)`
-    : 'Unknown';
+    : '';
+  // For MRMS vector swaths, the polygon represents "hail ≥ size", so prefix with ≥.
+  // For legacy polygons, display the value as-is (it's the actual estimated max).
+  const sizeLabel = isVector
+    ? `≥ ${swath.displayLabel}`
+    : `${swath.maxMeshInches}"`;
+  const severityFragment = severity ? `<span style="color: #6b7280;"> ${severity}</span>` : '';
 
   return `
     <div style="font-family: system-ui, sans-serif; padding: 4px; max-width: 300px;">
       <div style="font-weight: 700; font-size: 14px; margin-bottom: 6px; color: ${color};">
-        Hail Swath
+        ${isVector ? 'MRMS Hail Footprint' : 'Hail Swath'}
       </div>
       <div style="font-size: 12px; color: #374151; line-height: 1.5;">
         <div><strong>Date:</strong> ${swath.date}</div>
-        <div><strong>Estimated Hail:</strong> ${swath.maxMeshInches}" ${severity}</div>
+        <div><strong>Estimated Hail:</strong> ${sizeLabel}${severityFragment}</div>
         ${
           swath.maxWidthKm
             ? `<div><strong>Max Width:</strong> ${swath.maxWidthKm.toFixed(1)} km</div>`
@@ -169,25 +187,18 @@ export default function HailSwathLayer({
     }
 
     for (const swath of visible) {
-      const paths = geoJsonToGooglePaths(swath);
-      if (paths.length === 0) continue;
-
-      const sizeClass = getHailSizeClass(swath.maxMeshInches);
-      const color = sizeClass?.color || '#f97316';
       const kind = classifyGeometry(swath.geometry);
+      const sizeClass = getHailSizeClass(swath.maxMeshInches);
+      const color = swath.displayColor || sizeClass?.color || '#f97316';
       const isFocused = Boolean(selectedDate);
       const isEmphasized = isFocused && highlightSelected;
       const infoContent = createInfoContent(swath, color);
 
-      const handleClick = (event: google.maps.MapMouseEvent) => {
-        infoWindowRef.current!.setContent(infoContent);
-        infoWindowRef.current!.setPosition(event.latLng || paths[0][0]);
-        infoWindowRef.current!.open(map);
-      };
-
       if (kind === 'line') {
+        const linePaths = geoJsonToLinePaths(swath);
+        if (linePaths.length === 0) continue;
         const lineStyle = getLineStyle(isFocused, isEmphasized);
-        for (const path of paths) {
+        for (const path of linePaths) {
           const coreLine = new google.maps.Polyline({
             path,
             strokeColor: color,
@@ -196,26 +207,43 @@ export default function HailSwathLayer({
             map,
             zIndex: isEmphasized ? 19 : isFocused ? 15 : 11,
           });
-          coreLine.addListener('click', handleClick);
+          coreLine.addListener('click', (event: google.maps.MapMouseEvent) => {
+            infoWindowRef.current!.setContent(infoContent);
+            infoWindowRef.current!.setPosition(event.latLng || path[0]);
+            infoWindowRef.current!.open(map);
+          });
           shapesRef.current.push(coreLine);
         }
-
         continue;
       }
 
+      const groups = geoJsonToPolygonGroups(swath);
+      if (groups.length === 0) continue;
+
       const polygonStyle = getPolygonStyle(isFocused, isEmphasized);
-      const polygon = new google.maps.Polygon({
-        paths,
-        strokeColor: color,
-        strokeOpacity: polygonStyle.strokeOpacity,
-        strokeWeight: polygonStyle.strokeWeight,
-        fillColor: color,
-        fillOpacity: polygonStyle.fillOpacity,
-        map,
-        zIndex: isEmphasized ? 18 : isFocused ? 14 : 10,
-      });
-      polygon.addListener('click', handleClick);
-      shapesRef.current.push(polygon);
+      // Bump z-index with hail size so larger hail renders on top of smaller.
+      const levelZ = Math.min(9, Math.max(0, Math.floor(swath.maxMeshInches * 2)));
+      const baseZ = isEmphasized ? 18 : isFocused ? 14 : 10;
+
+      for (const rings of groups) {
+        if (rings.length === 0 || rings[0].length === 0) continue;
+        const polygon = new google.maps.Polygon({
+          paths: rings,
+          strokeColor: color,
+          strokeOpacity: polygonStyle.strokeOpacity,
+          strokeWeight: polygonStyle.strokeWeight,
+          fillColor: color,
+          fillOpacity: polygonStyle.fillOpacity,
+          map,
+          zIndex: baseZ + levelZ,
+        });
+        polygon.addListener('click', (event: google.maps.MapMouseEvent) => {
+          infoWindowRef.current!.setContent(infoContent);
+          infoWindowRef.current!.setPosition(event.latLng || rings[0][0]);
+          infoWindowRef.current!.open(map);
+        });
+        shapesRef.current.push(polygon);
+      }
     }
 
     return () => {
