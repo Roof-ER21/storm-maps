@@ -39,7 +39,6 @@ import {
   fetchSwathPolygons,
   getHistoricalMrmsOverlayUrl,
   type MrmsOverlayProduct,
-  type SwathPolygonCollection,
 } from '../services/mrmsApi';
 
 interface FitBoundsRequest {
