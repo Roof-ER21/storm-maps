@@ -233,6 +233,33 @@ export async function fetchStormImpact(params: {
 }
 
 /**
+ * Fetch LIVE vector swath polygons (now-cast) — pulls the most recent
+ * MRMS MESH 1440min (24h rolling max) from IEM MTArchive. Updated every
+ * ~30 minutes upstream.
+ */
+export async function fetchLiveSwathPolygons(bounds: BoundingBox): Promise<
+  (SwathPolygonCollection & { live: true; refTime: string }) | null
+> {
+  const query = new URLSearchParams({
+    north: bounds.north.toString(),
+    south: bounds.south.toString(),
+    east: bounds.east.toString(),
+    west: bounds.west.toString(),
+  });
+  try {
+    const res = await fetch(
+      `${HAIL_YES_HAIL_API_BASE}/mrms-now-polygons?${query}`,
+      { signal: AbortSignal.timeout(45000) },
+    );
+    if (!res.ok) throw new Error(`Live swath polygons ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('[mrmsApi] Failed to fetch live swath polygons:', err);
+    return null;
+  }
+}
+
+/**
  * Fetch vector swath polygons for a storm date — crisp, clickable,
  * 10-level hail contours derived from MRMS MESH radar data.
  */

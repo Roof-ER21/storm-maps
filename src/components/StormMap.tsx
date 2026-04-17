@@ -37,6 +37,7 @@ import {
   fetchMrmsMetadata,
   fetchHistoricalMrmsMetadata,
   fetchSwathPolygons,
+  fetchLiveSwathPolygons,
   getHistoricalMrmsOverlayUrl,
   type MrmsOverlayProduct,
 } from '../services/mrmsApi';
@@ -635,6 +636,9 @@ function MapContent({
   const [mrmsLoading, setMrmsLoading] = useState(false);
   const [mrmsError, setMrmsError] = useState<string | null>(null);
   const [vectorSwaths, setVectorSwaths] = useState<MeshSwath[]>([]);
+  const [liveNowCast, setLiveNowCast] = useState(false);
+  const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
+  const [liveSwathMeta, setLiveSwathMeta] = useState<{ maxInches: number; refTime: string } | null>(null);
   const [selectedDistanceMiles, setSelectedDistanceMiles] = useState<number | null>(null);
   const radarAutoFitKeyRef = useRef<string | null>(null);
   const mrmsAutoFitKeyRef = useRef<string | null>(null);
@@ -723,6 +727,11 @@ function MapContent({
     [selectedDate, swaths],
   );
   const swathsToRender = useMemo(() => {
+    // Live now-cast takes priority when the toggle is on.
+    if (liveNowCast && liveSwaths.length > 0) {
+      return liveSwaths;
+    }
+
     // When we have vector polygons from MRMS, use those — they're the highest quality
     if (vectorSwaths.length > 0) {
       return vectorSwaths;
@@ -743,6 +752,8 @@ function MapContent({
 
     return [];
   }, [
+    liveNowCast,
+    liveSwaths,
     mrmsHistoricalMode,
     mrmsMeta?.has_hail,
     polygonSwathsForSelectedDate,
@@ -923,6 +934,54 @@ function MapContent({
 
     return () => { cancelled = true; };
   }, [mrmsHistoricalMode, historicalMrmsParams, selectedDate]);
+
+  // Live now-cast polygons — fetches whenever `liveNowCast` is on, refreshing
+  // every 2 minutes so the radar display tracks with upstream IEM updates.
+  useEffect(() => {
+    if (!liveNowCast || !mapBounds) {
+      setLiveSwaths([]);
+      setLiveSwathMeta(null);
+      return;
+    }
+
+    let cancelled = false;
+    let lastFetched = 0;
+
+    const pull = async () => {
+      if (cancelled) return;
+      const now = Date.now();
+      if (now - lastFetched < 60 * 1000) return; // throttle to 1/min
+      lastFetched = now;
+
+      const result = await fetchLiveSwathPolygons(mapBounds);
+      if (cancelled || !result) return;
+      const today = new Date().toISOString().slice(0, 10);
+      const converted: MeshSwath[] = result.features.map((feature, i) => ({
+        id: `live-mrms-${feature.properties.level}-${i}`,
+        date: today,
+        geometry: feature.geometry,
+        sourceGeometryType: 'polygon' as const,
+        maxMeshInches: feature.properties.sizeInches,
+        avgMeshInches: feature.properties.sizeInches,
+        areaSqMiles: 0,
+        statesAffected: [],
+        displayColor: feature.properties.color,
+        displayLabel: feature.properties.label,
+      }));
+      setLiveSwaths(converted);
+      setLiveSwathMeta({
+        maxInches: result.metadata.maxMeshInches,
+        refTime: result.refTime,
+      });
+    };
+
+    pull();
+    const id = setInterval(pull, 120 * 1000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [liveNowCast, mapBounds]);
 
   const handleMarkerClick = useCallback(
     (event: StormEvent) => {
@@ -1304,6 +1363,27 @@ function MapContent({
                 />
               </svg>
               MRMS
+            </div>
+          </button>
+          <button
+            onClick={() => setLiveNowCast((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              liveNowCast
+                ? (liveSwaths.length > 0 ? 'bg-red-600 text-white' : 'bg-slate-500 text-white')
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              liveNowCast
+                ? (liveSwathMeta ? `Live radar — peak ${liveSwathMeta.maxInches.toFixed(2)}" (${new Date(liveSwathMeta.refTime).toLocaleTimeString()})` : 'Live radar — no hail detected')
+                : 'Show live MRMS radar (last 24 hours, updated every 30 min)'
+            }
+            aria-label="Toggle live MRMS radar"
+          >
+            <div className="flex items-center gap-1.5">
+              {liveNowCast && liveSwaths.length > 0 && (
+                <span className="h-2 w-2 rounded-full bg-white animate-pulse" aria-hidden="true" />
+              )}
+              LIVE
             </div>
           </button>
           {onToggleHeatmap && (
