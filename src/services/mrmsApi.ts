@@ -167,6 +167,71 @@ export interface SwathPolygonCollection {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Storm Impact — "was this address hit?" point-in-polygon API
+// ---------------------------------------------------------------------------
+
+export interface StormImpactPoint {
+  id: string;
+  lat: number;
+  lng: number;
+}
+
+export interface StormImpactResult {
+  id: string;
+  maxHailInches: number | null;
+  level: number | null;
+  color: string | null;
+  label: string | null;
+  severity: string | null;
+  directHit: boolean;
+}
+
+export interface StormImpactResponse {
+  date: string;
+  anchorTimestamp: string | null;
+  metadata: {
+    stormMaxInches: number;
+    stormHailCells: number;
+    stormFeatureCount: number;
+    pointsChecked: number;
+    directHits: number;
+  };
+  results: StormImpactResult[];
+}
+
+/**
+ * Ask the backend "which hail band contains each of these points?" —
+ * returns the max hail size at each provided location for the given storm
+ * date. Used for "DIRECT HIT 1.75"" badges in the address search UI.
+ */
+export async function fetchStormImpact(params: {
+  date: string;
+  anchorTimestamp?: string | null;
+  points: StormImpactPoint[];
+}): Promise<StormImpactResponse | null> {
+  if (params.points.length === 0) return null;
+  try {
+    const res = await fetch(`${HAIL_YES_HAIL_API_BASE}/storm-impact`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: params.date,
+        anchorTimestamp: params.anchorTimestamp || null,
+        points: params.points,
+      }),
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) {
+      throw new Error(`Storm impact returned ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.error('[mrmsApi] Failed to fetch storm impact:', err);
+    return null;
+  }
+}
+
 /**
  * Fetch vector swath polygons for a storm date — crisp, clickable,
  * 10-level hail contours derived from MRMS MESH radar data.

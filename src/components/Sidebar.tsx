@@ -18,6 +18,7 @@ import {
   HAIL_SIZE_CLASSES,
 } from '../types/storm';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
+import AddressImpactBadge from './AddressImpactBadge';
 
 interface SidebarProps {
   stormDates: StormDate[];
@@ -34,6 +35,11 @@ interface SidebarProps {
   onHistoryRangeChange: (range: HistoryRangePreset) => void;
   onSinceDateChange: (value: string) => void;
   searchSummary: PropertySearchSummary | null;
+  /** Geocoded lat/lng of the searched address — used for per-address storm impact. */
+  searchLat?: number | null;
+  searchLng?: number | null;
+  /** Anchor timestamp for the selected storm (used to pick the right GRIB file). */
+  selectedStormAnchorTimestamp?: string | null;
   eventFilters: EventFilterState;
   onFilterChange: (filters: EventFilterState) => void;
   generatingReport: boolean;
@@ -113,6 +119,9 @@ export default function Sidebar({
   onHistoryRangeChange,
   onSinceDateChange,
   searchSummary,
+  searchLat = null,
+  searchLng = null,
+  selectedStormAnchorTimestamp = null,
   eventFilters,
   onFilterChange,
   generatingReport,
@@ -547,6 +556,14 @@ export default function Sidebar({
                 Primary sources: {selectedStormSources.join(' · ')}
               </p>
             )}
+
+            <AddressImpactBadge
+              selectedDate={selectedDate.date}
+              anchorTimestamp={selectedStormAnchorTimestamp}
+              searchLat={searchLat}
+              searchLng={searchLng}
+              addressLabel={searchSummary?.locationLabel ?? null}
+            />
 
             <div className="mt-3 grid grid-cols-3 gap-2">
               <button
