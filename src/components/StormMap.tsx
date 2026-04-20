@@ -626,8 +626,15 @@ function MapContent({
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
-  // NEXRAD hidden from UI — reps use MRMS instead
-  const [showNexrad] = useState(false);
+  // NEXRAD is a secondary/fallback layer — MRMS MESH is the primary hail
+  // signal, but MESH under-detects small hail (<½") that reps routinely feel
+  // in the field. When MRMS is empty and reps report hail in GroupMe, they
+  // toggle NEXRAD reflectivity on to see the actual storm cells.
+  const [showNexrad, setShowNexrad] = useState(false);
+  // Forces NexradOverlay to refresh its tile URLs on an interval while in
+  // LIVE mode (no selected date). Each tick is a monotonic counter that gets
+  // folded into the effective timestamp so tiles re-request every 2 min.
+  const [liveNexradTick, setLiveNexradTick] = useState(0);
   const [showMrms, setShowMrms] = useState(false);
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite'>('roadmap');
   const [mrmsProduct, setMrmsProduct] =
@@ -658,7 +665,24 @@ function MapContent({
     () => getStormContext(selectedDate, events, swaths),
     [events, selectedDate, swaths],
   );
-  const radarTimestamp = stormContext.radarTimestamp;
+  // In LIVE mode (NEXRAD on, no storm date selected), use the latest wall-clock
+  // time and re-derive it every time liveNexradTick bumps, so the WMS-T tile
+  // URLs pick up the freshest 5-min NEXRAD scan instead of staying frozen.
+  const radarTimestamp = useMemo(() => {
+    if (showNexrad && !selectedDate) {
+      return new Date().toISOString();
+    }
+    return stormContext.radarTimestamp;
+  }, [showNexrad, selectedDate, stormContext.radarTimestamp, liveNexradTick]);
+
+  // Pulse the live tick every 2 min while NEXRAD is on and no date is picked.
+  // 2 min matches NEXRAD's native scan cadence; more frequent polling wastes
+  // bandwidth and tile requests.
+  useEffect(() => {
+    if (!showNexrad || selectedDate) return;
+    const id = setInterval(() => setLiveNexradTick((n) => n + 1), 120_000);
+    return () => clearInterval(id);
+  }, [showNexrad, selectedDate]);
   const historicalRadarTimestamps = useMemo(() => {
     const timestamps = getHistoricalRadarTimestamps(visibleHailEvents, selectedDate);
     if (timestamps.length > 0) {
@@ -1363,6 +1387,45 @@ function MapContent({
                 />
               </svg>
               MRMS
+            </div>
+          </button>
+          {/*
+            LIVE Radar toggle — NEXRAD base reflectivity direct from IEM.
+            Shows rain + storm cells in real-time even when MRMS MESH is
+            empty (which happens for small hail < ½" that reps routinely
+            feel in the field). Auto-refreshes every 2 min in LIVE mode.
+          */}
+          <button
+            onClick={() => setShowNexrad((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showNexrad
+                ? (!selectedDate ? 'bg-red-600 text-white animate-pulse' : 'bg-blue-600 text-white')
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showNexrad
+                ? (!selectedDate
+                  ? 'LIVE NEXRAD radar (refreshes every 2 min) — click to hide'
+                  : 'NEXRAD radar (historical, locked to selected storm date)')
+                : 'Show NEXRAD radar reflectivity (captures storms even when MRMS misses small hail)'
+            }
+            aria-label="Toggle NEXRAD radar"
+          >
+            <div className="flex items-center gap-1.5">
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"
+                />
+              </svg>
+              {showNexrad && !selectedDate ? 'LIVE' : 'Radar'}
             </div>
           </button>
           <button
