@@ -1,8 +1,9 @@
 /**
  * Legend — Hail size color legend for the map.
  *
- * Primary mode ("ihm") shows the 10 IHM-matched forensic hail levels
- * that the MRMS vector swath backend emits. Legacy mode ("default")
+ * Primary mode ("ihm") shows the IHM-matched forensic hail levels
+ * (13 bands: ⅛" through 3"+) that the MRMS vector swath backend emits.
+ * Legacy mode ("default")
  * shows the 7 damage-severity bands used by older data sources.
  */
 

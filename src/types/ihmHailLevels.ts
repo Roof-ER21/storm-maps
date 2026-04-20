@@ -15,6 +15,9 @@ export interface IhmHailLevel {
 }
 
 export const IHM_HAIL_LEVELS: IhmHailLevel[] = [
+  { sizeInches: 0.13, sizeMm: 3.3,   label: '⅛"',  color: '#FFFFE6', severity: 'trace' },
+  { sizeInches: 0.25, sizeMm: 6.35,  label: '¼"',  color: '#FFFBCC', severity: 'trace' },
+  { sizeInches: 0.38, sizeMm: 9.53,  label: '⅜"',  color: '#FFF7B3', severity: 'trace' },
   { sizeInches: 0.50, sizeMm: 12.7,  label: '½"',  color: '#FFFF99', severity: 'trace' },
   { sizeInches: 0.75, sizeMm: 19.05, label: '¾"',  color: '#FFCC29', severity: 'minor' },
   { sizeInches: 1.00, sizeMm: 25.4,  label: '1"',  color: '#FF991F', severity: 'moderate' },
