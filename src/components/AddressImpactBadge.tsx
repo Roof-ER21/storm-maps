@@ -139,7 +139,7 @@ export default function AddressImpactBadge({
           </p>
           <h4 className="mt-1 text-lg font-bold" style={{ color: style.color }}>
             {tier === 'direct_hit'
-              ? `${impact.label ?? displaySize(impact.maxHailInches)} hail at property`
+              ? `${displaySize(bands?.atProperty ?? impact.maxHailInches)} hail at property`
               : tier === 'near_miss'
                 ? `${displaySize(bands?.atProperty ?? null)} hail within 1 mi`
                 : tier === 'area_impact'

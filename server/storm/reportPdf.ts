@@ -20,6 +20,12 @@ import {
   buildMrmsImpactResponse,
   type MrmsImpactResult,
 } from './mrmsService.js';
+import {
+  composeStormNarrative,
+  biggestHailCallout,
+  closestHailCallout,
+} from './narrativeComposer.js';
+import { haversineMiles } from './geometry.js';
 import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
@@ -196,9 +202,11 @@ async function fetchStaticBasemap(
 
 /**
  * Fetch a Google Street View Static image of the searched property.
- * Returns null if no API key, no Street View available at this lat/lng,
- * or the network call fails. Adjusters seeing the actual house in the
- * PDF closes a credibility gap HailTrace doesn't address.
+ * Returns null on API-key/network/coverage failures. `return_error_code=true`
+ * makes the API send 404 instead of a gray "no imagery" PNG when SV is
+ * unavailable at this lat/lng — so we can detect and skip without an
+ * extra metadata round-trip (the precheck added a race window that
+ * sometimes failed under concurrent load).
  */
 async function fetchStreetViewImage(
   lat: number,
@@ -209,27 +217,6 @@ async function fetchStreetViewImage(
   if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
   const sizeW = Math.min(640, Math.max(120, Math.round(width)));
   const sizeH = Math.min(640, Math.max(120, Math.round(height)));
-  // First check if Street View is available at this point — saves a 0-byte
-  // image fetch when the address is in a coverage gap.
-  try {
-    const meta = new URLSearchParams({
-      location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
-      key: GOOGLE_STATIC_MAPS_API_KEY,
-    });
-    const metaAc = new AbortController();
-    const metaTimer = setTimeout(() => metaAc.abort(), 4_000);
-    const metaRes = await fetch(
-      `https://maps.googleapis.com/maps/api/streetview/metadata?${meta.toString()}`,
-      { signal: metaAc.signal },
-    );
-    clearTimeout(metaTimer);
-    if (!metaRes.ok) return null;
-    const metaJson = (await metaRes.json()) as { status?: string };
-    if (metaJson.status !== 'OK') return null;
-  } catch {
-    return null;
-  }
-
   const params = new URLSearchParams({
     location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
     size: `${sizeW}x${sizeH}`,
@@ -551,9 +538,17 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       .font('Helvetica-Bold')
       .fontSize(10)
       .text(tStyle.label, textX, cardY + 14, { width: textW });
+    // Headline pulls from the atProperty band so it agrees with the
+    // table column. The point-band-label (propertyImpact.label) reflects
+    // exactly which band the lat/lng sits inside, but reps quote the
+    // max-in-1mi value to adjusters because that's the strongest hit
+    // their property actually saw.
+    const headlineHail = displayHailIn(
+      propertyImpact.bands.atProperty ?? propertyImpact.maxHailInches,
+    );
     const headline =
       tier === 'direct_hit'
-        ? `${propertyImpact.label ?? `${(propertyImpact.maxHailInches ?? 0).toFixed(2)}″`} hail at property`
+        ? `${headlineHail} hail at property`
         : tier === 'near_miss'
           ? `${displayHailIn(propertyImpact.bands.atProperty)} hail within 1 mi of property`
           : tier === 'area_impact'
@@ -605,6 +600,93 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
 
     doc.y = cardY + cardH + 12;
+  }
+
+  // ── Storm Narrative (adjuster prose) ──────────────────────────────────
+  // Composes Gemini-Field-style language: "On April 1, 2026, a severe
+  // weather system impacted the Loudoun area producing pea-sized hail
+  // measuring up to 0.86″..." Avoids prescriptive claim wording so
+  // adversarial counsel can't flag it.
+  {
+    const peakHailEvents = datedEvents
+      .filter((e) => e.eventType === 'Hail')
+      .reduce((m, e) => Math.max(m, e.magnitude), 0);
+    const peakWindEvents = datedEvents
+      .filter((e) => e.eventType === 'Thunderstorm Wind')
+      .reduce((m, e) => Math.max(m, e.magnitude), 0);
+    const collectionMax = collection?.metadata.maxHailInches ?? 0;
+    const headlineHailIn = Math.max(
+      propertyImpact?.bands.atProperty ?? 0,
+      propertyImpact?.maxHailInches ?? 0,
+      peakHailEvents,
+    );
+    const severeCount = datedEvents.filter(
+      (e) => e.eventType === 'Hail' && e.magnitude >= 1.5,
+    ).length;
+
+    // Closest hail report (event with shortest distance — using haversine)
+    let closestHailIn = 0;
+    let closestHailMi: number | undefined;
+    let biggestHailIn = collectionMax;
+    let biggestHailMi: number | undefined;
+    for (const e of datedEvents) {
+      if (e.eventType !== 'Hail') continue;
+      const d = haversineMiles(req.lat, req.lng, e.beginLat, e.beginLon);
+      if (closestHailMi === undefined || d < closestHailMi) {
+        closestHailMi = d;
+        closestHailIn = e.magnitude;
+      }
+      if (e.magnitude > biggestHailIn) {
+        biggestHailIn = e.magnitude;
+        biggestHailMi = d;
+      }
+    }
+
+    const formattedDate = new Date(`${req.dateOfLoss}T12:00:00`).toLocaleDateString(
+      'en-US',
+      { month: 'long', day: 'numeric', year: 'numeric' },
+    );
+    // Best-effort location label from address — "21000 Cascades Pkwy,
+    // Sterling, VA 20165, USA" → "Sterling, VA"
+    const locationFallback = (() => {
+      const parts = req.address.split(',').map((s) => s.trim()).filter(Boolean);
+      if (parts.length >= 3) return `${parts[parts.length - 3]}, ${parts[parts.length - 2].split(' ')[0]}`;
+      return req.address;
+    })();
+
+    const narrative = composeStormNarrative({
+      formattedDate,
+      location: locationFallback,
+      maxHailInches: headlineHailIn,
+      maxWindMph: peakWindEvents,
+      totalEvents: datedEvents.length,
+      radiusMiles: req.radiusMiles,
+      closestHailMiles: closestHailMi,
+      biggestHailInches: biggestHailIn > 0 ? biggestHailIn : undefined,
+      biggestHailMiles: biggestHailMi,
+      severeHailCount: severeCount,
+    });
+
+    if (narrative.length > 0) {
+      doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Storm Narrative');
+      doc.moveDown(0.3);
+      doc.fillColor('#1e293b').font('Helvetica').fontSize(10);
+      doc.text(narrative, { width: 504, align: 'left', lineGap: 1.5 });
+      doc.moveDown(0.5);
+
+      // BIGGEST/CLOSEST callouts in the same compact band the table uses
+      const bigCall = biggestHailCallout(biggestHailIn > 0 ? biggestHailIn : undefined, biggestHailMi);
+      const closeCall = closestHailCallout(
+        closestHailIn > 0 ? closestHailIn : undefined,
+        closestHailMi,
+      );
+      if (bigCall || closeCall) {
+        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8.5);
+        const callouts = [bigCall, closeCall].filter(Boolean).join('   ·   ');
+        doc.text(callouts, { width: 504 });
+        doc.moveDown(0.7);
+      }
+    }
   }
 
   // ── Storm summary ─────────────────────────────────────────────────────
@@ -665,6 +747,141 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   });
   doc.y = sumY + cardHeight + 18;
+
+  // ── Historical Storm Activity (multi-day per-band table) ──────────────
+  // Mirrors Gemini Field's claim-packet view: every storm date in the
+  // search window with any hail ≥¼" at or near the property, columns
+  // identical to the Storm Coverage card so the rep can hand a single
+  // table to an adjuster instead of cross-referencing.
+  type HistRow = {
+    dateIso: string;
+    label: string;
+    atProperty: number;
+    mi1to3: number;
+    mi3to5: number;
+    mi5to10: number;
+    biggestNearby: number;
+    biggestNearbyMi: number;
+  };
+  const histGroups = new Map<string, HistRow>();
+  for (const e of events) {
+    if (e.eventType !== 'Hail') continue;
+    if (!e.beginLat || !e.beginLon) continue;
+    if (e.magnitude < 0.25) continue;
+    const t = new Date(e.beginDate);
+    if (Number.isNaN(t.getTime())) continue;
+    const dateIso = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(t);
+    const dist = haversineMiles(req.lat, req.lng, e.beginLat, e.beginLon);
+    if (dist > 10) continue;
+    const row =
+      histGroups.get(dateIso) ??
+      ({
+        dateIso,
+        label: '',
+        atProperty: 0,
+        mi1to3: 0,
+        mi3to5: 0,
+        mi5to10: 0,
+        biggestNearby: 0,
+        biggestNearbyMi: 0,
+      } as HistRow);
+    if (e.magnitude > row.biggestNearby) {
+      row.biggestNearby = e.magnitude;
+      row.biggestNearbyMi = dist;
+    }
+    if (dist <= 1.0 && e.magnitude > row.atProperty) row.atProperty = e.magnitude;
+    else if (dist > 1.0 && dist <= 3.0 && e.magnitude > row.mi1to3) row.mi1to3 = e.magnitude;
+    else if (dist > 3.0 && dist <= 5.0 && e.magnitude > row.mi3to5) row.mi3to5 = e.magnitude;
+    else if (dist > 5.0 && dist <= 10.0 && e.magnitude > row.mi5to10) row.mi5to10 = e.magnitude;
+    histGroups.set(dateIso, row);
+  }
+
+  if (histGroups.size > 0) {
+    // Sort newest-first, cap at 12 rows so the table fits on one page.
+    const histRows = Array.from(histGroups.values())
+      .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
+      .slice(0, 12);
+    for (const r of histRows) {
+      r.label = new Date(`${r.dateIso}T12:00:00`).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Historical Storm Activity');
+    doc.fillColor('#64748b').font('Helvetica').fontSize(8.5);
+    doc.text(
+      `Up to ${histRows.length} hail-bearing storm dates within ${req.radiusMiles} mi over the search window. Each row shows the MAX hail size by distance band on that date. ¼" display floor; sub-trace radar signatures rounded for adjuster use.`,
+      { width: 504 },
+    );
+    doc.moveDown(0.3);
+
+    const tblX = 54;
+    let tblY = doc.y;
+    const colWidths = [88, 96, 90, 90, 90, 90];
+    const headers = ['Date', 'At Property (0–1 mi)', '1–3 mi', '3–5 mi', '5–10 mi', 'Biggest Nearby'];
+
+    const drawRow = (
+      yStart: number,
+      cells: string[],
+      isHeader = false,
+      tint = false,
+    ): number => {
+      const rowH = 18;
+      if (tint) {
+        doc.rect(tblX, yStart, colWidths.reduce((a, b) => a + b, 0), rowH).fill('#f8fafc');
+      }
+      doc.fillColor(isHeader ? '#475569' : '#0f172a');
+      doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(isHeader ? 8.5 : 9);
+      let cursor = tblX;
+      for (let i = 0; i < cells.length; i += 1) {
+        doc.text(cells[i], cursor + 4, yStart + 5, {
+          width: colWidths[i] - 8,
+          height: rowH - 4,
+          ellipsis: true,
+          lineBreak: false,
+        });
+        cursor += colWidths[i];
+      }
+      doc
+        .strokeColor('#e2e8f0')
+        .lineWidth(0.5)
+        .moveTo(tblX, yStart + rowH)
+        .lineTo(tblX + colWidths.reduce((a, b) => a + b, 0), yStart + rowH)
+        .stroke();
+      return yStart + rowH;
+    };
+
+    tblY = drawRow(tblY, headers, true);
+    histRows.forEach((r, i) => {
+      const cells = [
+        r.label,
+        displayHailIn(r.atProperty || null),
+        displayHailIn(r.mi1to3 || null),
+        displayHailIn(r.mi3to5 || null),
+        displayHailIn(r.mi5to10 || null),
+        r.biggestNearby > 0
+          ? `${displayHailIn(r.biggestNearby)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
+          : '—',
+      ];
+      tblY = drawRow(tblY, cells, false, i % 2 === 1);
+      // Page break if we'd overflow the standard letter page footer.
+      if (tblY > 720) {
+        doc.addPage();
+        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Historical Storm Activity (continued)');
+        doc.moveDown(0.3);
+        tblY = doc.y;
+        tblY = drawRow(tblY, headers, true);
+      }
+    });
+    doc.y = tblY + 14;
+  }
 
   // ── Storm Corroboration (multi-source consilience) ────────────────────
   // Auto-curate rule: render only confirmed sources. If no source confirms
