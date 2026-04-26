@@ -177,14 +177,21 @@ export async function setCachedSwath<T>(opts: {
 /**
  * Lazy purge of expired rows. Cheap to run on a timer because of the
  * `swath_cache_expires_idx` btree. Returns the row count purged.
+ *
+ * When force=true, deletes ALL rows regardless of expires_at — used after
+ * palette/algorithm changes to force a refresh on next request.
  */
-export async function purgeExpiredSwaths(): Promise<number> {
+export async function purgeExpiredSwaths(force = false): Promise<number> {
   if (!pgSql) return 0;
   try {
-    const rows = await pgSql<Array<{ count: string }>>`
-      DELETE FROM swath_cache WHERE expires_at <= NOW()
-      RETURNING 1 AS count
-    `;
+    const rows = force
+      ? await pgSql<Array<{ count: string }>>`
+          DELETE FROM swath_cache RETURNING 1 AS count
+        `
+      : await pgSql<Array<{ count: string }>>`
+          DELETE FROM swath_cache WHERE expires_at <= NOW()
+          RETURNING 1 AS count
+        `;
     return rows.length;
   } catch (err) {
     console.warn('[cache] purgeExpiredSwaths failed:', err);

@@ -1426,10 +1426,13 @@ app.get('/api/admin/cache-status', requireAdmin, async (_req, res) => {
   }
 });
 
-app.post('/api/admin/cache-purge', requireAdmin, async (_req, res) => {
+app.post('/api/admin/cache-purge', requireAdmin, async (req, res) => {
   try {
-    const purged = await purgeExpiredSwaths();
-    res.json({ ok: true, purged });
+    // ?force=1 deletes everything (used after palette / algorithm changes
+    // so existing cached rows refresh with the new shape on next view).
+    const force = req.query.force === '1' || req.query.force === 'true';
+    const purged = await purgeExpiredSwaths(force);
+    res.json({ ok: true, purged, force });
   } catch (err) {
     console.error('[cache-purge] failed', err);
     res.status(500).json({ ok: false, error: 'Failed to purge cache' });
