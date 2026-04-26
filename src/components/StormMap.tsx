@@ -894,17 +894,17 @@ function MapContent({
   // Reset whenever the selected storm changes so an old index from a previous
   // storm doesn't leak into the new frame array.
   const [scrubFrameIndex, setScrubFrameIndex] = useState<number | null>(null);
-  // Scrubber mode — 'nexrad' steps through Level-2 radar frames (default,
-  // existing behavior); 'mrms' steps through 24 hourly MRMS MESH anchors
-  // for the ET day. Switching modes resets the frame index so we don't
-  // reuse a frame ordinal across different timestamp arrays.
-  const [scrubMode, setScrubMode] = useState<'nexrad' | 'mrms'>('nexrad');
+  // Scrubber mode — 'mrms' is the default since most historical storm
+  // dates have 0-1 NEXRAD frames in the events array (NEXRAD is sparse
+  // archive data). MRMS hourly always has 24 anchors so it's the
+  // workable default. The user can flip to NEXRAD via the chrome toggle
+  // when 2+ frames exist for the selected date.
+  const [scrubMode, setScrubMode] = useState<'nexrad' | 'mrms'>('mrms');
   useEffect(() => {
     setScrubFrameIndex(null);
-    setScrubMode('nexrad');
+    // Default back to MRMS on every date change — NEXRAD is opt-in.
+    setScrubMode('mrms');
   }, [selectedDate]);
-  // (auto-switch to MRMS mode when NEXRAD has no frames lives below,
-  //  AFTER historicalRadarTimestamps is declared — TDZ otherwise.)
   const [pointImpact, setPointImpact] = useState<{
     lat: number;
     lng: number;
@@ -991,28 +991,14 @@ function MapContent({
 
   const mrmsHistoricalMode = showMrms && Boolean(selectedDate);
 
-  // Auto-switch to MRMS mode when NEXRAD has no usable frames. Avoids
-  // stranding the rep with a hidden scrubber when the only viable
-  // timeline source is MRMS hourly. Also auto-enables the MRMS layer so
-  // the GroundOverlay actually renders when the slider moves — without
-  // this the scrubber would drag silently with no visual change.
-  // Lives here (after historicalRadarTimestamps + mrmsHistoricalMode are
-  // both declared) so we don't hit a TDZ on the deps array.
+  // Auto-enable MRMS layer whenever a historical storm date is selected
+  // so the GroundOverlay renders the swath the rep is scrubbing through.
+  // Without this the slider drags silently with no visual change.
   useEffect(() => {
-    if (!selectedDate) return;
-    const nexradAvailable =
-      Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
-    if (!nexradAvailable) {
-      if (scrubMode !== 'mrms') setScrubMode('mrms');
-      if (!showMrms) setShowMrms(true);
+    if (selectedDate && !showMrms) {
+      setShowMrms(true);
     }
-  }, [
-    selectedDate,
-    showNexrad,
-    historicalRadarTimestamps.length,
-    showMrms,
-    scrubMode,
-  ]);
+  }, [selectedDate, showMrms]);
 
   const historicalMrmsParams = useMemo(() => {
     if (!selectedDate || !stormContext.eventBounds) {
