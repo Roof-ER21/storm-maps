@@ -228,6 +228,40 @@ async function migrate() {
       ON verified_hail_events (event_date)
   `;
 
+  // Extend verified_hail_events with the full source-flag set + event metadata
+  // for backfill ingestion. Idempotent — ADD COLUMN IF NOT EXISTS lets the
+  // base CREATE TABLE above stay minimal while later adds extend cleanly.
+  await sql`ALTER TABLE verified_hail_events
+    ADD COLUMN IF NOT EXISTS source_ncei_storm_events BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_ncei_swdi BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_mping BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_hailtrace BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_nws_warnings BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS event_type TEXT,
+    ADD COLUMN IF NOT EXISTS magnitude REAL,
+    ADD COLUMN IF NOT EXISTS magnitude_type TEXT,
+    ADD COLUMN IF NOT EXISTS state_code TEXT,
+    ADD COLUMN IF NOT EXISTS county TEXT,
+    ADD COLUMN IF NOT EXISTS wfo TEXT,
+    ADD COLUMN IF NOT EXISTS episode_id BIGINT,
+    ADD COLUMN IF NOT EXISTS ncei_event_id BIGINT,
+    ADD COLUMN IF NOT EXISTS narrative TEXT,
+    ADD COLUMN IF NOT EXISTS begin_time_utc TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS end_time_utc TIMESTAMP
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS verified_hail_events_state_idx
+      ON verified_hail_events (state_code, event_date)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS verified_hail_events_event_type_idx
+      ON verified_hail_events (event_type)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS verified_hail_events_ncei_event_id_idx
+      ON verified_hail_events (ncei_event_id)
+  `;
+
   // storm_days materialized view — pre-computed (event_date, region) ->
   // (max_hail_inches, max_wind_mph, source_count, confidence_tier) rollup
   // from verified_hail_events. Backs the dashboard's "Recent Storm Dates"
