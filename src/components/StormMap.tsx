@@ -420,6 +420,98 @@ function MapViewportController({
   return null;
 }
 
+/**
+ * Storm timeline scrubber — sits at the bottom-center of the map when NEXRAD
+ * is on for a selected storm with multiple ranked frames. Default state is
+ * "All frames merged" (the existing multi-frame composite); dragging the
+ * slider pins to a single frame so the rep can watch the storm cell move.
+ */
+function StormTimelineScrubber({
+  visible,
+  frameCount,
+  frameIndex,
+  timestamps,
+  onChange,
+}: {
+  visible: boolean;
+  frameCount: number;
+  frameIndex: number | null;
+  timestamps: string[];
+  onChange: (next: number | null) => void;
+}) {
+  if (!visible || frameCount <= 1) return null;
+  const sliderValue = frameIndex ?? 0;
+  const activeTimestamp = timestamps[sliderValue] ?? timestamps[0];
+  const isMerged = frameIndex === null;
+
+  return (
+    <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 w-[min(480px,80vw)] -translate-x-1/2">
+      <div className="pointer-events-auto rounded-2xl border border-stone-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+        <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+          <span>Storm Timeline</span>
+          <span className="font-mono normal-case tracking-normal text-stone-700">
+            {isMerged
+              ? `All ${frameCount} frames`
+              : `Frame ${sliderValue + 1} / ${frameCount}`}
+          </span>
+        </div>
+        <div className="mt-1 text-xs font-semibold text-stone-800">
+          {isMerged
+            ? 'Composite of every ranked frame'
+            : formatEasternTimestamp(activeTimestamp)}
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={frameCount - 1}
+          step={1}
+          value={sliderValue}
+          onChange={(e) => onChange(parseInt(e.target.value, 10))}
+          aria-label="Storm timeline frame"
+          className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-orange-500"
+        />
+        <div className="mt-2 flex items-center justify-between text-[10px] text-stone-500">
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className={`rounded-full px-2 py-1 font-semibold uppercase tracking-wide transition-colors ${
+              isMerged
+                ? 'bg-orange-500 text-white'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            Merged
+          </button>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() =>
+                onChange(Math.max(0, sliderValue - 1))
+              }
+              disabled={!isMerged && sliderValue === 0}
+              className="rounded border border-stone-200 px-2 py-1 font-mono text-stone-700 hover:bg-stone-100 disabled:opacity-40"
+              aria-label="Previous frame"
+            >
+              ◀
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                onChange(Math.min(frameCount - 1, sliderValue + 1))
+              }
+              disabled={!isMerged && sliderValue === frameCount - 1}
+              className="rounded border border-stone-200 px-2 py-1 font-mono text-stone-700 hover:bg-stone-100 disabled:opacity-40"
+              aria-label="Next frame"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LayerStatusPanel({
   showNexrad,
   showMrms,
@@ -648,6 +740,14 @@ function MapContent({
   const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
   const [liveSwathMeta, setLiveSwathMeta] = useState<{ maxInches: number; refTime: string } | null>(null);
   const [windCollection, setWindCollection] = useState<WindSwathCollection | null>(null);
+  // Storm timeline scrubber: null = "all frames merged" (default), otherwise
+  // the index inside `historicalRadarTimestamps` for the single frame to show.
+  // Reset whenever the selected storm changes so an old index from a previous
+  // storm doesn't leak into the new frame array.
+  const [scrubFrameIndex, setScrubFrameIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setScrubFrameIndex(null);
+  }, [selectedDate]);
   const [pointImpact, setPointImpact] = useState<{
     lat: number;
     lng: number;
@@ -1431,6 +1531,25 @@ function MapContent({
         timestamp={radarTimestamp}
         focusBounds={selectedDate ? stormContext.radarBounds : mapBounds}
         historicalTimestamps={selectedDate ? historicalRadarTimestamps : []}
+        frameIndex={
+          showNexrad &&
+          selectedDate &&
+          scrubFrameIndex !== null &&
+          historicalRadarTimestamps.length > 1
+            ? scrubFrameIndex
+            : null
+        }
+      />
+
+      <StormTimelineScrubber
+        visible={
+          Boolean(showNexrad && selectedDate) &&
+          historicalRadarTimestamps.length > 1
+        }
+        frameCount={historicalRadarTimestamps.length}
+        frameIndex={scrubFrameIndex}
+        timestamps={historicalRadarTimestamps}
+        onChange={setScrubFrameIndex}
       />
 
       <MRMSOverlay

@@ -171,6 +171,32 @@ export async function searchByCoordinates(
   radius = 50,
   signal?: AbortSignal,
 ): Promise<StormEvent[]> {
+  // Prefer the in-repo /api/storm/events aggregator when reachable. It pulls
+  // SPC + IEM LSR server-side, dedupes, and caches the result in Postgres so
+  // the next rep with the same neighborhood query gets it in <50ms.
+  try {
+    const params = new URLSearchParams({
+      lat: lat.toString(),
+      lng: lng.toString(),
+      radius: radius.toString(),
+      months: months.toString(),
+    });
+    const res = await fetch(`/api/storm/events?${params.toString()}`, {
+      signal: getTimeoutSignal(getFieldAssistantTimeoutMs(months), signal),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as { events?: StormEvent[] };
+      if (data.events && Array.isArray(data.events) && data.events.length > 0) {
+        return data.events;
+      }
+    }
+  } catch (err) {
+    if (signal?.aborted) return [];
+    // Network error or endpoint missing (dev without server) — fall through to
+    // the legacy multi-source path below.
+    console.warn('[stormApi] cached aggregator unavailable, falling back', err);
+  }
+
   const searchApiBase = getOptionalSearchApiBase();
 
   if (searchApiBase) {

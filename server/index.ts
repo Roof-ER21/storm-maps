@@ -29,6 +29,7 @@ import {
   buildWindImpactResponse,
 } from './storm/windSwathService.js';
 import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
+import { fetchStormEventsCached } from './storm/eventService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
@@ -890,6 +891,59 @@ app.get('/api/spc-proxy', async (req, res) => {
     res.send(text);
   } catch (err) {
     res.status(502).json({ error: 'Failed to fetch SPC data' });
+  }
+});
+
+// ── Storm events (cached aggregator) ────────────────────────────
+// Server-side multi-source storm event fetcher (SPC + IEM LSR), backed by
+// `event_cache`. Two reps querying nearly the same neighborhood share the
+// same 3–8 second decode work.
+interface StormEventsQuery {
+  lat?: string;
+  lng?: string;
+  radius?: string;
+  months?: string;
+  since?: string;
+  states?: string;
+}
+
+app.get('/api/storm/events', async (req, res) => {
+  try {
+    const q = req.query as StormEventsQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    const radiusMiles = Math.min(
+      200,
+      Math.max(1, parseFloat(q.radius ?? '50') || 50),
+    );
+    const months = Math.min(
+      120,
+      Math.max(1, parseInt(q.months ?? '12', 10) || 12),
+    );
+    const since = q.since && /^\d{4}-\d{2}-\d{2}$/.test(q.since) ? q.since : null;
+    const states =
+      q.states && q.states.length > 0
+        ? q.states.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+        : WIND_FOCUS_STATES;
+
+    const result = await fetchStormEventsCached({
+      lat,
+      lng,
+      radiusMiles,
+      months,
+      sinceDate: since,
+      states,
+    });
+    // Short browser cache so a back-button doesn't refire the full request.
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json(result);
+  } catch (err) {
+    console.error('[storm-events] failed', err);
+    res.status(500).json({ error: 'Failed to fetch storm events' });
   }
 });
 
