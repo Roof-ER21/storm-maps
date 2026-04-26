@@ -9,7 +9,6 @@ import crypto from 'crypto';
 import fs from 'fs';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import Stripe from 'stripe';
 
 // AI Property Analysis routes
 import { purgeExpiredCache } from './ai/services/enrichmentCache.js';
@@ -24,16 +23,45 @@ import aiImageProxy from './ai/routes/imageProxy.js';
 import aiDashboardRoutes from './ai/routes/dashboardRoutes.js';
 import aiBridgeRoutes from './ai/routes/bridgeRoutes.js';
 import { requireAuth, checkScanLimit } from './ai/authMiddleware.js';
+import {
+  buildWindSwathCollection,
+  buildWindImpactResponse,
+} from './storm/windSwathService.js';
+import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
+import { fetchStormEventsCached } from './storm/eventService.js';
+import { buildConsilience } from './storm/consilienceService.js';
+import { fetchRecentMpingReports, fetchMpingReportsForDate, isMpingConfigured } from './storm/mpingService.js';
+import {
+  startPrewarmScheduler,
+  getPrewarmStatus,
+} from './storm/scheduler.js';
+import {
+  buildHailFallbackCollection,
+  buildHailImpactResponse,
+} from './storm/hailFallbackService.js';
+import {
+  buildMrmsVectorPolygons,
+  buildMrmsNowVectorPolygons,
+  buildMrmsImpactResponse,
+} from './storm/mrmsService.js';
+import { buildMrmsRaster } from './storm/mrmsRaster.js';
+import { buildStormReportPdf } from './storm/reportPdf.js';
+import { requireAdmin } from './storm/adminAuth.js';
+import type { BoundingBox } from './storm/types.js';
+import {
+  upsertPushSubscription,
+  deletePushSubscription,
+  getPublicVapidKey,
+  isPushConfigured,
+} from './storm/pushService.js';
+import { startPushFanout, getPushFanoutStatus } from './storm/pushFanout.js';
+import { startLiveMrmsAlertWorker, getLiveMrmsAlertStatus } from './storm/liveMrmsAlertWorker.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
-const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
-const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET || '';
-const stripe = STRIPE_SECRET ? new Stripe(STRIPE_SECRET) : null;
-
-const PRICE_IDS: Record<string, string> = {
-  pro: process.env.STRIPE_PRICE_PRO || '',
-  company: process.env.STRIPE_PRICE_COMPANY || '',
-};
+const ADMIN_EMAIL = (process.env.ADMIN_EMAILS || 'ahmed@theroofdocs.com')
+  .split(',')[0]
+  .trim()
+  .toLowerCase();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '../uploads');
@@ -43,43 +71,10 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
-// Stripe webhook needs raw body — must be before express.json()
-app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  if (!stripe || !STRIPE_WEBHOOK_SECRET) {
-    res.status(503).json({ error: 'Stripe not configured' });
-    return;
-  }
-
-  try {
-    const sig = req.headers['stripe-signature'] as string;
-    const event = stripe.webhooks.constructEvent(req.body, sig, STRIPE_WEBHOOK_SECRET);
-
-    if (event.type === 'checkout.session.completed') {
-      const session = event.data.object as Stripe.Checkout.Session;
-      const userId = session.metadata?.userId;
-      const plan = session.metadata?.plan || 'pro';
-      if (userId) {
-        const uid = parseInt(userId, 10);
-        const cust = session.customer as string;
-        const subId = session.subscription as string;
-        await pgSql`UPDATE users SET plan = ${plan}, stripe_customer_id = ${cust}, stripe_subscription_id = ${subId} WHERE id = ${uid}`;
-      }
-    }
-
-    if (event.type === 'customer.subscription.deleted') {
-      const sub = event.data.object as Stripe.Subscription;
-      await pgSql`UPDATE users SET plan = 'free', stripe_subscription_id = NULL WHERE stripe_subscription_id = ${sub.id}`;
-    }
-
-    res.json({ received: true });
-  } catch {
-    res.status(400).json({ error: 'Webhook verification failed' });
-  }
-});
-
 app.use(express.json({ limit: '10mb' }));
 
-// Rate limiting
+// Rate limiting — global apiLimiter is generous (300 req / 15 min). The
+// push-subscribe and admin endpoints get their own tighter buckets.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 300, // 300 requests per window per IP
@@ -88,6 +83,28 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, try again later' },
 });
 app.use('/api/', apiLimiter);
+
+// Push subscribe is browser-driven and idempotent on `endpoint`. A real
+// rep hits it once per device per day. Allow ~20/hr/IP — enough for
+// device migration, well below abuse territory.
+const pushSubscribeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many push subscribe requests' },
+});
+app.use('/api/push/subscribe', pushSubscribeLimiter);
+
+// Admin endpoints get a lower ceiling than the rest of the API.
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many admin requests' },
+});
+app.use('/api/admin/', adminLimiter);
 
 // ── AI Property Analysis API ───────────────────────────
 // Auth + scan limits on write endpoints (POST), reads are open
@@ -107,31 +124,46 @@ app.use('/api/ai/dashboard', aiDashboardRoutes);
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // ── Auth ────────────────────────────────────────────────
-app.post('/api/auth/signup', async (req, res) => {
+// Signup endpoint removed: app is admin-default. Login + bootstrap remain
+// for explicit admin access. The seeded admin (server/migrate.ts) is the
+// only persistent user; bootstrap below mints a JWT for that admin so the
+// SPA can transparently authenticate against /api/admin/* with the JWT
+// path in `requireAdmin`.
+
+app.get('/api/auth/admin-bootstrap', async (req, res) => {
   try {
-    const { email, name, password } = req.body;
-    if (!email || !name || !password || password.length < 6) {
-      res.status(400).json({ error: 'Email, name, and password (6+ chars) required' });
+    // Optional soft gate: when BOOTSTRAP_PIN is set in env, require it as a
+    // ?pin= query param OR x-bootstrap-pin header. Default-open when unset
+    // so private deploys keep working without configuration.
+    const pin = process.env.BOOTSTRAP_PIN?.trim();
+    if (pin) {
+      const supplied =
+        ((req.query.pin as string | undefined) ?? '').trim() ||
+        ((req.headers['x-bootstrap-pin'] as string | undefined) ?? '').trim();
+      if (supplied !== pin) {
+        res.status(401).json({ error: 'Bootstrap PIN required' });
+        return;
+      }
+    }
+    const result = await pgSql`SELECT id, email, name, plan FROM users WHERE email = ${ADMIN_EMAIL} LIMIT 1`;
+    const user = result[0] as { id: number; email: string; name: string; plan: string } | undefined;
+    if (!user) {
+      res.status(503).json({ error: 'Admin user not seeded. Run db:migrate.' });
       return;
     }
-
-    const emailLower = email.toLowerCase().trim();
-    const existing = await pgSql`SELECT id FROM users WHERE email = ${emailLower}`;
-    if (existing.length > 0) {
-      res.status(409).json({ error: 'Email already registered' });
-      return;
-    }
-
-    const hash = await bcrypt.hash(password, 10);
-    const nameTrimmed = name.trim();
-    const result = await pgSql`INSERT INTO users (email, name, password_hash) VALUES (${emailLower}, ${nameTrimmed}, ${hash}) RETURNING id, email, name, plan`;
-    const user = result[0] as { id: number; email: string; name: string; plan: string };
     const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-
-    res.json({ ok: true, token, user: { id: user.id, email: user.email, name: user.name, plan: user.plan } });
+    res.json({ ok: true, token, user });
   } catch {
-    res.status(500).json({ error: 'Failed to create account' });
+    res.status(500).json({ error: 'Bootstrap failed' });
   }
+});
+
+/** Public-facing config endpoint — tells the SPA whether bootstrap requires a PIN. */
+app.get('/api/auth/bootstrap-config', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({
+    bootstrapPinRequired: Boolean(process.env.BOOTSTRAP_PIN?.trim()),
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -183,103 +215,7 @@ app.get('/api/auth/me', async (req, res) => {
   }
 });
 
-// ── Billing ─────────────────────────────────────────────
-function verifyToken(authHeader: string | undefined): { userId: number; email: string } | null {
-  if (!authHeader?.startsWith('Bearer ')) return null;
-  try {
-    return jwt.verify(authHeader.slice(7), JWT_SECRET) as { userId: number; email: string };
-  } catch {
-    return null;
-  }
-}
-
-app.post('/api/billing/checkout', async (req, res) => {
-  if (!stripe) {
-    res.status(503).json({ error: 'Stripe not configured. Set STRIPE_SECRET_KEY env var.' });
-    return;
-  }
-
-  const user = verifyToken(req.headers.authorization);
-  if (!user) {
-    res.status(401).json({ error: 'Not authenticated' });
-    return;
-  }
-
-  const plan = req.body.plan || 'pro';
-  const priceId = PRICE_IDS[plan];
-  if (!priceId) {
-    res.status(400).json({ error: `No Stripe price configured for plan: ${plan}. Set STRIPE_PRICE_PRO or STRIPE_PRICE_COMPANY env vars.` });
-    return;
-  }
-
-  try {
-    const origin = req.headers.origin || `https://${req.headers.host}`;
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
-      line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${origin}/?billing=success`,
-      cancel_url: `${origin}/?billing=cancel`,
-      metadata: { userId: String(user.userId), plan },
-      customer_email: user.email,
-    });
-
-    res.json({ url: session.url });
-  } catch {
-    res.status(500).json({ error: 'Failed to create checkout session' });
-  }
-});
-
-app.post('/api/billing/portal', async (req, res) => {
-  if (!stripe) {
-    res.status(503).json({ error: 'Stripe not configured' });
-    return;
-  }
-
-  const user = verifyToken(req.headers.authorization);
-  if (!user) {
-    res.status(401).json({ error: 'Not authenticated' });
-    return;
-  }
-
-  try {
-    const result = await pgSql`SELECT stripe_customer_id FROM users WHERE id = ${user.userId}`;
-    const row = result[0] as { stripe_customer_id: string | null } | undefined;
-    if (!row?.stripe_customer_id) {
-      res.status(400).json({ error: 'No billing account found. Subscribe first.' });
-      return;
-    }
-
-    const origin = req.headers.origin || `https://${req.headers.host}`;
-    const session = await stripe.billingPortal.sessions.create({
-      customer: row.stripe_customer_id,
-      return_url: origin,
-    });
-
-    res.json({ url: session.url });
-  } catch {
-    res.status(500).json({ error: 'Failed to create portal session' });
-  }
-});
-
-app.get('/api/billing/status', async (req, res) => {
-  const user = verifyToken(req.headers.authorization);
-  if (!user) {
-    res.status(401).json({ error: 'Not authenticated' });
-    return;
-  }
-
-  try {
-    const result = await pgSql`SELECT plan, stripe_customer_id, stripe_subscription_id FROM users WHERE id = ${user.userId}`;
-    const row = result[0] as { plan: string; stripe_customer_id: string | null; stripe_subscription_id: string | null } | undefined;
-    res.json({
-      plan: row?.plan || 'free',
-      hasSubscription: Boolean(row?.stripe_subscription_id),
-    });
-  } catch {
-    res.status(500).json({ error: 'Failed to check billing' });
-  }
-});
+// Billing routes removed (Stripe). App is admin-default; no subscription tier.
 
 // ── Health check ────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
@@ -742,6 +678,134 @@ app.post('/api/demo/seed', async (_req, res) => {
   }
 });
 
+// ── Wind swath polygons (storm-day or live now-cast) ──────
+const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE', 'NJ'];
+
+interface WindBoundsQuery {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  states?: string;
+  live?: string;
+  /** Optional ISO timestamps for the storm-timeline-scrubber slice. */
+  windowStart?: string;
+  windowEnd?: string;
+}
+
+function parseWindBounds(q: WindBoundsQuery) {
+  const n = parseFloat(q.north ?? '');
+  const s = parseFloat(q.south ?? '');
+  const e = parseFloat(q.east ?? '');
+  const w = parseFloat(q.west ?? '');
+  if (![n, s, e, w].every(Number.isFinite)) return null;
+  if (n <= s || e <= w) return null;
+  return { north: n, south: s, east: e, west: w };
+}
+
+function parseStates(raw?: string): string[] {
+  if (!raw) return WIND_FOCUS_STATES;
+  return raw
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function isValidIsoDate(value?: string): boolean {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+app.get('/api/wind/swath-polygons', async (req, res) => {
+  try {
+    const q = req.query as WindBoundsQuery;
+    const bounds = parseWindBounds(q);
+    const date = q.date ?? new Date().toISOString().slice(0, 10);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const collection = await buildWindSwathCollection({
+      date,
+      bounds,
+      states: parseStates(q.states),
+      includeLive: q.live === '1',
+      windowStartIso: q.windowStart,
+      windowEndIso: q.windowEnd,
+    });
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(collection);
+  } catch (err) {
+    console.error('[wind] swath-polygons failed', err);
+    res.status(500).json({ error: 'Failed to build wind swaths' });
+  }
+});
+
+app.get('/api/wind/now-polygons', async (req, res) => {
+  try {
+    const q = req.query as WindBoundsQuery;
+    const bounds = parseWindBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const collection = await buildWindSwathCollection({
+      date: today,
+      bounds,
+      states: parseStates(q.states),
+      includeLive: true,
+    });
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json(collection);
+  } catch (err) {
+    console.error('[wind] now-polygons failed', err);
+    res.status(500).json({ error: 'Failed to build live wind swaths' });
+  }
+});
+
+interface WindImpactRequestBody {
+  date?: string;
+  bounds?: { north: number; south: number; east: number; west: number };
+  states?: string[];
+  live?: boolean;
+  points?: Array<{ id: string; lat: number; lng: number }>;
+}
+
+app.post('/api/wind/impact', async (req, res) => {
+  try {
+    const body = (req.body || {}) as WindImpactRequestBody;
+    if (
+      !body.bounds ||
+      !Array.isArray(body.points) ||
+      body.points.length === 0
+    ) {
+      res.status(400).json({ error: 'bounds and points required' });
+      return;
+    }
+    const date = body.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const response = await buildWindImpactResponse({
+      date,
+      bounds: body.bounds,
+      states: body.states && body.states.length > 0 ? body.states : WIND_FOCUS_STATES,
+      includeLive: Boolean(body.live),
+      points: body.points,
+    });
+    res.json(response);
+  } catch (err) {
+    console.error('[wind] impact failed', err);
+    res.status(500).json({ error: 'Failed to compute wind impact' });
+  }
+});
+
 // ── SPC CSV proxy — avoids CORS issues with spc.noaa.gov ──
 app.get('/api/spc-proxy', async (req, res) => {
   try {
@@ -765,6 +829,617 @@ app.get('/api/spc-proxy', async (req, res) => {
   }
 });
 
+// ── Hail polygon fallback ───────────────────────────────────────
+// Crisp MRMS MESH polygons are produced by the Susan21 backend (GRIB decode
+// + d3-contour). This in-repo fallback uses SPC + IEM hail point reports
+// buffered into IHM-shaped 13-band polygons. Used when:
+//   - the Susan21 endpoint is down or returns empty
+//   - reps are running this app standalone without the Susan21 dependency
+interface HailFallbackQuery {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  states?: string;
+}
+
+function parseHailFallbackBounds(q: HailFallbackQuery) {
+  const n = parseFloat(q.north ?? '');
+  const s = parseFloat(q.south ?? '');
+  const e = parseFloat(q.east ?? '');
+  const w = parseFloat(q.west ?? '');
+  if (![n, s, e, w].every(Number.isFinite)) return null;
+  if (n <= s || e <= w) return null;
+  return { north: n, south: s, east: e, west: w };
+}
+
+// Real MRMS MESH GRIB pipeline → IHM 13-band MultiPolygons. When this
+// succeeds it returns crisp radar-derived polygons; on any failure
+// (network, malformed GRIB, unsupported template) the frontend falls
+// through to /api/hail/swath-fallback below.
+app.get('/api/hail/mrms-vector', async (req, res) => {
+  try {
+    const q = req.query as HailFallbackQuery & { anchorTimestamp?: string };
+    const bounds = parseHailFallbackBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const date = q.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const collection = await buildMrmsVectorPolygons({
+      date,
+      bounds,
+      anchorIso: q.anchorTimestamp,
+    });
+    if (!collection) {
+      res.status(502).json({ error: 'MRMS pipeline unavailable' });
+      return;
+    }
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json(collection);
+  } catch (err) {
+    console.error('[mrms-vector] failed', err);
+    res.status(500).json({ error: 'Failed to build MRMS vector polygons' });
+  }
+});
+
+// In-repo storm-day PDF report — fallback when Susan21 is unavailable.
+// Uses PDFKit (no headless browser) and pulls vector swaths from
+// swath_cache so the PDF reflects the same hail polygons the map shows.
+interface ReportPdfBody {
+  address?: string;
+  lat?: number;
+  lng?: number;
+  radiusMiles?: number;
+  dateOfLoss?: string;
+  anchorTimestamp?: string;
+  rep?: { name?: string; phone?: string; email?: string };
+  company?: { name?: string };
+  evidence?: Array<{
+    imageUrl?: string;
+    imageDataUrl?: string;
+    title?: string;
+    caption?: string;
+  }>;
+}
+
+app.post('/api/hail/storm-report-pdf', async (req, res) => {
+  try {
+    const body = (req.body || {}) as ReportPdfBody;
+    if (
+      !body.address ||
+      typeof body.lat !== 'number' ||
+      typeof body.lng !== 'number' ||
+      !body.dateOfLoss ||
+      !isValidIsoDate(body.dateOfLoss)
+    ) {
+      res.status(400).json({
+        error: 'address, lat, lng, dateOfLoss (YYYY-MM-DD) all required',
+      });
+      return;
+    }
+    const pdf = await buildStormReportPdf({
+      address: body.address,
+      lat: body.lat,
+      lng: body.lng,
+      radiusMiles: Math.max(1, Math.min(200, body.radiusMiles ?? 35)),
+      dateOfLoss: body.dateOfLoss,
+      anchorTimestamp: body.anchorTimestamp ?? null,
+      rep: {
+        name: body.rep?.name ?? 'Roof-ER21 Rep',
+        phone: body.rep?.phone,
+        email: body.rep?.email,
+      },
+      company: { name: body.company?.name ?? 'Roof-ER21' },
+      evidence: body.evidence,
+    });
+    res.set('Content-Type', 'application/pdf');
+    res.set(
+      'Content-Disposition',
+      `attachment; filename="StormReport_${body.address.replace(/[^a-zA-Z0-9]/g, '_')}_${body.dateOfLoss}.pdf"`,
+    );
+    res.send(pdf);
+  } catch (err) {
+    console.error('[storm-report-pdf] failed', err);
+    res.status(500).json({ error: 'Failed to build PDF' });
+  }
+});
+
+// MRMS raster overlay (PNG image + metadata) — replaces the cross-repo
+// Susan21 endpoints `mrms-historical-image` and `mrms-historical-meta`.
+// Same color palette as the vector pipeline so the two layers always agree.
+interface MrmsRasterQuery {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  anchorTimestamp?: string;
+}
+
+function parseRasterQuery(q: MrmsRasterQuery): {
+  date: string | null;
+  bounds: BoundingBox | null;
+} {
+  const bounds = parseHailFallbackBounds(q);
+  const date = q.date ?? new Date().toISOString().slice(0, 10);
+  if (!isValidIsoDate(date)) return { date: null, bounds: null };
+  return { date, bounds };
+}
+
+app.get('/api/hail/mrms-image', async (req, res) => {
+  try {
+    const q = req.query as MrmsRasterQuery;
+    const { date, bounds } = parseRasterQuery(q);
+    if (!date || !bounds) {
+      res.status(400).json({ error: 'date + north/south/east/west required' });
+      return;
+    }
+    const result = await buildMrmsRaster({
+      date,
+      bounds,
+      anchorIso: q.anchorTimestamp,
+    });
+    if (!result) {
+      res.status(502).json({ error: 'MRMS raster unavailable' });
+      return;
+    }
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=600');
+    res.send(Buffer.from(result.pngBytes));
+  } catch (err) {
+    console.error('[mrms-image] failed', err);
+    res.status(500).json({ error: 'Failed to build MRMS raster' });
+  }
+});
+
+app.get('/api/hail/mrms-meta', async (req, res) => {
+  try {
+    const q = req.query as MrmsRasterQuery;
+    const { date, bounds } = parseRasterQuery(q);
+    if (!date || !bounds) {
+      res.status(400).json({ error: 'date + north/south/east/west required' });
+      return;
+    }
+    const result = await buildMrmsRaster({
+      date,
+      bounds,
+      anchorIso: q.anchorTimestamp,
+    });
+    if (!result) {
+      // Mirror the field-assistant shape so the frontend can render its
+      // "No archived MRMS hail pixels" message instead of erroring.
+      res.json({
+        product: 'mesh1440',
+        ref_time: q.anchorTimestamp ?? `${date}T23:30:00Z`,
+        has_hail: false,
+        max_mesh_inches: 0,
+        bounds,
+      });
+      return;
+    }
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({
+      product: 'mesh1440',
+      ref_time: result.metadata.refTime,
+      generated_at: new Date().toISOString(),
+      has_hail: result.metadata.hasHail,
+      max_mesh_inches: result.metadata.maxMeshInches,
+      max_mesh_mm: result.metadata.maxMeshInches * 25.4,
+      hail_pixels: result.metadata.hailPixels,
+      bounds: result.metadata.bounds,
+      requested_bounds: result.metadata.requestedBounds,
+      image_size: result.metadata.imageSize,
+      archive_url: result.metadata.sourceFile,
+    });
+  } catch (err) {
+    console.error('[mrms-meta] failed', err);
+    res.status(500).json({ error: 'Failed to fetch MRMS metadata' });
+  }
+});
+
+// Live now-cast: today's most-recent MRMS file, decoded + contoured.
+app.get('/api/hail/mrms-now-vector', async (req, res) => {
+  try {
+    const q = req.query as HailFallbackQuery;
+    const bounds = parseHailFallbackBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const collection = await buildMrmsNowVectorPolygons(bounds);
+    if (!collection) {
+      res.status(502).json({ error: 'MRMS now-cast unavailable' });
+      return;
+    }
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json({ ...collection, live: true, refTime: collection.metadata.refTime });
+  } catch (err) {
+    console.error('[mrms-now-vector] failed', err);
+    res.status(500).json({ error: 'Failed to build MRMS now-cast' });
+  }
+});
+
+interface MrmsImpactBody {
+  date?: string;
+  bounds?: { north: number; south: number; east: number; west: number };
+  anchorTimestamp?: string;
+  points?: Array<{ id: string; lat: number; lng: number }>;
+}
+
+app.post('/api/hail/mrms-impact', async (req, res) => {
+  try {
+    const body = (req.body || {}) as MrmsImpactBody;
+    if (
+      !body.bounds ||
+      !Array.isArray(body.points) ||
+      body.points.length === 0
+    ) {
+      res.status(400).json({ error: 'bounds and points required' });
+      return;
+    }
+    const date = body.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const response = await buildMrmsImpactResponse({
+      date,
+      bounds: body.bounds,
+      anchorIso: body.anchorTimestamp,
+      points: body.points,
+    });
+    if (!response) {
+      res.status(502).json({ error: 'MRMS pipeline unavailable' });
+      return;
+    }
+    res.json(response);
+  } catch (err) {
+    console.error('[mrms-impact] failed', err);
+    res.status(500).json({ error: 'Failed to compute MRMS impact' });
+  }
+});
+
+app.get('/api/hail/swath-fallback', async (req, res) => {
+  try {
+    const q = req.query as HailFallbackQuery;
+    const bounds = parseHailFallbackBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const date = q.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const states =
+      q.states && q.states.length > 0
+        ? q.states.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+        : WIND_FOCUS_STATES;
+    const collection = await buildHailFallbackCollection({
+      date,
+      bounds,
+      states,
+    });
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(collection);
+  } catch (err) {
+    console.error('[hail-fallback] failed', err);
+    res.status(500).json({ error: 'Failed to build hail fallback' });
+  }
+});
+
+interface HailImpactBody {
+  date?: string;
+  bounds?: { north: number; south: number; east: number; west: number };
+  states?: string[];
+  points?: Array<{ id: string; lat: number; lng: number }>;
+}
+
+app.post('/api/hail/impact-fallback', async (req, res) => {
+  try {
+    const body = (req.body || {}) as HailImpactBody;
+    if (
+      !body.bounds ||
+      !Array.isArray(body.points) ||
+      body.points.length === 0
+    ) {
+      res.status(400).json({ error: 'bounds and points required' });
+      return;
+    }
+    const date = body.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const response = await buildHailImpactResponse({
+      date,
+      bounds: body.bounds,
+      states: body.states && body.states.length > 0 ? body.states : WIND_FOCUS_STATES,
+      points: body.points,
+    });
+    res.json(response);
+  } catch (err) {
+    console.error('[hail-impact-fallback] failed', err);
+    res.status(500).json({ error: 'Failed to compute hail impact' });
+  }
+});
+
+// ── Storm events (cached aggregator) ────────────────────────────
+// Server-side multi-source storm event fetcher (SPC + IEM LSR), backed by
+// `event_cache`. Two reps querying nearly the same neighborhood share the
+// same 3–8 second decode work.
+interface StormEventsQuery {
+  lat?: string;
+  lng?: string;
+  radius?: string;
+  months?: string;
+  since?: string;
+  states?: string;
+}
+
+app.get('/api/storm/events', async (req, res) => {
+  try {
+    const q = req.query as StormEventsQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    const radiusMiles = Math.min(
+      200,
+      Math.max(1, parseFloat(q.radius ?? '50') || 50),
+    );
+    const months = Math.min(
+      120,
+      Math.max(1, parseInt(q.months ?? '12', 10) || 12),
+    );
+    const since = q.since && /^\d{4}-\d{2}-\d{2}$/.test(q.since) ? q.since : null;
+    const states =
+      q.states && q.states.length > 0
+        ? q.states.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+        : WIND_FOCUS_STATES;
+
+    const result = await fetchStormEventsCached({
+      lat,
+      lng,
+      radiusMiles,
+      months,
+      sinceDate: since,
+      states,
+    });
+    // Short browser cache so a back-button doesn't refire the full request.
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json(result);
+  } catch (err) {
+    console.error('[storm-events] failed', err);
+    res.status(500).json({ error: 'Failed to fetch storm events' });
+  }
+});
+
+// ── Consilience (5-source corroboration) ──────────────────────
+// GET /api/storm/consilience?lat=X&lng=Y&date=YYYY-MM-DD[&radius=5]
+//   Returns the 5-source consilience result for a property + date.
+//   Rep dashboard hits this to render the yellow-flag low-confidence indicator
+//   on storm date cards. Synoptic source is silently skipped if SYNOPTIC_TOKEN
+//   isn't set in env.
+interface ConsilienceQuery {
+  lat?: string;
+  lng?: string;
+  date?: string;
+  radius?: string;
+}
+
+app.get('/api/storm/consilience', async (req, res) => {
+  try {
+    const q = req.query as ConsilienceQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    if (!q.date || !/^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      res.status(400).json({ error: 'date (YYYY-MM-DD) required' });
+      return;
+    }
+    const radius = q.radius
+      ? Math.min(25, Math.max(1, parseFloat(q.radius) || 5))
+      : 5;
+    const result = await buildConsilience({
+      lat,
+      lng,
+      date: q.date,
+      radiusMiles: radius,
+    });
+    // 10-min browser cache; consilience drift over <10min is negligible
+    // because the underlying SPC/IEM/MRMS/Synoptic feeds update slower.
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json(result);
+  } catch (err) {
+    console.error('[consilience] failed', err);
+    res.status(500).json({ error: 'Failed to compute consilience' });
+  }
+});
+
+// ── mPING crowd-source feed ───────────────────────────────────
+// GET /api/storm/mping?windowMinutes=60[&north&south&east&west]   live window
+// GET /api/storm/mping?date=YYYY-MM-DD[&north&south&east&west]    historical
+//   Returns mPING hail reports as the map layer + the 6th consilience source.
+//   Returns empty array when MPING_API_TOKEN is unset (no error — silent skip).
+interface MpingQuery {
+  date?: string;
+  windowMinutes?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  category?: 'Hail' | 'Wind' | 'Tornado';
+}
+
+app.get('/api/storm/mping', async (req, res) => {
+  try {
+    const q = req.query as MpingQuery;
+    const bounds =
+      q.north && q.south && q.east && q.west
+        ? {
+            north: parseFloat(q.north),
+            south: parseFloat(q.south),
+            east: parseFloat(q.east),
+            west: parseFloat(q.west),
+          }
+        : undefined;
+    if (q.date && /^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      const reports = await fetchMpingReportsForDate({
+        date: q.date,
+        bounds,
+        category: q.category ?? 'Hail',
+      });
+      res.set('Cache-Control', 'public, max-age=600');
+      res.json({ ok: true, reports, configured: isMpingConfigured() });
+      return;
+    }
+    const minutes = q.windowMinutes
+      ? Math.min(720, Math.max(15, parseInt(q.windowMinutes, 10) || 60))
+      : 60;
+    const reports = await fetchRecentMpingReports({
+      windowMinutes: minutes,
+      bounds,
+      category: q.category ?? 'Hail',
+    });
+    // Live feed — short cache so the map layer refreshes meaningfully.
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json({ ok: true, reports, configured: isMpingConfigured() });
+  } catch (err) {
+    console.error('[mping] failed', err);
+    res.status(500).json({ error: 'Failed to fetch mPING reports' });
+  }
+});
+
+// ── Cache visibility (admin) ───────────────────────────────────
+// Anyone can hit it — the response is metadata only (counts + dates), no
+// cached payloads. Useful for the admin dashboard and for quick "is the
+// pre-warm working?" checks.
+app.get('/api/admin/cache-status', requireAdmin, async (_req, res) => {
+  try {
+    const summary = await getCacheSummary();
+    const total = summary.reduce((sum, row) => sum + row.total, 0);
+    const live = summary.reduce((sum, row) => sum + row.live, 0);
+    res.json({
+      ok: true,
+      totals: { total, live, expired: total - live },
+      bySource: summary,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[cache-status] failed', err);
+    res.status(500).json({ ok: false, error: 'Failed to read cache status' });
+  }
+});
+
+app.post('/api/admin/cache-purge', requireAdmin, async (_req, res) => {
+  try {
+    const purged = await purgeExpiredSwaths();
+    res.json({ ok: true, purged });
+  } catch (err) {
+    console.error('[cache-purge] failed', err);
+    res.status(500).json({ ok: false, error: 'Failed to purge cache' });
+  }
+});
+
+app.get('/api/admin/prewarm-status', requireAdmin, (_req, res) => {
+  const enabled =
+    process.env.HAIL_YES_PREWARM === '1' ||
+    process.env.NODE_ENV === 'production';
+  res.json(getPrewarmStatus(enabled));
+});
+
+// ── Push subscriptions ─────────────────────────────────────────
+// POST /api/push/subscribe  — body: { endpoint, keys, repId?, territoryStates?, label? }
+// DELETE /api/push/subscribe — body: { endpoint }
+// GET /api/push/vapid-public — for the frontend to grab the VAPID public key
+//   (also exposed as VITE_VAPID_PUBLIC_KEY at build time, but this endpoint
+//   keeps the rotation story simpler — no rebuild needed when keys change).
+app.get('/api/push/vapid-public', (_req, res) => {
+  res.json({
+    ok: isPushConfigured(),
+    publicKey: getPublicVapidKey() || null,
+  });
+});
+
+interface PushSubscribeBody {
+  endpoint?: string;
+  keys?: { p256dh?: string; auth?: string };
+  repId?: string;
+  territoryStates?: string[];
+  label?: string;
+}
+
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const body = (req.body || {}) as PushSubscribeBody;
+    if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
+      res.status(400).json({ error: 'endpoint and keys required' });
+      return;
+    }
+    const result = await upsertPushSubscription({
+      endpoint: body.endpoint,
+      keys: { p256dh: body.keys.p256dh, auth: body.keys.auth },
+      repId: body.repId ?? null,
+      territoryStates:
+        body.territoryStates && body.territoryStates.length > 0
+          ? body.territoryStates
+          : ['VA', 'MD', 'PA', 'DE', 'NJ', 'DC'],
+      userAgent: req.headers['user-agent'] ?? undefined,
+      label: body.label,
+    });
+    if (!result.ok) {
+      res.status(500).json({ error: result.error ?? 'subscribe failed' });
+      return;
+    }
+    res.json({ ok: true, id: result.id });
+  } catch (err) {
+    console.error('[push/subscribe] failed', err);
+    res.status(500).json({ error: 'subscribe failed' });
+  }
+});
+
+app.delete('/api/push/subscribe', async (req, res) => {
+  try {
+    const body = (req.body || {}) as { endpoint?: string };
+    if (!body.endpoint) {
+      res.status(400).json({ error: 'endpoint required' });
+      return;
+    }
+    const result = await deletePushSubscription(body.endpoint);
+    res.json({ ok: result.ok });
+  } catch (err) {
+    console.error('[push/unsubscribe] failed', err);
+    res.status(500).json({ error: 'unsubscribe failed' });
+  }
+});
+
+app.get('/api/admin/push-status', requireAdmin, (_req, res) => {
+  res.json(getPushFanoutStatus());
+});
+
+app.get('/api/admin/live-mrms-status', requireAdmin, (_req, res) => {
+  res.json(getLiveMrmsAlertStatus());
+});
+
+// Lazy purge timer so expired rows don't accumulate. 6-hour cadence is
+// plenty given the per-row index lookup we do on each read anyway.
+setInterval(() => {
+  void purgeExpiredSwaths();
+}, 6 * 60 * 60 * 1000).unref();
+
 // ── SPA fallback ────────────────────────────────────────
 app.get('/report/:slug', (_req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
@@ -776,6 +1451,13 @@ app.get('{*path}', (_req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Hail Yes! running on port ${PORT}`);
+  // Kick the cache prewarm scheduler. No-op in dev unless HAIL_YES_PREWARM=1.
+  startPrewarmScheduler();
+  // Kick the NWS-warning push fan-out. No-op without VAPID keys.
+  startPushFanout();
+  // Kick the live MRMS hail-band alert worker. No-op unless production OR
+  // HAIL_YES_LIVE_MRMS_ALERT=1.
+  startLiveMrmsAlertWorker();
 });
 
 // ── Cache cleanup ───────────────────────────────────────

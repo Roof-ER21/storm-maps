@@ -8,6 +8,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchStormImpact, type StormImpactResponse } from '../services/mrmsApi';
+import type { BoundingBox } from '../types/storm';
 
 interface AddressImpactBadgeProps {
   selectedDate: string | null;
@@ -15,6 +16,8 @@ interface AddressImpactBadgeProps {
   searchLat: number | null;
   searchLng: number | null;
   addressLabel: string | null;
+  /** Storm bounds — passed to the in-repo MRMS impact endpoint. */
+  bounds?: BoundingBox | null;
 }
 
 export default function AddressImpactBadge({
@@ -23,6 +26,7 @@ export default function AddressImpactBadge({
   searchLat,
   searchLng,
   addressLabel,
+  bounds,
 }: AddressImpactBadgeProps) {
   const [data, setData] = useState<StormImpactResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,6 +42,7 @@ export default function AddressImpactBadge({
     fetchStormImpact({
       date: selectedDate,
       anchorTimestamp: anchorTimestamp || null,
+      bounds: bounds ?? null,
       points: [{ id: 'searched-address', lat: searchLat, lng: searchLng }],
     })
       .then((res) => {
@@ -48,7 +53,7 @@ export default function AddressImpactBadge({
       });
 
     return () => { cancelled = true; };
-  }, [selectedDate, anchorTimestamp, searchLat, searchLng]);
+  }, [selectedDate, anchorTimestamp, searchLat, searchLng, bounds]);
 
   if (!selectedDate || searchLat === null || searchLng === null) {
     return null;

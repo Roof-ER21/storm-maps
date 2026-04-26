@@ -32,6 +32,15 @@ import type {
   EvidenceItem,
 } from './types/storm';
 import { getStormCanvassPriority, DEFAULT_WIN_CHECKLIST } from './types/storm';
+import {
+  filterEventsToFocusTerritory,
+  isInFocusTerritory,
+  FOCUS_STATE_CODES,
+} from './data/territories';
+import {
+  toEasternDateKey,
+  getTodayEasternKey,
+} from './services/dateUtils';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
@@ -59,6 +68,7 @@ import AppHeader from './components/AppHeader';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const PipelinePage = lazy(() => import('./components/PipelinePage'));
+const AdminPage = lazy(() => import('./components/AdminPage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
@@ -539,17 +549,44 @@ function downloadRouteCsv(params: {
 }
 
 const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
-const LandingPage = lazy(() => import('./components/LandingPage'));
 
-const USER_NAME_KEY = 'hail-yes:user-name';
 const TOKEN_KEY = 'hailyes_token';
 const USER_KEY = 'hailyes_user';
 
-interface AuthUser {
-  id: number;
-  email: string;
-  name: string;
-  plan: string;
+function BootstrapPinPrompt({ onSubmit }: { onSubmit: (pin: string) => void }) {
+  const [pin, setPin] = useState('');
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-stone-950 text-white p-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (pin.trim()) onSubmit(pin.trim());
+        }}
+        className="w-full max-w-sm rounded-3xl border border-stone-800 bg-stone-900 p-8 shadow-2xl"
+      >
+        <div className="flex items-center gap-3 mb-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white font-bold text-sm">H!</div>
+          <span className="text-white font-bold">Hail Yes!</span>
+        </div>
+        <p className="text-sm text-stone-400 mb-4">Enter access PIN to continue.</p>
+        <input
+          type="password"
+          autoFocus
+          value={pin}
+          onChange={(e) => setPin(e.target.value)}
+          placeholder="PIN"
+          className="w-full rounded-xl border border-stone-800 bg-stone-950 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
+        />
+        <button
+          type="submit"
+          disabled={!pin.trim()}
+          className="mt-4 w-full rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 text-sm font-semibold text-white shadow-lg disabled:opacity-50"
+        >
+          Unlock
+        </button>
+      </form>
+    </div>
+  );
 }
 
 function ReportRoute({ slug }: { slug: string }) {
@@ -560,54 +597,107 @@ function ReportRoute({ slug }: { slug: string }) {
   );
 }
 
+// Admin-default mode. The app no longer has a signup/landing gate. On boot
+// we hit /api/auth/admin-bootstrap to mint a JWT for the seeded admin user
+// (server/migrate.ts) so the SPA can authenticate against /api/admin/*
+// transparently. If bootstrap fails (e.g. DB cold), we fall back to a
+// synthetic admin user so the UI still renders — admin endpoints will 401
+// until the next bootstrap retry.
 function AppRouter() {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const stored = localStorage.getItem(USER_KEY);
-    return stored ? (JSON.parse(stored) as AuthUser) : null;
-  });
-
-  // Keep old name key working for backwards compat
-  const [userName, setUserName] = useState(() => localStorage.getItem(USER_NAME_KEY) || '');
-
   const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
-  if (reportSlug) return <ReportRoute slug={reportSlug} />;
 
-  // Show landing if neither auth method has a user
-  if (!user && !userName) {
+  const [pinRequired, setPinRequired] = useState(false);
+  const [pinPrompt, setPinPrompt] = useState(false);
+
+  useEffect(() => {
+    if (reportSlug) return;
+    if (localStorage.getItem(TOKEN_KEY) && localStorage.getItem(USER_KEY)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        // Check if a PIN is required first — short-circuits the bootstrap call.
+        const cfgRes = await fetch('/api/auth/bootstrap-config');
+        if (cfgRes.ok) {
+          const cfg = (await cfgRes.json()) as { bootstrapPinRequired?: boolean };
+          if (cfg.bootstrapPinRequired) {
+            const stored = localStorage.getItem('hailyes_bootstrap_pin') ?? '';
+            if (!stored) {
+              if (!cancelled) {
+                setPinRequired(true);
+                setPinPrompt(true);
+              }
+              return;
+            }
+            const res = await fetch(`/api/auth/admin-bootstrap?pin=${encodeURIComponent(stored)}`);
+            if (!res.ok) {
+              localStorage.removeItem('hailyes_bootstrap_pin');
+              if (!cancelled) {
+                setPinRequired(true);
+                setPinPrompt(true);
+              }
+              return;
+            }
+            const data = await res.json();
+            if (cancelled) return;
+            if (data?.token && data?.user) {
+              localStorage.setItem(TOKEN_KEY, data.token);
+              localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+            }
+            return;
+          }
+        }
+        const res = await fetch('/api/auth/admin-bootstrap');
+        if (!res.ok) throw new Error(`bootstrap ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.token && data?.user) {
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        }
+      } catch {
+        // Non-fatal — synthetic user below covers the UI render path.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [reportSlug]);
+
+  if (pinPrompt) {
     return (
-      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
-        <LandingPage
-          onGetStarted={(authUser) => {
-            localStorage.setItem(USER_KEY, JSON.stringify(authUser));
-            localStorage.setItem(USER_NAME_KEY, authUser.name);
-            setUser(authUser);
-            setUserName(authUser.name);
-          }}
-          onLogin={(authUser) => {
-            localStorage.setItem(USER_KEY, JSON.stringify(authUser));
-            localStorage.setItem(USER_NAME_KEY, authUser.name);
-            setUser(authUser);
-            setUserName(authUser.name);
-          }}
-        />
-      </Suspense>
+      <BootstrapPinPrompt
+        onSubmit={(pin) => {
+          localStorage.setItem('hailyes_bootstrap_pin', pin);
+          setPinPrompt(false);
+          window.location.reload();
+        }}
+      />
     );
   }
+  void pinRequired;
 
-  return <App onLogout={() => {
-    localStorage.removeItem(USER_NAME_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(TOKEN_KEY);
-    setUserName('');
-    setUser(null);
-  }} />;
+  if (reportSlug) return <ReportRoute slug={reportSlug} />;
+
+  return <App />;
 }
 
-function App({ onLogout }: { onLogout: () => void }) {
+function App() {
   const notificationsSupported = isNotificationSupported();
   const { profile: repProfile, updateProfile: updateRepProfile } = useRepProfile();
   const { showOnboarding, markComplete: completeOnboarding } = useOnboarding();
-  const [activeView, setActiveView] = useState<AppView>('dashboard');
+  // Hidden admin route — bookmark `https://app/#admin` to access. Not added
+  // to the main nav so reps don't see it.
+  const initialView: AppView =
+    typeof window !== 'undefined' && window.location.hash === '#admin'
+      ? 'admin'
+      : 'dashboard';
+  const [activeView, setActiveView] = useState<AppView>(initialView);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onHashChange = () => {
+      if (window.location.hash === '#admin') setActiveView('admin');
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
   const [aiSlideOpen, setAiSlideOpen] = useState(false);
   const [aiSlideAddress, setAiSlideAddress] = useState('');
@@ -704,31 +794,75 @@ function App({ onLogout }: { onLogout: () => void }) {
 
   const activeStormAlerts = stormAlerts.filter((a) => !a.dismissed);
 
-  const filteredEvents = useMemo(
-    () =>
-      events.filter((event) => {
-        if (event.eventType === 'Hail') {
-          return eventFilters.hail;
-        }
-        if (event.eventType === 'Thunderstorm Wind') {
-          return eventFilters.wind;
+  const [territoryOnly, setTerritoryOnly] = useState<boolean>(true);
+
+  // Auto-disable the VA/MD/PA territory filter whenever a search lands the rep
+  // outside the focus zone (e.g. checking storms in NC during expansion).
+  // The toggle remains user-controllable; this just keeps it from silently
+  // hiding all events for an out-of-territory search.
+  useEffect(() => {
+    if (
+      !territoryOnly ||
+      !searchSummary ||
+      typeof queryLocation.lat !== 'number' ||
+      typeof queryLocation.lng !== 'number'
+    ) {
+      return;
+    }
+    const inTerritory = isInFocusTerritory({
+      lat: queryLocation.lat,
+      lng: queryLocation.lng,
+    });
+    if (!inTerritory) {
+      setTerritoryOnly(false);
+    }
+  }, [searchSummary, queryLocation.lat, queryLocation.lng, territoryOnly]);
+
+  const filteredEvents = useMemo(() => {
+    const byType = events.filter((event) => {
+      if (event.eventType === 'Hail') return eventFilters.hail;
+      if (event.eventType === 'Thunderstorm Wind') return eventFilters.wind;
+      return false;
+    });
+    if (!territoryOnly) return byType;
+    return filterEventsToFocusTerritory(byType);
+  }, [eventFilters, events, territoryOnly]);
+
+  const filteredSwaths = useMemo(() => {
+    if (!eventFilters.hail) return [];
+    if (!territoryOnly) return swaths;
+    // Keep any swath that intersects the focus bbox via at least one
+    // coordinate. NHP centerlines outside VA/MD/PA fall away here.
+    return swaths.filter((swath) => {
+      const geom = swath.geometry;
+      const accCoords = (coords: number[][]): boolean => {
+        for (const [lng, lat] of coords) {
+          if (isInFocusTerritory({ lat, lng })) return true;
         }
         return false;
-      }),
-    [eventFilters, events],
-  );
-
-  const filteredSwaths = useMemo(
-    () => (eventFilters.hail ? swaths : []),
-    [eventFilters.hail, swaths],
-  );
+      };
+      if (geom.type === 'Polygon') {
+        for (const ring of geom.coordinates) if (accCoords(ring)) return true;
+      } else if (geom.type === 'MultiPolygon') {
+        for (const poly of geom.coordinates) {
+          for (const ring of poly) if (accCoords(ring)) return true;
+        }
+      } else if (geom.type === 'LineString') {
+        if (accCoords(geom.coordinates)) return true;
+      } else if (geom.type === 'MultiLineString') {
+        for (const line of geom.coordinates) if (accCoords(line)) return true;
+      }
+      return false;
+    });
+  }, [eventFilters.hail, swaths, territoryOnly]);
 
   const filteredStormDates = useMemo(() => {
     const sourceDates = new Map(stormDates.map((stormDate) => [stormDate.date, stormDate]));
     const visibleDateKeys = new Set<string>();
 
     for (const event of filteredEvents) {
-      visibleDateKeys.add(event.beginDate.slice(0, 10));
+      const key = toEasternDateKey(event.beginDate);
+      if (key) visibleDateKeys.add(key);
     }
 
     if (eventFilters.hail) {
@@ -904,7 +1038,7 @@ function App({ onLogout }: { onLogout: () => void }) {
     if (notificationPermission !== 'granted') return;
 
     function checkReminders() {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayEasternKey();
       const dueLeads = routeStopsState.filter(
         (stop) =>
           stop.reminderAt &&
@@ -1037,7 +1171,7 @@ function App({ onLogout }: { onLogout: () => void }) {
       return;
     }
 
-    const clickedDate = event.beginDate.slice(0, 10);
+    const clickedDate = toEasternDateKey(event.beginDate);
     const matchingStormDate =
       filteredStormDates.find((stormDate) => stormDate.date === clickedDate) ?? null;
     setSelectedDate(matchingStormDate);
@@ -1288,7 +1422,7 @@ function App({ onLogout }: { onLogout: () => void }) {
 
     for (const stormDate of filteredStormDates) {
       const dateEvents = filteredEvents.filter(
-        (event) => event.beginDate.slice(0, 10) === stormDate.date,
+        (event) => toEasternDateKey(event.beginDate) === stormDate.date,
       );
       const existingStops = currentPropertyRouteStops.filter(
         (stop) => stop.stormDate === stormDate.date,
@@ -2042,7 +2176,7 @@ function App({ onLogout }: { onLogout: () => void }) {
 
     // Seed to localStorage immediately
     const now = new Date().toISOString();
-    const today = now.slice(0, 10);
+    const today = getTodayEasternKey();
     const demoStops: CanvassRouteStop[] = [
       {
         id: 'demo-lead-1', propertyLabel: 'Dallas, TX', stormDate: '2024-05-28', stormLabel: 'Tue, May 28, 2024',
@@ -2220,7 +2354,7 @@ function App({ onLogout }: { onLogout: () => void }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hail-yes-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `hail-yes-backup-${getTodayEasternKey()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -2547,6 +2681,8 @@ function App({ onLogout }: { onLogout: () => void }) {
         swaths={filteredSwaths}
         gpsPosition={gpsPosition}
         selectedDate={selectedDate?.date ?? null}
+        windEnabled={eventFilters.wind}
+        windStates={territoryOnly ? FOCUS_STATE_CODES : undefined}
         fitBoundsRequest={fitBoundsRequest}
         onCameraChanged={handleCameraChanged}
         onMapClick={handleMapClick}
@@ -2806,6 +2942,7 @@ function App({ onLogout }: { onLogout: () => void }) {
         {activeView === 'dashboard' && (
           <DashboardPage
             searchSummary={searchSummary}
+            queryLocation={queryLocation}
             stormDates={filteredStormDates}
             events={filteredEvents}
             evidenceItems={propertyEvidenceItems}
@@ -2855,6 +2992,8 @@ function App({ onLogout }: { onLogout: () => void }) {
               searchLng={searchSummary ? queryLocation.lng : null}
               eventFilters={eventFilters}
               onFilterChange={handleFilterChange}
+              territoryOnly={territoryOnly}
+              onTerritoryOnlyChange={setTerritoryOnly}
               generatingReport={generatingReport}
               onGenerateReport={handleGenerateReport}
               onOpenReports={() => setActiveView('reports')}
@@ -2960,9 +3099,10 @@ function App({ onLogout }: { onLogout: () => void }) {
             repProfile={repProfile}
             onUpdateProfile={updateRepProfile}
             searchLabel={searchSummary?.locationLabel ?? null}
-            onLogout={onLogout}
           />
         )}
+
+        {activeView === 'admin' && <AdminPage />}
         </Suspense>
         </ErrorBoundary>
       </div>

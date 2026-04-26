@@ -1,5 +1,6 @@
 import type { CanvassRouteStop, LeadStage, PropertySearchSummary } from '../types/storm';
 import type { StormAlert } from '../hooks/useStormAlerts';
+import { getTodayEasternKey } from '../services/dateUtils';
 
 interface TodayPageProps {
   searchSummary: PropertySearchSummary | null;
@@ -38,7 +39,7 @@ export default function TodayPage({
   onFocusLead,
   onDismissAlert,
 }: TodayPageProps) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayEasternKey();
   const activeLeads = routeStops.filter((s) =>
     s.outcome === 'interested' || s.outcome === 'follow_up' || s.outcome === 'inspection_booked',
   );

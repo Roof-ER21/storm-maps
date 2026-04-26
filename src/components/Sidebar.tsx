@@ -19,6 +19,16 @@ import {
 } from '../types/storm';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import AddressImpactBadge from './AddressImpactBadge';
+import WindImpactBadge from './WindImpactBadge';
+import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
+import {
+  enableStormAlerts,
+  disableStormAlerts,
+  getNotificationPermission,
+  isNotificationSupported,
+} from '../services/notificationService';
+
+const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
 
 interface SidebarProps {
   stormDates: StormDate[];
@@ -42,6 +52,9 @@ interface SidebarProps {
   selectedStormAnchorTimestamp?: string | null;
   eventFilters: EventFilterState;
   onFilterChange: (filters: EventFilterState) => void;
+  /** When true, the map clips events/swaths to the VA/MD/PA focus territory. */
+  territoryOnly?: boolean;
+  onTerritoryOnlyChange?: (value: boolean) => void;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
   onOpenReports: () => void;
@@ -124,6 +137,8 @@ export default function Sidebar({
   selectedStormAnchorTimestamp = null,
   eventFilters,
   onFilterChange,
+  territoryOnly = true,
+  onTerritoryOnlyChange,
   generatingReport,
   onGenerateReport,
   onOpenReports,
@@ -173,7 +188,7 @@ export default function Sidebar({
       return [];
     }
 
-    return events.filter((event) => event.beginDate.slice(0, 10) === selectedDate.date);
+    return events.filter((event) => toEasternDateKey(event.beginDate) === selectedDate.date);
   }, [events, selectedDate]);
   const selectedStormSources = useMemo(() => {
     const ranked = new Map<string, number>();
@@ -186,6 +201,42 @@ export default function Sidebar({
       .slice(0, 3)
       .map(([source]) => source);
   }, [selectedDateEvents]);
+  // Bounds across all reports for the selected storm date — used by the wind
+  // impact badge so we can constrain the wind swath fetch geographically.
+  // Falls back to a 1° box around the searched address when no events have
+  // been geocoded yet.
+  const selectedStormBounds = useMemo(() => {
+    if (selectedDateEvents.length === 0) {
+      if (searchLat !== null && searchLng !== null) {
+        return {
+          north: searchLat + 0.5,
+          south: searchLat - 0.5,
+          east: searchLng + 0.5,
+          west: searchLng - 0.5,
+        };
+      }
+      return null;
+    }
+    let north = -Infinity;
+    let south = Infinity;
+    let east = -Infinity;
+    let west = Infinity;
+    for (const e of selectedDateEvents) {
+      if (e.beginLat > north) north = e.beginLat;
+      if (e.beginLat < south) south = e.beginLat;
+      if (e.beginLon > east) east = e.beginLon;
+      if (e.beginLon < west) west = e.beginLon;
+    }
+    // Pad ~25 mi so the wind swath fetch picks up nearby gusts that may not
+    // have any hail report inside the immediate hail bounds.
+    const pad = 0.4;
+    return {
+      north: north + pad,
+      south: south - pad,
+      east: east + pad,
+      west: west - pad,
+    };
+  }, [selectedDateEvents, searchLat, searchLng]);
   const rankedStormHits = useMemo(
     () =>
       [...selectedDateEvents]
@@ -562,6 +613,16 @@ export default function Sidebar({
               anchorTimestamp={selectedStormAnchorTimestamp}
               searchLat={searchLat}
               searchLng={searchLng}
+              bounds={selectedStormBounds}
+              addressLabel={searchSummary?.locationLabel ?? null}
+            />
+
+            <WindImpactBadge
+              selectedDate={selectedDate.date}
+              searchLat={searchLat}
+              searchLng={searchLng}
+              bounds={selectedStormBounds}
+              states={WIND_FOCUS_STATES}
               addressLabel={searchSummary?.locationLabel ?? null}
             />
 
@@ -705,6 +766,15 @@ export default function Sidebar({
             }
           />
         </div>
+
+        {onTerritoryOnlyChange && (
+          <TerritoryToggle
+            value={territoryOnly}
+            onChange={onTerritoryOnlyChange}
+          />
+        )}
+
+        <PushAlertsToggle territoryStates={WIND_FOCUS_STATES} />
       </CollapsibleSection>
 
       <div className="min-h-0">
@@ -816,7 +886,7 @@ export default function Sidebar({
                 isSelected={selectedDate?.date === sd.date}
                 isExpanded={expandedDate === sd.date}
                 compact={false}
-                events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
+                events={events.filter((e) => toEasternDateKey(e.beginDate) === sd.date)}
                 evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
                 generatingReport={generatingReport}
                 onGenerateReport={onGenerateReport}
@@ -1033,6 +1103,184 @@ function FilterButton({
   );
 }
 
+function TerritoryToggle({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+            Coverage
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-stone-800">
+            {value ? 'VA · MD · PA' : 'All states'}
+          </p>
+          <p className="mt-0.5 text-[10px] text-stone-500 leading-snug">
+            {value
+              ? 'Events and swaths clipped to focus territory.'
+              : 'Showing every report in the search radius.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange(!value)}
+          role="switch"
+          aria-checked={value}
+          aria-label="Toggle VA/MD/PA territory clipping"
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            value ? 'bg-orange-500' : 'bg-stone-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+              value ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * "Storm alerts" toggle — enables web push so the rep gets a notification
+ * when an NWS Severe Thunderstorm or Tornado Warning fires inside their
+ * territory, even when the app isn't focused. Backed by the
+ * /api/push/subscribe endpoint and the in-server fan-out worker.
+ */
+function PushAlertsToggle({
+  territoryStates,
+}: {
+  territoryStates: string[];
+}) {
+  const supported = isNotificationSupported();
+  const [permission, setPermission] = useState<NotificationPermission>(
+    supported ? getNotificationPermission() : 'denied',
+  );
+  const [pending, setPending] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function check() {
+      if (!supported || !('serviceWorker' in navigator)) return;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        if (!cancelled) setEnabled(Boolean(sub));
+      } catch {
+        // ignore
+      }
+    }
+    void check();
+    return () => {
+      cancelled = true;
+    };
+  }, [supported]);
+
+  if (!supported) {
+    return (
+      <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-2 text-[10px] text-stone-500">
+        Push notifications aren't supported on this browser.
+      </div>
+    );
+  }
+
+  const blocked = permission === 'denied';
+
+  async function handleEnable() {
+    setPending(true);
+    setHint(null);
+    const result = await enableStormAlerts({ territoryStates });
+    setPermission(getNotificationPermission());
+    setPending(false);
+    if (result.ok) {
+      setEnabled(true);
+      setHint('Alerts enabled — you’ll be notified for severe warnings in your territory.');
+    } else {
+      setHint(messageForReason(result.reason));
+    }
+  }
+
+  async function handleDisable() {
+    setPending(true);
+    await disableStormAlerts();
+    setEnabled(false);
+    setPending(false);
+    setHint('Alerts disabled.');
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+            Storm Alerts
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-stone-800">
+            {enabled ? 'On' : blocked ? 'Blocked' : 'Off'}
+          </p>
+          <p className="mt-0.5 text-[10px] leading-snug text-stone-500">
+            {enabled
+              ? `Push alerts for severe warnings in ${territoryStates.slice(0, 3).join(', ')}.`
+              : blocked
+              ? 'Notifications are blocked in this browser. Enable them from the address bar.'
+              : 'Get notified the moment NWS issues a SVR/Tornado warning in your territory.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={enabled ? handleDisable : handleEnable}
+          disabled={pending || blocked}
+          aria-pressed={enabled}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            enabled
+              ? 'bg-orange-500'
+              : blocked
+              ? 'bg-stone-200 cursor-not-allowed'
+              : 'bg-stone-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+              enabled ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+      {hint && (
+        <p className="mt-2 text-[10px] leading-snug text-stone-500">{hint}</p>
+      )}
+    </div>
+  );
+}
+
+function messageForReason(reason: string): string {
+  switch (reason) {
+    case 'denied':
+      return 'Notification permission denied — enable it in your browser settings to turn on alerts.';
+    case 'unsupported':
+      return 'This browser does not support push notifications.';
+    case 'no-vapid-key':
+      return 'Push not configured on the server yet. Try again shortly.';
+    case 'subscribe-failed':
+      return 'Browser refused the subscription. Try reloading the page.';
+    case 'invalid-subscription':
+      return 'Browser returned an incomplete subscription — please retry.';
+    case 'server-rejected':
+    case 'network-error':
+      return 'Couldn’t reach the server. Check your connection and retry.';
+    default:
+      return 'Could not enable alerts.';
+  }
+}
+
 function formatHistoryRangeLabel(
   historyRange: HistoryRangePreset,
   sinceDate: string,
@@ -1047,16 +1295,10 @@ function formatHistoryRangeLabel(
 }
 
 function formatShortDate(date: string): string {
-  const parsed = new Date(`${date}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return date;
-  }
-
-  return parsed.toLocaleDateString('en-US', {
+  return formatEasternDateLabel(date, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'UTC',
   });
 }
 
@@ -1155,6 +1397,28 @@ function StormDateCard({
   const sizeClass = getHailSizeClass(stormDate.maxHailInches);
   const severityColor = sizeClass?.color || HAIL_SIZE_CLASSES[0].color;
   const canvassPriority = getStormCanvassPriority(stormDate, evidenceCount);
+  // NOAA Storm Events publishes archive data on a 30–90 day lag; anything
+  // newer is "preliminary" (sourced from SPC same-day reports or LSRs which
+  // can be revised). Use the date age + source mix to pick the pill.
+  const isPreliminary = useMemo(() => {
+    // Date.now is unavoidable here — preliminary status is a function of
+    // wall-clock age, not derivable from props alone. The pill re-renders
+    // when StormDateCard does, which is fine for an at-a-glance freshness
+    // hint that doesn't need sub-second precision.
+    // eslint-disable-next-line react-hooks/purity
+    const ageMs = Date.now() - new Date(`${stormDate.date}T00:00:00Z`).getTime();
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    if (ageDays < 90) return true;
+    return dateEvents.some((e) => {
+      const s = e.source ?? '';
+      return (
+        /^SPC$/i.test(s) ||
+        /^LSR/i.test(s) ||
+        /^NEXRAD/i.test(s) ||
+        /preliminary/i.test(s)
+      );
+    });
+  }, [stormDate.date, dateEvents]);
 
   return (
     <div
@@ -1185,6 +1449,20 @@ function StormDateCard({
               />
               <span className="text-sm font-medium text-stone-900 truncate">
                 {stormDate.label}
+              </span>
+              <span
+                className={`flex-shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                  isPreliminary
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}
+                title={
+                  isPreliminary
+                    ? 'Preliminary — SPC/LSR same-day or recent radar; subject to revision when NOAA Storm Events publishes the official archive (typically 30–90 days).'
+                    : 'Verified — sourced from NOAA Storm Events archive.'
+                }
+              >
+                {isPreliminary ? 'PRELIM' : 'VERIFIED'}
               </span>
             </div>
             <div className={`mt-1 ml-4.5 flex flex-wrap items-center ${compact ? 'gap-2' : 'gap-3'}`}>

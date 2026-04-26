@@ -137,6 +137,140 @@ async function migrate() {
     )
   `;
 
+  // Swath polygon cache — see schema.ts for the rationale.
+  await sql`
+    CREATE TABLE IF NOT EXISTS swath_cache (
+      id SERIAL PRIMARY KEY,
+      source TEXT NOT NULL,
+      date TEXT NOT NULL,
+      bbox_hash TEXT NOT NULL,
+      bbox_north REAL NOT NULL,
+      bbox_south REAL NOT NULL,
+      bbox_east REAL NOT NULL,
+      bbox_west REAL NOT NULL,
+      metadata JSONB DEFAULT '{}',
+      payload JSONB NOT NULL,
+      feature_count INTEGER DEFAULT 0,
+      max_value REAL DEFAULT 0,
+      generated_at TIMESTAMP DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS swath_cache_lookup_idx
+      ON swath_cache (source, date, bbox_hash)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS swath_cache_expires_idx
+      ON swath_cache (expires_at)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS swath_cache_date_idx
+      ON swath_cache (source, date)
+  `;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      rep_id TEXT,
+      territory_states JSONB DEFAULT '[]',
+      user_agent TEXT,
+      label TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      invalidated_at TIMESTAMP,
+      last_pushed_at TIMESTAMP,
+      last_alert_id TEXT
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS push_subscriptions_active_idx
+      ON push_subscriptions (rep_id) WHERE invalidated_at IS NULL
+  `;
+
+  // Verified hail events — write-after-compute target for the consilience
+  // service (server/storm/consilienceService.ts). Optional optimization layer:
+  // the consilience service runs stateless from the 5 underlying sources, but
+  // when it produces a positive result the row gets upserted here so repeat
+  // adjuster-PDF generation for the same (date, property) doesn't re-fetch.
+  // Schema mirrors a minimal subset of sa21's verified_hail_events (per-source
+  // boolean flags + a confidence tier); add columns as more sources land.
+  await sql`
+    CREATE TABLE IF NOT EXISTS verified_hail_events (
+      id SERIAL PRIMARY KEY,
+      event_date DATE NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      lat_bucket TEXT NOT NULL,
+      lng_bucket TEXT NOT NULL,
+      hail_size_inches REAL DEFAULT 0,
+      source_mrms BOOLEAN DEFAULT FALSE,
+      source_spc_hail BOOLEAN DEFAULT FALSE,
+      source_iem_lsr BOOLEAN DEFAULT FALSE,
+      source_wind_context BOOLEAN DEFAULT FALSE,
+      source_synoptic BOOLEAN DEFAULT FALSE,
+      confirmed_count INTEGER DEFAULT 0,
+      confidence_tier TEXT DEFAULT 'none',
+      consilience_payload JSONB,
+      generated_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS verified_hail_events_dedup_idx
+      ON verified_hail_events (event_date, lat_bucket, lng_bucket)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS verified_hail_events_date_idx
+      ON verified_hail_events (event_date)
+  `;
+
+  // storm_days materialized view — pre-computed (event_date, region) ->
+  // (max_hail_inches, max_wind_mph, source_count, confidence_tier) rollup
+  // from verified_hail_events. Backs the dashboard's "Recent Storm Dates"
+  // list without re-running the multi-source aggregator on every render.
+  // Created as a view (not materialized) initially so it stays correct as
+  // verified_hail_events grows; can be promoted to materialized + REFRESH
+  // CONCURRENTLY scheduled once row counts justify the cost.
+  await sql`
+    CREATE OR REPLACE VIEW storm_days AS
+    SELECT
+      event_date,
+      lat_bucket,
+      lng_bucket,
+      MAX(hail_size_inches) AS max_hail_inches,
+      MAX(confirmed_count) AS confirmed_count,
+      MAX(confidence_tier) AS confidence_tier,
+      COUNT(*) AS event_count,
+      MAX(generated_at) AS last_seen
+    FROM verified_hail_events
+    GROUP BY event_date, lat_bucket, lng_bucket
+  `;
+
+  // Storm-event cache for property-search responses.
+  await sql`
+    CREATE TABLE IF NOT EXISTS event_cache (
+      id SERIAL PRIMARY KEY,
+      cache_key TEXT NOT NULL UNIQUE,
+      lat_q REAL NOT NULL,
+      lng_q REAL NOT NULL,
+      radius_miles REAL NOT NULL,
+      months INTEGER NOT NULL,
+      since_date TEXT,
+      payload JSONB NOT NULL,
+      event_count INTEGER DEFAULT 0,
+      generated_at TIMESTAMP DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS event_cache_expires_idx
+      ON event_cache (expires_at)
+  `;
+
   // Add AI bridge columns to leads table (idempotent)
   await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_analysis_id TEXT`;
   await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_prospect_score REAL`;
@@ -147,7 +281,7 @@ async function migrate() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
 
-  console.log('[migrate] All 7 core tables created successfully.');
+  console.log('[migrate] All 11 core tables created successfully.');
 
   // Create AI property analysis tables
   const aiDb = drizzle(sql);

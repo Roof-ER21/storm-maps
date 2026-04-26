@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, real, boolean, jsonb, serial } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, real, boolean, jsonb, serial, integer } from 'drizzle-orm/pg-core';
 
 export const reps = pgTable('reps', {
   id: text('id').primaryKey(),
@@ -87,6 +87,94 @@ export const archives = pgTable('archives', {
   stops: jsonb('stops').default([]),
   createdAt: timestamp('created_at').defaultNow(),
   archivedAt: timestamp('archived_at').defaultNow(),
+});
+
+/**
+ * Storm/wind swath polygon cache.
+ *
+ * Keyed on (source, date, bbox_hash). Holds the GeoJSON FeatureCollection so
+ * the next rep to look up the same storm + neighborhood gets it instantly.
+ *
+ * `source` is one of:
+ *   - 'wind-archive' / 'wind-live' — wind swath collections built in-repo
+ *   - 'mrms-hail' — hail vector polygons (when proxied/cached locally)
+ *   - 'mrms-now' — live now-cast hail polygons
+ *
+ * `expires_at` is set per-source by the cache wrapper:
+ *   - "today" entries: 5 minutes (live)
+ *   - "yesterday" entries: 1 hour
+ *   - older archive entries: 30 days
+ *
+ * The (source, date, bbox_hash) tuple is unique. Cleanup of expired rows is
+ * lazy — we just check expires_at on read.
+ */
+export const swathCache = pgTable('swath_cache', {
+  id: serial('id').primaryKey(),
+  source: text('source').notNull(),
+  date: text('date').notNull(),
+  bboxHash: text('bbox_hash').notNull(),
+  bboxNorth: real('bbox_north').notNull(),
+  bboxSouth: real('bbox_south').notNull(),
+  bboxEast: real('bbox_east').notNull(),
+  bboxWest: real('bbox_west').notNull(),
+  /** Free-form metadata (storm peak, source mix, sub-source URL list). */
+  metadata: jsonb('metadata').default({}),
+  /** GeoJSON FeatureCollection (or any source-shaped payload). */
+  payload: jsonb('payload').notNull(),
+  featureCount: integer('feature_count').default(0),
+  /** Peak observed value (max hail inches or max wind mph). */
+  maxValue: real('max_value').default(0),
+  generatedAt: timestamp('generated_at').defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+});
+
+/**
+ * Storm-event cache for property-search results. Keyed on
+ * (lat_q, lng_q, radius_miles, months, since_date) where lat_q/lng_q are
+ * quantized to ~½ mile so two reps querying the same neighborhood share
+ * cache entries.
+ */
+export const eventCache = pgTable('event_cache', {
+  id: serial('id').primaryKey(),
+  cacheKey: text('cache_key').notNull().unique(),
+  latQ: real('lat_q').notNull(),
+  lngQ: real('lng_q').notNull(),
+  radiusMiles: real('radius_miles').notNull(),
+  months: integer('months').notNull(),
+  sinceDate: text('since_date'),
+  payload: jsonb('payload').notNull(),
+  eventCount: integer('event_count').default(0),
+  generatedAt: timestamp('generated_at').defaultNow(),
+  expiresAt: timestamp('expires_at').notNull(),
+});
+
+/**
+ * Web push notification subscriptions.
+ *
+ * One row per browser/device that has hit "Enable storm alerts". The
+ * (endpoint) is unique per browser per VAPID key — we upsert on it so a
+ * single device can move between rep accounts without leaving stale rows.
+ *
+ * `territory_states` is the rep's focus list (e.g. `['VA','MD','PA']`); the
+ * fan-out worker filters NWS warnings by intersection with this column.
+ */
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: serial('id').primaryKey(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  repId: text('rep_id'),
+  territoryStates: jsonb('territory_states').default([]),
+  /** Last UA + label so the rep can identify devices in their settings. */
+  userAgent: text('user_agent'),
+  label: text('label'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  /** Cleared after a 410 from the push service so we stop re-pushing. */
+  invalidatedAt: timestamp('invalidated_at'),
+  /** Bookkeeping for the fan-out worker so it doesn't double-push the same alert. */
+  lastPushedAt: timestamp('last_pushed_at'),
+  lastAlertId: text('last_alert_id'),
 });
 
 export const shareableReports = pgTable('shareable_reports', {

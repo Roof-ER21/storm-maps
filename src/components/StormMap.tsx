@@ -33,14 +33,29 @@ import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
 import GpsTracker from './GpsTracker';
+import WindSwathLayer from './WindSwathLayer';
+import WindLegend from './WindLegend';
 import {
   fetchMrmsMetadata,
   fetchHistoricalMrmsMetadata,
   fetchSwathPolygons,
   fetchLiveSwathPolygons,
   getHistoricalMrmsOverlayUrl,
+  fetchStormImpact,
   type MrmsOverlayProduct,
 } from '../services/mrmsApi';
+import {
+  fetchWindSwathPolygons,
+  fetchLiveWindSwathPolygons,
+  type WindSwathCollection,
+} from '../services/windApi';
+import { geometryAreaSqMiles } from '../services/geoUtils';
+import {
+  toEasternDateKey,
+  getTodayEasternKey,
+  formatEasternDateLabel,
+  formatEasternTimestamp,
+} from '../services/dateUtils';
 
 interface FitBoundsRequest {
   id: number;
@@ -71,6 +86,10 @@ interface StormMapProps {
   heatmapPoints?: Array<{ lat: number; lng: number; weight: number }>;
   showHeatmap?: boolean;
   onToggleHeatmap?: () => void;
+  /** When true, fetch & render the wind swath polygon layer. */
+  windEnabled?: boolean;
+  /** State filter for wind queries — defaults to VA/MD/PA focus territory. */
+  windStates?: string[];
 }
 
 interface StormContext {
@@ -95,6 +114,8 @@ type MapContentProps = Omit<
 > & {
   mapBounds: BoundingBox | null;
 };
+
+const DEFAULT_WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
 
 const LEAD_STAGE_COLORS: Record<LeadStage, string> = {
   new: '#38bdf8',
@@ -211,7 +232,7 @@ function getStormContext(
   }
 
   const selectedEvents = events.filter(
-    (event) => event.beginDate.slice(0, 10) === selectedDate,
+    (event) => toEasternDateKey(event.beginDate) === selectedDate,
   );
   const selectedSwaths = swaths.filter((swath) => swath.date === selectedDate);
 
@@ -274,30 +295,8 @@ function getSelectedStormRadarTimestamp(
   return `${selectedDate}T16:00:00Z`;
 }
 
-function formatEasternTimestamp(timestamp: string): string {
-  try {
-    return new Date(timestamp).toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return timestamp;
-  }
-}
-
 function formatDateBadge(dateStr: string): string {
-  const parsed = new Date(`${dateStr}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return dateStr;
-  }
-
-  return parsed.toLocaleDateString('en-US', {
-    timeZone: 'UTC',
+  return formatEasternDateLabel(dateStr, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -419,6 +418,141 @@ function MapViewportController({
   }, [fitBoundsRequest, map]);
 
   return null;
+}
+
+/**
+ * Storm timeline scrubber — sits at the bottom-center of the map when NEXRAD
+ * is on for a selected storm with multiple ranked frames. Default state is
+ * "All frames merged" (the existing multi-frame composite); dragging the
+ * slider pins to a single frame so the rep can watch the storm cell move.
+ */
+function StormTimelineScrubber({
+  visible,
+  frameCount,
+  frameIndex,
+  timestamps,
+  onChange,
+}: {
+  visible: boolean;
+  frameCount: number;
+  frameIndex: number | null;
+  timestamps: string[];
+  onChange: (next: number | null) => void;
+}) {
+  // Auto-play loop: 1.2s per frame; loops back to 0 after the last frame.
+  // Pauses automatically if the rep clicks Merged or drags the slider away
+  // from the current frame.
+  const [playing, setPlaying] = useState(false);
+  const sliderValue = frameIndex ?? 0;
+  const isMerged = frameIndex === null;
+
+  useEffect(() => {
+    if (!playing) return;
+    // If the scrubber became invisible, the storm has too few frames, or the
+    // rep clicked Merged, just bail out — we don't tick. Don't flip
+    // `playing` here (no setState-in-effect); the next user action that
+    // makes scrubbing meaningful again will resume.
+    if (!visible || frameCount <= 1 || isMerged) return;
+    const id = setInterval(() => {
+      onChange((sliderValue + 1) % frameCount);
+    }, 1200);
+    return () => clearInterval(id);
+  }, [playing, sliderValue, frameCount, visible, isMerged, onChange]);
+
+  if (!visible || frameCount <= 1) return null;
+  const activeTimestamp = timestamps[sliderValue] ?? timestamps[0];
+
+  return (
+    <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 w-[min(480px,80vw)] -translate-x-1/2">
+      <div className="pointer-events-auto rounded-2xl border border-stone-200 bg-white/95 p-3 shadow-lg backdrop-blur">
+        <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+          <span>Storm Timeline</span>
+          <span className="font-mono normal-case tracking-normal text-stone-700">
+            {isMerged
+              ? `All ${frameCount} frames`
+              : `Frame ${sliderValue + 1} / ${frameCount}`}
+          </span>
+        </div>
+        <div className="mt-1 text-xs font-semibold text-stone-800">
+          {isMerged
+            ? 'Composite of every ranked frame'
+            : formatEasternTimestamp(activeTimestamp)}
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={frameCount - 1}
+          step={1}
+          value={sliderValue}
+          onChange={(e) => {
+            setPlaying(false);
+            onChange(parseInt(e.target.value, 10));
+          }}
+          aria-label="Storm timeline frame"
+          className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-orange-500"
+        />
+        <div className="mt-2 flex items-center justify-between text-[10px] text-stone-500">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setPlaying(false);
+                onChange(null);
+              }}
+              className={`rounded-full px-2 py-1 font-semibold uppercase tracking-wide transition-colors ${
+                isMerged
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              Merged
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isMerged) onChange(0);
+                setPlaying((p) => !p);
+              }}
+              aria-label={playing ? 'Pause' : 'Play'}
+              className={`rounded-full px-2 py-1 font-semibold uppercase tracking-wide transition-colors ${
+                playing
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {playing ? '❚❚ Pause' : '▶ Play'}
+            </button>
+          </div>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setPlaying(false);
+                onChange(Math.max(0, sliderValue - 1));
+              }}
+              disabled={!isMerged && sliderValue === 0}
+              className="rounded border border-stone-200 px-2 py-1 font-mono text-stone-700 hover:bg-stone-100 disabled:opacity-40"
+              aria-label="Previous frame"
+            >
+              ◀
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setPlaying(false);
+                onChange(Math.min(frameCount - 1, sliderValue + 1));
+              }}
+              disabled={!isMerged && sliderValue === frameCount - 1}
+              className="rounded border border-stone-200 px-2 py-1 font-mono text-stone-700 hover:bg-stone-100 disabled:opacity-40"
+              aria-label="Next frame"
+            >
+              ▶
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function LayerStatusPanel({
@@ -623,6 +757,8 @@ function MapContent({
   heatmapPoints,
   showHeatmap,
   onToggleHeatmap,
+  windEnabled,
+  windStates,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -646,6 +782,25 @@ function MapContent({
   const [liveNowCast, setLiveNowCast] = useState(false);
   const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
   const [liveSwathMeta, setLiveSwathMeta] = useState<{ maxInches: number; refTime: string } | null>(null);
+  const [windCollection, setWindCollection] = useState<WindSwathCollection | null>(null);
+  // Storm timeline scrubber: null = "all frames merged" (default), otherwise
+  // the index inside `historicalRadarTimestamps` for the single frame to show.
+  // Reset whenever the selected storm changes so an old index from a previous
+  // storm doesn't leak into the new frame array.
+  const [scrubFrameIndex, setScrubFrameIndex] = useState<number | null>(null);
+  useEffect(() => {
+    setScrubFrameIndex(null);
+  }, [selectedDate]);
+  const [pointImpact, setPointImpact] = useState<{
+    lat: number;
+    lng: number;
+    label: string | null;
+    color: string | null;
+    severity: string | null;
+    sizeInches: number | null;
+    directHit: boolean;
+    loading: boolean;
+  } | null>(null);
   const [selectedDistanceMiles, setSelectedDistanceMiles] = useState<number | null>(null);
   const radarAutoFitKeyRef = useRef<string | null>(null);
   const mrmsAutoFitKeyRef = useRef<string | null>(null);
@@ -653,7 +808,7 @@ function MapContent({
 
   const visibleEvents = useMemo(() => {
     if (!selectedDate) return events;
-    return events.filter((event) => event.beginDate.slice(0, 10) === selectedDate);
+    return events.filter((event) => toEasternDateKey(event.beginDate) === selectedDate);
   }, [events, selectedDate]);
 
   const visibleHailEvents = useMemo(
@@ -947,7 +1102,7 @@ function MapContent({
         sourceGeometryType: 'polygon' as const,
         maxMeshInches: feature.properties.sizeInches,
         avgMeshInches: feature.properties.sizeInches,
-        areaSqMiles: 0,
+        areaSqMiles: geometryAreaSqMiles(feature.geometry),
         statesAffected: [],
         displayColor: feature.properties.color,
         displayLabel: feature.properties.label,
@@ -979,7 +1134,7 @@ function MapContent({
 
       const result = await fetchLiveSwathPolygons(mapBounds);
       if (cancelled || !result) return;
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayEasternKey();
       const converted: MeshSwath[] = result.features.map((feature, i) => ({
         id: `live-mrms-${feature.properties.level}-${i}`,
         date: today,
@@ -987,7 +1142,7 @@ function MapContent({
         sourceGeometryType: 'polygon' as const,
         maxMeshInches: feature.properties.sizeInches,
         avgMeshInches: feature.properties.sizeInches,
-        areaSqMiles: 0,
+        areaSqMiles: geometryAreaSqMiles(feature.geometry),
         statesAffected: [],
         displayColor: feature.properties.color,
         displayLabel: feature.properties.label,
@@ -1006,6 +1161,120 @@ function MapContent({
       clearInterval(id);
     };
   }, [liveNowCast, mapBounds]);
+
+  // ── Wind swath layer fetch ───────────────────────────────────────────────
+  // Pulls per-band wind polygons whenever the wind filter is on. In live mode
+  // (no selectedDate) this also folds in active SVR centroids. When the
+  // storm timeline scrubber is on a single frame, we narrow the wind query
+  // to ±15 min of that frame so the dots line up with the radar cell.
+  const windStatesKey = (windStates ?? DEFAULT_WIND_FOCUS_STATES).join(',');
+  const scrubFrameTimestamp =
+    scrubFrameIndex !== null &&
+    historicalRadarTimestamps.length > 0 &&
+    scrubFrameIndex >= 0 &&
+    scrubFrameIndex < historicalRadarTimestamps.length
+      ? historicalRadarTimestamps[scrubFrameIndex]
+      : null;
+  useEffect(() => {
+    if (!windEnabled) {
+      setWindCollection(null);
+      return;
+    }
+    const bounds =
+      stormContext.eventBounds ?? mapBounds ?? null;
+    if (!bounds) {
+      setWindCollection(null);
+      return;
+    }
+    let cancelled = false;
+    const states = windStates ?? DEFAULT_WIND_FOCUS_STATES;
+
+    let windowStartIso: string | undefined;
+    let windowEndIso: string | undefined;
+    if (scrubFrameTimestamp) {
+      const t = new Date(scrubFrameTimestamp).getTime();
+      if (Number.isFinite(t)) {
+        windowStartIso = new Date(t - 15 * 60 * 1000).toISOString();
+        windowEndIso = new Date(t + 15 * 60 * 1000).toISOString();
+      }
+    }
+
+    const promise = selectedDate
+      ? fetchWindSwathPolygons({
+          date: selectedDate,
+          bounds,
+          states,
+          live: false,
+          windowStartIso,
+          windowEndIso,
+        })
+      : fetchLiveWindSwathPolygons(bounds, states);
+
+    promise.then((result) => {
+      if (!cancelled) setWindCollection(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // windStatesKey covers windStates without a referential check
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    windEnabled,
+    selectedDate,
+    stormContext.eventBounds,
+    mapBounds,
+    windStatesKey,
+    scrubFrameTimestamp,
+  ]);
+
+  // ── Click-anywhere impact lookup ─────────────────────────────────────────
+  // Already-existing storm-impact endpoint is wired only for the searched
+  // address; here we expose it on any map click so reps can probe a
+  // neighborhood without re-searching.
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener('click', async (e: google.maps.MapMouseEvent) => {
+      if (!selectedDate) return;
+      const lat = e.latLng?.lat();
+      const lng = e.latLng?.lng();
+      if (lat === undefined || lng === undefined) return;
+      // Only run when MRMS historical mode is on; otherwise the marker click
+      // logic owns the click event and we skip the API call.
+      if (!mrmsHistoricalMode || !historicalMrmsParams) return;
+
+      setPointImpact({
+        lat,
+        lng,
+        label: null,
+        color: null,
+        severity: null,
+        sizeInches: null,
+        directHit: false,
+        loading: true,
+      });
+
+      const result = await fetchStormImpact({
+        date: selectedDate,
+        anchorTimestamp: historicalMrmsParams.anchorTimestamp,
+        bounds: historicalMrmsParams.bounds,
+        points: [{ id: 'click', lat, lng }],
+      });
+
+      const impact = result?.results[0];
+      setPointImpact({
+        lat,
+        lng,
+        label: impact?.label ?? null,
+        color: impact?.color ?? null,
+        severity: impact?.severity ?? null,
+        sizeInches: impact?.maxHailInches ?? null,
+        directHit: Boolean(impact?.directHit),
+        loading: false,
+      });
+    });
+    return () => listener.remove();
+  }, [map, selectedDate, mrmsHistoricalMode, historicalMrmsParams]);
 
   const handleMarkerClick = useCallback(
     (event: StormEvent) => {
@@ -1125,8 +1394,8 @@ function MapContent({
             position={{ lat: event.beginLat, lng: event.beginLon }}
             title={
               event.eventType === 'Thunderstorm Wind'
-                ? `${event.magnitude} mph wind - ${event.beginDate.slice(0, 10)}`
-                : `${event.magnitude}" hail - ${event.beginDate.slice(0, 10)}`
+                ? `${event.magnitude} mph wind - ${formatEasternDateLabel(event.beginDate)}`
+                : `${event.magnitude}" hail - ${formatEasternDateLabel(event.beginDate)}`
             }
             onClick={() => handleMarkerClick(event)}
             zIndex={Math.round(event.magnitude * 100)}
@@ -1243,7 +1512,7 @@ function MapContent({
             </div>
             <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
               <div>
-                <strong>Date:</strong> {selectedEvent.beginDate.slice(0, 10)}
+                <strong>Date:</strong> {formatEasternDateLabel(selectedEvent.beginDate)}
               </div>
               <div>
                 <strong>Type:</strong> {selectedEvent.eventType}
@@ -1290,11 +1559,69 @@ function MapContent({
         highlightSelected={mrmsHistoricalMode}
       />
 
+      <WindSwathLayer
+        collection={windCollection}
+        visible={Boolean(windEnabled)}
+        highlightSelected={Boolean(selectedDate)}
+      />
+
+      <WindLegend
+        visible={Boolean(windEnabled) && (windCollection?.features.length ?? 0) > 0}
+        reportCount={windCollection?.metadata.reportCount}
+        maxGustMph={windCollection?.metadata.maxGustMph}
+      />
+
+      {pointImpact && !pointImpact.loading && (
+        <InfoWindow
+          position={{ lat: pointImpact.lat, lng: pointImpact.lng }}
+          onCloseClick={() => setPointImpact(null)}
+        >
+          <div style={{ maxWidth: 240, fontFamily: 'system-ui, sans-serif' }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 13,
+                marginBottom: 4,
+                color: pointImpact.color ?? '#374151',
+              }}
+            >
+              {pointImpact.directHit
+                ? `Direct hit · ${pointImpact.label ?? 'hail'}`
+                : 'No direct hit at this point'}
+            </div>
+            <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.5 }}>
+              {pointImpact.directHit
+                ? `Radar-estimated max hail at this exact coordinate during ${selectedDate}.`
+                : `Radar shows no hail-sized echoes at this exact coordinate for ${selectedDate}.`}
+            </div>
+          </div>
+        </InfoWindow>
+      )}
+
       <NexradOverlay
         visible={showNexrad}
         timestamp={radarTimestamp}
         focusBounds={selectedDate ? stormContext.radarBounds : mapBounds}
         historicalTimestamps={selectedDate ? historicalRadarTimestamps : []}
+        frameIndex={
+          showNexrad &&
+          selectedDate &&
+          scrubFrameIndex !== null &&
+          historicalRadarTimestamps.length > 1
+            ? scrubFrameIndex
+            : null
+        }
+      />
+
+      <StormTimelineScrubber
+        visible={
+          Boolean(showNexrad && selectedDate) &&
+          historicalRadarTimestamps.length > 1
+        }
+        frameCount={historicalRadarTimestamps.length}
+        frameIndex={scrubFrameIndex}
+        timestamps={historicalRadarTimestamps}
+        onChange={setScrubFrameIndex}
       />
 
       <MRMSOverlay
@@ -1437,10 +1764,12 @@ function MapContent({
             }`}
             title={
               liveNowCast
-                ? (liveSwathMeta ? `Live radar — peak ${liveSwathMeta.maxInches.toFixed(2)}" (${new Date(liveSwathMeta.refTime).toLocaleTimeString()})` : 'Live radar — no hail detected')
-                : 'Show live MRMS radar (last 24 hours, updated every 30 min)'
+                ? liveSwathMeta
+                  ? `Live MRMS · 24-h MESH max · peak ${liveSwathMeta.maxInches.toFixed(2)}″ at ${formatEasternTimestamp(liveSwathMeta.refTime)} ET`
+                  : 'Live MRMS · 24-h rolling max · no hail in current radar window'
+                : 'Show live MRMS hail · most recent ~30-min snapshot of the rolling 24-hour MESH max (lags real-time by ~2 h)'
             }
-            aria-label="Toggle live MRMS radar"
+            aria-label="Toggle live MRMS hail"
           >
             <div className="flex items-center gap-1.5">
               {liveNowCast && liveSwaths.length > 0 && (
@@ -1487,6 +1816,8 @@ export default function StormMap({
   heatmapPoints,
   showHeatmap,
   onToggleHeatmap,
+  windEnabled,
+  windStates,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1537,6 +1868,8 @@ export default function StormMap({
         heatmapPoints={heatmapPoints}
         showHeatmap={showHeatmap}
         onToggleHeatmap={onToggleHeatmap}
+        windEnabled={windEnabled}
+        windStates={windStates}
       />
     </Map>
   );
@@ -1550,7 +1883,7 @@ function StormMapPlaceholder({
   selectedDate,
 }: Omit<StormMapProps, 'onMapClick' | 'onCameraChanged' | 'fitBoundsRequest' | 'bounds'>) {
   const visibleEvents = selectedDate
-    ? events.filter((event) => event.beginDate.slice(0, 10) === selectedDate)
+    ? events.filter((event) => toEasternDateKey(event.beginDate) === selectedDate)
     : events;
 
   return (

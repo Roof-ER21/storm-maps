@@ -16,6 +16,11 @@ interface NexradOverlayProps {
   opacity?: number;
   focusBounds?: BoundingBox | null;
   historicalTimestamps?: string[];
+  /**
+   * When set, render only the single frame at this index inside
+   * `historicalTimestamps`. Used by the storm timeline scrubber.
+   */
+  frameIndex?: number | null;
 }
 
 function roundToFiveMinuteIso(timestamp: string): string {
@@ -43,6 +48,7 @@ export default function NexradOverlay({
   opacity = 0.72,
   focusBounds,
   historicalTimestamps = [],
+  frameIndex = null,
 }: NexradOverlayProps) {
   const map = useMap();
   const overlayRefs = useRef<google.maps.ImageMapType[]>([]);
@@ -68,10 +74,23 @@ export default function NexradOverlay({
       return;
     }
 
-    const rawTimes =
-      historicalTimestamps.length > 0
-        ? historicalTimestamps
-        : [timestamp];
+    // Scrubber mode: pin to a single frame inside historicalTimestamps and
+    // render at full opacity. Falls back to the merged-multi-frame view when
+    // the index is out of range.
+    let rawTimes: string[];
+    if (
+      typeof frameIndex === 'number' &&
+      historicalTimestamps.length > 0 &&
+      frameIndex >= 0 &&
+      frameIndex < historicalTimestamps.length
+    ) {
+      rawTimes = [historicalTimestamps[frameIndex]];
+    } else {
+      rawTimes =
+        historicalTimestamps.length > 0
+          ? historicalTimestamps
+          : [timestamp];
+    }
     const effectiveTimes = rawTimes.map(roundToFiveMinuteIso);
     const perFrameOpacity =
       effectiveTimes.length === 1
@@ -155,6 +174,7 @@ export default function NexradOverlay({
     opacity,
     timestamp,
     visible,
+    frameIndex,
   ]);
 
   return null;

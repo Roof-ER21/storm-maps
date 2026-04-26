@@ -7,6 +7,7 @@ import type {
   DamageIndicator,
 } from '../types/analysis';
 import { HAIL_YES_HAIL_API_BASE } from './backendConfig';
+import { toEasternDateKey } from './dateUtils';
 
 // ============================================================
 // AI analysis formatting helpers
@@ -466,7 +467,7 @@ export async function generateStormReport({
   aiAnalysis,
 }: GenerateStormReportParams): Promise<void> {
   const datedEvents = events.filter(
-    (event) => event.beginDate.slice(0, 10) === dateOfLoss,
+    (event) => toEasternDateKey(event.beginDate) === dateOfLoss,
   );
 
   if (datedEvents.length === 0) {
@@ -537,25 +538,69 @@ export async function generateStormReport({
       : {}),
   };
 
-  const response = await fetch(REPORT_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-user-email': REPORT_USER_EMAIL,
-    },
-    body: JSON.stringify(payload),
-  });
+  // Try the polished Susan21 PDF first; fall back to the in-repo PDFKit
+  // generator when Susan21 is unreachable or returns 5xx. Same vector
+  // swaths land on both, just less polish on the fallback.
+  const safeAddress = address.replace(/[^a-zA-Z0-9]/g, '_');
 
-  if (!response.ok) {
-    throw new Error(`Report API returned ${response.status}`);
+  try {
+    const response = await fetch(REPORT_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-user-email': REPORT_USER_EMAIL,
+      },
+      body: JSON.stringify(payload),
+    });
+    if (response.ok) {
+      const blob = await response.blob();
+      downloadBlob(blob, `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`);
+      return;
+    }
+    if (response.status < 500) {
+      throw new Error(`Report API returned ${response.status}`);
+    }
+    console.warn('[reportService] Susan21 PDF returned 5xx, trying in-repo fallback');
+  } catch (err) {
+    console.warn('[reportService] Susan21 PDF unavailable, trying in-repo fallback', err);
   }
 
-  const blob = await response.blob();
-  const safeAddress = address.replace(/[^a-zA-Z0-9]/g, '_');
-  downloadBlob(
-    blob,
-    `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`,
-  );
+  // In-repo fallback PDF — reshape the evidence items into the smaller
+  // {imageUrl, imageDataUrl, title, caption} shape the in-repo PDF
+  // expects. Only the first 6 image-type items are actually rendered.
+  const fallbackEvidence = preparedEvidenceItems
+    .filter((item) => item.mediaType === 'image' && (item.imageDataUrl || item.thumbnailUrl))
+    .slice(0, 6)
+    .map((item) => ({
+      imageDataUrl: item.imageDataUrl ?? undefined,
+      imageUrl: item.imageDataUrl ? undefined : item.thumbnailUrl ?? undefined,
+      title: item.title,
+      caption: item.notes,
+    }));
+
+  const fallbackResponse = await fetch('/api/hail/storm-report-pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      address,
+      lat,
+      lng,
+      radiusMiles,
+      dateOfLoss,
+      rep: {
+        name: REPORT_REP_NAME,
+        phone: REPORT_REP_PHONE,
+        email: REPORT_REP_EMAIL,
+      },
+      company: { name: REPORT_COMPANY_NAME },
+      evidence: fallbackEvidence,
+    }),
+  });
+  if (!fallbackResponse.ok) {
+    throw new Error(`In-repo PDF fallback returned ${fallbackResponse.status}`);
+  }
+  const blob = await fallbackResponse.blob();
+  downloadBlob(blob, `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`);
 }
 
 /**
