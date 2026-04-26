@@ -24,6 +24,7 @@ import { fetchSpcWindReports } from './spcReports.js';
 import { fetchIemWindReports } from './iemLsr.js';
 import { fetchActiveSvrPolygons, svrPolygonsAsReports } from './nwsAlerts.js';
 import { bufferCircle, expandBounds } from './geometry.js';
+import { getCachedSwath, setCachedSwath } from './cache.js';
 import {
   WIND_BAND_LEVELS,
   type BoundingBox,
@@ -41,14 +42,20 @@ interface WindSwathRequest {
   includeLive?: boolean;
 }
 
+/**
+ * In-process LRU layer in front of the Postgres swath_cache so back-to-back
+ * requests for the same date+bbox don't even hit the DB. Kept tiny because
+ * each entry can be ~100 KB of GeoJSON.
+ */
 interface CacheEntry {
   expiresAt: number;
   data: WindBandCollection;
 }
 
-const cache = new Map<string, CacheEntry>();
-const ARCHIVE_TTL_MS = 24 * 60 * 60 * 1000;
-const LIVE_TTL_MS = 5 * 60 * 1000;
+const memoryCache = new Map<string, CacheEntry>();
+const MEMORY_CACHE_MAX = 64;
+const ARCHIVE_MEMORY_TTL_MS = 60 * 60 * 1000;
+const LIVE_MEMORY_TTL_MS = 5 * 60 * 1000;
 
 function bufferMilesForGust(mph: number): number {
   if (mph >= 90) return 4.0;
@@ -119,7 +126,7 @@ function buildBandFeatures(reports: WindReport[]): WindBandFeature[] {
       const ring = bufferCircle(r.lat, r.lng, radius, 28);
       polygons.push([ring]);
     }
-    return {
+    const feature: WindBandFeature = {
       type: 'Feature',
       properties: {
         level,
@@ -135,6 +142,7 @@ function buildBandFeatures(reports: WindReport[]): WindBandFeature[] {
         coordinates: polygons,
       },
     };
+    return feature;
   }).filter((f) => f.geometry.coordinates.length > 0);
 }
 
@@ -152,9 +160,27 @@ export async function buildWindSwathCollection(
 ): Promise<WindBandCollection> {
   const key = cacheKey(req);
   const now = Date.now();
-  const hit = cache.get(key);
-  if (hit && hit.expiresAt > now) {
-    return hit.data;
+
+  // L1 — in-process memory cache.
+  const memHit = memoryCache.get(key);
+  if (memHit && memHit.expiresAt > now) {
+    return memHit.data;
+  }
+
+  // L2 — Postgres swath_cache. Survives restarts and lets multiple replicas
+  // share the result of a single 30s GRIB+CSV decode.
+  const dbHit = await getCachedSwath<WindBandCollection>({
+    source: req.includeLive ? 'wind-live' : 'wind-archive',
+    date: req.date,
+    bounds: req.bounds,
+  });
+  if (dbHit) {
+    memoryCache.set(key, {
+      expiresAt: now + (req.includeLive ? LIVE_MEMORY_TTL_MS : ARCHIVE_MEMORY_TTL_MS),
+      data: dbHit.payload,
+    });
+    enforceMemoryCacheCap();
+    return dbHit.payload;
   }
 
   const padded = expandBounds(req.bounds, 30);
@@ -204,11 +230,37 @@ export async function buildWindSwathCollection(
     },
   };
 
-  cache.set(key, {
-    expiresAt: now + (req.includeLive ? LIVE_TTL_MS : ARCHIVE_TTL_MS),
+  memoryCache.set(key, {
+    expiresAt: now + (req.includeLive ? LIVE_MEMORY_TTL_MS : ARCHIVE_MEMORY_TTL_MS),
     data: collection,
   });
+  enforceMemoryCacheCap();
+
+  // Fire-and-forget DB write. We don't await it — the response goes back to
+  // the client first and the cache populates in the background.
+  void setCachedSwath({
+    source: req.includeLive ? 'wind-live' : 'wind-archive',
+    date: req.date,
+    bounds: req.bounds,
+    payload: collection,
+    metadata: {
+      sources,
+      reportCount: deduped.length,
+      states: req.states ?? [],
+    },
+    featureCount: features.length,
+    maxValue: maxGustMph,
+  });
+
   return collection;
+}
+
+function enforceMemoryCacheCap(): void {
+  while (memoryCache.size > MEMORY_CACHE_MAX) {
+    const oldestKey = memoryCache.keys().next().value;
+    if (!oldestKey) break;
+    memoryCache.delete(oldestKey);
+  }
 }
 
 /**

@@ -28,6 +28,7 @@ import {
   buildWindSwathCollection,
   buildWindImpactResponse,
 } from './storm/windSwathService.js';
+import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
@@ -891,6 +892,43 @@ app.get('/api/spc-proxy', async (req, res) => {
     res.status(502).json({ error: 'Failed to fetch SPC data' });
   }
 });
+
+// ── Cache visibility (admin) ───────────────────────────────────
+// Anyone can hit it — the response is metadata only (counts + dates), no
+// cached payloads. Useful for the admin dashboard and for quick "is the
+// pre-warm working?" checks.
+app.get('/api/admin/cache-status', async (_req, res) => {
+  try {
+    const summary = await getCacheSummary();
+    const total = summary.reduce((sum, row) => sum + row.total, 0);
+    const live = summary.reduce((sum, row) => sum + row.live, 0);
+    res.json({
+      ok: true,
+      totals: { total, live, expired: total - live },
+      bySource: summary,
+      generatedAt: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('[cache-status] failed', err);
+    res.status(500).json({ ok: false, error: 'Failed to read cache status' });
+  }
+});
+
+app.post('/api/admin/cache-purge', async (_req, res) => {
+  try {
+    const purged = await purgeExpiredSwaths();
+    res.json({ ok: true, purged });
+  } catch (err) {
+    console.error('[cache-purge] failed', err);
+    res.status(500).json({ ok: false, error: 'Failed to purge cache' });
+  }
+});
+
+// Lazy purge timer so expired rows don't accumulate. 6-hour cadence is
+// plenty given the per-row index lookup we do on each read anyway.
+setInterval(() => {
+  void purgeExpiredSwaths();
+}, 6 * 60 * 60 * 1000).unref();
 
 // ── SPA fallback ────────────────────────────────────────
 app.get('/report/:slug', (_req, res) => {

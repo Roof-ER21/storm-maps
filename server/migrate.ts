@@ -137,6 +137,59 @@ async function migrate() {
     )
   `;
 
+  // Swath polygon cache — see schema.ts for the rationale.
+  await sql`
+    CREATE TABLE IF NOT EXISTS swath_cache (
+      id SERIAL PRIMARY KEY,
+      source TEXT NOT NULL,
+      date TEXT NOT NULL,
+      bbox_hash TEXT NOT NULL,
+      bbox_north REAL NOT NULL,
+      bbox_south REAL NOT NULL,
+      bbox_east REAL NOT NULL,
+      bbox_west REAL NOT NULL,
+      metadata JSONB DEFAULT '{}',
+      payload JSONB NOT NULL,
+      feature_count INTEGER DEFAULT 0,
+      max_value REAL DEFAULT 0,
+      generated_at TIMESTAMP DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS swath_cache_lookup_idx
+      ON swath_cache (source, date, bbox_hash)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS swath_cache_expires_idx
+      ON swath_cache (expires_at)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS swath_cache_date_idx
+      ON swath_cache (source, date)
+  `;
+
+  // Storm-event cache for property-search responses.
+  await sql`
+    CREATE TABLE IF NOT EXISTS event_cache (
+      id SERIAL PRIMARY KEY,
+      cache_key TEXT NOT NULL UNIQUE,
+      lat_q REAL NOT NULL,
+      lng_q REAL NOT NULL,
+      radius_miles REAL NOT NULL,
+      months INTEGER NOT NULL,
+      since_date TEXT,
+      payload JSONB NOT NULL,
+      event_count INTEGER DEFAULT 0,
+      generated_at TIMESTAMP DEFAULT NOW(),
+      expires_at TIMESTAMP NOT NULL
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS event_cache_expires_idx
+      ON event_cache (expires_at)
+  `;
+
   // Add AI bridge columns to leads table (idempotent)
   await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_analysis_id TEXT`;
   await sql`ALTER TABLE leads ADD COLUMN IF NOT EXISTS ai_prospect_score REAL`;
@@ -147,7 +200,7 @@ async function migrate() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
 
-  console.log('[migrate] All 7 core tables created successfully.');
+  console.log('[migrate] All 9 core tables created successfully.');
 
   // Create AI property analysis tables
   const aiDb = drizzle(sql);
