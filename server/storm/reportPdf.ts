@@ -880,7 +880,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     const HW = 504;
     doc.fillColor('#64748b').font('Helvetica').fontSize(8.5);
     doc.text(
-      `${sortedHistRows.length} storm date${sortedHistRows.length === 1 ? '' : 's'} with hail near this property over the last 18 months. Most recent first.`,
+      `${sortedHistRows.length} storm date${sortedHistRows.length === 1 ? '' : 's'} with hail near this property over the last 24 months (within 25 mi). Most recent first.`,
       HX,
       doc.y,
       { width: HW },
