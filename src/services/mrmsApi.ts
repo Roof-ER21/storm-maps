@@ -201,16 +201,47 @@ export interface StormImpactResponse {
 }
 
 /**
- * Ask the backend "which hail band contains each of these points?" —
- * returns the max hail size at each provided location for the given storm
- * date. Used for "DIRECT HIT 1.75"" badges in the address search UI.
+ * "Which hail band contains each of these points?" Used by the
+ * AddressImpactBadge and the click-anywhere bubble.
+ *
+ * Source priority:
+ *   1. In-repo `/api/hail/mrms-impact` — needs bounds, runs against the
+ *      same MRMS-decoded polygons we already cache in swath_cache.
+ *   2. Susan21 `/api/hail/storm-impact` — legacy, doesn't need bounds.
+ *
+ * If bounds are missing we skip the in-repo path and go straight to Susan21.
  */
 export async function fetchStormImpact(params: {
   date: string;
   anchorTimestamp?: string | null;
+  bounds?: BoundingBox | null;
   points: StormImpactPoint[];
 }): Promise<StormImpactResponse | null> {
   if (params.points.length === 0) return null;
+
+  // 1. In-repo MRMS impact (preferred when we have bounds).
+  if (params.bounds) {
+    try {
+      const res = await fetch('/api/hail/mrms-impact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          date: params.date,
+          bounds: params.bounds,
+          anchorTimestamp: params.anchorTimestamp || null,
+          points: params.points,
+        }),
+        signal: AbortSignal.timeout(60000),
+      });
+      if (res.ok) {
+        return (await res.json()) as StormImpactResponse;
+      }
+    } catch (err) {
+      console.warn('[mrmsApi] in-repo MRMS impact failed, trying Susan21', err);
+    }
+  }
+
+  // 2. Susan21 legacy.
   try {
     const res = await fetch(`${HAIL_YES_HAIL_API_BASE}/storm-impact`, {
       method: 'POST',
@@ -246,6 +277,30 @@ export async function fetchLiveSwathPolygons(bounds: BoundingBox): Promise<
     east: bounds.east.toString(),
     west: bounds.west.toString(),
   });
+
+  // 1. In-repo MRMS now-cast.
+  try {
+    const res = await fetch(`/api/hail/mrms-now-vector?${query.toString()}`, {
+      signal: AbortSignal.timeout(60000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as SwathPolygonCollection & {
+        live?: boolean;
+        refTime?: string;
+      };
+      if (data.features && data.features.length > 0) {
+        return {
+          ...(data as SwathPolygonCollection),
+          live: true,
+          refTime: data.refTime || new Date().toISOString(),
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[mrmsApi] in-repo MRMS now-cast failed, trying Susan21', err);
+  }
+
+  // 2. Susan21 legacy.
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-now-polygons?${query}`,

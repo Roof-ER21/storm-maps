@@ -439,10 +439,28 @@ function StormTimelineScrubber({
   timestamps: string[];
   onChange: (next: number | null) => void;
 }) {
-  if (!visible || frameCount <= 1) return null;
+  // Auto-play loop: 1.2s per frame; loops back to 0 after the last frame.
+  // Pauses automatically if the rep clicks Merged or drags the slider away
+  // from the current frame.
+  const [playing, setPlaying] = useState(false);
   const sliderValue = frameIndex ?? 0;
-  const activeTimestamp = timestamps[sliderValue] ?? timestamps[0];
   const isMerged = frameIndex === null;
+
+  useEffect(() => {
+    if (!playing) return;
+    // If the scrubber became invisible, the storm has too few frames, or the
+    // rep clicked Merged, just bail out — we don't tick. Don't flip
+    // `playing` here (no setState-in-effect); the next user action that
+    // makes scrubbing meaningful again will resume.
+    if (!visible || frameCount <= 1 || isMerged) return;
+    const id = setInterval(() => {
+      onChange((sliderValue + 1) % frameCount);
+    }, 1200);
+    return () => clearInterval(id);
+  }, [playing, sliderValue, frameCount, visible, isMerged, onChange]);
+
+  if (!visible || frameCount <= 1) return null;
+  const activeTimestamp = timestamps[sliderValue] ?? timestamps[0];
 
   return (
     <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 w-[min(480px,80vw)] -translate-x-1/2">
@@ -466,28 +484,52 @@ function StormTimelineScrubber({
           max={frameCount - 1}
           step={1}
           value={sliderValue}
-          onChange={(e) => onChange(parseInt(e.target.value, 10))}
+          onChange={(e) => {
+            setPlaying(false);
+            onChange(parseInt(e.target.value, 10));
+          }}
           aria-label="Storm timeline frame"
           className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-orange-500"
         />
         <div className="mt-2 flex items-center justify-between text-[10px] text-stone-500">
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className={`rounded-full px-2 py-1 font-semibold uppercase tracking-wide transition-colors ${
-              isMerged
-                ? 'bg-orange-500 text-white'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Merged
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => {
+                setPlaying(false);
+                onChange(null);
+              }}
+              className={`rounded-full px-2 py-1 font-semibold uppercase tracking-wide transition-colors ${
+                isMerged
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              Merged
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (isMerged) onChange(0);
+                setPlaying((p) => !p);
+              }}
+              aria-label={playing ? 'Pause' : 'Play'}
+              className={`rounded-full px-2 py-1 font-semibold uppercase tracking-wide transition-colors ${
+                playing
+                  ? 'bg-orange-500 text-white'
+                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+              }`}
+            >
+              {playing ? '❚❚ Pause' : '▶ Play'}
+            </button>
+          </div>
           <div className="flex gap-1.5">
             <button
               type="button"
-              onClick={() =>
-                onChange(Math.max(0, sliderValue - 1))
-              }
+              onClick={() => {
+                setPlaying(false);
+                onChange(Math.max(0, sliderValue - 1));
+              }}
               disabled={!isMerged && sliderValue === 0}
               className="rounded border border-stone-200 px-2 py-1 font-mono text-stone-700 hover:bg-stone-100 disabled:opacity-40"
               aria-label="Previous frame"
@@ -496,9 +538,10 @@ function StormTimelineScrubber({
             </button>
             <button
               type="button"
-              onClick={() =>
-                onChange(Math.min(frameCount - 1, sliderValue + 1))
-              }
+              onClick={() => {
+                setPlaying(false);
+                onChange(Math.min(frameCount - 1, sliderValue + 1));
+              }}
               disabled={!isMerged && sliderValue === frameCount - 1}
               className="rounded border border-stone-200 px-2 py-1 font-mono text-stone-700 hover:bg-stone-100 disabled:opacity-40"
               aria-label="Next frame"
@@ -1214,6 +1257,7 @@ function MapContent({
       const result = await fetchStormImpact({
         date: selectedDate,
         anchorTimestamp: historicalMrmsParams.anchorTimestamp,
+        bounds: historicalMrmsParams.bounds,
         points: [{ id: 'click', lat, lng }],
       });
 

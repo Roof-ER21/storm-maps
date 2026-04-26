@@ -613,6 +613,7 @@ export default function Sidebar({
               anchorTimestamp={selectedStormAnchorTimestamp}
               searchLat={searchLat}
               searchLng={searchLng}
+              bounds={selectedStormBounds}
               addressLabel={searchSummary?.locationLabel ?? null}
             />
 

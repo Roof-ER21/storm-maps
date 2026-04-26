@@ -38,7 +38,11 @@ import {
   buildHailFallbackCollection,
   buildHailImpactResponse,
 } from './storm/hailFallbackService.js';
-import { buildMrmsVectorPolygons } from './storm/mrmsService.js';
+import {
+  buildMrmsVectorPolygons,
+  buildMrmsNowVectorPolygons,
+  buildMrmsImpactResponse,
+} from './storm/mrmsService.js';
 import {
   upsertPushSubscription,
   deletePushSubscription,
@@ -971,6 +975,68 @@ app.get('/api/hail/mrms-vector', async (req, res) => {
   } catch (err) {
     console.error('[mrms-vector] failed', err);
     res.status(500).json({ error: 'Failed to build MRMS vector polygons' });
+  }
+});
+
+// Live now-cast: today's most-recent MRMS file, decoded + contoured.
+app.get('/api/hail/mrms-now-vector', async (req, res) => {
+  try {
+    const q = req.query as HailFallbackQuery;
+    const bounds = parseHailFallbackBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const collection = await buildMrmsNowVectorPolygons(bounds);
+    if (!collection) {
+      res.status(502).json({ error: 'MRMS now-cast unavailable' });
+      return;
+    }
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json({ ...collection, live: true, refTime: collection.metadata.refTime });
+  } catch (err) {
+    console.error('[mrms-now-vector] failed', err);
+    res.status(500).json({ error: 'Failed to build MRMS now-cast' });
+  }
+});
+
+interface MrmsImpactBody {
+  date?: string;
+  bounds?: { north: number; south: number; east: number; west: number };
+  anchorTimestamp?: string;
+  points?: Array<{ id: string; lat: number; lng: number }>;
+}
+
+app.post('/api/hail/mrms-impact', async (req, res) => {
+  try {
+    const body = (req.body || {}) as MrmsImpactBody;
+    if (
+      !body.bounds ||
+      !Array.isArray(body.points) ||
+      body.points.length === 0
+    ) {
+      res.status(400).json({ error: 'bounds and points required' });
+      return;
+    }
+    const date = body.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const response = await buildMrmsImpactResponse({
+      date,
+      bounds: body.bounds,
+      anchorIso: body.anchorTimestamp,
+      points: body.points,
+    });
+    if (!response) {
+      res.status(502).json({ error: 'MRMS pipeline unavailable' });
+      return;
+    }
+    res.json(response);
+  } catch (err) {
+    console.error('[mrms-impact] failed', err);
+    res.status(500).json({ error: 'Failed to compute MRMS impact' });
   }
 });
 
