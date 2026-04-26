@@ -34,6 +34,7 @@ import { fetchHailtraceReportsForDate, isHailtraceConfigured, type HailtraceRepo
 import { fetchSwdiHailReports, type SwdiHailReport } from './ncerSwdiClient.js';
 import { fetchIemVtecForDate, pointInWarning, type IemVtecWarning } from './iemVtecClient.js';
 import { fetchNceiEventsForDateAndPoint, type NceiEvent } from './nceiStormEventsClient.js';
+import { etDayUtcWindow, etDayMrmsAnchorIso } from './timeUtils.js';
 import type { BoundingBox, WindReport } from './types.js';
 
 export interface ConsilienceQuery {
@@ -158,16 +159,14 @@ export async function buildConsilience(
   query: ConsilienceQuery,
 ): Promise<ConsilienceResult> {
   const radius = query.radiusMiles ?? DEFAULT_RADIUS_MI;
-  const startUtc =
-    query.startUtcOverride ?? new Date(`${query.date}T04:00:00Z`);
-  const endUtc =
-    query.endUtcOverride ??
-    (() => {
-      const d = new Date(`${query.date}T00:00:00Z`);
-      d.setUTCDate(d.getUTCDate() + 1);
-      d.setUTCHours(12, 0, 0, 0);
-      return d;
-    })();
+  // Eastern-time calendar day → exact UTC window. Handles EDT/EST switch
+  // automatically. Previous code hardcoded T04:00:00Z (EDT-only) and ended
+  // at next-day T12:00:00Z (8 hours too late, pulled in next-morning data).
+  const window = query.startUtcOverride && query.endUtcOverride
+    ? { startUtc: query.startUtcOverride, endUtc: query.endUtcOverride }
+    : etDayUtcWindow(query.date);
+  const startUtc = query.startUtcOverride ?? window.startUtc;
+  const endUtc = query.endUtcOverride ?? window.endUtc;
 
   const bounds = boundsFromPoint(query.lat, query.lng, radius + 5);
 
@@ -358,6 +357,10 @@ async function safeMrms(
       date,
       bounds,
       points: [{ id: 'property', lat, lng }],
+      // Anchor at ET midnight of the next day so the 1440-min file covers
+      // the full Eastern storm day (incl. late-evening storms that fall
+      // into the next UTC day's file).
+      anchorIso: etDayMrmsAnchorIso(date),
     });
     if (!resp || resp.results.length === 0) return null;
     const r = resp.results[0];

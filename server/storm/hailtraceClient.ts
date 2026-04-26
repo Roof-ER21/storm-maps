@@ -145,9 +145,7 @@ export async function fetchHailtraceReportsForDate(opts: {
   date: string;
   bbox: { north: number; south: number; east: number; west: number };
 }): Promise<HailtraceReport[]> {
-  const startUtc = new Date(`${opts.date}T04:00:00Z`);
-  const endUtc = new Date(`${opts.date}T00:00:00Z`);
-  endUtc.setUTCDate(endUtc.getUTCDate() + 1);
-  endUtc.setUTCHours(12, 0, 0, 0);
-  return fetchHailtraceReports({ startUtc, endUtc, bbox: opts.bbox });
+  const { etDayUtcWindow } = await import('./timeUtils.js');
+  const w = etDayUtcWindow(opts.date);
+  return fetchHailtraceReports({ startUtc: w.startUtc, endUtc: w.endUtc, bbox: opts.bbox });
 }

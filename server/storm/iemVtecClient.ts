@@ -16,6 +16,7 @@
  */
 
 import type { BoundingBox } from './types.js';
+import { etDayUtcWindow } from './timeUtils.js';
 
 const IEM_VTEC_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/watchwarn.py';
 const FETCH_TIMEOUT_MS = 15_000;
@@ -179,18 +180,15 @@ function ringsIntersectBounds(
   return false;
 }
 
-/** Pulls all SV+TO warnings for a calendar date in Eastern (with safe pad). */
+/** Pulls all SV+TO warnings for an Eastern calendar date. */
 export async function fetchIemVtecForDate(opts: {
   date: string;
   bounds?: BoundingBox;
 }): Promise<IemVtecWarning[]> {
-  const startIso = `${opts.date}T04:00:00Z`;
-  const next = new Date(`${opts.date}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
-  next.setUTCHours(12, 0, 0, 0);
+  const w = etDayUtcWindow(opts.date);
   return fetchIemVtecWarnings({
-    startIso,
-    endIso: next.toISOString(),
+    startIso: w.startUtc.toISOString(),
+    endIso: w.endUtc.toISOString(),
     bounds: opts.bounds,
   });
 }

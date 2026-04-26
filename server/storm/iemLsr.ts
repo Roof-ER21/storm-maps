@@ -10,6 +10,7 @@
  */
 
 import type { BoundingBox, WindReport } from './types.js';
+import { etDayUtcWindow } from './timeUtils.js';
 
 const IEM_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py';
 const FETCH_TIMEOUT_MS = 15_000;
@@ -54,19 +55,20 @@ function isWindType(typetext?: string, type?: string): boolean {
 }
 
 /**
- * Fetch wind LSRs for a given UTC date and optional bounding box. The bbox
- * filter is applied client-side (IEM's parameters are by NWS office or state,
- * not lat/lng).
+ * Fetch wind LSRs for a given Eastern calendar date and optional bounding
+ * box. The bbox filter is applied client-side (IEM's parameters are by NWS
+ * office or state, not lat/lng). The date is interpreted as ET — the UTC
+ * window is computed via timeUtils.etDayUtcWindow() so EDT/EST + late-
+ * evening-ET storms are handled correctly.
  */
 export async function fetchIemWindReports(opts: {
   date: string;
   bounds?: BoundingBox | null;
   states?: string[];
 }): Promise<WindReport[]> {
-  const start = `${opts.date}T00:00:00Z`;
-  const endDate = new Date(`${opts.date}T00:00:00Z`);
-  endDate.setUTCDate(endDate.getUTCDate() + 1);
-  const end = endDate.toISOString();
+  const w = etDayUtcWindow(opts.date);
+  const start = w.startUtc.toISOString();
+  const end = w.endUtc.toISOString();
 
   const params = new URLSearchParams({
     sts: fmtIemTimestamp(start),

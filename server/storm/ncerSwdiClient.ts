@@ -33,12 +33,25 @@ export interface SwdiHailReport {
   maxSizeInches: number;
 }
 
-function fmtDate(date: string): string {
-  return date.replace(/-/g, '');
+import { etDayUtcWindow } from './timeUtils.js';
+
+function fmtDateRangeForSwdi(startUtc: Date, endUtc: Date): string {
+  // SWDI accepts YYYYMMDDhhmm:YYYYMMDDhhmm time-range format. Use this so
+  // the query window matches Eastern day exactly (rather than the UTC-day
+  // single-date form which misses late-evening ET storms).
+  const fmt = (d: Date): string => {
+    const yyyy = d.getUTCFullYear().toString().padStart(4, '0');
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mi = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${yyyy}${mm}${dd}${hh}${mi}`;
+  };
+  return `${fmt(startUtc)}:${fmt(endUtc)}`;
 }
 
 export interface SwdiQuery {
-  date: string; // YYYY-MM-DD
+  date: string; // YYYY-MM-DD (interpreted as Eastern calendar day)
   bbox: { north: number; south: number; east: number; west: number };
   /** Min severe-prob to include (0-100). Default 30. */
   minSeverePct?: number;
@@ -50,7 +63,9 @@ export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport
   const params = new URLSearchParams({
     bbox: `${q.bbox.west},${q.bbox.south},${q.bbox.east},${q.bbox.north}`,
   });
-  const url = `${SWDI_BASE}/${fmtDate(q.date)}?${params.toString()}`;
+  const w = etDayUtcWindow(q.date);
+  const range = fmtDateRangeForSwdi(w.startUtc, w.endUtc);
+  const url = `${SWDI_BASE}/${range}?${params.toString()}`;
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);

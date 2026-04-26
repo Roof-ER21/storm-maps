@@ -11,6 +11,7 @@
 
 import type { BoundingBox } from './types.js';
 import type { HailPointReport } from './spcHailReports.js';
+import { etDayUtcWindow } from './timeUtils.js';
 
 const IEM_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py';
 const FETCH_TIMEOUT_MS = 15_000;
@@ -66,10 +67,11 @@ export async function fetchIemHailReports(
   let start: string;
   let end: string;
   if ('date' in opts) {
-    start = `${opts.date}T00:00:00Z`;
-    const endDate = new Date(start);
-    endDate.setUTCDate(endDate.getUTCDate() + 1);
-    end = endDate.toISOString();
+    // Eastern calendar day → exact UTC window (handles EDT/EST + the
+    // late-evening-ET storms that fall into next UTC day).
+    const w = etDayUtcWindow(opts.date);
+    start = w.startUtc.toISOString();
+    end = w.endUtc.toISOString();
   } else {
     start = opts.startIso;
     end = opts.endIso;

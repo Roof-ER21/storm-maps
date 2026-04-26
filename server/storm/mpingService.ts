@@ -9,6 +9,7 @@
  */
 
 import { fetchMpingReports, isMpingConfigured, type MpingReport } from './mpingClient.js';
+import { etDayUtcWindow } from './timeUtils.js';
 import type { BoundingBox } from './types.js';
 
 export { isMpingConfigured };
@@ -21,17 +22,16 @@ export interface MpingForDateInput {
 }
 
 /**
- * Pull mPING reports for a calendar date (Eastern). The window stretches
- * 04:00 UTC of that date through 12:00 UTC of the next — same convention
- * the consilience service uses.
+ * Pull mPING reports for an Eastern calendar date. UTC window is computed
+ * via timeUtils.etDayUtcWindow() so DST + late-evening-ET storms are
+ * handled correctly. (Previous version hardcoded T04:00:00Z which only
+ * works during EDT, and ended at next-day T12:00:00Z = 8am ET, way too
+ * late.)
  */
 export async function fetchMpingReportsForDate(
   input: MpingForDateInput,
 ): Promise<MpingReport[]> {
-  const startUtc = new Date(`${input.date}T04:00:00Z`);
-  const next = new Date(`${input.date}T00:00:00Z`);
-  next.setUTCDate(next.getUTCDate() + 1);
-  next.setUTCHours(12, 0, 0, 0);
+  const w = etDayUtcWindow(input.date);
   const bbox = input.bounds
     ? {
         north: input.bounds.north,
@@ -41,8 +41,8 @@ export async function fetchMpingReportsForDate(
       }
     : undefined;
   return fetchMpingReports({
-    startUtc,
-    endUtc: next,
+    startUtc: w.startUtc,
+    endUtc: w.endUtc,
     bbox,
     category: input.category ?? 'Hail',
   });
