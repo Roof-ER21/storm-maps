@@ -1330,13 +1330,17 @@ app.get('/api/storm/consilience-history', async (req, res) => {
         r.event_date instanceof Date
           ? r.event_date.toISOString().slice(0, 10)
           : String(r.event_date).slice(0, 10);
-      const curated = (r.payload as { curated?: { confirmedSources?: string[] } })
-        ?.curated;
+      const payload = r.payload as {
+        curated?: { confirmedSources?: string[] };
+        totalSources?: number;
+      };
       return {
         date: dateStr,
         confirmedCount: Number(r.confirmed_count),
+        // Pre-12-source cache rows ship without totalSources — fall back to 12.
+        totalSources: payload?.totalSources ?? 12,
         confidenceTier: r.confidence_tier,
-        confirmedSources: curated?.confirmedSources ?? [],
+        confirmedSources: payload?.curated?.confirmedSources ?? [],
       };
     });
     res.set('Cache-Control', 'public, max-age=600');

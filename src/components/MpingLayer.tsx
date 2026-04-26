@@ -87,7 +87,9 @@ export default function MpingLayer({
   // Fetch reports.
   useEffect(() => {
     if (!enabled) {
-      setReports([]);
+      // Keep-same-ref trick — avoids cascading re-render when reports
+      // was already empty (which is the steady state for this layer).
+      setReports((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     let cancelled = false;
@@ -117,6 +119,9 @@ export default function MpingLayer({
     return () => {
       cancelled = true;
     };
+    // bounds is destructured into N/S/E/W — object identity changes per
+    // render but the numeric values are what we depend on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabled,
     selectedDate,

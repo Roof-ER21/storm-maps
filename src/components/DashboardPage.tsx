@@ -602,34 +602,35 @@ export default function DashboardPage({
                         {(() => {
                           const flag = consilienceFlags.get(stormDate.date);
                           if (!flag) return null;
+                          const denom = flag.totalSources;
                           if (flag.certified) {
                             return (
                               <span
-                                title={`${flag.confirmedCount}/7 independent sources confirmed — adjuster PDF will include the Forensic Verification stamp.`}
+                                title={`${flag.confirmedCount}/${denom} independent sources confirmed — adjuster PDF will include the Forensic Verification stamp.`}
                                 className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
                               >
                                 <span aria-hidden="true">✓</span>
-                                Certified ({flag.confirmedCount}/12)
+                                Certified ({flag.confirmedCount}/{denom})
                               </span>
                             );
                           }
                           if (flag.lowConfidence) {
                             return (
                               <span
-                                title={`Only ${flag.confirmedCount}/7 independent sources confirm this storm at this property. Verify before claiming.`}
+                                title={`Only ${flag.confirmedCount}/${denom} independent sources confirm this storm at this property. Verify before claiming.`}
                                 className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
                               >
                                 <span aria-hidden="true">⚠</span>
-                                Low confidence ({flag.confirmedCount}/12)
+                                Low confidence ({flag.confirmedCount}/{denom})
                               </span>
                             );
                           }
                           return (
                             <span
-                              title={`${flag.confirmedCount}/7 independent sources confirmed (${flag.confidenceTier})`}
+                              title={`${flag.confirmedCount}/${denom} independent sources confirmed (${flag.confidenceTier})`}
                               className="inline-flex items-center rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700"
                             >
-                              {flag.confirmedCount}/12 confirmed
+                              {flag.confirmedCount}/{denom} confirmed
                             </span>
                           );
                         })()}

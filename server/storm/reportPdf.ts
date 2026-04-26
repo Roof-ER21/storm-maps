@@ -29,6 +29,8 @@ interface NceiAppendixRow {
   county: string | null;
   event_type: string | null;
   magnitude: number | null;
+  /** F0–F5 / EF0–EF5 — populated for Tornado rows from NCEI's TOR_F_SCALE. */
+  tor_f_scale: string | null;
   ncei_event_id: string | null;
   begin_time_utc: string | null;
   narrative: string | null;
@@ -49,7 +51,8 @@ async function fetchNceiArchiveForReport(opts: {
   try {
     const rows = await pgSql<NceiAppendixRow[]>`
       SELECT event_date::text, state_code, county, event_type,
-             magnitude, ncei_event_id::text, begin_time_utc::text, narrative
+             magnitude, tor_f_scale, ncei_event_id::text,
+             begin_time_utc::text, narrative
         FROM verified_hail_events
        WHERE source_ncei_storm_events = TRUE
          AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
@@ -435,13 +438,49 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   });
   doc.y = sumY + cardHeight + 18;
 
-  // ── Storm Corroboration (7-source consilience) ────────────────────────
+  // ── Storm Corroboration (multi-source consilience) ────────────────────
   // Auto-curate rule: render only confirmed sources. If no source confirms
-  // the storm, the section is silently omitted from the PDF.
+  // the storm AND peak hail < 0.5", render an explicit "no verified storm"
+  // notice rather than letting the section quietly disappear (adjusters
+  // need to see we *checked*, not just an empty page).
   // Certified Report mode: when ≥3 independent sources confirm, render a
   // green "Forensic Verification" stamp suitable for adjuster-facing claims.
   const consilience = await consiliencePromise;
-  if (consilience && consilience.curated.confirmedSources.length > 0) {
+  const hasCorroboration = consilience && consilience.curated.confirmedSources.length > 0;
+  const noVerifiedStorm =
+    !hasCorroboration && stormMax < 0.5 && peakHail < 0.5 && peakWind < 50;
+
+  if (noVerifiedStorm) {
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Storm Corroboration');
+    doc.moveDown(0.3);
+    const badgeY = doc.y;
+    const badgeX = 54;
+    const badgeW = 504;
+    const badgeH = 56;
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).fill('#fef2f2');
+    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).strokeColor('#fca5a5').lineWidth(1).stroke();
+    doc.fillColor('#991b1b').font('Helvetica-Bold').fontSize(10);
+    doc.text(
+      `No verified storm activity on ${req.dateOfLoss} within ${req.radiusMiles}mi`,
+      badgeX + 12,
+      badgeY + 8,
+      { width: badgeW - 24 },
+    );
+    doc.fillColor('#7f1d1d').font('Helvetica').fontSize(8.5);
+    const denomNo = consilience?.totalSources ?? 12;
+    doc.text(
+      `Checked ${denomNo} independent sources (MRMS · SPC · IEM LSR · Wind · Synoptic · ` +
+        `mPING · NCEI SWDI · NWS · NCEI Storm Events archive · NEXRAD nx3mda · CoCoRaHS` +
+        `${denomNo === 12 ? ' · HailTrace' : ''}). None confirmed verified hail or damaging ` +
+        `wind at this property on this date.`,
+      badgeX + 12,
+      badgeY + 24,
+      { width: badgeW - 24 },
+    );
+    doc.y = badgeY + badgeH + 14;
+  }
+
+  if (hasCorroboration) {
     const isCertified = consilience.confirmedCount >= 3;
 
     doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Storm Corroboration');
@@ -449,8 +488,9 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     const tierLabel = consilience.confidenceTier
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase());
+    const denom = consilience.totalSources ?? 12;
     doc.text(
-      `${consilience.confirmedCount}/12 independent sources · ${tierLabel}`,
+      `${consilience.confirmedCount}/${denom} independent sources · ${tierLabel}`,
     );
     doc.moveDown(0.4);
 
@@ -810,12 +850,18 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
             ? 'T-Wind'
             : (r.event_type ?? '');
       doc.text(typeLabel, 220, nceiRowY, { width: 64 });
-      const magStr =
-        r.magnitude === null
-          ? ''
-          : r.event_type === 'Hail'
-            ? `${r.magnitude.toFixed(2)}″`
-            : `${Math.round(r.magnitude)} mph`;
+      // Tornado rows carry no `magnitude` (ingest stores 0) — surface the
+      // F/EF scale instead so the appendix doesn't show "0″" for an EF2.
+      let magStr: string;
+      if (r.event_type === 'Tornado') {
+        magStr = r.tor_f_scale ? r.tor_f_scale.toUpperCase() : '—';
+      } else if (r.magnitude === null) {
+        magStr = '';
+      } else if (r.event_type === 'Hail') {
+        magStr = `${r.magnitude.toFixed(2)}″`;
+      } else {
+        magStr = `${Math.round(r.magnitude)} mph`;
+      }
       doc.text(magStr, 290, nceiRowY, { width: 64 });
       doc.fillColor('#64748b');
       doc.text((r.ncei_event_id ?? '').slice(0, 9), 360, nceiRowY, { width: 56 });

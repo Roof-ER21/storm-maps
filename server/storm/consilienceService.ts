@@ -155,21 +155,26 @@ export interface ConsilienceResult {
   };
   sources: ConsilienceSources;
   confirmedCount: number;
-  confidenceTier: ConfidenceTier;
   /**
-   * Adjuster-facing curated output. Only positives included. Empty arrays
-   * mean "render nothing" — do not surface absences as negative findings.
+   * Number of *configured* sources. Sources with an env-token requirement
+   * (HailTrace) drop out of the denominator when unconfigured — so the
+   * displayed score is "{confirmedCount}/{totalSources}" rather than
+   * baking in unreachable maxima.
    */
+  totalSources: number;
+  confidenceTier: ConfidenceTier;
   curated: {
     confirmedSources: string[];
     evidenceLines: string[];
-    /** One-paragraph summary suitable for the PDF body. Empty if 0 sources. */
     narrative: string;
   };
   generatedAt: string;
 }
 
-const DEFAULT_RADIUS_MI = 5;
+// 15 mi default — matches the prewarm scheduler. If the consilience endpoint
+// gets a request without an explicit radius, it lines up with the cached
+// entry produced by the scheduler and serves a sub-50ms hit.
+const DEFAULT_RADIUS_MI = 15;
 
 /**
  * In-flight deduplication: when 4 reps click the same property+date in 1s,
@@ -363,6 +368,12 @@ async function buildConsilienceInner(
     query.lng,
   );
 
+  // HailTrace is the only env-token-gated source. When unconfigured (no
+  // HAILTRACE_API_TOKEN) it's neither counted nor part of the denominator
+  // — otherwise scores would max out at 11/12 forever.
+  const hailtraceCounts = hailtrace.configured;
+  const totalSources = hailtraceCounts ? 12 : 11;
+
   const confirmedCount =
     Number(mrms.confirmed) +
     Number(spcHail.confirmed) +
@@ -370,7 +381,7 @@ async function buildConsilienceInner(
     Number(windContext.confirmed) +
     Number(synoptic.confirmed) +
     Number(mping.confirmed) +
-    Number(hailtrace.confirmed) +
+    (hailtraceCounts ? Number(hailtrace.confirmed) : 0) +
     Number(ncerSwdi.confirmed) +
     Number(nwsWarnings.confirmed) +
     Number(nceiStormEvents.confirmed) +
@@ -432,6 +443,7 @@ async function buildConsilienceInner(
     },
     sources,
     confirmedCount,
+    totalSources,
     confidenceTier,
     curated,
     generatedAt: new Date().toISOString(),

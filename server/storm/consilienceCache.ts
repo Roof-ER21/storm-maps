@@ -23,8 +23,6 @@
 import { sql as pgSql } from '../db.js';
 import type { ConsilienceResult } from './consilienceService.js';
 
-const TTL_MS = 24 * 60 * 60 * 1000;
-
 function quantize(n: number): number {
   return Math.round(n * 100) / 100;
 }

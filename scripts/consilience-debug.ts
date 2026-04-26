@@ -124,7 +124,7 @@ function printSummary(r: ConsilienceResult): void {
   console.log(`Date:          ${q.date}`);
   console.log(`Window:        ${q.startUtc} → ${q.endUtc}`);
   console.log('');
-  console.log(`Confirmed:     ${r.confirmedCount} / 12 sources  (${r.confidenceTier})`);
+  console.log(`Confirmed:     ${r.confirmedCount} / ${r.totalSources} sources  (${r.confidenceTier})`);
   console.log('');
 
   const rows: { name: string; status: string; detail: string }[] = [];

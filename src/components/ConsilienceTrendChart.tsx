@@ -1,7 +1,7 @@
 /**
  * ConsilienceTrendChart — per-property storm history strip chart.
  *
- * Plots cached 10-source consilience scores over the last N months. Each
+ * Plots cached multi-source consilience scores over the last N months. Each
  * data point is one storm date the property was queried for; Y-axis is
  * the number of independent sources that confirmed (0–10). Certified
  * (≥3) shown in green, low-confidence (1–2) in amber, zero in gray.
@@ -16,6 +16,8 @@ import type { LatLng } from '../types/storm';
 interface HistoryPoint {
   date: string;
   confirmedCount: number;
+  /** Configured-source denominator (12 normally, 11 without HailTrace). */
+  totalSources: number;
   confidenceTier: string;
   confirmedSources: string[];
 }
@@ -63,7 +65,9 @@ export default function ConsilienceTrendChart({
 
   useEffect(() => {
     if (!location) {
-      setPoints([]);
+      // Clear stale points when the property closes; keep-same-ref trick
+      // avoids a cascading re-render when the array was already empty.
+      setPoints((prev) => (prev.length === 0 ? prev : []));
       return;
     }
     let cancelled = false;
@@ -86,35 +90,48 @@ export default function ConsilienceTrendChart({
     return () => {
       cancelled = true;
     };
+    // location is destructured into lat/lng — the object identity itself
+    // can change every render, but the values are what we actually depend on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location?.lat, location?.lng, monthsBack]);
+
+  // Y-axis max = highest totalSources we've seen across the cached points.
+  // Pre-12-source rows that fall back to 12 will keep the chart at 12 even
+  // when a newer 11-source row (no HailTrace) is present — that's fine.
+  const yMax = useMemo(() => {
+    if (points.length === 0) return 12;
+    return points.reduce((acc, p) => Math.max(acc, p.totalSources || 12), 12);
+  }, [points]);
 
   const projected = useMemo(() => {
     if (points.length === 0) return [];
-    // X = chronological position; Y = confirmed count (0-10).
     const minTs = new Date(points[0].date + 'T12:00:00Z').getTime();
     const maxTs = new Date(points[points.length - 1].date + 'T12:00:00Z').getTime();
     const span = Math.max(1, maxTs - minTs);
     return points.map((p) => {
       const ts = new Date(p.date + 'T12:00:00Z').getTime();
       const xPct = (ts - minTs) / span;
-      const yPct = Math.min(1, p.confirmedCount / 12);
+      const yPct = Math.min(1, p.confirmedCount / yMax);
       return {
         ...p,
         x: PAD_LEFT + xPct * PLOT_W,
         y: PAD_TOP + (1 - yPct) * PLOT_H,
       };
     });
-  }, [points]);
+  }, [points, yMax]);
 
   if (!location) return null;
 
-  // Y-axis grid at 0, 3, 7, 10 (none / certified / strong / max)
+  // Y-axis grid scaled to yMax (0, certified line at 3, midpoints, top).
   const yTicks = [
     { value: 0, label: '0', y: PAD_TOP + PLOT_H },
-    { value: 3, label: '3 (certified)', y: PAD_TOP + (1 - 3 / 12) * PLOT_H },
-    { value: 6, label: '6', y: PAD_TOP + (1 - 6 / 12) * PLOT_H },
-    { value: 9, label: '9', y: PAD_TOP + (1 - 9 / 12) * PLOT_H },
-    { value: 12, label: '12', y: PAD_TOP },
+    { value: 3, label: '3 (certified)', y: PAD_TOP + (1 - 3 / yMax) * PLOT_H },
+    {
+      value: Math.round(yMax / 2),
+      label: String(Math.round(yMax / 2)),
+      y: PAD_TOP + (1 - Math.round(yMax / 2) / yMax) * PLOT_H,
+    },
+    { value: yMax, label: String(yMax), y: PAD_TOP },
   ];
 
   return (
@@ -125,10 +142,12 @@ export default function ConsilienceTrendChart({
             Storm Consilience Trend
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-stone-900">
-            12-source verification by storm date
+            {yMax}-source verification by storm date
           </h3>
           <p className="mt-1 text-sm text-stone-500">
-            Pre-computed scores across MRMS / SPC / IEM / Synoptic / mPING / HailTrace / NCEI SWDI / NWS / NCEI archive. Last {monthsBack} months.
+            Pre-computed scores across MRMS / SPC / IEM / Wind / Synoptic / mPING /
+            NCEI SWDI / NWS / NCEI archive / NEXRAD nx3mda / CoCoRaHS
+            {yMax === 12 ? ' / HailTrace' : ''}. Last {monthsBack} months.
           </p>
         </div>
         <div className="text-right">
@@ -264,7 +283,7 @@ export default function ConsilienceTrendChart({
                 className="font-semibold"
                 style={{ color: colorForCount(hover.pt.confirmedCount) }}
               >
-                {hover.pt.confirmedCount}/12 confirmed
+                {hover.pt.confirmedCount}/{hover.pt.totalSources} confirmed
               </span>{' '}
               <span className="text-stone-500">· {hover.pt.confidenceTier}</span>
             </p>
