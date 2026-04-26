@@ -21,7 +21,10 @@ export interface ConsilienceFlag {
     | 'quadruple-verified'
     | 'quintuple-verified'
     | 'sextuple-verified'
-    | 'septuple-verified';
+    | 'septuple-verified'
+    | 'octuple-verified'
+    | 'nontuple-verified'
+    | 'decuple-verified';
   /** <2 sources confirm — yellow caution flag. */
   lowConfidence: boolean;
   /** ≥3 sources confirm — green certified badge (matches PDF's Forensic Verification). */

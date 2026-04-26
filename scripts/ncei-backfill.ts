@@ -424,18 +424,20 @@ async function backfillYear(
   return stats;
 }
 
-async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
-  if (args.years.length === 0) {
-    console.error(
-      'Usage:\n' +
-        '  npm run backfill:ncei -- --year 2025\n' +
-        '  npm run backfill:ncei -- --years 2022-2025\n' +
-        '  npm run backfill:ncei -- --year 2025 --dry-run\n' +
-        '  npm run backfill:ncei -- --year 2025 --limit 100',
-    );
-    process.exit(1);
-  }
+/**
+ * Programmatic entry: callable from migrate.ts when BACKFILL_NCEI_ON_BOOT
+ * is set, OR from the CLI. `closeSql` controls whether to close the
+ * connection at the end (CLI=true, embedded=false so the server can reuse).
+ */
+export async function runNceiBackfill(
+  inputArgs: { years: number[]; dryRun?: boolean; limit?: number },
+  opts?: { closeSql?: boolean },
+): Promise<{ totalKept: number; perYear: YearStats[] }> {
+  const args: Args = {
+    years: inputArgs.years,
+    dryRun: inputArgs.dryRun ?? false,
+    limit: inputArgs.limit ?? Number.POSITIVE_INFINITY,
+  };
   if (!sql) throw new Error('DATABASE_URL not configured');
   await sql`SELECT 1`;
 
@@ -449,9 +451,9 @@ async function main(): Promise<void> {
     );
   }
 
+  const totalKept = all.reduce((m, y) => m + y.rowsKept, 0);
   console.log('\n=== summary ===');
-  const total = all.reduce((m, y) => m + y.rowsKept, 0);
-  console.log(`total rows kept across all years: ${total}`);
+  console.log(`total rows kept across all years: ${totalKept}`);
   console.log(`focus states: ${[...FOCUS_STATES].join(',')}`);
 
   if (!args.dryRun) {
@@ -463,10 +465,35 @@ async function main(): Promise<void> {
     console.log(`verified_hail_events rows with source_ncei_storm_events=TRUE: ${cnt[0]?.n ?? 0}`);
   }
 
-  await sql.end({ timeout: 5 });
+  if (opts?.closeSql !== false) {
+    await sql.end({ timeout: 5 });
+  }
+
+  return { totalKept, perYear: all };
 }
 
-main().catch((err) => {
-  console.error('[ncei-backfill] failed:', err);
-  process.exit(1);
-});
+async function cliMain(): Promise<void> {
+  const args = parseArgs(process.argv.slice(2));
+  if (args.years.length === 0) {
+    console.error(
+      'Usage:\n' +
+        '  npm run backfill:ncei -- --year 2025\n' +
+        '  npm run backfill:ncei -- --years 2022-2025\n' +
+        '  npm run backfill:ncei -- --year 2025 --dry-run\n' +
+        '  npm run backfill:ncei -- --year 2025 --limit 100',
+    );
+    process.exit(1);
+  }
+  await runNceiBackfill(args, { closeSql: true });
+}
+
+// Only run the CLI entry when this module is invoked directly (not when
+// migrate.ts imports it for the boot-flag path).
+const invokedDirectly =
+  process.argv[1] && /ncei-backfill/.test(process.argv[1]);
+if (invokedDirectly) {
+  cliMain().catch((err) => {
+    console.error('[ncei-backfill] failed:', err);
+    process.exit(1);
+  });
+}

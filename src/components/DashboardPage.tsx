@@ -608,7 +608,7 @@ export default function DashboardPage({
                                 className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
                               >
                                 <span aria-hidden="true">✓</span>
-                                Certified ({flag.confirmedCount}/7)
+                                Certified ({flag.confirmedCount}/10)
                               </span>
                             );
                           }
@@ -619,7 +619,7 @@ export default function DashboardPage({
                                 className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
                               >
                                 <span aria-hidden="true">⚠</span>
-                                Low confidence ({flag.confirmedCount}/7)
+                                Low confidence ({flag.confirmedCount}/10)
                               </span>
                             );
                           }
@@ -628,7 +628,7 @@ export default function DashboardPage({
                               title={`${flag.confirmedCount}/7 independent sources confirmed (${flag.confidenceTier})`}
                               className="inline-flex items-center rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700"
                             >
-                              {flag.confirmedCount}/7 confirmed
+                              {flag.confirmedCount}/10 confirmed
                             </span>
                           );
                         })()}

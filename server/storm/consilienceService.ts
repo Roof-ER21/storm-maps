@@ -33,6 +33,7 @@ import { fetchMpingReportsForDate, type MpingReport } from './mpingService.js';
 import { fetchHailtraceReportsForDate, isHailtraceConfigured, type HailtraceReport } from './hailtraceClient.js';
 import { fetchSwdiHailReports, type SwdiHailReport } from './ncerSwdiClient.js';
 import { fetchIemVtecForDate, pointInWarning, type IemVtecWarning } from './iemVtecClient.js';
+import { fetchNceiEventsForDateAndPoint, type NceiEvent } from './nceiStormEventsClient.js';
 import type { BoundingBox, WindReport } from './types.js';
 
 export interface ConsilienceQuery {
@@ -108,6 +109,13 @@ export interface ConsilienceSources {
     inWarningPolygon: boolean;
     types: string[];
   };
+  nceiStormEvents: SourceResultBase & {
+    eventCount: number;
+    maxHailInches: number;
+    eventTypes: string[];
+    nearestMiles: number | null;
+    nceiEventIds: number[];
+  };
 }
 
 export type ConfidenceTier =
@@ -120,7 +128,8 @@ export type ConfidenceTier =
   | 'sextuple-verified'
   | 'septuple-verified'
   | 'octuple-verified'
-  | 'nontuple-verified';
+  | 'nontuple-verified'
+  | 'decuple-verified';
 
 export interface ConsilienceResult {
   query: Required<Pick<ConsilienceQuery, 'lat' | 'lng' | 'date' | 'radiusMiles'>> & {
@@ -184,6 +193,12 @@ export async function buildConsilience(
     }).catch(emptyArray<HailtraceReport>),
     fetchSwdiHailReports({ date: query.date, bbox: bounds }).catch(emptyArray<SwdiHailReport>),
     fetchIemVtecForDate({ date: query.date, bounds }).catch(emptyArray<IemVtecWarning>),
+    fetchNceiEventsForDateAndPoint({
+      date: query.date,
+      lat: query.lat,
+      lng: query.lng,
+      radiusMiles: radius,
+    }).catch(emptyArray<NceiEvent>),
   ]);
   const mrmsResult = results[0];
   const spcHailReports = results[1] as HailPointReport[];
@@ -195,6 +210,7 @@ export async function buildConsilience(
   const hailtraceResults = results[7] as HailtraceReport[];
   const swdiResults = results[8] as SwdiHailReport[];
   const vtecResults = results[9] as IemVtecWarning[];
+  const nceiResults = results[10] as NceiEvent[];
 
   // ── MRMS ─────────────────────────────────────────────
   const mrms = analyzeMrms(mrmsResult);
@@ -255,6 +271,13 @@ export async function buildConsilience(
   // ── NWS warnings (IEM VTEC — point-in-polygon) ──────────────
   const nwsWarnings = analyzeNwsWarnings(vtecResults, query.lat, query.lng);
 
+  // ── NCEI Storm Events (official NOAA archive) ────────────────
+  const nceiStormEvents = analyzeNceiStormEvents(
+    nceiResults,
+    query.lat,
+    query.lng,
+  );
+
   const confirmedCount =
     Number(mrms.confirmed) +
     Number(spcHail.confirmed) +
@@ -264,28 +287,31 @@ export async function buildConsilience(
     Number(mping.confirmed) +
     Number(hailtrace.confirmed) +
     Number(ncerSwdi.confirmed) +
-    Number(nwsWarnings.confirmed);
+    Number(nwsWarnings.confirmed) +
+    Number(nceiStormEvents.confirmed);
 
   const confidenceTier: ConfidenceTier =
-    confirmedCount >= 9
-      ? 'nontuple-verified'
-      : confirmedCount === 8
-        ? 'octuple-verified'
-        : confirmedCount === 7
-          ? 'septuple-verified'
-          : confirmedCount === 6
-            ? 'sextuple-verified'
-            : confirmedCount === 5
-              ? 'quintuple-verified'
-              : confirmedCount === 4
-                ? 'quadruple-verified'
-                : confirmedCount === 3
-                  ? 'triple-verified'
-                  : confirmedCount === 2
-                    ? 'cross-verified'
-                    : confirmedCount === 1
-                      ? 'single'
-                      : 'none';
+    confirmedCount >= 10
+      ? 'decuple-verified'
+      : confirmedCount === 9
+        ? 'nontuple-verified'
+        : confirmedCount === 8
+          ? 'octuple-verified'
+          : confirmedCount === 7
+            ? 'septuple-verified'
+            : confirmedCount === 6
+              ? 'sextuple-verified'
+              : confirmedCount === 5
+                ? 'quintuple-verified'
+                : confirmedCount === 4
+                  ? 'quadruple-verified'
+                  : confirmedCount === 3
+                    ? 'triple-verified'
+                    : confirmedCount === 2
+                      ? 'cross-verified'
+                      : confirmedCount === 1
+                        ? 'single'
+                        : 'none';
 
   const sources: ConsilienceSources = {
     mrms,
@@ -297,6 +323,7 @@ export async function buildConsilience(
     hailtrace,
     ncerSwdi,
     nwsWarnings,
+    nceiStormEvents,
   };
 
   const curated = curateForAdjuster(sources, query.date);
@@ -431,6 +458,51 @@ function analyzeWindReports(
     peakGustMph: peak,
     nearestMiles: Number.isFinite(nearest) ? nearest : null,
     sources,
+  };
+}
+
+function analyzeNceiStormEvents(
+  events: NceiEvent[],
+  lat: number,
+  lng: number,
+): ConsilienceSources['nceiStormEvents'] {
+  if (events.length === 0) {
+    return {
+      confirmed: false,
+      eventCount: 0,
+      maxHailInches: 0,
+      eventTypes: [],
+      nearestMiles: null,
+      nceiEventIds: [],
+    };
+  }
+  const hailEvents = events.filter((e) => e.event_type === 'Hail');
+  const maxHail = hailEvents.reduce(
+    (m, e) => Math.max(m, e.magnitude ?? 0),
+    0,
+  );
+  const eventTypes = [...new Set(events.map((e) => e.event_type))];
+  const nearest = events.reduce((best, e) => {
+    const d = haversineMiles(lat, lng, e.lat, e.lng);
+    return d < best ? d : best;
+  }, Number.POSITIVE_INFINITY);
+  const ids = events
+    .map((e) => e.ncei_event_id)
+    .filter((id): id is number => id !== null);
+  // NCEI is the official record — any event in radius is a confirmation
+  // (the magnitude floors were applied at ingest time).
+  const confirmed = events.length > 0;
+  const evidence = confirmed
+    ? `NCEI Storm Events (official NOAA archive): ${events.length} event${events.length === 1 ? '' : 's'} within ${nearest.toFixed(1)} mi — ${eventTypes.join(', ')}${maxHail > 0 ? `, peak hail ${maxHail.toFixed(2)}"` : ''} (event_id${ids.length > 0 ? ` ${ids[0]}` : ''}).`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    eventCount: events.length,
+    maxHailInches: maxHail,
+    eventTypes,
+    nearestMiles: Number.isFinite(nearest) ? nearest : null,
+    nceiEventIds: ids,
   };
 }
 
@@ -659,6 +731,10 @@ function curateForAdjuster(
   if (sources.nwsWarnings.confirmed && sources.nwsWarnings.evidence) {
     confirmedSources.push('NWS warnings');
     evidenceLines.push(sources.nwsWarnings.evidence);
+  }
+  if (sources.nceiStormEvents.confirmed && sources.nceiStormEvents.evidence) {
+    confirmedSources.push('NCEI Storm Events');
+    evidenceLines.push(sources.nceiStormEvents.evidence);
   }
 
   if (confirmedSources.length === 0) {

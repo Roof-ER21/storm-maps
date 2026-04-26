@@ -340,7 +340,45 @@ async function migrate() {
   await sql.end();
 }
 
-migrate().catch((err) => {
-  console.error('[migrate] Failed:', err);
-  process.exit(1);
-});
+/**
+ * Optional one-shot NCEI backfill on boot. Set BACKFILL_NCEI_ON_BOOT to a
+ * year ("2025") or range ("2022-2026") to run the backfill once after
+ * migration completes. After it lands, unset the var to stop re-running.
+ *
+ * This is the pragmatic way to run the bulk loader from inside Railway's
+ * network — DATABASE_URL points at postgres.railway.internal which is only
+ * resolvable inside the container.
+ */
+async function maybeRunBackfill(): Promise<void> {
+  const flag = process.env.BACKFILL_NCEI_ON_BOOT?.trim();
+  if (!flag) return;
+  console.log(`[migrate] BACKFILL_NCEI_ON_BOOT=${flag} — running NCEI backfill…`);
+  const years: number[] = [];
+  const m = flag.match(/^(\d{4})-(\d{4})$/);
+  if (m) {
+    const start = parseInt(m[1], 10);
+    const end = parseInt(m[2], 10);
+    for (let y = start; y <= end; y++) years.push(y);
+  } else if (/^\d{4}$/.test(flag)) {
+    years.push(parseInt(flag, 10));
+  } else {
+    console.warn(
+      `[migrate] BACKFILL_NCEI_ON_BOOT="${flag}" not a year or range — skipping`,
+    );
+    return;
+  }
+  try {
+    const { runNceiBackfill } = await import('../scripts/ncei-backfill.js');
+    await runNceiBackfill({ years }, { closeSql: false });
+    console.log('[migrate] NCEI backfill finished. Unset BACKFILL_NCEI_ON_BOOT to stop re-running on every boot.');
+  } catch (err) {
+    console.error('[migrate] backfill failed (non-fatal — server will still start):', err);
+  }
+}
+
+migrate()
+  .then(() => maybeRunBackfill())
+  .catch((err) => {
+    console.error('[migrate] Failed:', err);
+    process.exit(1);
+  });
