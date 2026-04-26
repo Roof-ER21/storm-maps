@@ -1534,7 +1534,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .lineWidth(0.6)
     .stroke();
 
-  // Legend strip BELOW the map — bigger swatches, dark labels, readable
+  // Legend strip BELOW the map — bigger swatches, dark labels, readable.
+  // Replace fraction glyphs PDFKit's Helvetica doesn't ship (⅛, ⅜, ⅝, ⅞)
+  // with ASCII fallbacks so the labels don't render as `!"` placeholders.
+  const labelForLegend = (raw: string): string =>
+    raw
+      .replace(/⅛/g, '1/8')
+      .replace(/⅜/g, '3/8')
+      .replace(/⅝/g, '5/8')
+      .replace(/⅞/g, '7/8');
   doc.y = mapY + mapH + 6;
   const legendStripY = doc.y;
   doc
@@ -1555,7 +1563,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       .fillColor('#0f172a')
       .font('Helvetica')
       .fontSize(7.5)
-      .text(lvl.label, legendX + 16, legendStripY + 1, { lineBreak: false });
+      .text(labelForLegend(lvl.label), legendX + 16, legendStripY + 1, { lineBreak: false });
     legendX += 50;
     if (legendX > mapX + mapW - 30) break;
   }
