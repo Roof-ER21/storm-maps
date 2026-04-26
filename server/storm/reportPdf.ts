@@ -763,7 +763,77 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     biggestNearby: number;
     biggestNearbyMi: number;
   };
+  // Pull NCEI Storm Events for an 18-month window CENTERED on the date of
+  // loss — gives reps a multi-event claim packet view ("here are the 7
+  // storm dates that hit this address in the last year and a half"). The
+  // 12mo `events` array is keyed off "now" and misses historical claims,
+  // so we go straight to NCEI for the historical table.
+  const histNceiRows = await fetchNceiArchiveForReport({
+    lat: req.lat,
+    lng: req.lng,
+    dateOfLoss: req.dateOfLoss,
+    radiusMiles: 12, // slightly wider so 5-10mi events are captured
+    windowDays: 540, // ~18 months
+  }).catch(() => [] as Awaited<ReturnType<typeof fetchNceiArchiveForReport>>);
+
   const histGroups = new Map<string, HistRow>();
+  for (const r of histNceiRows) {
+    if (r.event_type !== 'Hail') continue;
+    if (r.magnitude === null || r.magnitude < 0.25) continue;
+    // NCEI rows don't carry lat/lng directly in this query — we fall back
+    // to assuming ≤radius distance and let the source row carry county.
+    // For per-band assignment we'd need event lat/lng; until we extend
+    // the appendix query, we lump everything into a county-aware "near"
+    // bucket and pick band by reading the adjacent event lat from the
+    // 12mo events array when the same date matches.
+    const dateIso =
+      typeof r.event_date === 'string'
+        ? r.event_date.slice(0, 10)
+        : String(r.event_date).slice(0, 10);
+    if (!dateIso) continue;
+    // Try to find a matching event in the 12mo array to recover lat/lng.
+    const sameDateEvent = events.find((e) => {
+      if (e.eventType !== 'Hail') return false;
+      const t = new Date(e.beginDate);
+      if (Number.isNaN(t.getTime())) return false;
+      const eIso = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(t);
+      return eIso === dateIso && Math.abs(e.magnitude - (r.magnitude ?? 0)) < 0.1;
+    });
+    const dist = sameDateEvent
+      ? haversineMiles(req.lat, req.lng, sameDateEvent.beginLat, sameDateEvent.beginLon)
+      : 5; // unknown lat/lng: bucket as "nearby"; biggest-nearby still tracked
+    if (dist > 12) continue;
+
+    const row =
+      histGroups.get(dateIso) ??
+      ({
+        dateIso,
+        label: '',
+        atProperty: 0,
+        mi1to3: 0,
+        mi3to5: 0,
+        mi5to10: 0,
+        biggestNearby: 0,
+        biggestNearbyMi: 0,
+      } as HistRow);
+    const sizeIn = r.magnitude ?? 0;
+    if (sizeIn > row.biggestNearby) {
+      row.biggestNearby = sizeIn;
+      row.biggestNearbyMi = dist;
+    }
+    if (dist <= 1.0 && sizeIn > row.atProperty) row.atProperty = sizeIn;
+    else if (dist > 1.0 && dist <= 3.0 && sizeIn > row.mi1to3) row.mi1to3 = sizeIn;
+    else if (dist > 3.0 && dist <= 5.0 && sizeIn > row.mi3to5) row.mi3to5 = sizeIn;
+    else if (dist > 5.0 && dist <= 10.0 && sizeIn > row.mi5to10) row.mi5to10 = sizeIn;
+    histGroups.set(dateIso, row);
+  }
+  // Augment with same-window 12mo `events` array (covers SPC LSR / IEM
+  // reports that may not yet be in the NCEI archive).
   for (const e of events) {
     if (e.eventType !== 'Hail') continue;
     if (!e.beginLat || !e.beginLon) continue;
@@ -973,6 +1043,12 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }
 
   // ── Vector swath map ──────────────────────────────────────────────────
+  // Force a fresh page if the map (header + 280pt body + legend) won't
+  // fit cleanly. Letter page bottom margin is ~72pt; without this guard
+  // the new tier card / narrative push the map into a bad split.
+  if (doc.y > 460) {
+    doc.addPage();
+  }
   doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Hail Footprint');
   doc.moveDown(0.3);
   const mapX = 54;
