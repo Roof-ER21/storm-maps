@@ -2668,7 +2668,7 @@ function App() {
   }, []);
 
   const mapArea = (
-    <main className="relative order-1 flex min-h-[70vh] flex-1 flex-col min-w-0 lg:order-2 lg:min-h-0">
+    <main className="relative order-1 flex h-[70vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 
@@ -2934,7 +2934,7 @@ function App() {
   );
 
   return (
-    <div className="flex min-h-screen flex-col bg-black text-white lg:h-full lg:min-h-0 lg:overflow-hidden">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-black text-white">
       <AppHeader
         activeView={activeView}
         onChangeView={setActiveView}
