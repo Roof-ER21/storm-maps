@@ -279,7 +279,32 @@ async function migrate() {
     ADD COLUMN IF NOT EXISTS ncei_event_id BIGINT,
     ADD COLUMN IF NOT EXISTS narrative TEXT,
     ADD COLUMN IF NOT EXISTS begin_time_utc TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS end_time_utc TIMESTAMP
+    ADD COLUMN IF NOT EXISTS end_time_utc TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS consilience_generated_at TIMESTAMP
+  `;
+  // Consilience cache table — keyed on (date, property point) at 0.01°
+  // resolution (~0.7 mi). Stores the full 10-source result so dashboard
+  // reads are sub-50ms DB lookups instead of 10 concurrent network fetches.
+  await sql`
+    CREATE TABLE IF NOT EXISTS consilience_cache (
+      id SERIAL PRIMARY KEY,
+      event_date DATE NOT NULL,
+      lat_q REAL NOT NULL,
+      lng_q REAL NOT NULL,
+      radius_miles REAL NOT NULL,
+      confirmed_count INTEGER NOT NULL,
+      confidence_tier TEXT NOT NULL,
+      payload JSONB NOT NULL,
+      generated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS consilience_cache_lookup_idx
+      ON consilience_cache (event_date, lat_q, lng_q, radius_miles)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS consilience_cache_generated_idx
+      ON consilience_cache (generated_at)
   `;
   await sql`
     CREATE INDEX IF NOT EXISTS verified_hail_events_state_idx

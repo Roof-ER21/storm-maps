@@ -291,23 +291,51 @@ async function runPrewarmCycle(): Promise<void> {
   }
 
   // Consilience prewarm — for each hot property, pre-compute the 10-source
-  // corroboration for any storm date that turned up in the event cache. This
-  // makes the dashboard "yellow flag / certified" badges sub-50ms instead
-  // of waiting on 10 concurrent network fetches per render.
-  // Cap at top 25 properties × top 4 dates = 100 consilience computes per
-  // cycle (about 5 minutes of fetches at 10 sources each).
-  const consiliencePrewarmCap = 25;
+  // corroboration for the top storm dates that turned up in NCEI history.
+  // Persisted to consilience_cache so dashboard reads are sub-50ms instead
+  // of 3-8s of concurrent network fetches per render.
+  //
+  // Bias:
+  //   1. VA/MD/PA properties first (Roof-ER's main territories — see memory
+  //      `cc21-phase19-roolink-gap.md` for region scope)
+  //   2. Per-property dates filtered to Hail / Thunderstorm Wind / Tornado
+  //      (skip Funnel Cloud — not insurance-actionable on its own)
+  //   3. Cap at 30 properties × 4 dates = 120 (date,property) pairs/cycle
+  const consiliencePrewarmCap = 30;
   const datesPerProperty = 4;
+
+  // Sort hot properties so VA/MD/PA come first. The properties table doesn't
+  // have a state_code field, so use coarse lat/lng bbox tests against the
+  // FOCUS_TERRITORIES centers.
+  const isInPriorityState = (lat: number, lng: number): boolean => {
+    // VA: 36.4-39.5, -83.7 to -75.1
+    if (lat >= 36.4 && lat <= 39.5 && lng >= -83.7 && lng <= -75.1) return true;
+    // MD+DC: 37.8-39.8, -79.5 to -75.0
+    if (lat >= 37.8 && lat <= 39.8 && lng >= -79.5 && lng <= -75.0) return true;
+    // PA: 39.6-42.4, -80.6 to -74.6
+    if (lat >= 39.6 && lat <= 42.4 && lng >= -80.6 && lng <= -74.6) return true;
+    return false;
+  };
+  const prioritizedProps = [...hotProperties].sort((a, b) => {
+    const aP = isInPriorityState(a.lat, a.lng) ? 0 : 1;
+    const bP = isInPriorityState(b.lat, b.lng) ? 0 : 1;
+    return aP - bP;
+  });
+
   let consilienceWarmed = 0;
-  for (const p of hotProperties.slice(0, consiliencePrewarmCap)) {
+  let consilienceCertified = 0;
+  for (const p of prioritizedProps.slice(0, consiliencePrewarmCap)) {
     if (!pgSql) break;
     try {
-      // Pull the 4 most recent dates from this property's event cache —
-      // those are the dashboard "Latest Hits" entries.
+      // Pull dates with Hail or insurance-actionable Wind events near this
+      // property. Order by date DESC to surface "Latest Hits" the dashboard
+      // shows; could change to magnitude DESC if the dashboard pivots to
+      // "biggest storms" mode.
       const dateRows = await pgSql<Array<{ event_date: string | Date }>>`
         SELECT DISTINCT event_date
           FROM verified_hail_events
          WHERE source_ncei_storm_events = TRUE
+           AND event_type IN ('Hail', 'Thunderstorm Wind', 'Tornado')
            AND lat BETWEEN ${p.lat - 0.5} AND ${p.lat + 0.5}
            AND lng BETWEEN ${p.lng - 0.5} AND ${p.lng + 0.5}
          ORDER BY event_date DESC
@@ -319,13 +347,14 @@ async function runPrewarmCycle(): Promise<void> {
             ? row.event_date.toISOString().slice(0, 10)
             : String(row.event_date).slice(0, 10);
         try {
-          await buildConsilience({
-            lat: p.lat,
-            lng: p.lng,
-            date: dateStr,
-            radiusMiles: 5,
-          });
+          // skipCache=true so we always re-compute (refreshing the cache).
+          // persist defaults to true so the result is written back.
+          const r = await buildConsilience(
+            { lat: p.lat, lng: p.lng, date: dateStr, radiusMiles: 5 },
+            { skipCache: true },
+          );
           consilienceWarmed += 1;
+          if (r.confirmedCount >= 3) consilienceCertified += 1;
         } catch (err) {
           cycleStats.errors += 1;
           console.warn(`[prewarm] consilience ${p.lat},${p.lng} ${dateStr} failed`, err);
@@ -338,7 +367,9 @@ async function runPrewarmCycle(): Promise<void> {
     }
   }
   if (consilienceWarmed > 0) {
-    console.log(`[prewarm] consilience warmed ${consilienceWarmed} (date,property) pairs`);
+    console.log(
+      `[prewarm] consilience warmed ${consilienceWarmed} pairs (${consilienceCertified} certified ≥3/10)`,
+    );
   }
 
   lastCycleStats = cycleStats;

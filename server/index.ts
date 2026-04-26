@@ -1434,11 +1434,21 @@ app.get('/api/admin/live-mrms-status', requireAdmin, (_req, res) => {
   res.json(getLiveMrmsAlertStatus());
 });
 
+app.get('/api/admin/consilience-cache-status', requireAdmin, async (_req, res) => {
+  try {
+    const { getConsilienceCacheStats } = await import('./storm/consilienceCache.js');
+    res.json(await getConsilienceCacheStats());
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // NCEI Storm Events drill-down — adjuster-facing search against the
 // official NOAA archive. Backed by the verified_hail_events table; only
 // rows with source_ncei_storm_events=TRUE are queried.
-//   GET /api/admin/ncei-search?date=YYYY-MM-DD[&state=XX][&type=Hail][&min_size=N][&min_mph=N][&limit=N]
-// Returns matching events sorted by magnitude desc.
+//   GET /api/admin/ncei-search?date=YYYY-MM-DD[&state=XX][&type=Hail][&min_size=N][&min_mph=N][&limit=N][&fmt=csv]
+// Returns matching events sorted by magnitude desc. fmt=csv returns
+// adjuster-friendly CSV instead of JSON.
 interface NceiSearchQuery {
   date?: string;
   start_date?: string;
@@ -1448,6 +1458,14 @@ interface NceiSearchQuery {
   min_size?: string;
   min_mph?: string;
   limit?: string;
+  fmt?: 'json' | 'csv';
+}
+
+function csvEscape(v: unknown): string {
+  if (v === null || v === undefined) return '';
+  const s = String(v);
+  if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
 }
 
 app.get('/api/admin/ncei-search', requireAdmin, async (req, res) => {
@@ -1500,6 +1518,44 @@ app.get('/api/admin/ncei-search', requireAdmin, async (req, res) => {
        LIMIT ${limit}
     `;
     const rows = await pgSql.unsafe(sqlText, params as never[]);
+
+    if (q.fmt === 'csv') {
+      // Adjuster-friendly column order — what gets dropped into a claim
+      // package. Includes ncei_event_id so the row is officially citable.
+      const headers = [
+        'event_date',
+        'state_code',
+        'county',
+        'lat',
+        'lng',
+        'event_type',
+        'magnitude',
+        'magnitude_type',
+        'ncei_event_id',
+        'episode_id',
+        'wfo',
+        'begin_time_utc',
+        'end_time_utc',
+        'narrative',
+      ];
+      const csv = [
+        headers.join(','),
+        ...rows.map((r: Record<string, unknown>) =>
+          headers.map((h) => csvEscape(r[h])).join(','),
+        ),
+      ].join('\n');
+      res.set('Content-Type', 'text/csv; charset=utf-8');
+      const fname =
+        (q.date ? `ncei-${q.date}` : 'ncei-search') +
+        (q.state ? `-${q.state.toUpperCase()}` : '') +
+        (q.type ? `-${q.type.replace(/\s+/g, '-')}` : '') +
+        '.csv';
+      res.set('Content-Disposition', `attachment; filename="${fname}"`);
+      res.set('Cache-Control', 'public, max-age=300');
+      res.send(csv);
+      return;
+    }
+
     res.set('Cache-Control', 'public, max-age=300');
     res.json({ ok: true, count: rows.length, events: rows });
   } catch (err) {
@@ -1576,16 +1632,19 @@ process.on('uncaughtException', (err: Error) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Hail Yes! running on port ${PORT}`);
-  // Kick the cache prewarm scheduler. No-op in dev unless HAIL_YES_PREWARM=1.
-  startPrewarmScheduler();
-  // Kick the NWS-warning push fan-out. No-op without VAPID keys.
-  startPushFanout();
-  // Kick the live MRMS hail-band alert worker. No-op unless production OR
-  // HAIL_YES_LIVE_MRMS_ALERT=1.
-  startLiveMrmsAlertWorker();
+  // Background workers are embedded by default. When running a separate
+  // hail-yes-worker Railway service (npm run worker), set
+  // HAIL_YES_DISABLE_WORKERS=1 on the web service so the workers only run
+  // in one place.
+  if (process.env.HAIL_YES_DISABLE_WORKERS === '1') {
+    console.log('[server] HAIL_YES_DISABLE_WORKERS=1 — skipping embedded workers (run via worker service)');
+  } else {
+    startPrewarmScheduler();
+    startPushFanout();
+    startLiveMrmsAlertWorker();
+  }
   // Optional NCEI backfill (BACKFILL_NCEI_ON_BOOT env). Fire-and-forget so
-  // the server stays responsive while it runs (a multi-year backfill can
-  // take 10+ minutes to download + parse + upsert).
+  // the server stays responsive while it runs.
   void maybeRunNceiBackfill();
 });
 

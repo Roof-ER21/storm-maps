@@ -35,6 +35,7 @@ import { fetchSwdiHailReports, type SwdiHailReport } from './ncerSwdiClient.js';
 import { fetchIemVtecForDate, pointInWarning, type IemVtecWarning } from './iemVtecClient.js';
 import { fetchNceiEventsForDateAndPoint, type NceiEvent } from './nceiStormEventsClient.js';
 import { etDayUtcWindow, etDayMrmsAnchorIso } from './timeUtils.js';
+import { readConsilienceCache, writeConsilienceCache } from './consilienceCache.js';
 import type { BoundingBox, WindReport } from './types.js';
 
 export interface ConsilienceQuery {
@@ -157,8 +158,19 @@ const DEFAULT_RADIUS_MI = 5;
 
 export async function buildConsilience(
   query: ConsilienceQuery,
+  opts?: { skipCache?: boolean; persist?: boolean },
 ): Promise<ConsilienceResult> {
   const radius = query.radiusMiles ?? DEFAULT_RADIUS_MI;
+  // Try cache unless caller explicitly asked for live recompute.
+  if (!opts?.skipCache && !query.startUtcOverride && !query.endUtcOverride) {
+    const cached = await readConsilienceCache({
+      lat: query.lat,
+      lng: query.lng,
+      date: query.date,
+      radiusMiles: radius,
+    });
+    if (cached) return cached;
+  }
   // Eastern-time calendar day → exact UTC window. Handles EDT/EST switch
   // automatically. Previous code hardcoded T04:00:00Z (EDT-only) and ended
   // at next-day T12:00:00Z (8 hours too late, pulled in next-morning data).
@@ -327,7 +339,7 @@ export async function buildConsilience(
 
   const curated = curateForAdjuster(sources, query.date);
 
-  return {
+  const result: ConsilienceResult = {
     query: {
       lat: query.lat,
       lng: query.lng,
@@ -342,6 +354,13 @@ export async function buildConsilience(
     curated,
     generatedAt: new Date().toISOString(),
   };
+
+  // Persist when the caller asks (prewarm scheduler) OR by default for any
+  // confirmed result so future reads hit the cache.
+  if (opts?.persist !== false && confirmedCount > 0) {
+    void writeConsilienceCache(result);
+  }
+  return result;
 }
 
 // ── Source analyzers ──────────────────────────────────────────

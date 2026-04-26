@@ -15,6 +15,7 @@
     "dev:server": "tsx watch --env-file=.env.local server/index.ts",
     "build": "tsc -b && vite build",
     "start": "node --import tsx server/migrate.ts && node --import tsx server/index.ts",
+    "worker": "node --import tsx server/migrate.ts && node --import tsx server/worker.ts",
     "db:migrate": "node --env-file=.env.local --import tsx server/migrate.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
