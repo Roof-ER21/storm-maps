@@ -17,7 +17,7 @@ import { inflate } from 'pako';
 const IEM_BASE = 'https://mtarchive.geol.iastate.edu';
 const FETCH_TIMEOUT_MS = 30_000;
 
-export type MrmsProduct = 'MESH_Max_60min' | 'MESH_Max_1440min';
+export type MrmsProduct = 'MESH_Max_60min' | 'MESH_Max_1440min' | 'MESH';
 
 export interface MrmsFile {
   url: string;
@@ -40,6 +40,11 @@ const CADENCE: Record<MrmsProduct, ProductCadence> = {
   MESH_Max_60min: { stepMinutes: 2, walkBack: 30, walkForward: 5 },
   // 1440-min product is published every 30 min. Walk back ~12h, forward ~6h.
   MESH_Max_1440min: { stepMinutes: 30, walkBack: 24, walkForward: 12 },
+  // Instantaneous MESH — published every 2 min. Used by the historical
+  // hourly scrubber because IEM only archives MESH/ + MESH_Max_1440min/
+  // for older dates (no MESH_Max_60min/ for archive). Walk window keeps
+  // a snapshot within ~30 min of the requested anchor.
+  MESH: { stepMinutes: 2, walkBack: 30, walkForward: 15 },
 };
 
 function pad(n: number, w = 2): string {
@@ -160,6 +165,23 @@ export async function fetchMrmsMesh60(opts: {
 }): Promise<MrmsFile | null> {
   return fetchMrmsGrib({
     product: 'MESH_Max_60min',
+    date: opts.date,
+    anchorIso: opts.anchorIso,
+  });
+}
+
+/**
+ * Instantaneous MESH — every 2 min snapshot, archived back through 2010.
+ * Used by the historical hourly scrubber because IEM doesn't archive
+ * MESH_Max_60min/ for older dates. Trade-off: snapshot vs rolling max,
+ * but reps watching hour-by-hour evolution see meaningful frame deltas.
+ */
+export async function fetchMrmsMeshInstantaneous(opts: {
+  date: string;
+  anchorIso?: string;
+}): Promise<MrmsFile | null> {
+  return fetchMrmsGrib({
+    product: 'MESH',
     date: opts.date,
     anchorIso: opts.anchorIso,
   });

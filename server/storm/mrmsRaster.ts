@@ -18,7 +18,11 @@
 
 import { PNG } from 'pngjs';
 import crypto from 'crypto';
-import { fetchMrmsMesh1440, fetchMrmsMesh60 } from './mrmsFetch.js';
+import {
+  fetchMrmsMesh1440,
+  fetchMrmsMesh60,
+  fetchMrmsMeshInstantaneous,
+} from './mrmsFetch.js';
 import { readGrib2 } from './grib2/sections.js';
 import { decodeGribData } from './grib2/decode.js';
 import { IHM_HAIL_LEVELS } from './hailFallbackService.js';
@@ -236,11 +240,32 @@ export async function buildMrmsRaster(
   if (hit && hit.expiresAt > now) return hit.result;
 
   try {
-    const fetcher = product === 'mesh60' ? fetchMrmsMesh60 : fetchMrmsMesh1440;
-    const file = await fetcher({
-      date: params.date,
-      anchorIso: params.live ? undefined : params.anchorIso,
-    });
+    // Product fetch chain — fall back when IEM hasn't archived the
+    // requested aggregation for older dates:
+    //   mesh60 (live cadence) → instantaneous MESH (always available)
+    //   mesh1440 (archive default) → unchanged
+    let file = null;
+    if (product === 'mesh60') {
+      file = await fetchMrmsMesh60({
+        date: params.date,
+        anchorIso: params.live ? undefined : params.anchorIso,
+      });
+      if (!file) {
+        // IEM archive doesn't carry MESH_Max_60min/ for older dates —
+        // fall through to instantaneous MESH at the same anchor. Reps
+        // see a snapshot at that hour rather than a 60-min rolling max,
+        // which is a fair trade for archive playback.
+        file = await fetchMrmsMeshInstantaneous({
+          date: params.date,
+          anchorIso: params.live ? undefined : params.anchorIso,
+        });
+      }
+    } else {
+      file = await fetchMrmsMesh1440({
+        date: params.date,
+        anchorIso: params.live ? undefined : params.anchorIso,
+      });
+    }
     if (!file) return null;
     const sections = readGrib2(file.grib2Bytes);
     const decoded = decodeGribData(sections);
