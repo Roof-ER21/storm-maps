@@ -440,6 +440,124 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   );
   doc.moveDown(0.8);
 
+  // ── Build the Property Hail Hit History dataset early ─────────────────
+  // This data drives both the Top "Hail Hit History" section (tier-
+  // classified, sorted newest-first) AND the bottom per-band detail
+  // table. Pulled from NCEI Storm Events archive (18mo window centered
+  // on date of loss) + augmented with the 12mo events array for any
+  // SPC LSR rows not yet ingested into NCEI.
+  type HistRow = {
+    dateIso: string;
+    label: string;
+    atProperty: number;
+    mi1to3: number;
+    mi3to5: number;
+    mi5to10: number;
+    biggestNearby: number;
+    biggestNearbyMi: number;
+  };
+  const histNceiRows = await fetchNceiArchiveForReport({
+    lat: req.lat,
+    lng: req.lng,
+    dateOfLoss: req.dateOfLoss,
+    radiusMiles: 12,
+    windowDays: 540,
+  }).catch(() => [] as Awaited<ReturnType<typeof fetchNceiArchiveForReport>>);
+
+  const histGroups = new Map<string, HistRow>();
+  const ingestRow = (
+    dateIso: string,
+    sizeIn: number,
+    dist: number,
+  ): void => {
+    if (sizeIn < 0.25 || dist > 12) return;
+    const row =
+      histGroups.get(dateIso) ??
+      ({
+        dateIso,
+        label: '',
+        atProperty: 0,
+        mi1to3: 0,
+        mi3to5: 0,
+        mi5to10: 0,
+        biggestNearby: 0,
+        biggestNearbyMi: 0,
+      } as HistRow);
+    if (sizeIn > row.biggestNearby) {
+      row.biggestNearby = sizeIn;
+      row.biggestNearbyMi = dist;
+    }
+    if (dist <= 1.0 && sizeIn > row.atProperty) row.atProperty = sizeIn;
+    else if (dist > 1.0 && dist <= 3.0 && sizeIn > row.mi1to3) row.mi1to3 = sizeIn;
+    else if (dist > 3.0 && dist <= 5.0 && sizeIn > row.mi3to5) row.mi3to5 = sizeIn;
+    else if (dist > 5.0 && dist <= 10.0 && sizeIn > row.mi5to10) row.mi5to10 = sizeIn;
+    histGroups.set(dateIso, row);
+  };
+
+  for (const r of histNceiRows) {
+    if (r.event_type !== 'Hail') continue;
+    if (r.magnitude === null || r.magnitude < 0.25) continue;
+    const dateIso =
+      typeof r.event_date === 'string'
+        ? r.event_date.slice(0, 10)
+        : String(r.event_date).slice(0, 10);
+    if (!dateIso) continue;
+    const sameDateEvent = events.find((e) => {
+      if (e.eventType !== 'Hail') return false;
+      const t = new Date(e.beginDate);
+      if (Number.isNaN(t.getTime())) return false;
+      const eIso = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(t);
+      return eIso === dateIso && Math.abs(e.magnitude - (r.magnitude ?? 0)) < 0.1;
+    });
+    const dist = sameDateEvent
+      ? haversineMiles(req.lat, req.lng, sameDateEvent.beginLat, sameDateEvent.beginLon)
+      : 5;
+    ingestRow(dateIso, r.magnitude ?? 0, dist);
+  }
+  for (const e of events) {
+    if (e.eventType !== 'Hail') continue;
+    if (!e.beginLat || !e.beginLon) continue;
+    if (e.magnitude < 0.25) continue;
+    const t = new Date(e.beginDate);
+    if (Number.isNaN(t.getTime())) continue;
+    const dateIso = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/New_York',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(t);
+    ingestRow(
+      dateIso,
+      e.magnitude,
+      haversineMiles(req.lat, req.lng, e.beginLat, e.beginLon),
+    );
+  }
+
+  const sortedHistRows = Array.from(histGroups.values())
+    .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
+    .slice(0, 14);
+  for (const r of sortedHistRows) {
+    r.label = new Date(`${r.dateIso}T12:00:00`).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  /** Tier from per-band maxes — matches the live UI classifier. */
+  const rowTier = (
+    r: HistRow,
+  ): 'direct_hit' | 'near_miss' | 'area_impact' => {
+    if (r.atProperty > 0) return 'direct_hit';
+    if (r.mi1to3 > 0) return 'near_miss';
+    return 'area_impact';
+  };
+
   // ── Storm Coverage at Property (three-tier + per-band table) ──────────
   // Mirrors Gemini Field Assistant's PDF layout. The tier label headlines
   // the entire report — adjusters reading our PDF and HailTrace's PDF see
@@ -602,6 +720,120 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.y = cardY + cardH + 12;
   }
 
+  // ── Property Hail Hit History (rep-facing summary) ────────────────────
+  // What the rep is looking for FIRST when they search an address: a
+  // chronological list of every storm in the last 18 months that hit
+  // this property, classified by tier so they can decide which date to
+  // claim. Matches the live UI's Selected Storm panel vocabulary.
+  if (sortedHistRows.length > 0) {
+    const HX = 54;
+    const HW = 504;
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold');
+    doc.text('Property Hail Hit History', HX, doc.y, { width: HW });
+    doc.fillColor('#64748b').font('Helvetica').fontSize(8.5);
+    doc.text(
+      `${sortedHistRows.length} storm date${sortedHistRows.length === 1 ? '' : 's'} with hail near this property over the last 18 months. Most recent first.`,
+      HX,
+      doc.y,
+      { width: HW },
+    );
+    doc.moveDown(0.4);
+
+    const HIT_TIER_STYLE: Record<
+      'direct_hit' | 'near_miss' | 'area_impact',
+      { label: string; bg: string; fg: string }
+    > = {
+      direct_hit: { label: 'DIRECT HIT', bg: '#fef2f2', fg: '#991b1b' },
+      near_miss: { label: 'NEAR MISS', bg: '#fff7ed', fg: '#9a3412' },
+      area_impact: { label: 'AREA IMPACT', bg: '#fefce8', fg: '#854d0e' },
+    };
+
+    const ROW_H = 22;
+    let hy = doc.y;
+    for (const r of sortedHistRows) {
+      // Auto-paginate if next row would overflow the safe footer band.
+      if (hy + ROW_H > 720) {
+        doc.addPage();
+        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold');
+        doc.text('Property Hail Hit History (continued)', HX, doc.y, {
+          width: HW,
+        });
+        doc.moveDown(0.3);
+        hy = doc.y;
+      }
+      const tier = rowTier(r);
+      const style = HIT_TIER_STYLE[tier];
+
+      // Row background tint (alternating)
+      doc
+        .rect(HX, hy, HW, ROW_H)
+        .fill(sortedHistRows.indexOf(r) % 2 === 1 ? '#fafafa' : '#ffffff');
+
+      // Tier badge — 92pt-wide pill on the left
+      const badgeX = HX + 4;
+      const badgeY = hy + 4;
+      const badgeW = 88;
+      const badgeH = 14;
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3).fill(style.bg);
+      doc
+        .fillColor(style.fg)
+        .font('Helvetica-Bold')
+        .fontSize(8)
+        .text(style.label, badgeX, badgeY + 4, {
+          width: badgeW,
+          align: 'center',
+          lineBreak: false,
+        });
+
+      // Date — next column
+      doc
+        .fillColor('#0f172a')
+        .font('Helvetica-Bold')
+        .fontSize(10)
+        .text(r.label, HX + 100, hy + 5, {
+          width: 90,
+          lineBreak: false,
+        });
+
+      // Hail summary — what reps quote to adjusters
+      const headlineSize =
+        tier === 'direct_hit'
+          ? r.atProperty
+          : tier === 'near_miss'
+            ? r.mi1to3
+            : r.biggestNearby;
+      const distance =
+        tier === 'direct_hit' ? 'at property' : `${r.biggestNearbyMi.toFixed(1)} mi away`;
+      doc
+        .fillColor('#1e293b')
+        .font('Helvetica')
+        .fontSize(10)
+        .text(
+          `${displayHailIn(headlineSize)} hail · ${distance}`,
+          HX + 200,
+          hy + 5,
+          { width: 200, lineBreak: false },
+        );
+
+      // Biggest-nearby cross-ref — gives rep narrative ammo
+      doc
+        .fillColor('#64748b')
+        .font('Helvetica')
+        .fontSize(9)
+        .text(
+          tier === 'direct_hit' && r.biggestNearby > r.atProperty
+            ? `Biggest nearby: ${displayHailIn(r.biggestNearby)} @ ${r.biggestNearbyMi.toFixed(1)} mi`
+            : '',
+          HX + 380,
+          hy + 6,
+          { width: 124, lineBreak: false, ellipsis: true },
+        );
+
+      hy += ROW_H;
+    }
+    doc.y = hy + 14;
+  }
+
   // ── Storm Narrative (adjuster prose) ──────────────────────────────────
   // Composes Gemini-Field-style language: "On April 1, 2026, a severe
   // weather system impacted the Loudoun area producing pea-sized hail
@@ -668,10 +900,20 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
 
     if (narrative.length > 0) {
-      doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Storm Narrative');
+      // Anchor explicitly to left margin — previous tier-card cells leave
+      // doc.x in the right column. Without an explicit X the narrative
+      // wraps at half width and runs off the right edge.
+      const NARR_X = 54;
+      const NARR_W = 504;
+      doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold');
+      doc.text('Storm Narrative', NARR_X, doc.y, { width: NARR_W });
       doc.moveDown(0.3);
       doc.fillColor('#1e293b').font('Helvetica').fontSize(10);
-      doc.text(narrative, { width: 504, align: 'left', lineGap: 1.5 });
+      doc.text(narrative, NARR_X, doc.y, {
+        width: NARR_W,
+        align: 'left',
+        lineGap: 1.5,
+      });
       doc.moveDown(0.5);
 
       // BIGGEST/CLOSEST callouts in the same compact band the table uses
@@ -683,7 +925,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       if (bigCall || closeCall) {
         doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8.5);
         const callouts = [bigCall, closeCall].filter(Boolean).join('   ·   ');
-        doc.text(callouts, { width: 504 });
+        doc.text(callouts, NARR_X, doc.y, { width: NARR_W });
         doc.moveDown(0.7);
       }
     }
@@ -748,155 +990,33 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   });
   doc.y = sumY + cardHeight + 18;
 
-  // ── Historical Storm Activity (multi-day per-band table) ──────────────
-  // Mirrors Gemini Field's claim-packet view: every storm date in the
-  // search window with any hail ≥¼" at or near the property, columns
-  // identical to the Storm Coverage card so the rep can hand a single
-  // table to an adjuster instead of cross-referencing.
-  type HistRow = {
-    dateIso: string;
-    label: string;
-    atProperty: number;
-    mi1to3: number;
-    mi3to5: number;
-    mi5to10: number;
-    biggestNearby: number;
-    biggestNearbyMi: number;
-  };
-  // Pull NCEI Storm Events for an 18-month window CENTERED on the date of
-  // loss — gives reps a multi-event claim packet view ("here are the 7
-  // storm dates that hit this address in the last year and a half"). The
-  // 12mo `events` array is keyed off "now" and misses historical claims,
-  // so we go straight to NCEI for the historical table.
-  const histNceiRows = await fetchNceiArchiveForReport({
-    lat: req.lat,
-    lng: req.lng,
-    dateOfLoss: req.dateOfLoss,
-    radiusMiles: 12, // slightly wider so 5-10mi events are captured
-    windowDays: 540, // ~18 months
-  }).catch(() => [] as Awaited<ReturnType<typeof fetchNceiArchiveForReport>>);
+  // (Property Hail Hit History table is rendered earlier — right after
+  // the Storm Coverage tier card. Its dataset, sortedHistRows, also
+  // drives the per-band detail block below.)
 
-  const histGroups = new Map<string, HistRow>();
-  for (const r of histNceiRows) {
-    if (r.event_type !== 'Hail') continue;
-    if (r.magnitude === null || r.magnitude < 0.25) continue;
-    // NCEI rows don't carry lat/lng directly in this query — we fall back
-    // to assuming ≤radius distance and let the source row carry county.
-    // For per-band assignment we'd need event lat/lng; until we extend
-    // the appendix query, we lump everything into a county-aware "near"
-    // bucket and pick band by reading the adjacent event lat from the
-    // 12mo events array when the same date matches.
-    const dateIso =
-      typeof r.event_date === 'string'
-        ? r.event_date.slice(0, 10)
-        : String(r.event_date).slice(0, 10);
-    if (!dateIso) continue;
-    // Try to find a matching event in the 12mo array to recover lat/lng.
-    const sameDateEvent = events.find((e) => {
-      if (e.eventType !== 'Hail') return false;
-      const t = new Date(e.beginDate);
-      if (Number.isNaN(t.getTime())) return false;
-      const eIso = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(t);
-      return eIso === dateIso && Math.abs(e.magnitude - (r.magnitude ?? 0)) < 0.1;
-    });
-    const dist = sameDateEvent
-      ? haversineMiles(req.lat, req.lng, sameDateEvent.beginLat, sameDateEvent.beginLon)
-      : 5; // unknown lat/lng: bucket as "nearby"; biggest-nearby still tracked
-    if (dist > 12) continue;
+  // ── Per-Band Detail (adjuster reference) ──────────────────────────────
+  // Same dataset as the top Hit History but rendered with the per-distance
+  // columns adjusters cross-reference to confirm where hail did/didn't
+  // fall. Rendered lower because reps quote the tier badge on top; this
+  // is the supporting detail.
+  if (sortedHistRows.length > 0) {
+    const TBL_X = 54;
+    const colWidths = [88, 96, 90, 90, 90, 90];
+    const headers = ['Date', 'At Property (0–1 mi)', '1–3 mi', '3–5 mi', '5–10 mi', 'Biggest Nearby'];
 
-    const row =
-      histGroups.get(dateIso) ??
-      ({
-        dateIso,
-        label: '',
-        atProperty: 0,
-        mi1to3: 0,
-        mi3to5: 0,
-        mi5to10: 0,
-        biggestNearby: 0,
-        biggestNearbyMi: 0,
-      } as HistRow);
-    const sizeIn = r.magnitude ?? 0;
-    if (sizeIn > row.biggestNearby) {
-      row.biggestNearby = sizeIn;
-      row.biggestNearbyMi = dist;
-    }
-    if (dist <= 1.0 && sizeIn > row.atProperty) row.atProperty = sizeIn;
-    else if (dist > 1.0 && dist <= 3.0 && sizeIn > row.mi1to3) row.mi1to3 = sizeIn;
-    else if (dist > 3.0 && dist <= 5.0 && sizeIn > row.mi3to5) row.mi3to5 = sizeIn;
-    else if (dist > 5.0 && dist <= 10.0 && sizeIn > row.mi5to10) row.mi5to10 = sizeIn;
-    histGroups.set(dateIso, row);
-  }
-  // Augment with same-window 12mo `events` array (covers SPC LSR / IEM
-  // reports that may not yet be in the NCEI archive).
-  for (const e of events) {
-    if (e.eventType !== 'Hail') continue;
-    if (!e.beginLat || !e.beginLon) continue;
-    if (e.magnitude < 0.25) continue;
-    const t = new Date(e.beginDate);
-    if (Number.isNaN(t.getTime())) continue;
-    const dateIso = new Intl.DateTimeFormat('en-CA', {
-      timeZone: 'America/New_York',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(t);
-    const dist = haversineMiles(req.lat, req.lng, e.beginLat, e.beginLon);
-    if (dist > 10) continue;
-    const row =
-      histGroups.get(dateIso) ??
-      ({
-        dateIso,
-        label: '',
-        atProperty: 0,
-        mi1to3: 0,
-        mi3to5: 0,
-        mi5to10: 0,
-        biggestNearby: 0,
-        biggestNearbyMi: 0,
-      } as HistRow);
-    if (e.magnitude > row.biggestNearby) {
-      row.biggestNearby = e.magnitude;
-      row.biggestNearbyMi = dist;
-    }
-    if (dist <= 1.0 && e.magnitude > row.atProperty) row.atProperty = e.magnitude;
-    else if (dist > 1.0 && dist <= 3.0 && e.magnitude > row.mi1to3) row.mi1to3 = e.magnitude;
-    else if (dist > 3.0 && dist <= 5.0 && e.magnitude > row.mi3to5) row.mi3to5 = e.magnitude;
-    else if (dist > 5.0 && dist <= 10.0 && e.magnitude > row.mi5to10) row.mi5to10 = e.magnitude;
-    histGroups.set(dateIso, row);
-  }
-
-  if (histGroups.size > 0) {
-    // Sort newest-first, cap at 12 rows so the table fits on one page.
-    const histRows = Array.from(histGroups.values())
-      .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
-      .slice(0, 12);
-    for (const r of histRows) {
-      r.label = new Date(`${r.dateIso}T12:00:00`).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
-    }
-
-    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Historical Storm Activity');
+    if (doc.y > 600) doc.addPage();
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold');
+    doc.text('Per-Band Detail', TBL_X, doc.y, { width: 504 });
     doc.fillColor('#64748b').font('Helvetica').fontSize(8.5);
     doc.text(
-      `Up to ${histRows.length} hail-bearing storm dates within ${req.radiusMiles} mi over the search window. Each row shows the MAX hail size by distance band on that date. ¼" display floor; sub-trace radar signatures rounded for adjuster use.`,
+      `MAX hail size by distance band on each storm date — ¼" display floor; sub-trace radar signatures rounded for adjuster use.`,
+      TBL_X,
+      doc.y,
       { width: 504 },
     );
     doc.moveDown(0.3);
 
-    const tblX = 54;
     let tblY = doc.y;
-    const colWidths = [88, 96, 90, 90, 90, 90];
-    const headers = ['Date', 'At Property (0–1 mi)', '1–3 mi', '3–5 mi', '5–10 mi', 'Biggest Nearby'];
-
     const drawRow = (
       yStart: number,
       cells: string[],
@@ -905,11 +1025,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     ): number => {
       const rowH = 18;
       if (tint) {
-        doc.rect(tblX, yStart, colWidths.reduce((a, b) => a + b, 0), rowH).fill('#f8fafc');
+        doc.rect(TBL_X, yStart, colWidths.reduce((a, b) => a + b, 0), rowH).fill('#f8fafc');
       }
       doc.fillColor(isHeader ? '#475569' : '#0f172a');
       doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(isHeader ? 8.5 : 9);
-      let cursor = tblX;
+      let cursor = TBL_X;
       for (let i = 0; i < cells.length; i += 1) {
         doc.text(cells[i], cursor + 4, yStart + 5, {
           width: colWidths[i] - 8,
@@ -922,14 +1042,14 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       doc
         .strokeColor('#e2e8f0')
         .lineWidth(0.5)
-        .moveTo(tblX, yStart + rowH)
-        .lineTo(tblX + colWidths.reduce((a, b) => a + b, 0), yStart + rowH)
+        .moveTo(TBL_X, yStart + rowH)
+        .lineTo(TBL_X + colWidths.reduce((a, b) => a + b, 0), yStart + rowH)
         .stroke();
       return yStart + rowH;
     };
 
     tblY = drawRow(tblY, headers, true);
-    histRows.forEach((r, i) => {
+    sortedHistRows.forEach((r, i) => {
       const cells = [
         r.label,
         displayHailIn(r.atProperty || null),
@@ -941,10 +1061,10 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
           : '—',
       ];
       tblY = drawRow(tblY, cells, false, i % 2 === 1);
-      // Page break if we'd overflow the standard letter page footer.
       if (tblY > 720) {
         doc.addPage();
-        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Historical Storm Activity (continued)');
+        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold');
+        doc.text('Per-Band Detail (continued)', TBL_X, doc.y, { width: 504 });
         doc.moveDown(0.3);
         tblY = doc.y;
         tblY = drawRow(tblY, headers, true);
@@ -1074,6 +1194,9 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }
 
   // Render the swath polygons sorted by band so larger bands render on top.
+  // CLIP to the map rect so polygons that extend past the bounds (or
+  // any rendering glitch) don't bleed yellow into the page margins.
+  // doc.save() / doc.restore() bracket the clipped state.
   const renderedFeatures: RenderedPolygon[] = [];
   if (collection) {
     for (const feature of collection.features) {
@@ -1085,6 +1208,8 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
     renderedFeatures.sort((a, b) => a.bandIndex - b.bandIndex);
   }
+  doc.save();
+  doc.rect(mapX, mapY, mapW, mapH).clip();
   for (const f of renderedFeatures) {
     const [r, g, b] = hexToRgb(f.color);
     doc.fillColor([r, g, b]).fillOpacity(0.5).strokeColor([r, g, b]).strokeOpacity(0.95).lineWidth(0.6);
@@ -1101,6 +1226,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
   doc.fillOpacity(1).strokeOpacity(1);
+  doc.restore();
 
   // Subject property pin
   const [pinX, pinY] = project(req.lng, req.lat);
@@ -1159,40 +1285,42 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     return yStart + 16;
   };
 
-  doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Reports');
-  doc.fontSize(9).font('Helvetica').fillColor('#64748b');
-  doc.text(
-    `${sortedEvents.length} report${sortedEvents.length === 1 ? '' : 's'} on ${req.dateOfLoss}, sorted by magnitude.`,
-  );
-  doc.moveDown(0.3);
-  let rowY = drawTableHeader(doc.y);
+  if (sortedEvents.length > 0) {
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Reports');
+    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
+    doc.text(
+      `${sortedEvents.length} report${sortedEvents.length === 1 ? '' : 's'} on ${req.dateOfLoss}, sorted by magnitude.`,
+    );
+    doc.moveDown(0.3);
+    let rowY = drawTableHeader(doc.y);
 
-  for (const e of sortedEvents) {
-    if (rowY > tableBottom) {
-      doc.addPage();
-      doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Reports (continued)');
-      doc.moveDown(0.3);
-      rowY = drawTableHeader(doc.y);
+    for (const e of sortedEvents) {
+      if (rowY > tableBottom) {
+        doc.addPage();
+        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Reports (continued)');
+        doc.moveDown(0.3);
+        rowY = drawTableHeader(doc.y);
+      }
+      const time = new Date(e.beginDate).toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+      });
+      doc.font('Helvetica').fontSize(8).fillColor('#0f172a');
+      doc.text(time, 54, rowY);
+      doc.text(e.eventType === 'Hail' ? 'Hail' : 'Wind', 130, rowY);
+      const mag =
+        e.eventType === 'Hail'
+          ? `${e.magnitude.toFixed(2)}"`
+          : `${Math.round(e.magnitude)} mph`;
+      doc.text(mag, 200, rowY);
+      const loc =
+        `${e.county || ''}${e.state ? ', ' + e.state : ''}` ||
+        `${e.beginLat.toFixed(2)}, ${e.beginLon.toFixed(2)}`;
+      doc.text(loc.slice(0, 40), 280, rowY, { width: 180 });
+      doc.fillColor('#64748b').text((e.source || '').slice(0, 12), 470, rowY);
+      rowY += 14;
     }
-    const time = new Date(e.beginDate).toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-    doc.font('Helvetica').fontSize(8).fillColor('#0f172a');
-    doc.text(time, 54, rowY);
-    doc.text(e.eventType === 'Hail' ? 'Hail' : 'Wind', 130, rowY);
-    const mag =
-      e.eventType === 'Hail'
-        ? `${e.magnitude.toFixed(2)}"`
-        : `${Math.round(e.magnitude)} mph`;
-    doc.text(mag, 200, rowY);
-    const loc =
-      `${e.county || ''}${e.state ? ', ' + e.state : ''}` ||
-      `${e.beginLat.toFixed(2)}, ${e.beginLon.toFixed(2)}`;
-    doc.text(loc.slice(0, 40), 280, rowY, { width: 180 });
-    doc.fillColor('#64748b').text((e.source || '').slice(0, 12), 470, rowY);
-    rowY += 14;
   }
 
   // ── NEXRAD radar snapshots (per-warning) ──────────────────────────────
