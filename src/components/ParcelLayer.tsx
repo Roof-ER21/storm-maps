@@ -20,9 +20,11 @@ interface ParcelLayerProps {
 
 interface ParcelGeometry {
   rings: number[][][];
-  county: string;
-  state: string;
+  /** OSM tag — "house", "residential", "yes", etc. */
+  buildingType?: string;
+  osmId?: number;
   centroid: { lat: number; lng: number };
+  source?: string;
 }
 
 export default function ParcelLayer({ lat, lng }: ParcelLayerProps): null {
