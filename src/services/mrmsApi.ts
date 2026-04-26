@@ -261,18 +261,46 @@ export async function fetchLiveSwathPolygons(bounds: BoundingBox): Promise<
 
 /**
  * Fetch vector swath polygons for a storm date — crisp, clickable,
- * 10-level hail contours derived from MRMS MESH radar data.
+ * 13-level hail contours derived from MRMS MESH radar data.
  *
- * Tries the Susan21 MRMS endpoint first (real GRIB-decoded MESH polygons).
- * If that's unavailable or returns an empty/error response, falls back to
- * the in-repo `/api/hail/swath-fallback` which buffers SPC + IEM hail
- * point reports into IHM-shaped 13-band polygons. Both paths return the
- * same `SwathPolygonCollection` shape.
+ * Source priority chain:
+ *   1. In-repo `/api/hail/mrms-vector` — pure-JS GRIB2 decode + d3-contour.
+ *      No cross-repo dependency.
+ *   2. Susan21 `/api/hail/mrms-swath-polygons` — same pipeline, hosted in
+ *      the field-assistant repo. Fallback for legacy deployments.
+ *   3. In-repo `/api/hail/swath-fallback` — SPC + IEM point reports
+ *      buffered into 13-band polygons. Last resort.
+ *
+ * All three return the same `SwathPolygonCollection` shape.
  */
 export async function fetchSwathPolygons(
   params: HistoricalMrmsParams,
 ): Promise<SwathPolygonCollection | null> {
-  // Primary: Susan21 MRMS pipeline
+  const localQ = new URLSearchParams({
+    date: params.date,
+    north: params.bounds.north.toString(),
+    south: params.bounds.south.toString(),
+    east: params.bounds.east.toString(),
+    west: params.bounds.west.toString(),
+  });
+  if (params.anchorTimestamp) {
+    localQ.set('anchorTimestamp', params.anchorTimestamp);
+  }
+
+  // 1. In-repo MRMS GRIB pipeline.
+  try {
+    const res = await fetch(`/api/hail/mrms-vector?${localQ.toString()}`, {
+      signal: AbortSignal.timeout(60000),
+    });
+    if (res.ok) {
+      const data = (await res.json()) as SwathPolygonCollection;
+      if (data.features && data.features.length > 0) return data;
+    }
+  } catch (err) {
+    console.warn('[mrmsApi] in-repo MRMS pipeline failed, trying Susan21', err);
+  }
+
+  // 2. Susan21 backend (legacy).
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-swath-polygons?${toHistoricalQuery(params)}`,
@@ -283,19 +311,12 @@ export async function fetchSwathPolygons(
       if (data.features && data.features.length > 0) return data;
     }
   } catch (err) {
-    console.warn('[mrmsApi] MRMS pipeline unavailable, trying fallback', err);
+    console.warn('[mrmsApi] Susan21 MRMS unavailable, trying fallback', err);
   }
 
-  // Fallback: in-repo SPC/LSR-based hail polygons
+  // 3. In-repo SPC/LSR fallback.
   try {
-    const q = new URLSearchParams({
-      date: params.date,
-      north: params.bounds.north.toString(),
-      south: params.bounds.south.toString(),
-      east: params.bounds.east.toString(),
-      west: params.bounds.west.toString(),
-    });
-    const res = await fetch(`/api/hail/swath-fallback?${q.toString()}`, {
+    const res = await fetch(`/api/hail/swath-fallback?${localQ.toString()}`, {
       signal: AbortSignal.timeout(45000),
     });
     if (!res.ok) {
@@ -303,7 +324,7 @@ export async function fetchSwathPolygons(
     }
     return (await res.json()) as SwathPolygonCollection;
   } catch (err) {
-    console.error('[mrmsApi] Hail fallback also failed:', err);
+    console.error('[mrmsApi] All hail polygon paths failed:', err);
     return null;
   }
 }

@@ -38,6 +38,7 @@ import {
   buildHailFallbackCollection,
   buildHailImpactResponse,
 } from './storm/hailFallbackService.js';
+import { buildMrmsVectorPolygons } from './storm/mrmsService.js';
 import {
   upsertPushSubscription,
   deletePushSubscription,
@@ -938,6 +939,40 @@ function parseHailFallbackBounds(q: HailFallbackQuery) {
   if (n <= s || e <= w) return null;
   return { north: n, south: s, east: e, west: w };
 }
+
+// Real MRMS MESH GRIB pipeline → IHM 13-band MultiPolygons. When this
+// succeeds it returns crisp radar-derived polygons; on any failure
+// (network, malformed GRIB, unsupported template) the frontend falls
+// through to /api/hail/swath-fallback below.
+app.get('/api/hail/mrms-vector', async (req, res) => {
+  try {
+    const q = req.query as HailFallbackQuery & { anchorTimestamp?: string };
+    const bounds = parseHailFallbackBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const date = q.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const collection = await buildMrmsVectorPolygons({
+      date,
+      bounds,
+      anchorIso: q.anchorTimestamp,
+    });
+    if (!collection) {
+      res.status(502).json({ error: 'MRMS pipeline unavailable' });
+      return;
+    }
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json(collection);
+  } catch (err) {
+    console.error('[mrms-vector] failed', err);
+    res.status(500).json({ error: 'Failed to build MRMS vector polygons' });
+  }
+});
 
 app.get('/api/hail/swath-fallback', async (req, res) => {
   try {
