@@ -44,6 +44,12 @@ interface NceiAppendixRow {
   ncei_event_id: string | null;
   begin_time_utc: string | null;
   narrative: string | null;
+  /** Event lat/lng — used to compute haversine distance to subject property
+   *  for tier classification + "X mi away" copy. Without these columns the
+   *  hit history defaulted every distance to 5 mi (visible bug: every row
+   *  read "1.00\" hail · 5.0 mi away"). */
+  lat: number | null;
+  lng: number | null;
 }
 
 async function fetchNceiArchiveForReport(opts: {
@@ -52,6 +58,14 @@ async function fetchNceiArchiveForReport(opts: {
   dateOfLoss: string;
   radiusMiles: number;
   windowDays?: number;
+  /** When true, restrict to NCEI Storm Events Database rows only (for the
+   *  bottom appendix). When false (default — used by the Property Hail Hit
+   *  History panel), pull from ALL ingest sources: NCEI, SPC WCM, IEM LSR,
+   *  NEXRAD SWDI, CoCoRaHS, HailTrace, MRMS swath. Mirrors SA21's
+   *  storm_days_public materialized view that backs sa21.up.railway.app's
+   *  storm-maps page (which sees 15 hail dates / 605 reports for properties
+   *  where our NCEI-only filter sees 4). */
+  nceiOnly?: boolean;
 }): Promise<NceiAppendixRow[]> {
   if (!pgSql) return [];
   const days = opts.windowDays ?? 30;
@@ -59,23 +73,46 @@ async function fetchNceiArchiveForReport(opts: {
   const latPad = (opts.radiusMiles + 5) / 69;
   const lngPad = (opts.radiusMiles + 5) / (69 * Math.cos((opts.lat * Math.PI) / 180));
   try {
-    const rows = await pgSql<NceiAppendixRow[]>`
-      SELECT event_date::text, state_code, county, event_type,
-             magnitude, tor_f_scale, ncei_event_id::text,
-             begin_time_utc::text, narrative
-        FROM verified_hail_events
-       WHERE source_ncei_storm_events = TRUE
-         AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
-         AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
-         AND event_date BETWEEN
-             (${opts.dateOfLoss}::date - ${days}::int)
-         AND (${opts.dateOfLoss}::date + ${days}::int)
-       ORDER BY event_date DESC, magnitude DESC NULLS LAST
-       LIMIT 200
-    `;
+    const rows = opts.nceiOnly
+      ? await pgSql<NceiAppendixRow[]>`
+          SELECT event_date::text, state_code, county, event_type,
+                 magnitude, tor_f_scale, ncei_event_id::text,
+                 begin_time_utc::text, narrative,
+                 lat::float AS lat, lng::float AS lng
+            FROM verified_hail_events
+           WHERE source_ncei_storm_events = TRUE
+             AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
+             AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
+             AND event_date BETWEEN
+                 (${opts.dateOfLoss}::date - ${days}::int)
+             AND (${opts.dateOfLoss}::date + ${days}::int)
+           ORDER BY event_date DESC, magnitude DESC NULLS LAST
+           LIMIT 500
+        `
+      : await pgSql<NceiAppendixRow[]>`
+          SELECT event_date::text, state_code, county, event_type,
+                 magnitude, tor_f_scale, ncei_event_id::text,
+                 begin_time_utc::text, narrative,
+                 lat::float AS lat, lng::float AS lng
+            FROM verified_hail_events
+           WHERE (
+                  source_ncei_storm_events = TRUE
+               OR source_ncei_swdi = TRUE
+               OR source_mping = TRUE
+               OR source_hailtrace = TRUE
+               OR source_nws_warnings = TRUE
+             )
+             AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
+             AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
+             AND event_date BETWEEN
+                 (${opts.dateOfLoss}::date - ${days}::int)
+             AND (${opts.dateOfLoss}::date + ${days}::int)
+           ORDER BY event_date DESC, magnitude DESC NULLS LAST
+           LIMIT 500
+        `;
     return rows;
   } catch (err) {
-    console.warn('[reportPdf] NCEI appendix fetch failed:', (err as Error).message);
+    console.warn('[reportPdf] history fetch failed:', (err as Error).message);
     return [];
   }
 }
@@ -565,12 +602,17 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     biggestNearby: number;
     biggestNearbyMi: number;
   };
+  // Widened to match SA21's storm_days_public defaults — 25mi radius, 24mo
+  // window — and pulls from ALL ingest sources (NCEI + SWDI + mPING +
+  // HailTrace + NWS warnings), not just NCEI Storm Events. This is what
+  // closes the "we see 4 dates / SA21 sees 15" gap on the same property.
   const histNceiRows = await fetchNceiArchiveForReport({
     lat: req.lat,
     lng: req.lng,
     dateOfLoss: req.dateOfLoss,
-    radiusMiles: 12,
-    windowDays: 540,
+    radiusMiles: 25,
+    windowDays: 730,
+    nceiOnly: false,
   }).catch(() => [] as Awaited<ReturnType<typeof fetchNceiArchiveForReport>>);
 
   const histGroups = new Map<string, HistRow>();
@@ -579,7 +621,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     sizeIn: number,
     dist: number,
   ): void => {
-    if (sizeIn < 0.25 || dist > 12) return;
+    // 25mi gate matches the histNceiRows fetch radius and SA21 storm-days
+    // default. Events 10–25mi land in `biggestNearby` only — the per-band
+    // table columns top out at 5–10mi, so 10–25mi rows show as AREA IMPACT
+    // with all dashes in the 4 band columns plus a "Biggest nearby" caption.
+    if (sizeIn < 0.25 || dist > 25) return;
     const row =
       histGroups.get(dateIso) ??
       ({
@@ -611,21 +657,14 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         ? r.event_date.slice(0, 10)
         : String(r.event_date).slice(0, 10);
     if (!dateIso) continue;
-    const sameDateEvent = events.find((e) => {
-      if (e.eventType !== 'Hail') return false;
-      const t = new Date(e.beginDate);
-      if (Number.isNaN(t.getTime())) return false;
-      const eIso = new Intl.DateTimeFormat('en-CA', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }).format(t);
-      return eIso === dateIso && Math.abs(e.magnitude - (r.magnitude ?? 0)) < 0.1;
-    });
-    const dist = sameDateEvent
-      ? haversineMiles(req.lat, req.lng, sameDateEvent.beginLat, sameDateEvent.beginLon)
-      : 5;
+    // Compute distance from the row's own lat/lng — the verified_hail_events
+    // table carries event coords directly. The previous join against
+    // `events` (the sparse SPC/IEM live cache) defaulted to 5mi on every
+    // miss, which made every row in the hit history read "5.0 mi away".
+    const eLat = typeof r.lat === 'number' ? r.lat : Number(r.lat);
+    const eLng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
+    if (!Number.isFinite(eLat) || !Number.isFinite(eLng)) continue;
+    const dist = haversineMiles(req.lat, req.lng, eLat, eLng);
     ingestRow(dateIso, r.magnitude ?? 0, dist);
   }
   for (const e of events) {
@@ -1554,6 +1593,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     dateOfLoss: req.dateOfLoss,
     radiusMiles: req.radiusMiles,
     windowDays: 30,
+    nceiOnly: true, // bottom appendix labels itself "NCEI Storm Events Archive" so it must filter to that source
   });
   if (nceiRows.length > 0) {
     doc.addPage();
