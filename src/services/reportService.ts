@@ -565,7 +565,19 @@ export async function generateStormReport({
     console.warn('[reportService] Susan21 PDF unavailable, trying in-repo fallback', err);
   }
 
-  // In-repo fallback PDF.
+  // In-repo fallback PDF — reshape the evidence items into the smaller
+  // {imageUrl, imageDataUrl, title, caption} shape the in-repo PDF
+  // expects. Only the first 6 image-type items are actually rendered.
+  const fallbackEvidence = preparedEvidenceItems
+    .filter((item) => item.mediaType === 'image' && (item.imageDataUrl || item.thumbnailUrl))
+    .slice(0, 6)
+    .map((item) => ({
+      imageDataUrl: item.imageDataUrl ?? undefined,
+      imageUrl: item.imageDataUrl ? undefined : item.thumbnailUrl ?? undefined,
+      title: item.title,
+      caption: item.notes,
+    }));
+
   const fallbackResponse = await fetch('/api/hail/storm-report-pdf', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -581,6 +593,7 @@ export async function generateStormReport({
         email: REPORT_REP_EMAIL,
       },
       company: { name: REPORT_COMPANY_NAME },
+      evidence: fallbackEvidence,
     }),
   });
   if (!fallbackResponse.ok) {

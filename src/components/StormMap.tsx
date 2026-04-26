@@ -1764,10 +1764,12 @@ function MapContent({
             }`}
             title={
               liveNowCast
-                ? (liveSwathMeta ? `Live radar — peak ${liveSwathMeta.maxInches.toFixed(2)}" (${new Date(liveSwathMeta.refTime).toLocaleTimeString()})` : 'Live radar — no hail detected')
-                : 'Show live MRMS radar (last 24 hours, updated every 30 min)'
+                ? liveSwathMeta
+                  ? `Live MRMS · 24-h MESH max · peak ${liveSwathMeta.maxInches.toFixed(2)}″ at ${formatEasternTimestamp(liveSwathMeta.refTime)} ET`
+                  : 'Live MRMS · 24-h rolling max · no hail in current radar window'
+                : 'Show live MRMS hail · most recent ~30-min snapshot of the rolling 24-hour MESH max (lags real-time by ~2 h)'
             }
-            aria-label="Toggle live MRMS radar"
+            aria-label="Toggle live MRMS hail"
           >
             <div className="flex items-center gap-1.5">
               {liveNowCast && liveSwaths.length > 0 && (

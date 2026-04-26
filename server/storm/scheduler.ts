@@ -21,7 +21,9 @@
  */
 
 import { buildWindSwathCollection } from './windSwathService.js';
+import { buildMrmsVectorPolygons } from './mrmsService.js';
 import { fetchStormEventsCached } from './eventService.js';
+import { fetchSpcHailReportsForDate } from './spcHailReports.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 
@@ -80,8 +82,10 @@ let lastCycleStartedAt: string | null = null;
 let lastCycleFinishedAt: string | null = null;
 let lastCycleStats = {
   warmedSwath: 0,
+  warmedHail: 0,
   warmedEvents: 0,
   warmedHotProperties: 0,
+  hailDatesScanned: 0,
   errors: 0,
 };
 
@@ -151,12 +155,26 @@ function monthsForPreset(preset: string | null): number {
   }
 }
 
+function reportInBounds(
+  r: { lat: number; lng: number },
+  bounds: BoundingBox,
+): boolean {
+  return (
+    r.lat <= bounds.north &&
+    r.lat >= bounds.south &&
+    r.lng <= bounds.east &&
+    r.lng >= bounds.west
+  );
+}
+
 async function runPrewarmCycle(): Promise<void> {
   lastCycleStartedAt = new Date().toISOString();
   const cycleStats = {
     warmedSwath: 0,
+    warmedHail: 0,
     warmedEvents: 0,
     warmedHotProperties: 0,
+    hailDatesScanned: 0,
     errors: 0,
   };
 
@@ -178,6 +196,37 @@ async function runPrewarmCycle(): Promise<void> {
       } catch (err) {
         cycleStats.errors += 1;
         console.warn(`[prewarm] wind ${date} ${region.name} failed`, err);
+      }
+      await sleep(PREWARM_PAUSE_BETWEEN_FETCH_MS);
+    }
+  }
+
+  // Hail swaths — only days with reported hail get the GRIB pipeline run.
+  // Walk back 30 days, query SPC for the date, and warm only the regions
+  // that actually had reports inside the bbox. Saves ~80% of GRIB downloads
+  // on quiet weeks while keeping the morning-standup experience instant.
+  for (let dayOffset = 0; dayOffset < PREWARM_DAYS; dayOffset += 1) {
+    const target = new Date(Date.now() - dayOffset * 86_400_000);
+    const date = easternDateKey(target);
+    cycleStats.hailDatesScanned += 1;
+    const reports = await fetchSpcHailReportsForDate(date).catch(
+      () => [] as Array<{ lat: number; lng: number }>,
+    );
+    if (reports.length === 0) continue;
+    for (const region of REGIONS) {
+      const inRegion = reports.some((r) => reportInBounds(r, region.bounds));
+      if (!inRegion) continue;
+      try {
+        const collection = await buildMrmsVectorPolygons({
+          date,
+          bounds: region.bounds,
+        });
+        if (collection && collection.features.length > 0) {
+          cycleStats.warmedHail += 1;
+        }
+      } catch (err) {
+        cycleStats.errors += 1;
+        console.warn(`[prewarm] hail ${date} ${region.name} failed`, err);
       }
       await sleep(PREWARM_PAUSE_BETWEEN_FETCH_MS);
     }
@@ -233,7 +282,8 @@ async function runPrewarmCycle(): Promise<void> {
   cyclesRun += 1;
   console.log(
     `[prewarm] cycle ${cyclesRun} done — ` +
-      `swaths=${cycleStats.warmedSwath} ` +
+      `wind=${cycleStats.warmedSwath} ` +
+      `hail=${cycleStats.warmedHail}/${cycleStats.hailDatesScanned}d ` +
       `events=${cycleStats.warmedEvents} ` +
       `hot=${cycleStats.warmedHotProperties} ` +
       `errors=${cycleStats.errors}`,

@@ -20,6 +20,20 @@ import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackServ
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import type { BoundingBox } from './types.js';
 
+const GOOGLE_STATIC_MAPS_API_KEY =
+  process.env.GOOGLE_STATIC_MAPS_API_KEY?.trim() ||
+  process.env.GOOGLE_MAPS_API_KEY?.trim() ||
+  '';
+
+export interface ReportEvidenceItem {
+  /** Public URL or data URL — both are fetched + embedded. */
+  imageUrl?: string;
+  /** Pre-fetched bytes (base64 or raw) from the frontend; preferred over URL. */
+  imageDataUrl?: string;
+  title?: string;
+  caption?: string;
+}
+
 export interface ReportRequest {
   address: string;
   lat: number;
@@ -34,6 +48,8 @@ export interface ReportRequest {
   events?: StormEventDto[];
   /** Override bounds; if omitted we derive from event extent + 25 mi pad. */
   bounds?: BoundingBox;
+  /** Evidence images to embed at the end of the report. Up to 6 are rendered. */
+  evidence?: ReportEvidenceItem[];
 }
 
 interface RenderedPolygon {
@@ -49,6 +65,110 @@ function hexToRgb(hex: string): [number, number, number] {
     parseInt(t.slice(2, 4), 16) || 0,
     parseInt(t.slice(4, 6), 16) || 0,
   ];
+}
+
+/**
+ * Build a lng/lat → page-coords projector that uses the same Web Mercator
+ * math Google Static Maps does, so vector swath polygons land exactly on
+ * top of the fetched basemap.
+ */
+function makeMercatorProjector(
+  bounds: BoundingBox,
+  mapX: number,
+  mapY: number,
+  mapW: number,
+  mapH: number,
+): (lng: number, lat: number) => [number, number] {
+  const mercY = (lat: number) =>
+    Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+  const yNorth = mercY(bounds.north);
+  const ySouth = mercY(bounds.south);
+  const ySpan = yNorth - ySouth || 1e-6;
+  const lngSpan = bounds.east - bounds.west || 1e-6;
+  return (lng, lat) => {
+    const tx = (lng - bounds.west) / lngSpan;
+    const ty = (yNorth - mercY(lat)) / ySpan;
+    return [mapX + tx * mapW, mapY + ty * mapH];
+  };
+}
+
+async function fetchStaticBasemap(
+  bounds: BoundingBox,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
+  const centerLat = (bounds.north + bounds.south) / 2;
+  const centerLng = (bounds.east + bounds.west) / 2;
+  // Pick a zoom whose pixel-per-degree at this width approximately matches
+  // our requested page width. Google caps at zoom 21 / 640px without a
+  // premium plan, so request the largest size we can and let pdfkit scale.
+  const lngSpan = Math.max(0.05, bounds.east - bounds.west);
+  // Each zoom level halves the world width in pixels; world is 256 * 2^zoom.
+  // We want widthPx / lngSpan to match our requested map width / lngSpan,
+  // i.e. widthPx ≈ (width / lngSpan) * 360.
+  const desiredWidthPx = (width / lngSpan) * 360;
+  let zoom = Math.max(2, Math.min(21, Math.round(Math.log2(desiredWidthPx / 256))));
+  // Empirically zoom-1 looks better since Static Maps centers tightly.
+  zoom = Math.max(2, zoom - 1);
+  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
+  const sizeH = Math.min(640, Math.max(120, Math.round(height)));
+
+  const params = new URLSearchParams({
+    center: `${centerLat.toFixed(5)},${centerLng.toFixed(5)}`,
+    zoom: String(zoom),
+    size: `${sizeW}x${sizeH}`,
+    scale: '2',
+    maptype: 'roadmap',
+    style: 'feature:poi|visibility:off',
+    key: GOOGLE_STATIC_MAPS_API_KEY,
+  });
+
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8_000);
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
+async function fetchEvidenceImageBytes(
+  item: ReportEvidenceItem,
+): Promise<Buffer | null> {
+  if (item.imageDataUrl) {
+    const m = item.imageDataUrl.match(/^data:[^;]+;base64,(.+)$/);
+    if (m) {
+      try {
+        return Buffer.from(m[1], 'base64');
+      } catch {
+        return null;
+      }
+    }
+  }
+  if (item.imageUrl) {
+    try {
+      const ac = new AbortController();
+      const timer = setTimeout(() => ac.abort(), 6_000);
+      const res = await fetch(item.imageUrl, { signal: ac.signal });
+      clearTimeout(timer);
+      if (!res.ok) return null;
+      const ab = await res.arrayBuffer();
+      // Cap at 4 MB to keep the PDF small.
+      if (ab.byteLength > 4 * 1024 * 1024) return null;
+      return Buffer.from(ab);
+    } catch {
+      return null;
+    }
+  }
+  return null;
 }
 
 function deriveBounds(events: StormEventDto[], lat: number, lng: number): BoundingBox {
@@ -259,15 +379,23 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const mapY = doc.y;
   const mapW = 504;
   const mapH = 280;
-  doc.roundedRect(mapX, mapY, mapW, mapH, 5).fill('#0b1220');
 
-  // Project lat/lng into the map rectangle. Equirectangular is fine at the
-  // small bbox sizes we use — VA/MD/PA storms are <300 mi across.
-  const project = (lng: number, lat: number): [number, number] => {
-    const tx = (lng - bounds.west) / Math.max(1e-6, bounds.east - bounds.west);
-    const ty = 1 - (lat - bounds.south) / Math.max(1e-6, bounds.north - bounds.south);
-    return [mapX + tx * mapW, mapY + ty * mapH];
-  };
+  // Try Google Static Maps as a basemap when an API key is present. Falls
+  // back to a flat dark rectangle on any failure (no key, network, quota).
+  // Web Mercator math used for both image fetch and polygon projection so
+  // the swaths line up with the basemap exactly.
+  const project = makeMercatorProjector(bounds, mapX, mapY, mapW, mapH);
+  const basemap = await fetchStaticBasemap(bounds, mapW, mapH);
+  if (basemap) {
+    try {
+      doc.image(basemap, mapX, mapY, { width: mapW, height: mapH });
+    } catch (err) {
+      console.warn('[reportPdf] basemap embed failed', err);
+      doc.roundedRect(mapX, mapY, mapW, mapH, 5).fill('#0b1220');
+    }
+  } else {
+    doc.roundedRect(mapX, mapY, mapW, mapH, 5).fill('#0b1220');
+  }
 
   // Render the swath polygons sorted by band so larger bands render on top.
   const renderedFeatures: RenderedPolygon[] = [];
@@ -329,22 +457,47 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   doc.y = mapY + mapH + 12;
 
   // ── Event detail table ────────────────────────────────────────────────
-  doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Top Reports');
+  // Sort all reports up front; render until we're out of page space, then
+  // continue on a new page with a re-drawn header. No truncation — every
+  // documented gust/hail report ends up in the PDF.
+  const sortedEvents = [...datedEvents].sort(
+    (a, b) =>
+      b.magnitude - a.magnitude ||
+      Date.parse(b.beginDate) - Date.parse(a.beginDate),
+  );
+
+  const tableBottom = 720; // leave space above the footer
+  const drawTableHeader = (yStart: number): number => {
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#475569');
+    doc.text('Time (ET)', 54, yStart);
+    doc.text('Type', 130, yStart);
+    doc.text('Magnitude', 200, yStart);
+    doc.text('Location', 280, yStart);
+    doc.text('Source', 470, yStart);
+    doc
+      .strokeColor('#e2e8f0')
+      .lineWidth(0.5)
+      .moveTo(54, yStart + 12)
+      .lineTo(558, yStart + 12)
+      .stroke();
+    return yStart + 16;
+  };
+
+  doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Reports');
+  doc.fontSize(9).font('Helvetica').fillColor('#64748b');
+  doc.text(
+    `${sortedEvents.length} report${sortedEvents.length === 1 ? '' : 's'} on ${req.dateOfLoss}, sorted by magnitude.`,
+  );
   doc.moveDown(0.3);
-  const headerY = doc.y;
-  doc.font('Helvetica-Bold').fontSize(8).fillColor('#475569');
-  doc.text('Time (ET)', 54, headerY);
-  doc.text('Type', 130, headerY);
-  doc.text('Magnitude', 200, headerY);
-  doc.text('Location', 280, headerY);
-  doc.text('Source', 470, headerY);
-  doc.strokeColor('#e2e8f0').lineWidth(0.5).moveTo(54, headerY + 12).lineTo(558, headerY + 12).stroke();
-  let rowY = headerY + 16;
-  const sortedEvents = [...datedEvents]
-    .sort((a, b) => b.magnitude - a.magnitude || Date.parse(b.beginDate) - Date.parse(a.beginDate))
-    .slice(0, 20);
+  let rowY = drawTableHeader(doc.y);
+
   for (const e of sortedEvents) {
-    if (rowY > 720) break;
+    if (rowY > tableBottom) {
+      doc.addPage();
+      doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Reports (continued)');
+      doc.moveDown(0.3);
+      rowY = drawTableHeader(doc.y);
+    }
     const time = new Date(e.beginDate).toLocaleTimeString('en-US', {
       timeZone: 'America/New_York',
       hour: 'numeric',
@@ -353,17 +506,71 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.font('Helvetica').fontSize(8).fillColor('#0f172a');
     doc.text(time, 54, rowY);
     doc.text(e.eventType === 'Hail' ? 'Hail' : 'Wind', 130, rowY);
-    const mag = e.eventType === 'Hail'
-      ? `${e.magnitude.toFixed(2)}″`
-      : `${Math.round(e.magnitude)} mph`;
+    const mag =
+      e.eventType === 'Hail'
+        ? `${e.magnitude.toFixed(2)}″`
+        : `${Math.round(e.magnitude)} mph`;
     doc.text(mag, 200, rowY);
-    const loc = `${e.county || ''}${e.state ? ', ' + e.state : ''}` || `${e.beginLat.toFixed(2)}, ${e.beginLon.toFixed(2)}`;
+    const loc =
+      `${e.county || ''}${e.state ? ', ' + e.state : ''}` ||
+      `${e.beginLat.toFixed(2)}, ${e.beginLon.toFixed(2)}`;
     doc.text(loc.slice(0, 40), 280, rowY, { width: 180 });
     doc.fillColor('#64748b').text((e.source || '').slice(0, 12), 470, rowY);
     rowY += 14;
   }
 
-  // ── Footer ────────────────────────────────────────────────────────────
+  // ── Evidence images ───────────────────────────────────────────────────
+  const evidenceBytes: Array<{ buf: Buffer; title?: string; caption?: string }> =
+    [];
+  if (req.evidence && req.evidence.length > 0) {
+    for (const item of req.evidence.slice(0, 6)) {
+      const buf = await fetchEvidenceImageBytes(item);
+      if (buf) {
+        evidenceBytes.push({ buf, title: item.title, caption: item.caption });
+      }
+    }
+  }
+  if (evidenceBytes.length > 0) {
+    doc.addPage();
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Evidence');
+    doc.moveDown(0.3);
+    const evX = 54;
+    const evY = doc.y;
+    const cellW = (504 - 16) / 2; // 2 columns
+    const cellH = 220;
+    for (let i = 0; i < evidenceBytes.length; i += 1) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = evX + col * (cellW + 16);
+      const y = evY + row * (cellH + 24);
+      try {
+        doc.image(evidenceBytes[i].buf, x, y, {
+          fit: [cellW, cellH - 36],
+          align: 'center',
+          valign: 'center',
+        });
+      } catch (err) {
+        console.warn('[reportPdf] evidence embed failed', err);
+        continue;
+      }
+      doc.font('Helvetica-Bold').fontSize(9).fillColor('#0f172a');
+      if (evidenceBytes[i].title) {
+        doc.text(evidenceBytes[i].title!, x, y + cellH - 30, {
+          width: cellW,
+          ellipsis: true,
+        });
+      }
+      if (evidenceBytes[i].caption) {
+        doc.font('Helvetica').fontSize(8).fillColor('#64748b');
+        doc.text(evidenceBytes[i].caption!, x, y + cellH - 16, {
+          width: cellW,
+          ellipsis: true,
+        });
+      }
+    }
+  }
+
+  // ── Footer (last page) ────────────────────────────────────────────────
   doc.font('Helvetica').fontSize(7).fillColor('#94a3b8');
   doc.text(
     `Sources: SPC, IEM Local Storm Reports, MRMS MESH (${collection?.metadata.sourceFile ?? 'unavailable'})`,

@@ -1017,6 +1017,12 @@ interface ReportPdfBody {
   anchorTimestamp?: string;
   rep?: { name?: string; phone?: string; email?: string };
   company?: { name?: string };
+  evidence?: Array<{
+    imageUrl?: string;
+    imageDataUrl?: string;
+    title?: string;
+    caption?: string;
+  }>;
 }
 
 app.post('/api/hail/storm-report-pdf', async (req, res) => {
@@ -1047,6 +1053,7 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
         email: body.rep?.email,
       },
       company: { name: body.company?.name ?? 'Roof-ER21' },
+      evidence: body.evidence,
     });
     res.set('Content-Type', 'application/pdf');
     res.set(
