@@ -224,11 +224,10 @@ async function writeEventCache(
 ): Promise<void> {
   if (!pgSql) return;
   const ttl = pickEventCacheTtlMs(p);
-  const expiresAt = new Date(Date.now() + ttl);
+  const expiresAtIso = new Date(Date.now() + ttl).toISOString();
   try {
-    // postgres.js v3 tagged-template parameter binding rejects pgSql.json()
-    // wrappers ("argument must be string... got Object"). Pass JSON-stringified
-    // text and explicitly cast to jsonb in SQL — Postgres parses it correctly.
+    // postgres.js v3 binding rejects both pgSql.json() wrappers and raw Date
+    // objects in tagged templates. Stringify + ::jsonb / ::timestamptz casts.
     const payloadJson = JSON.stringify(payload);
     await pgSql`
       INSERT INTO event_cache (
@@ -243,7 +242,7 @@ async function writeEventCache(
         ${p.sinceDate},
         ${payloadJson}::jsonb,
         ${payload.events.length},
-        ${expiresAt}
+        ${expiresAtIso}::timestamptz
       )
       ON CONFLICT (cache_key)
       DO UPDATE SET

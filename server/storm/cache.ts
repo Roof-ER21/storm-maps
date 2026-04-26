@@ -134,13 +134,12 @@ export async function setCachedSwath<T>(opts: {
   const ttl =
     opts.ttlMs ??
     ttlForStormDate({ source: opts.source, date: opts.date });
-  const expiresAt = new Date(Date.now() + ttl);
+  const expiresAtIso = new Date(Date.now() + ttl).toISOString();
   try {
-    // Pass JSONB params as JSON strings rather than using pgSql.json() —
-    // the helper's wrapped object fails parameter binding in postgres.js v3
-    // tagged templates ("argument must be of type string... received an
-    // instance of Object"). Postgres auto-casts the string to JSONB when
-    // the destination column is jsonb-typed.
+    // postgres.js v3 binding in this build rejects both pgSql.json() wrappers
+    // AND raw Date objects in tagged templates (Buffer.byteLength chokes on
+    // anything that isn't a string/Buffer). Workaround: stringify JSONB values,
+    // ISO-format Dates, then ::jsonb / ::timestamptz casts in SQL.
     const metadataJson = JSON.stringify(opts.metadata ?? {});
     const payloadJson = JSON.stringify(opts.payload);
     await pgSql`
@@ -155,7 +154,7 @@ export async function setCachedSwath<T>(opts: {
         ${payloadJson}::jsonb,
         ${opts.featureCount ?? 0},
         ${opts.maxValue ?? 0},
-        ${expiresAt}
+        ${expiresAtIso}::timestamptz
       )
       ON CONFLICT (source, date, bbox_hash)
       DO UPDATE SET
