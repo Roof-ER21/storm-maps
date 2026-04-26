@@ -13,10 +13,13 @@ import { useMap } from '@vis.gl/react-google-maps';
 import type { BoundingBox } from '../types/storm';
 
 interface CorroboratedStation {
-  stid: string;
+  stationId: string;
   name?: string;
-  lat: number;
-  lng: number;
+  /** Server uses {latitude, longitude}; we accept both spellings to be safe. */
+  latitude?: number;
+  longitude?: number;
+  lat?: number;
+  lng?: number;
   signal?: {
     hailReported?: boolean;
     severeWindReported?: boolean;
@@ -82,10 +85,15 @@ export default function SynopticLayer({
     markersRef.current = [];
     if (!enabled) return;
     for (const s of stations) {
+      const lat = s.latitude ?? s.lat;
+      const lng = s.longitude ?? s.lng;
+      if (typeof lat !== 'number' || typeof lng !== 'number' || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+        continue;
+      }
       const hasSignal = Boolean(s.signal?.hailReported || s.signal?.severeWindReported);
       const marker = new google.maps.Marker({
         map,
-        position: { lat: s.lat, lng: s.lng },
+        position: { lat, lng },
         icon: {
           path: google.maps.SymbolPath.CIRCLE,
           scale: hasSignal ? 5 : 3,
@@ -94,7 +102,7 @@ export default function SynopticLayer({
           strokeColor: '#ffffff',
           strokeWeight: 1,
         },
-        title: `${s.name ?? s.stid}${
+        title: `${s.name ?? s.stationId}${
           s.signal?.hailReported ? ' · HAIL signal' : ''
         }${
           s.signal?.severeWindReported && s.signal?.peakGustMph

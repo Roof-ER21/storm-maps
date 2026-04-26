@@ -85,6 +85,7 @@ export default function MesocycloneLayer({
     markersRef.current = [];
     if (!enabled) return;
     for (const d of detections) {
+      if (!Number.isFinite(d.lat) || !Number.isFinite(d.lng)) continue;
       const style = strengthStyle(d.strength);
       const marker = new google.maps.Marker({
         map,

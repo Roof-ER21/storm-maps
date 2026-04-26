@@ -93,6 +93,7 @@ export default function CocorahsLayer({
     markersRef.current = [];
     if (!enabled) return;
     for (const r of filtered) {
+      if (!Number.isFinite(r.lat) || !Number.isFinite(r.lng)) continue;
       const radius = Math.max(7, Math.min(18, r.hailSizeInches * 9 + 5));
       const marker = new google.maps.Marker({
         map,
