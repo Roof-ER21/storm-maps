@@ -97,7 +97,7 @@ export default function ConsilienceTrendChart({
     return points.map((p) => {
       const ts = new Date(p.date + 'T12:00:00Z').getTime();
       const xPct = (ts - minTs) / span;
-      const yPct = Math.min(1, p.confirmedCount / 10);
+      const yPct = Math.min(1, p.confirmedCount / 12);
       return {
         ...p,
         x: PAD_LEFT + xPct * PLOT_W,
@@ -111,9 +111,10 @@ export default function ConsilienceTrendChart({
   // Y-axis grid at 0, 3, 7, 10 (none / certified / strong / max)
   const yTicks = [
     { value: 0, label: '0', y: PAD_TOP + PLOT_H },
-    { value: 3, label: '3 (certified)', y: PAD_TOP + (1 - 3 / 10) * PLOT_H },
-    { value: 7, label: '7', y: PAD_TOP + (1 - 7 / 10) * PLOT_H },
-    { value: 10, label: '10', y: PAD_TOP },
+    { value: 3, label: '3 (certified)', y: PAD_TOP + (1 - 3 / 12) * PLOT_H },
+    { value: 6, label: '6', y: PAD_TOP + (1 - 6 / 12) * PLOT_H },
+    { value: 9, label: '9', y: PAD_TOP + (1 - 9 / 12) * PLOT_H },
+    { value: 12, label: '12', y: PAD_TOP },
   ];
 
   return (
@@ -124,7 +125,7 @@ export default function ConsilienceTrendChart({
             Storm Consilience Trend
           </p>
           <h3 className="mt-2 text-2xl font-semibold text-stone-900">
-            10-source verification by storm date
+            12-source verification by storm date
           </h3>
           <p className="mt-1 text-sm text-stone-500">
             Pre-computed scores across MRMS / SPC / IEM / Synoptic / mPING / HailTrace / NCEI SWDI / NWS / NCEI archive. Last {monthsBack} months.
@@ -263,7 +264,7 @@ export default function ConsilienceTrendChart({
                 className="font-semibold"
                 style={{ color: colorForCount(hover.pt.confirmedCount) }}
               >
-                {hover.pt.confirmedCount}/10 confirmed
+                {hover.pt.confirmedCount}/12 confirmed
               </span>{' '}
               <span className="text-stone-500">· {hover.pt.confidenceTier}</span>
             </p>

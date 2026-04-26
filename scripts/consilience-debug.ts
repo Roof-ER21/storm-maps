@@ -124,7 +124,7 @@ function printSummary(r: ConsilienceResult): void {
   console.log(`Date:          ${q.date}`);
   console.log(`Window:        ${q.startUtc} → ${q.endUtc}`);
   console.log('');
-  console.log(`Confirmed:     ${r.confirmedCount} / 10 sources  (${r.confidenceTier})`);
+  console.log(`Confirmed:     ${r.confirmedCount} / 12 sources  (${r.confidenceTier})`);
   console.log('');
 
   const rows: { name: string; status: string; detail: string }[] = [];
@@ -209,6 +209,22 @@ function printSummary(r: ConsilienceResult): void {
     detail: r.sources.nceiStormEvents.eventCount > 0
       ? `${r.sources.nceiStormEvents.eventCount} events, types: ${r.sources.nceiStormEvents.eventTypes.join('+')}, peak hail ${r.sources.nceiStormEvents.maxHailInches.toFixed(2)}", nearest ${r.sources.nceiStormEvents.nearestMiles?.toFixed(1) ?? '?'}mi`
       : 'no events / not yet backfilled',
+  });
+
+  rows.push({
+    name: 'Mesocyclone',
+    status: r.sources.mesocyclone.confirmed ? 'YES' : 'no',
+    detail: r.sources.mesocyclone.detectionCount > 0
+      ? `${r.sources.mesocyclone.detectionCount} detections, peak strength ${r.sources.mesocyclone.peakStrength.toFixed(0)}, ${r.sources.mesocyclone.radarStations.join(',')}`
+      : 'no nx3mda signatures',
+  });
+
+  rows.push({
+    name: 'CoCoRaHS',
+    status: r.sources.cocorahs.confirmed ? 'YES' : 'no',
+    detail: r.sources.cocorahs.reportCount > 0
+      ? `${r.sources.cocorahs.reportCount} obs reports, peak ${r.sources.cocorahs.maxHailInches.toFixed(2)}"`
+      : 'no observer reports',
   });
 
   const header = `${pad('SOURCE', 16)}  ${pad('SIGNAL', 6)}  DETAIL`;

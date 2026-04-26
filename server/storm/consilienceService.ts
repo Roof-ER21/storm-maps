@@ -34,6 +34,8 @@ import { fetchHailtraceReportsForDate, isHailtraceConfigured, type HailtraceRepo
 import { fetchSwdiHailReports, type SwdiHailReport } from './ncerSwdiClient.js';
 import { fetchIemVtecForDate, pointInWarning, type IemVtecWarning } from './iemVtecClient.js';
 import { fetchNceiEventsForDateAndPoint, type NceiEvent } from './nceiStormEventsClient.js';
+import { fetchMesocyclones, type MesocycloneDetection } from './nceiNx3MdaClient.js';
+import { fetchCocorahsHailReports, type CocorahsHailReport } from './cocorahsClient.js';
 import { etDayUtcWindow, etDayMrmsAnchorIso } from './timeUtils.js';
 import { readConsilienceCache, writeConsilienceCache } from './consilienceCache.js';
 import type { BoundingBox, WindReport } from './types.js';
@@ -118,6 +120,17 @@ export interface ConsilienceSources {
     nearestMiles: number | null;
     nceiEventIds: number[];
   };
+  mesocyclone: SourceResultBase & {
+    detectionCount: number;
+    peakStrength: number;
+    nearestMiles: number | null;
+    radarStations: string[];
+  };
+  cocorahs: SourceResultBase & {
+    reportCount: number;
+    maxHailInches: number;
+    nearestMiles: number | null;
+  };
 }
 
 export type ConfidenceTier =
@@ -131,7 +144,9 @@ export type ConfidenceTier =
   | 'septuple-verified'
   | 'octuple-verified'
   | 'nontuple-verified'
-  | 'decuple-verified';
+  | 'decuple-verified'
+  | 'undecuple-verified'
+  | 'duodecuple-verified';
 
 export interface ConsilienceResult {
   query: Required<Pick<ConsilienceQuery, 'lat' | 'lng' | 'date' | 'radiusMiles'>> & {
@@ -243,6 +258,12 @@ async function buildConsilienceInner(
       lng: query.lng,
       radiusMiles: radius,
     }).catch(emptyArray<NceiEvent>),
+    fetchMesocyclones({
+      date: query.date,
+      bbox: { north: bounds.north, south: bounds.south, east: bounds.east, west: bounds.west },
+      minStrength: 5,
+    }).catch(emptyArray<MesocycloneDetection>),
+    fetchCocorahsAcrossStates(query.date, bounds).catch(emptyArray<CocorahsHailReport>),
   ]);
   const mrmsResult = results[0];
   const spcHailReports = results[1] as HailPointReport[];
@@ -255,6 +276,8 @@ async function buildConsilienceInner(
   const swdiResults = results[8] as SwdiHailReport[];
   const vtecResults = results[9] as IemVtecWarning[];
   const nceiResults = results[10] as NceiEvent[];
+  const mesoResults = results[11] as MesocycloneDetection[];
+  const cocorahsResults = results[12] as CocorahsHailReport[];
 
   // ── MRMS ─────────────────────────────────────────────
   const mrms = analyzeMrms(mrmsResult);
@@ -322,6 +345,24 @@ async function buildConsilienceInner(
     query.lng,
   );
 
+  // ── NCEI SWDI nx3mda (mesocyclone — supercell signature) ─────
+  const mesocyclone = analyzeMesocyclone(
+    mesoResults.filter((r) =>
+      withinRadius(r.lat, r.lng, query.lat, query.lng, radius),
+    ),
+    query.lat,
+    query.lng,
+  );
+
+  // ── CoCoRaHS (citizen-scientist hail observers) ──────────────
+  const cocorahs = analyzeCocorahs(
+    cocorahsResults.filter((r) =>
+      withinRadius(r.lat, r.lng, query.lat, query.lng, radius),
+    ),
+    query.lat,
+    query.lng,
+  );
+
   const confirmedCount =
     Number(mrms.confirmed) +
     Number(spcHail.confirmed) +
@@ -332,30 +373,36 @@ async function buildConsilienceInner(
     Number(hailtrace.confirmed) +
     Number(ncerSwdi.confirmed) +
     Number(nwsWarnings.confirmed) +
-    Number(nceiStormEvents.confirmed);
+    Number(nceiStormEvents.confirmed) +
+    Number(mesocyclone.confirmed) +
+    Number(cocorahs.confirmed);
 
   const confidenceTier: ConfidenceTier =
-    confirmedCount >= 10
-      ? 'decuple-verified'
-      : confirmedCount === 9
-        ? 'nontuple-verified'
-        : confirmedCount === 8
-          ? 'octuple-verified'
-          : confirmedCount === 7
-            ? 'septuple-verified'
-            : confirmedCount === 6
-              ? 'sextuple-verified'
-              : confirmedCount === 5
-                ? 'quintuple-verified'
-                : confirmedCount === 4
-                  ? 'quadruple-verified'
-                  : confirmedCount === 3
-                    ? 'triple-verified'
-                    : confirmedCount === 2
-                      ? 'cross-verified'
-                      : confirmedCount === 1
-                        ? 'single'
-                        : 'none';
+    confirmedCount >= 12
+      ? 'duodecuple-verified'
+      : confirmedCount === 11
+        ? 'undecuple-verified'
+        : confirmedCount === 10
+          ? 'decuple-verified'
+          : confirmedCount === 9
+            ? 'nontuple-verified'
+            : confirmedCount === 8
+              ? 'octuple-verified'
+              : confirmedCount === 7
+                ? 'septuple-verified'
+                : confirmedCount === 6
+                  ? 'sextuple-verified'
+                  : confirmedCount === 5
+                    ? 'quintuple-verified'
+                    : confirmedCount === 4
+                      ? 'quadruple-verified'
+                      : confirmedCount === 3
+                        ? 'triple-verified'
+                        : confirmedCount === 2
+                          ? 'cross-verified'
+                          : confirmedCount === 1
+                            ? 'single'
+                            : 'none';
 
   const sources: ConsilienceSources = {
     mrms,
@@ -368,6 +415,8 @@ async function buildConsilienceInner(
     ncerSwdi,
     nwsWarnings,
     nceiStormEvents,
+    mesocyclone,
+    cocorahs,
   };
 
   const curated = curateForAdjuster(sources, query.date);
@@ -513,6 +562,89 @@ function analyzeWindReports(
     peakGustMph: peak,
     nearestMiles: Number.isFinite(nearest) ? nearest : null,
     sources,
+  };
+}
+
+async function fetchCocorahsAcrossStates(
+  date: string,
+  bounds: BoundingBox,
+): Promise<CocorahsHailReport[]> {
+  // CoCoRaHS export takes one state at a time. Fan out across the focus
+  // states whose coarse bbox intersects the consilience bbox.
+  const states = ['VA', 'MD', 'PA', 'WV', 'DE', 'NJ', 'DC'];
+  const results = await Promise.all(
+    states.map((s) =>
+      fetchCocorahsHailReports({ date, state: s, bbox: bounds }).catch(
+        () => [] as CocorahsHailReport[],
+      ),
+    ),
+  );
+  return results.flat();
+}
+
+function analyzeMesocyclone(
+  detections: MesocycloneDetection[],
+  lat: number,
+  lng: number,
+): ConsilienceSources['mesocyclone'] {
+  if (detections.length === 0) {
+    return {
+      confirmed: false,
+      detectionCount: 0,
+      peakStrength: 0,
+      nearestMiles: null,
+      radarStations: [],
+    };
+  }
+  const peak = detections.reduce((m, d) => Math.max(m, d.strength), 0);
+  const nearest = detections.reduce(
+    (best, d) => Math.min(best, haversineMiles(lat, lng, d.lat, d.lng)),
+    Number.POSITIVE_INFINITY,
+  );
+  const stations = [...new Set(detections.map((d) => d.wsrId).filter(Boolean))];
+  // Strength ≥ 6 is supercell-class; ≥ 8 high tornado risk. Below 5 is noise.
+  const confirmed = peak >= 6;
+  const evidence = confirmed
+    ? `NEXRAD mesocyclone detection (NCEI SWDI nx3mda): ${detections.length} detection${detections.length === 1 ? '' : 's'} from ${stations.join(', ') || 'WSR-88D'}, peak strength ${peak.toFixed(0)} (${peak >= 8 ? 'tornado-warning class' : 'supercell signature'}), nearest ${nearest.toFixed(1)} mi.`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    detectionCount: detections.length,
+    peakStrength: peak,
+    nearestMiles: Number.isFinite(nearest) ? nearest : null,
+    radarStations: stations,
+  };
+}
+
+function analyzeCocorahs(
+  reports: CocorahsHailReport[],
+  lat: number,
+  lng: number,
+): ConsilienceSources['cocorahs'] {
+  if (reports.length === 0) {
+    return {
+      confirmed: false,
+      reportCount: 0,
+      maxHailInches: 0,
+      nearestMiles: null,
+    };
+  }
+  const maxInches = reports.reduce((m, r) => Math.max(m, r.hailSizeInches), 0);
+  const nearest = reports.reduce(
+    (best, r) => Math.min(best, haversineMiles(lat, lng, r.lat, r.lng)),
+    Number.POSITIVE_INFINITY,
+  );
+  const confirmed = maxInches >= 0.25;
+  const evidence = confirmed
+    ? `CoCoRaHS observer reports: ${reports.length} hail report${reports.length === 1 ? '' : 's'} within ${nearest.toFixed(1)} mi, peak size ${maxInches.toFixed(2)}".`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    reportCount: reports.length,
+    maxHailInches: maxInches,
+    nearestMiles: Number.isFinite(nearest) ? nearest : null,
   };
 }
 
@@ -790,6 +922,14 @@ function curateForAdjuster(
   if (sources.nceiStormEvents.confirmed && sources.nceiStormEvents.evidence) {
     confirmedSources.push('NCEI Storm Events');
     evidenceLines.push(sources.nceiStormEvents.evidence);
+  }
+  if (sources.mesocyclone.confirmed && sources.mesocyclone.evidence) {
+    confirmedSources.push('NEXRAD mesocyclone (nx3mda)');
+    evidenceLines.push(sources.mesocyclone.evidence);
+  }
+  if (sources.cocorahs.confirmed && sources.cocorahs.evidence) {
+    confirmedSources.push('CoCoRaHS observers');
+    evidenceLines.push(sources.cocorahs.evidence);
   }
 
   if (confirmedSources.length === 0) {
