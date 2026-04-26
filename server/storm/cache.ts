@@ -136,13 +136,13 @@ export async function setCachedSwath<T>(opts: {
     ttlForStormDate({ source: opts.source, date: opts.date });
   const expiresAt = new Date(Date.now() + ttl);
   try {
-    // postgres-js's tagged template binds JSON via its `json()` helper. Its
-    // JSONValue shape doesn't match a generic Record<string, unknown> because
-    // the latter could in theory carry a Date. Cast to the helper's expected
-    // type — the runtime serializer will JSON.stringify either way.
-    type PgJson = Parameters<typeof pgSql.json>[0];
-    const metadataJson = pgSql.json((opts.metadata ?? {}) as unknown as PgJson);
-    const payloadJson = pgSql.json(opts.payload as unknown as PgJson);
+    // Pass JSONB params as JSON strings rather than using pgSql.json() —
+    // the helper's wrapped object fails parameter binding in postgres.js v3
+    // tagged templates ("argument must be of type string... received an
+    // instance of Object"). Postgres auto-casts the string to JSONB when
+    // the destination column is jsonb-typed.
+    const metadataJson = JSON.stringify(opts.metadata ?? {});
+    const payloadJson = JSON.stringify(opts.payload);
     await pgSql`
       INSERT INTO swath_cache (
         source, date, bbox_hash,
@@ -151,8 +151,8 @@ export async function setCachedSwath<T>(opts: {
       ) VALUES (
         ${opts.source}, ${opts.date}, ${hash},
         ${opts.bounds.north}, ${opts.bounds.south}, ${opts.bounds.east}, ${opts.bounds.west},
-        ${metadataJson},
-        ${payloadJson},
+        ${metadataJson}::jsonb,
+        ${payloadJson}::jsonb,
         ${opts.featureCount ?? 0},
         ${opts.maxValue ?? 0},
         ${expiresAt}

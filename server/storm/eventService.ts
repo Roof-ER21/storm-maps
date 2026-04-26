@@ -226,8 +226,10 @@ async function writeEventCache(
   const ttl = pickEventCacheTtlMs(p);
   const expiresAt = new Date(Date.now() + ttl);
   try {
-    type PgJson = Parameters<typeof pgSql.json>[0];
-    const payloadJson = pgSql.json(payload as unknown as PgJson);
+    // postgres.js v3 tagged-template parameter binding rejects pgSql.json()
+    // wrappers ("argument must be string... got Object"). Pass JSON-stringified
+    // text and explicitly cast to jsonb in SQL — Postgres parses it correctly.
+    const payloadJson = JSON.stringify(payload);
     await pgSql`
       INSERT INTO event_cache (
         cache_key, lat_q, lng_q, radius_miles, months, since_date,
@@ -239,7 +241,7 @@ async function writeEventCache(
         ${p.radiusMiles},
         ${p.months},
         ${p.sinceDate},
-        ${payloadJson},
+        ${payloadJson}::jsonb,
         ${payload.events.length},
         ${expiresAt}
       )

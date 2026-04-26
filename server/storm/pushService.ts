@@ -77,10 +77,9 @@ export async function upsertPushSubscription(
   }
   if (!pgSql) return { ok: false, error: 'no db' };
   try {
-    type PgJson = Parameters<typeof pgSql.json>[0];
-    const states = pgSql.json(
-      (sub.territoryStates ?? []) as unknown as PgJson,
-    );
+    // postgres.js v3 binding rejects pgSql.json() wrappers in tagged
+    // templates. Stringify + ::jsonb cast — same fix as cache.ts/eventService.ts.
+    const states = JSON.stringify(sub.territoryStates ?? []);
     const rows = await pgSql<Array<{ id: number }>>`
       INSERT INTO push_subscriptions (
         endpoint, p256dh, auth, rep_id, territory_states, user_agent, label
@@ -89,7 +88,7 @@ export async function upsertPushSubscription(
         ${sub.keys.p256dh},
         ${sub.keys.auth},
         ${sub.repId ?? null},
-        ${states},
+        ${states}::jsonb,
         ${sub.userAgent ?? null},
         ${sub.label ?? null}
       )
@@ -141,8 +140,8 @@ export async function listSubscriptionsForStates(
   if (!pgSql) return [];
   const upperStates = opts.states.map((s) => s.toUpperCase());
   try {
-    type PgJson = Parameters<typeof pgSql.json>[0];
-    const statesJson = pgSql.json(upperStates as unknown as PgJson);
+    // Same fix: stringify + cast in SQL.
+    const statesJson = JSON.stringify(upperStates);
     const rows = await pgSql<PushSubscriptionRow[]>`
       SELECT id, endpoint, p256dh, auth, territory_states
         FROM push_subscriptions
