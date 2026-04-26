@@ -215,8 +215,22 @@ function rowToNcei(
   if (!eventDateEt) return null;
 
   const magRaw = row[idx['MAGNITUDE']] || '';
-  const magnitude = parseFloat(magRaw);
-  if (!Number.isFinite(magnitude)) return null;
+  let magnitude = parseFloat(magRaw);
+
+  // Tornado / Funnel Cloud / Marine Hail can have an empty MAGNITUDE column —
+  // the EF scale is in TOR_F_SCALE (e.g. "EF0", "EF1"). For our purposes we
+  // care that the event existed, not its precise rating; we keep them with
+  // magnitude=0 if that's what NCEI gave us.
+  if (
+    !Number.isFinite(magnitude) &&
+    (eventType === 'Tornado' ||
+      eventType === 'Funnel Cloud' ||
+      eventType === 'Marine Hail')
+  ) {
+    magnitude = 0;
+  } else if (!Number.isFinite(magnitude)) {
+    return null;
+  }
 
   // Magnitude floors — radar already covers smaller events; we want NCEI as
   // the gold-standard insurance-relevant signal.
