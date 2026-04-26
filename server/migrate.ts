@@ -228,6 +228,41 @@ async function migrate() {
       ON verified_hail_events (event_date)
   `;
 
+  // ── Migration to event-type-aware dedup ─────────────────────────────
+  // The original dedup key (event_date, lat_bucket, lng_bucket) merged
+  // Hail and Wind events at the same NCEI grid cell into one row, which
+  // corrupted the `magnitude` column (a 52 mph wind gust would overwrite
+  // a 1.5" hail row's magnitude via GREATEST). Switch to a key that
+  // separates by event_type so each storm signal stays in its own row.
+  //
+  // Idempotent: only flips when the OLD index has the wrong column count.
+  // The DELETE wipes only NCEI-sourced rows so they can be re-ingested
+  // cleanly; other sources (consilience-stateless) don't write here.
+  const oldIdx = await sql<Array<{ indexdef: string }>>`
+    SELECT indexdef FROM pg_indexes
+     WHERE indexname = 'verified_hail_events_dedup_idx'
+       AND tablename = 'verified_hail_events'
+  `;
+  const needsTypeKey =
+    oldIdx[0] && !oldIdx[0].indexdef.includes('event_type');
+  if (needsTypeKey) {
+    console.log(
+      '[migrate] Switching verified_hail_events dedup key to include event_type…',
+    );
+    await sql`DROP INDEX verified_hail_events_dedup_idx`;
+    const wiped = await sql<Array<{ count: string }>>`
+      DELETE FROM verified_hail_events
+       WHERE source_ncei_storm_events = TRUE
+       RETURNING 1 AS count
+    `;
+    console.log(`[migrate] Wiped ${wiped.length} NCEI rows for re-ingest with corrected dedup.`);
+    await sql`
+      CREATE UNIQUE INDEX verified_hail_events_dedup_idx
+        ON verified_hail_events (event_date, lat_bucket, lng_bucket, event_type)
+    `;
+    console.log('[migrate] New dedup key (event_date, lat_bucket, lng_bucket, event_type) created.');
+  }
+
   // Extend verified_hail_events with the full source-flag set + event metadata
   // for backfill ingestion. Idempotent — ADD COLUMN IF NOT EXISTS lets the
   // base CREATE TABLE above stay minimal while later adds extend cleanly.

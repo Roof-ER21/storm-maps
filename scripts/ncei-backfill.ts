@@ -311,14 +311,13 @@ async function upsertBatch(rows: NceiRow[]): Promise<void> {
           ${new Date(r.begin_iso).toISOString()}::timestamptz,
           ${new Date(r.end_iso).toISOString()}::timestamptz
         )
-        ON CONFLICT (event_date, lat_bucket, lng_bucket)
+        ON CONFLICT (event_date, lat_bucket, lng_bucket, event_type)
         DO UPDATE SET
           hail_size_inches = GREATEST(
             verified_hail_events.hail_size_inches,
             EXCLUDED.hail_size_inches
           ),
           source_ncei_storm_events = TRUE,
-          event_type = COALESCE(EXCLUDED.event_type, verified_hail_events.event_type),
           magnitude = GREATEST(
             COALESCE(verified_hail_events.magnitude, 0),
             COALESCE(EXCLUDED.magnitude, 0)
