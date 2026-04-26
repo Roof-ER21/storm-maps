@@ -1066,15 +1066,33 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
           lineBreak: false,
         });
 
-      // Hail summary — what reps quote to adjusters
+      // Hail summary — what reps quote to adjusters. AREA IMPACT must
+      // headline the WITHIN-10mi event (mi5to10 → mi3to5 → mi1to3), not
+      // biggestNearby, because biggestNearby tracks the LARGEST hail
+      // anywhere in the 25mi window which can read "11.0 mi away" while
+      // the row claims AREA IMPACT (within 10 mi). Mid-range distances
+      // (~7mi for 5-10 band) are honest stand-ins; precise event-level
+      // distance isn't tracked once we collapse into bands.
       const headlineSize =
         tier === 'direct_hit'
           ? r.atProperty
           : tier === 'near_miss'
             ? r.mi1to3
-            : r.biggestNearby;
+            : r.mi5to10 > 0
+              ? r.mi5to10
+              : r.mi3to5 > 0
+                ? r.mi3to5
+                : r.biggestNearby;
       const distance =
-        tier === 'direct_hit' ? 'at property' : `${r.biggestNearbyMi.toFixed(1)} mi away`;
+        tier === 'direct_hit'
+          ? 'at property'
+          : tier === 'near_miss'
+            ? 'within 1–3 mi'
+            : r.mi5to10 > 0
+              ? 'within 5–10 mi'
+              : r.mi3to5 > 0
+                ? 'within 3–5 mi'
+                : `${Math.min(r.biggestNearbyMi, 10).toFixed(1)} mi away`;
       doc
         .fillColor('#1e293b')
         .font('Helvetica')
