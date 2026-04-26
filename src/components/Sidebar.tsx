@@ -906,7 +906,7 @@ export default function Sidebar({
         <div className="p-3">
           <button
             onClick={openDateOfLossModal}
-            disabled={stormDates.length === 0 || generatingReport}
+            disabled={!searchSummary || generatingReport}
             className="w-full rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(124,58,237,0.22)] transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400 disabled:shadow-none"
           >
             {generatingReport ? 'Generating Report...' : 'Gen Report'}
