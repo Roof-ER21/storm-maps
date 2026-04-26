@@ -135,23 +135,69 @@ interface HotProperty {
  * entries here mean the second rep to look up the same address gets the
  * full storm history in <50 ms.
  */
+/**
+ * Default seed properties — major canvassing centers across VA/MD/PA/DE/NJ.
+ * Used when the `properties` table is empty (e.g., before reps start using
+ * the app) so the consilience prewarm has something to do from day one.
+ * Subsequent rep activity surfaces real properties via the SQL path; this
+ * list just guarantees the cache has fresh data for major-metro lookups.
+ */
+const SEED_HOT_PROPERTIES: HotProperty[] = [
+  // VA
+  { lat: 38.85, lng: -77.30, radius_miles: 35, history_preset: '5y' }, // NoVA / Loudoun
+  { lat: 37.54, lng: -77.43, radius_miles: 35, history_preset: '5y' }, // Richmond
+  { lat: 36.85, lng: -76.29, radius_miles: 35, history_preset: '5y' }, // Norfolk
+  { lat: 38.03, lng: -78.48, radius_miles: 35, history_preset: '5y' }, // Charlottesville
+  // MD + DC
+  { lat: 39.29, lng: -76.61, radius_miles: 35, history_preset: '5y' }, // Baltimore
+  { lat: 38.99, lng: -76.94, radius_miles: 35, history_preset: '5y' }, // Hyattsville/Bowie
+  { lat: 38.91, lng: -77.04, radius_miles: 35, history_preset: '5y' }, // DC
+  { lat: 39.42, lng: -77.41, radius_miles: 35, history_preset: '5y' }, // Frederick
+  // PA
+  { lat: 40.44, lng: -79.99, radius_miles: 35, history_preset: '5y' }, // Pittsburgh
+  { lat: 39.95, lng: -75.16, radius_miles: 35, history_preset: '5y' }, // Philadelphia
+  { lat: 40.27, lng: -76.88, radius_miles: 35, history_preset: '5y' }, // Harrisburg
+  { lat: 40.04, lng: -76.30, radius_miles: 35, history_preset: '5y' }, // Lancaster
+  { lat: 40.34, lng: -75.92, radius_miles: 35, history_preset: '5y' }, // Reading
+  // DE + NJ
+  { lat: 39.74, lng: -75.55, radius_miles: 35, history_preset: '5y' }, // Wilmington
+  { lat: 38.69, lng: -75.40, radius_miles: 35, history_preset: '5y' }, // Dover/Milford
+  { lat: 40.74, lng: -74.17, radius_miles: 35, history_preset: '5y' }, // Newark NJ
+  { lat: 40.22, lng: -74.76, radius_miles: 35, history_preset: '5y' }, // Trenton
+  { lat: 39.95, lng: -75.06, radius_miles: 35, history_preset: '5y' }, // Camden
+];
+
 async function readHotProperties(): Promise<HotProperty[]> {
-  if (!pgSql) return [];
-  try {
-    const rows = await pgSql<HotProperty[]>`
-      SELECT lat, lng, radius_miles, history_preset
-        FROM properties
-       WHERE lat BETWEEN 36 AND 43
-         AND lng BETWEEN -84 AND -74
-         AND updated_at > NOW() - INTERVAL '30 days'
-       ORDER BY updated_at DESC
-       LIMIT 25
-    `;
-    return rows;
-  } catch (err) {
-    console.warn('[prewarm] hot-properties read failed', err);
-    return [];
+  const userProps: HotProperty[] = [];
+  if (pgSql) {
+    try {
+      const rows = await pgSql<HotProperty[]>`
+        SELECT lat, lng, radius_miles, history_preset
+          FROM properties
+         WHERE lat BETWEEN 36 AND 43
+           AND lng BETWEEN -84 AND -74
+           AND updated_at > NOW() - INTERVAL '30 days'
+         ORDER BY updated_at DESC
+         LIMIT 25
+      `;
+      userProps.push(...rows);
+    } catch (err) {
+      console.warn('[prewarm] hot-properties read failed', err);
+    }
   }
+  // Merge: real rep activity first (priority), then seed properties to fill
+  // the prewarm budget. Dedupe by quantized lat/lng so a rep-pinned property
+  // doesn't double up with a nearby seed.
+  const seen = new Set<string>();
+  const out: HotProperty[] = [];
+  for (const p of [...userProps, ...SEED_HOT_PROPERTIES]) {
+    const key = `${p.lat.toFixed(2)},${p.lng.toFixed(2)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(p);
+    if (out.length >= 30) break;
+  }
+  return out;
 }
 
 function monthsForPreset(preset: string | null): number {
