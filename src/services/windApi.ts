@@ -81,6 +81,9 @@ interface WindSwathParams {
   bounds: BoundingBox;
   states?: string[];
   live?: boolean;
+  /** Optional ISO timestamp slice — drives the storm timeline scrubber. */
+  windowStartIso?: string;
+  windowEndIso?: string;
 }
 
 function toBoundsQuery(params: WindSwathParams): string {
@@ -96,6 +99,10 @@ function toBoundsQuery(params: WindSwathParams): string {
   }
   if (params.live) {
     q.set('live', '1');
+  }
+  if (params.windowStartIso && params.windowEndIso) {
+    q.set('windowStart', params.windowStartIso);
+    q.set('windowEnd', params.windowEndIso);
   }
   return q.toString();
 }

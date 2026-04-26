@@ -1121,8 +1121,17 @@ function MapContent({
 
   // ── Wind swath layer fetch ───────────────────────────────────────────────
   // Pulls per-band wind polygons whenever the wind filter is on. In live mode
-  // (no selectedDate) this also folds in active SVR centroids.
+  // (no selectedDate) this also folds in active SVR centroids. When the
+  // storm timeline scrubber is on a single frame, we narrow the wind query
+  // to ±15 min of that frame so the dots line up with the radar cell.
   const windStatesKey = (windStates ?? DEFAULT_WIND_FOCUS_STATES).join(',');
+  const scrubFrameTimestamp =
+    scrubFrameIndex !== null &&
+    historicalRadarTimestamps.length > 0 &&
+    scrubFrameIndex >= 0 &&
+    scrubFrameIndex < historicalRadarTimestamps.length
+      ? historicalRadarTimestamps[scrubFrameIndex]
+      : null;
   useEffect(() => {
     if (!windEnabled) {
       setWindCollection(null);
@@ -1137,12 +1146,24 @@ function MapContent({
     let cancelled = false;
     const states = windStates ?? DEFAULT_WIND_FOCUS_STATES;
 
+    let windowStartIso: string | undefined;
+    let windowEndIso: string | undefined;
+    if (scrubFrameTimestamp) {
+      const t = new Date(scrubFrameTimestamp).getTime();
+      if (Number.isFinite(t)) {
+        windowStartIso = new Date(t - 15 * 60 * 1000).toISOString();
+        windowEndIso = new Date(t + 15 * 60 * 1000).toISOString();
+      }
+    }
+
     const promise = selectedDate
       ? fetchWindSwathPolygons({
           date: selectedDate,
           bounds,
           states,
           live: false,
+          windowStartIso,
+          windowEndIso,
         })
       : fetchLiveWindSwathPolygons(bounds, states);
 
@@ -1155,7 +1176,14 @@ function MapContent({
     };
     // windStatesKey covers windStates without a referential check
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [windEnabled, selectedDate, stormContext.eventBounds, mapBounds, windStatesKey]);
+  }, [
+    windEnabled,
+    selectedDate,
+    stormContext.eventBounds,
+    mapBounds,
+    windStatesKey,
+    scrubFrameTimestamp,
+  ]);
 
   // ── Click-anywhere impact lookup ─────────────────────────────────────────
   // Already-existing storm-impact endpoint is wired only for the searched

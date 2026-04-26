@@ -30,6 +30,14 @@ import {
 } from './storm/windSwathService.js';
 import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
 import { fetchStormEventsCached } from './storm/eventService.js';
+import {
+  startPrewarmScheduler,
+  getPrewarmStatus,
+} from './storm/scheduler.js';
+import {
+  buildHailFallbackCollection,
+  buildHailImpactResponse,
+} from './storm/hailFallbackService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
@@ -759,6 +767,9 @@ interface WindBoundsQuery {
   west?: string;
   states?: string;
   live?: string;
+  /** Optional ISO timestamps for the storm-timeline-scrubber slice. */
+  windowStart?: string;
+  windowEnd?: string;
 }
 
 function parseWindBounds(q: WindBoundsQuery) {
@@ -801,6 +812,8 @@ app.get('/api/wind/swath-polygons', async (req, res) => {
       bounds,
       states: parseStates(q.states),
       includeLive: q.live === '1',
+      windowStartIso: q.windowStart,
+      windowEndIso: q.windowEnd,
     });
     res.set('Cache-Control', 'public, max-age=300');
     res.json(collection);
@@ -894,6 +907,97 @@ app.get('/api/spc-proxy', async (req, res) => {
   }
 });
 
+// ── Hail polygon fallback ───────────────────────────────────────
+// Crisp MRMS MESH polygons are produced by the Susan21 backend (GRIB decode
+// + d3-contour). This in-repo fallback uses SPC + IEM hail point reports
+// buffered into IHM-shaped 13-band polygons. Used when:
+//   - the Susan21 endpoint is down or returns empty
+//   - reps are running this app standalone without the Susan21 dependency
+interface HailFallbackQuery {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  states?: string;
+}
+
+function parseHailFallbackBounds(q: HailFallbackQuery) {
+  const n = parseFloat(q.north ?? '');
+  const s = parseFloat(q.south ?? '');
+  const e = parseFloat(q.east ?? '');
+  const w = parseFloat(q.west ?? '');
+  if (![n, s, e, w].every(Number.isFinite)) return null;
+  if (n <= s || e <= w) return null;
+  return { north: n, south: s, east: e, west: w };
+}
+
+app.get('/api/hail/swath-fallback', async (req, res) => {
+  try {
+    const q = req.query as HailFallbackQuery;
+    const bounds = parseHailFallbackBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const date = q.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const states =
+      q.states && q.states.length > 0
+        ? q.states.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean)
+        : WIND_FOCUS_STATES;
+    const collection = await buildHailFallbackCollection({
+      date,
+      bounds,
+      states,
+    });
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(collection);
+  } catch (err) {
+    console.error('[hail-fallback] failed', err);
+    res.status(500).json({ error: 'Failed to build hail fallback' });
+  }
+});
+
+interface HailImpactBody {
+  date?: string;
+  bounds?: { north: number; south: number; east: number; west: number };
+  states?: string[];
+  points?: Array<{ id: string; lat: number; lng: number }>;
+}
+
+app.post('/api/hail/impact-fallback', async (req, res) => {
+  try {
+    const body = (req.body || {}) as HailImpactBody;
+    if (
+      !body.bounds ||
+      !Array.isArray(body.points) ||
+      body.points.length === 0
+    ) {
+      res.status(400).json({ error: 'bounds and points required' });
+      return;
+    }
+    const date = body.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const response = await buildHailImpactResponse({
+      date,
+      bounds: body.bounds,
+      states: body.states && body.states.length > 0 ? body.states : WIND_FOCUS_STATES,
+      points: body.points,
+    });
+    res.json(response);
+  } catch (err) {
+    console.error('[hail-impact-fallback] failed', err);
+    res.status(500).json({ error: 'Failed to compute hail impact' });
+  }
+});
+
 // ── Storm events (cached aggregator) ────────────────────────────
 // Server-side multi-source storm event fetcher (SPC + IEM LSR), backed by
 // `event_cache`. Two reps querying nearly the same neighborhood share the
@@ -978,6 +1082,13 @@ app.post('/api/admin/cache-purge', async (_req, res) => {
   }
 });
 
+app.get('/api/admin/prewarm-status', (_req, res) => {
+  const enabled =
+    process.env.HAIL_YES_PREWARM === '1' ||
+    process.env.NODE_ENV === 'production';
+  res.json(getPrewarmStatus(enabled));
+});
+
 // Lazy purge timer so expired rows don't accumulate. 6-hour cadence is
 // plenty given the per-row index lookup we do on each read anyway.
 setInterval(() => {
@@ -995,6 +1106,8 @@ app.get('{*path}', (_req, res) => {
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Hail Yes! running on port ${PORT}`);
+  // Kick the cache prewarm scheduler. No-op in dev unless HAIL_YES_PREWARM=1.
+  startPrewarmScheduler();
 });
 
 // ── Cache cleanup ───────────────────────────────────────

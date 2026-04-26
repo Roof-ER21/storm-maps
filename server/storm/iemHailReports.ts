@@ -1,0 +1,133 @@
+/**
+ * IEM Local Storm Reports — hail variant. Same shape as `iemLsr.ts` (wind).
+ *
+ * Endpoint:
+ *   https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py
+ *     ?sts=YYYYMMDDHHMI&ets=YYYYMMDDHHMI&fmt=geojson&[state=...]
+ *
+ * Filters server-side responses to type='H' (hail) and applies the optional
+ * client bbox before returning.
+ */
+
+import type { BoundingBox } from './types.js';
+import type { HailPointReport } from './spcHailReports.js';
+
+const IEM_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py';
+const FETCH_TIMEOUT_MS = 15_000;
+
+interface LsrFeature {
+  type: 'Feature';
+  properties: {
+    valid: string;
+    typetext?: string;
+    type?: string;
+    magnitude?: number | string;
+    city?: string;
+    county?: string;
+    state?: string;
+    source?: string;
+    remark?: string;
+  };
+  geometry: { type: 'Point'; coordinates: [number, number] };
+}
+
+function fmtIemTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const hh = String(d.getUTCHours()).padStart(2, '0');
+  const min = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${yyyy}${mm}${dd}${hh}${min}`;
+}
+
+function isHailType(typetext?: string, type?: string): boolean {
+  if (type === 'H') return true;
+  if (!typetext) return false;
+  return typetext.toLowerCase().includes('hail');
+}
+
+/**
+ * Fetch hail LSRs for a date or date range. Pass either:
+ *   - `{ date: 'YYYY-MM-DD' }` for a single Eastern day, or
+ *   - `{ startIso, endIso }` for a span (used by the event-cache backfill).
+ */
+export async function fetchIemHailReports(
+  opts:
+    | { date: string; bounds?: BoundingBox | null; states?: string[] }
+    | {
+        startIso: string;
+        endIso: string;
+        bounds?: BoundingBox | null;
+        states?: string[];
+      },
+): Promise<HailPointReport[]> {
+  let start: string;
+  let end: string;
+  if ('date' in opts) {
+    start = `${opts.date}T00:00:00Z`;
+    const endDate = new Date(start);
+    endDate.setUTCDate(endDate.getUTCDate() + 1);
+    end = endDate.toISOString();
+  } else {
+    start = opts.startIso;
+    end = opts.endIso;
+  }
+
+  const params = new URLSearchParams({
+    sts: fmtIemTimestamp(start),
+    ets: fmtIemTimestamp(end),
+    fmt: 'geojson',
+  });
+  if (opts.states && opts.states.length > 0) {
+    for (const st of opts.states) params.append('state', st);
+  }
+
+  const url = `${IEM_BASE}?${params.toString()}`;
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+    const res = await fetch(url, {
+      signal: ac.signal,
+      headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
+    });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const data = (await res.json()) as { features?: LsrFeature[] };
+    const features = data.features ?? [];
+    const reports: HailPointReport[] = [];
+    for (const f of features) {
+      if (!isHailType(f.properties.typetext, f.properties.type)) continue;
+      const [lng, lat] = f.geometry.coordinates;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (
+        opts.bounds &&
+        (lat < opts.bounds.south ||
+          lat > opts.bounds.north ||
+          lng < opts.bounds.west ||
+          lng > opts.bounds.east)
+      ) {
+        continue;
+      }
+      const mag = Number(f.properties.magnitude);
+      // IEM LSR magnitudes for hail are diameter inches; reports without a
+      // measured size still indicate a hail event — assume a conservative ½".
+      const sizeInches = Number.isFinite(mag) && mag > 0 ? mag : 0.5;
+      reports.push({
+        id: `iem-h-${f.properties.valid}-${reports.length}`,
+        time: f.properties.valid,
+        lat,
+        lng,
+        sizeInches,
+        source: 'IEM-LSR',
+        state: f.properties.state,
+        county: f.properties.county,
+        description: f.properties.remark || f.properties.city,
+      });
+    }
+    return reports;
+  } catch {
+    return [];
+  }
+}

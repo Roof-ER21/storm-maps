@@ -262,21 +262,48 @@ export async function fetchLiveSwathPolygons(bounds: BoundingBox): Promise<
 /**
  * Fetch vector swath polygons for a storm date — crisp, clickable,
  * 10-level hail contours derived from MRMS MESH radar data.
+ *
+ * Tries the Susan21 MRMS endpoint first (real GRIB-decoded MESH polygons).
+ * If that's unavailable or returns an empty/error response, falls back to
+ * the in-repo `/api/hail/swath-fallback` which buffers SPC + IEM hail
+ * point reports into IHM-shaped 13-band polygons. Both paths return the
+ * same `SwathPolygonCollection` shape.
  */
 export async function fetchSwathPolygons(
   params: HistoricalMrmsParams,
 ): Promise<SwathPolygonCollection | null> {
+  // Primary: Susan21 MRMS pipeline
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-swath-polygons?${toHistoricalQuery(params)}`,
       { signal: AbortSignal.timeout(45000) },
     );
-    if (!res.ok) {
-      throw new Error(`Swath polygons returned ${res.status}`);
+    if (res.ok) {
+      const data = (await res.json()) as SwathPolygonCollection;
+      if (data.features && data.features.length > 0) return data;
     }
-    return await res.json();
   } catch (err) {
-    console.error('[mrmsApi] Failed to fetch swath polygons:', err);
+    console.warn('[mrmsApi] MRMS pipeline unavailable, trying fallback', err);
+  }
+
+  // Fallback: in-repo SPC/LSR-based hail polygons
+  try {
+    const q = new URLSearchParams({
+      date: params.date,
+      north: params.bounds.north.toString(),
+      south: params.bounds.south.toString(),
+      east: params.bounds.east.toString(),
+      west: params.bounds.west.toString(),
+    });
+    const res = await fetch(`/api/hail/swath-fallback?${q.toString()}`, {
+      signal: AbortSignal.timeout(45000),
+    });
+    if (!res.ok) {
+      throw new Error(`Hail fallback returned ${res.status}`);
+    }
+    return (await res.json()) as SwathPolygonCollection;
+  } catch (err) {
+    console.error('[mrmsApi] Hail fallback also failed:', err);
     return null;
   }
 }

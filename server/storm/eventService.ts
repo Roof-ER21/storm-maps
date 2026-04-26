@@ -16,6 +16,8 @@ import crypto from 'crypto';
 import { sql as pgSql } from '../db.js';
 import { fetchSpcWindReports } from './spcReports.js';
 import { fetchIemWindReports } from './iemLsr.js';
+import { fetchSpcHailReportsForDate, type HailPointReport } from './spcHailReports.js';
+import { fetchIemHailReports } from './iemHailReports.js';
 import type { WindReport } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -56,218 +58,6 @@ export interface StormEventResponse {
   };
 }
 
-// ---------------------------------------------------------------------------
-// SPC hail reports — same shape as the wind fetcher already in this dir.
-// ---------------------------------------------------------------------------
-
-const SPC_BASE = 'https://www.spc.noaa.gov/climo/reports';
-const FETCH_TIMEOUT_MS = 12_000;
-
-interface HailReport {
-  id: string;
-  time: string;
-  lat: number;
-  lng: number;
-  sizeInches: number;
-  source: 'SPC';
-  state?: string;
-  county?: string;
-  description?: string;
-}
-
-function buildIso(date: Date, hhmm: string): string {
-  const yyyy = date.getUTCFullYear();
-  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(date.getUTCDate()).padStart(2, '0');
-  const hh = (hhmm.slice(0, 2) || '00').padStart(2, '0');
-  const min = (hhmm.slice(2, 4) || '00').padStart(2, '0');
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}:00Z`;
-}
-
-function formatYymmdd(date: Date): string {
-  const yy = String(date.getUTCFullYear()).slice(2);
-  const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(date.getUTCDate()).padStart(2, '0');
-  return `${yy}${mm}${dd}`;
-}
-
-async function fetchSpcCsv(url: string): Promise<string | null> {
-  try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
-    const res = await fetch(url, {
-      signal: ac.signal,
-      headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
-    });
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    return await res.text();
-  } catch {
-    return null;
-  }
-}
-
-function parseSpcHailCsv(
-  csvText: string,
-  forDate: Date,
-  idPrefix: string,
-): HailReport[] {
-  const lines = csvText
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
-  if (lines.length === 0) return [];
-
-  let startIndex = 0;
-  const firstLine = lines[0].toLowerCase();
-  if (
-    firstLine.startsWith('time') ||
-    firstLine.includes('size') ||
-    firstLine.includes('location')
-  ) {
-    startIndex = 1;
-  }
-
-  const reports: HailReport[] = [];
-  for (let i = startIndex; i < lines.length; i += 1) {
-    const parts = lines[i].split(',');
-    if (parts.length < 7) continue;
-    const [time, size, location, county, state, latRaw, lonRaw, ...rest] = parts;
-    const t = (time ?? '').trim();
-    const sizeHundredths = parseFloat((size ?? '').trim());
-    const lat = parseFloat((latRaw ?? '').trim());
-    const lon = parseFloat((lonRaw ?? '').trim());
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-    if (lat === 0 || lon === 0) continue;
-    if (!Number.isFinite(sizeHundredths)) continue;
-
-    reports.push({
-      id: `${idPrefix}-${i}`,
-      time: buildIso(forDate, t.padStart(4, '0')),
-      lat,
-      lng: lon,
-      sizeInches: sizeHundredths / 100,
-      source: 'SPC',
-      state: (state ?? '').trim() || undefined,
-      county: (county ?? '').trim() || undefined,
-      description: `${(location ?? '').trim()}${rest.length > 0 ? ' — ' + rest.join(',').trim() : ''}`,
-    });
-  }
-  return reports;
-}
-
-async function fetchSpcHailReportsForDate(date: string): Promise<HailReport[]> {
-  const target = new Date(`${date}T00:00:00Z`);
-  if (Number.isNaN(target.getTime())) return [];
-  const now = new Date();
-  const ageDays = (now.getTime() - target.getTime()) / 86_400_000;
-
-  const candidates: { url: string; prefix: string }[] = [];
-  if (ageDays >= -0.5 && ageDays < 1) {
-    candidates.push({ url: `${SPC_BASE}/today_hail.csv`, prefix: `spc-today-${date}` });
-  }
-  if (ageDays >= 0.5 && ageDays < 2) {
-    candidates.push({ url: `${SPC_BASE}/yesterday_hail.csv`, prefix: `spc-y-${date}` });
-  }
-  candidates.push({
-    url: `${SPC_BASE}/${formatYymmdd(target)}_rpts_hail.csv`,
-    prefix: `spc-arch-${date}`,
-  });
-
-  for (const { url, prefix } of candidates) {
-    const csv = await fetchSpcCsv(url);
-    if (!csv) continue;
-    const reports = parseSpcHailCsv(csv, target, prefix);
-    if (reports.length > 0) return reports;
-  }
-  return [];
-}
-
-// ---------------------------------------------------------------------------
-// IEM hail reports — extends fetchIemWindReports's pattern.
-// ---------------------------------------------------------------------------
-
-interface IemLsrFeature {
-  type: 'Feature';
-  properties: {
-    valid: string;
-    typetext?: string;
-    type?: string;
-    magnitude?: number | string;
-    city?: string;
-    county?: string;
-    state?: string;
-    source?: string;
-    remark?: string;
-  };
-  geometry: { type: 'Point'; coordinates: [number, number] };
-}
-
-const IEM_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py';
-
-function fmtIemTimestamp(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const yyyy = d.getUTCFullYear();
-  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const dd = String(d.getUTCDate()).padStart(2, '0');
-  const hh = String(d.getUTCHours()).padStart(2, '0');
-  const min = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${yyyy}${mm}${dd}${hh}${min}`;
-}
-
-async function fetchIemHailReports(opts: {
-  startIso: string;
-  endIso: string;
-  states?: string[];
-}): Promise<HailReport[]> {
-  const params = new URLSearchParams({
-    sts: fmtIemTimestamp(opts.startIso),
-    ets: fmtIemTimestamp(opts.endIso),
-    fmt: 'geojson',
-  });
-  if (opts.states && opts.states.length > 0) {
-    for (const st of opts.states) params.append('state', st);
-  }
-  const url = `${IEM_BASE}?${params.toString()}`;
-  try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 15_000);
-    const res = await fetch(url, {
-      signal: ac.signal,
-      headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
-    });
-    clearTimeout(timer);
-    if (!res.ok) return [];
-    const data = (await res.json()) as { features?: IemLsrFeature[] };
-    const features = data.features ?? [];
-    const reports: HailReport[] = [];
-    for (const f of features) {
-      const isHail =
-        f.properties.type === 'H' ||
-        (f.properties.typetext ?? '').toLowerCase().includes('hail');
-      if (!isHail) continue;
-      const [lng, lat] = f.geometry.coordinates;
-      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-      const mag = Number(f.properties.magnitude);
-      const sizeInches = Number.isFinite(mag) && mag > 0 ? mag : 0.5;
-      reports.push({
-        id: `iem-h-${f.properties.valid}-${reports.length}`,
-        time: f.properties.valid,
-        lat,
-        lng,
-        sizeInches,
-        source: 'SPC',
-        state: f.properties.state,
-        county: f.properties.county,
-        description: f.properties.remark || f.properties.city,
-      });
-    }
-    return reports;
-  } catch {
-    return [];
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Aggregation + dedupe + cache
@@ -287,7 +77,7 @@ function distanceMiles(a: { lat: number; lng: number }, b: { lat: number; lng: n
   return EARTH_R_MI * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
 }
 
-function hailReportToEvent(r: HailReport): StormEventDto {
+function hailReportToEvent(r: HailPointReport): StormEventDto {
   return {
     id: r.id,
     eventType: 'Hail',
@@ -527,7 +317,7 @@ export async function fetchStormEventsCached(
     for (const r of reports) {
       allEvents.push(
         kind === 'hail'
-          ? hailReportToEvent(r as HailReport)
+          ? hailReportToEvent(r as HailPointReport)
           : windReportToEvent(r as WindReport),
       );
     }

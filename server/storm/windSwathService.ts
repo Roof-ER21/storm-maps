@@ -40,6 +40,14 @@ interface WindSwathRequest {
   states?: string[];
   /** Include active NWS SVR polygon centroids (live mode). */
   includeLive?: boolean;
+  /**
+   * Optional time-of-day slice. When both are set, only reports whose
+   * timestamps fall inside [windowStartIso, windowEndIso] are bucketed
+   * into the band features. Used by the storm timeline scrubber so each
+   * radar frame has its corresponding wind dots.
+   */
+  windowStartIso?: string;
+  windowEndIso?: string;
 }
 
 /**
@@ -68,6 +76,10 @@ function bufferMilesForGust(mph: number): number {
 function cacheKey(req: WindSwathRequest): string {
   const b = req.bounds;
   const states = (req.states ?? []).slice().sort().join(',');
+  const window =
+    req.windowStartIso && req.windowEndIso
+      ? `${req.windowStartIso}-${req.windowEndIso}`
+      : 'full';
   return [
     req.date,
     b.north.toFixed(3),
@@ -76,6 +88,7 @@ function cacheKey(req: WindSwathRequest): string {
     b.west.toFixed(3),
     states,
     req.includeLive ? 'live' : 'static',
+    window,
   ].join('|');
 }
 
@@ -206,7 +219,21 @@ export async function buildWindSwathCollection(
   const all = [...spcReports, ...iemReports, ...liveCentroids].filter(
     (r) => Number.isFinite(r.gustMph) && r.gustMph >= WIND_BAND_LEVELS[0].minMph,
   );
-  const inFrame = all.filter((r) => inBounds(r, padded));
+  // Optional time slice — drives the storm timeline scrubber.
+  const windowStart =
+    req.windowStartIso ? Date.parse(req.windowStartIso) : Number.NaN;
+  const windowEnd =
+    req.windowEndIso ? Date.parse(req.windowEndIso) : Number.NaN;
+  const hasWindow = Number.isFinite(windowStart) && Number.isFinite(windowEnd);
+
+  const inFrame = all
+    .filter((r) => inBounds(r, padded))
+    .filter((r) => {
+      if (!hasWindow) return true;
+      const t = Date.parse(r.time);
+      if (Number.isNaN(t)) return false;
+      return t >= windowStart && t <= windowEnd;
+    });
   const deduped = dedupeReports(inFrame);
 
   const features = buildBandFeatures(deduped);
