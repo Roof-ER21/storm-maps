@@ -19,9 +19,13 @@ export interface ConsilienceFlag {
     | 'cross-verified'
     | 'triple-verified'
     | 'quadruple-verified'
-    | 'quintuple-verified';
-  /** True iff fewer than 2 independent sources confirm — yellow flag. */
+    | 'quintuple-verified'
+    | 'sextuple-verified'
+    | 'septuple-verified';
+  /** <2 sources confirm — yellow caution flag. */
   lowConfidence: boolean;
+  /** ≥3 sources confirm — green certified badge (matches PDF's Forensic Verification). */
+  certified: boolean;
 }
 
 function cacheKey(lat: number, lng: number, date: string): string {
@@ -48,6 +52,7 @@ export async function fetchConsilienceFlag(
       confirmedCount: data.confirmedCount,
       confidenceTier: data.confidenceTier,
       lowConfidence: data.confirmedCount < 2,
+      certified: data.confirmedCount >= 3,
     };
     memCache.set(key, flag);
     return flag;

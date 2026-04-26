@@ -124,7 +124,7 @@ function printSummary(r: ConsilienceResult): void {
   console.log(`Date:          ${q.date}`);
   console.log(`Window:        ${q.startUtc} → ${q.endUtc}`);
   console.log('');
-  console.log(`Confirmed:     ${r.confirmedCount} / 5 sources  (${r.confidenceTier})`);
+  console.log(`Confirmed:     ${r.confirmedCount} / 7 sources  (${r.confidenceTier})`);
   console.log('');
 
   const rows: { name: string; status: string; detail: string }[] = [];
@@ -167,6 +167,24 @@ function printSummary(r: ConsilienceResult): void {
     detail: r.sources.synoptic.stationsTotal > 0
       ? `${r.sources.synoptic.stationsTotal} stations, ${r.sources.synoptic.stationsWithHailSignal} hail-signal, ${r.sources.synoptic.stationsWithSevereWindSignal} severe-wind`
       : 'no stations / no token',
+  });
+
+  rows.push({
+    name: 'mPING crowd',
+    status: r.sources.mping.confirmed ? 'YES' : 'no',
+    detail: r.sources.mping.reportCount > 0
+      ? `${r.sources.mping.reportCount} rpts, peak ${r.sources.mping.maxHailInches.toFixed(2)}", nearest ${r.sources.mping.nearestMiles?.toFixed(1) ?? '?'}mi`
+      : 'no reports / no token',
+  });
+
+  rows.push({
+    name: 'HailTrace',
+    status: r.sources.hailtrace.confirmed ? 'YES' : 'no',
+    detail: !r.sources.hailtrace.configured
+      ? 'no token (unconfigured)'
+      : r.sources.hailtrace.reportCount > 0
+        ? `${r.sources.hailtrace.reportCount} rpts, peak ${r.sources.hailtrace.maxHailInches.toFixed(2)}", ${r.sources.hailtrace.certifiedCount} certified`
+        : 'no reports in radius',
   });
 
   const header = `${pad('SOURCE', 16)}  ${pad('SIGNAL', 6)}  DETAIL`;

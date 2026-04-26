@@ -27,7 +27,7 @@ import { fetchSpcHailReportsForDate } from './spcHailReports.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 
-const FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
+const FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE', 'NJ'];
 
 interface WarmRegion {
   name: string;
@@ -56,6 +56,18 @@ const REGIONS: WarmRegion[] = [
     bounds: { north: 42.4, south: 39.6, east: -74.6, west: -80.6 },
     center: { lat: 40.9, lng: -77.5 },
     radiusMiles: 200,
+  },
+  {
+    name: 'DE',
+    bounds: { north: 39.95, south: 38.4, east: -74.95, west: -75.85 },
+    center: { lat: 39.05, lng: -75.45 },
+    radiusMiles: 60,
+  },
+  {
+    name: 'NJ',
+    bounds: { north: 41.4, south: 38.85, east: -73.85, west: -75.6 },
+    center: { lat: 40.1, lng: -74.65 },
+    radiusMiles: 110,
   },
 ];
 

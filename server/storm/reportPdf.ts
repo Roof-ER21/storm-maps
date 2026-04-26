@@ -19,6 +19,7 @@ import { buildMrmsVectorPolygons } from './mrmsService.js';
 import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
+import { fetchNexradSnapshot } from './nexradImageService.js';
 import type { BoundingBox } from './types.js';
 
 const GOOGLE_STATIC_MAPS_API_KEY =
@@ -389,20 +390,50 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   });
   doc.y = sumY + cardHeight + 18;
 
-  // ── Storm Corroboration (5-source consilience) ────────────────────────
+  // ── Storm Corroboration (7-source consilience) ────────────────────────
   // Auto-curate rule: render only confirmed sources. If no source confirms
   // the storm, the section is silently omitted from the PDF.
+  // Certified Report mode: when ≥3 independent sources confirm, render a
+  // green "Forensic Verification" stamp suitable for adjuster-facing claims.
   const consilience = await consiliencePromise;
   if (consilience && consilience.curated.confirmedSources.length > 0) {
+    const isCertified = consilience.confirmedCount >= 3;
+
     doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Storm Corroboration');
     doc.fontSize(9).font('Helvetica').fillColor('#64748b');
     const tierLabel = consilience.confidenceTier
-      .replace('-', ' ')
-      .replace(/^./, (c) => c.toUpperCase());
+      .replace(/-/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase());
     doc.text(
-      `${consilience.confirmedCount}/5 independent sources · ${tierLabel}`,
+      `${consilience.confirmedCount}/7 independent sources · ${tierLabel}`,
     );
     doc.moveDown(0.4);
+
+    if (isCertified) {
+      // Forensic-verification stamp — green badge with the tier + sources.
+      const badgeY = doc.y;
+      const badgeX = 54;
+      const badgeW = 504;
+      const badgeH = 38;
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).fill('#ecfdf5');
+      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).strokeColor('#10b981').lineWidth(1).stroke();
+      doc.fillColor('#065f46').font('Helvetica-Bold').fontSize(10);
+      doc.text(
+        `✓  Forensic Verification — ${tierLabel}`,
+        badgeX + 12,
+        badgeY + 8,
+        { width: badgeW - 24 },
+      );
+      doc.fillColor('#047857').font('Helvetica').fontSize(8.5);
+      doc.text(
+        `Confirmed by: ${consilience.curated.confirmedSources.join(' · ')}`,
+        badgeX + 12,
+        badgeY + 22,
+        { width: badgeW - 24 },
+      );
+      doc.y = badgeY + badgeH + 8;
+    }
+
     doc.fontSize(9.5).font('Helvetica').fillColor('#0f172a');
     for (const line of consilience.curated.evidenceLines) {
       doc.text(`• ${line}`, { width: 504 });
@@ -556,6 +587,73 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.text(loc.slice(0, 40), 280, rowY, { width: 180 });
     doc.fillColor('#64748b').text((e.source || '').slice(0, 12), 470, rowY);
     rowY += 14;
+  }
+
+  // ── NEXRAD radar snapshots (per-warning) ──────────────────────────────
+  // Pulls per-event NEXRAD reflectivity images from IEM's WMS-T endpoint at
+  // each report's timestamp. Adjuster-facing visual evidence: "the radar
+  // saw this storm pass over the property at exactly this time." Up to 4
+  // snapshots — picks the highest-magnitude reports (sortedEvents is already
+  // sorted by magnitude desc).
+  const nexradPicks = sortedEvents.slice(0, 4);
+  const nexradSnapshots: Array<{ buf: Buffer; caption: string }> = [];
+  for (const pick of nexradPicks) {
+    const buf = await fetchNexradSnapshot({
+      timeIso: pick.beginDate,
+      bbox,
+      width: 480,
+      height: 320,
+    });
+    if (!buf) continue;
+    const time = new Date(pick.beginDate).toLocaleTimeString('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+    const mag =
+      pick.eventType === 'Hail'
+        ? `${pick.magnitude.toFixed(2)}″ hail`
+        : `${Math.round(pick.magnitude)} mph wind`;
+    nexradSnapshots.push({
+      buf,
+      caption: `${time} ET — ${mag} · ${pick.source}`,
+    });
+  }
+  if (nexradSnapshots.length > 0) {
+    doc.addPage();
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('NEXRAD Radar — Storm Day Sequence');
+    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
+    doc.text(
+      'NWS NEXRAD base reflectivity (IEM N0R mosaic) at each peak report. Property pin overlay.',
+    );
+    doc.moveDown(0.4);
+    const nexradX = 54;
+    let nexradY = doc.y;
+    const cellW = (504 - 16) / 2;
+    const cellH = 200;
+    for (let i = 0; i < nexradSnapshots.length; i += 1) {
+      const col = i % 2;
+      const row = Math.floor(i / 2);
+      const x = nexradX + col * (cellW + 16);
+      const y = nexradY + row * (cellH + 24);
+      try {
+        doc.image(nexradSnapshots[i].buf, x, y, {
+          fit: [cellW, cellH - 24],
+          align: 'center',
+          valign: 'center',
+        });
+      } catch (err) {
+        console.warn('[reportPdf] nexrad embed failed', err);
+        continue;
+      }
+      doc.font('Helvetica').fontSize(8).fillColor('#475569');
+      doc.text(nexradSnapshots[i].caption, x, y + cellH - 16, {
+        width: cellW,
+        ellipsis: true,
+      });
+    }
+    nexradY += Math.ceil(nexradSnapshots.length / 2) * (cellH + 24);
+    doc.y = nexradY;
   }
 
   // ── Evidence images ───────────────────────────────────────────────────

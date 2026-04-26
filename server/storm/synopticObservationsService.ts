@@ -99,7 +99,7 @@ export async function corroborateSynopticObservations(
   // Graceful no-op when token isn't configured — caller can still receive an
   // empty result and decide whether to surface "no data" vs failing.
   if (!isSynopticConfigured()) {
-    return emptyResult(input, thresholds);
+    return emptyResult(input);
   }
 
   let stations: GroundStation[] = [];
@@ -129,7 +129,7 @@ export async function corroborateSynopticObservations(
     }
   } catch (err) {
     console.warn('[synoptic-corroborate] fetch failed:', (err as Error).message);
-    return emptyResult(input, thresholds);
+    return emptyResult(input);
   }
 
   const corroborated: CorroboratedStation[] = stations.map((s) => ({
@@ -251,7 +251,6 @@ export function detectHailSignal(
 
 function emptyResult(
   input: SynopticCorroborateInput,
-  _thresholds: SignalThresholds,
 ): SynopticCorroboration {
   return {
     query: {

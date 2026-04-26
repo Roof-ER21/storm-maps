@@ -30,6 +30,7 @@ import {
 import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
 import { fetchStormEventsCached } from './storm/eventService.js';
 import { buildConsilience } from './storm/consilienceService.js';
+import { fetchRecentMpingReports, fetchMpingReportsForDate, isMpingConfigured } from './storm/mpingService.js';
 import {
   startPrewarmScheduler,
   getPrewarmStatus,
@@ -54,6 +55,7 @@ import {
   isPushConfigured,
 } from './storm/pushService.js';
 import { startPushFanout, getPushFanoutStatus } from './storm/pushFanout.js';
+import { startLiveMrmsAlertWorker, getLiveMrmsAlertStatus } from './storm/liveMrmsAlertWorker.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAILS || 'ahmed@theroofdocs.com')
@@ -656,7 +658,7 @@ app.post('/api/demo/seed', async (_req, res) => {
 });
 
 // ── Wind swath polygons (storm-day or live now-cast) ──────
-const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
+const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE', 'NJ'];
 
 interface WindBoundsQuery {
   date?: string;
@@ -1246,6 +1248,60 @@ app.get('/api/storm/consilience', async (req, res) => {
   }
 });
 
+// ── mPING crowd-source feed ───────────────────────────────────
+// GET /api/storm/mping?windowMinutes=60[&north&south&east&west]   live window
+// GET /api/storm/mping?date=YYYY-MM-DD[&north&south&east&west]    historical
+//   Returns mPING hail reports as the map layer + the 6th consilience source.
+//   Returns empty array when MPING_API_TOKEN is unset (no error — silent skip).
+interface MpingQuery {
+  date?: string;
+  windowMinutes?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  category?: 'Hail' | 'Wind' | 'Tornado';
+}
+
+app.get('/api/storm/mping', async (req, res) => {
+  try {
+    const q = req.query as MpingQuery;
+    const bounds =
+      q.north && q.south && q.east && q.west
+        ? {
+            north: parseFloat(q.north),
+            south: parseFloat(q.south),
+            east: parseFloat(q.east),
+            west: parseFloat(q.west),
+          }
+        : undefined;
+    if (q.date && /^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      const reports = await fetchMpingReportsForDate({
+        date: q.date,
+        bounds,
+        category: q.category ?? 'Hail',
+      });
+      res.set('Cache-Control', 'public, max-age=600');
+      res.json({ ok: true, reports, configured: isMpingConfigured() });
+      return;
+    }
+    const minutes = q.windowMinutes
+      ? Math.min(720, Math.max(15, parseInt(q.windowMinutes, 10) || 60))
+      : 60;
+    const reports = await fetchRecentMpingReports({
+      windowMinutes: minutes,
+      bounds,
+      category: q.category ?? 'Hail',
+    });
+    // Live feed — short cache so the map layer refreshes meaningfully.
+    res.set('Cache-Control', 'public, max-age=60');
+    res.json({ ok: true, reports, configured: isMpingConfigured() });
+  } catch (err) {
+    console.error('[mping] failed', err);
+    res.status(500).json({ error: 'Failed to fetch mPING reports' });
+  }
+});
+
 // ── Cache visibility (admin) ───────────────────────────────────
 // Anyone can hit it — the response is metadata only (counts + dates), no
 // cached payloads. Useful for the admin dashboard and for quick "is the
@@ -1319,7 +1375,7 @@ app.post('/api/push/subscribe', async (req, res) => {
       territoryStates:
         body.territoryStates && body.territoryStates.length > 0
           ? body.territoryStates
-          : ['VA', 'MD', 'PA'],
+          : ['VA', 'MD', 'PA', 'DE', 'NJ', 'DC'],
       userAgent: req.headers['user-agent'] ?? undefined,
       label: body.label,
     });
@@ -1353,6 +1409,10 @@ app.get('/api/admin/push-status', requireAdmin, (_req, res) => {
   res.json(getPushFanoutStatus());
 });
 
+app.get('/api/admin/live-mrms-status', requireAdmin, (_req, res) => {
+  res.json(getLiveMrmsAlertStatus());
+});
+
 // Lazy purge timer so expired rows don't accumulate. 6-hour cadence is
 // plenty given the per-row index lookup we do on each read anyway.
 setInterval(() => {
@@ -1374,6 +1434,9 @@ app.listen(PORT, '0.0.0.0', () => {
   startPrewarmScheduler();
   // Kick the NWS-warning push fan-out. No-op without VAPID keys.
   startPushFanout();
+  // Kick the live MRMS hail-band alert worker. No-op unless production OR
+  // HAIL_YES_LIVE_MRMS_ALERT=1.
+  startLiveMrmsAlertWorker();
 });
 
 // ── Cache cleanup ───────────────────────────────────────

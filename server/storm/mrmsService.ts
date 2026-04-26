@@ -16,7 +16,7 @@
  * fallback (`hailFallbackService.ts`).
  */
 
-import { fetchMrmsMesh1440 } from './mrmsFetch.js';
+import { fetchMrmsMesh1440, fetchMrmsMesh60 } from './mrmsFetch.js';
 import { readGrib2 } from './grib2/sections.js';
 import { decodeGribData } from './grib2/decode.js';
 import { buildMrmsVectorCollection, type MrmsVectorCollection } from './mrmsContour.js';
@@ -102,7 +102,7 @@ export async function buildMrmsNowVectorPolygons(
 ): Promise<MrmsVectorCollection | null> {
   const today = new Date().toISOString().slice(0, 10);
   const cached = await getCachedSwath<MrmsVectorCollection>({
-    source: 'mrms-now',
+    source: 'mrms-now-60min',
     date: today,
     bounds,
   });
@@ -111,9 +111,13 @@ export async function buildMrmsNowVectorPolygons(
     if (meta?.source === 'mrms-vector') return cached.payload;
   }
 
-  // No anchor → mrmsFetch picks today's latest available file.
+  // True now-cast — 60-min rolling MESH max, ~2-min publish cadence on IEM.
+  // Falls back to the 1440-min product if the 60-min latest isn't available
+  // (rare, but covers IEM publishing gaps without breaking the live layer).
   try {
-    const file = await fetchMrmsMesh1440({ date: today });
+    const file =
+      (await fetchMrmsMesh60({ date: today })) ??
+      (await fetchMrmsMesh1440({ date: today }));
     if (!file) return null;
     const sections = readGrib2(file.grib2Bytes);
     const decoded = decodeGribData(sections);
@@ -125,22 +129,27 @@ export async function buildMrmsNowVectorPolygons(
       refTime: file.refTime,
       sourceFile: file.url,
     });
+    // Tag the collection with the product so downstream consumers (PDF,
+    // overlay legend) can surface the correct rolling-window label.
+    (collection.metadata as MrmsVectorCollection['metadata'] & {
+      product?: string;
+    }).product = file.product;
     void setCachedSwath({
-      source: 'mrms-now',
+      source: 'mrms-now-60min',
       date: today,
       bounds,
       payload: collection,
       metadata: {
         sourceFile: file.url,
         refTime: file.refTime,
+        product: file.product,
         maxHailInches: collection.metadata.maxHailInches,
         origin: 'mrms-vector',
       },
       featureCount: collection.features.length,
       maxValue: collection.metadata.maxHailInches,
-      // 5-minute TTL — matches the wind live cache. ttlForStormDate would
-      // give us a too-aggressive value for today's date here.
-      ttlMs: 5 * 60 * 1000,
+      // 2-min TTL for the 60-min product, 5-min for the 1440-min fallback.
+      ttlMs: file.product === 'MESH_Max_60min' ? 2 * 60 * 1000 : 5 * 60 * 1000,
     });
     return collection;
   } catch (err) {

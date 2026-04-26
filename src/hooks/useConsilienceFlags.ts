@@ -18,13 +18,16 @@ export function useConsilienceFlags(
 
   useEffect(() => {
     if (!location || stormDates.length === 0) {
-      setFlags(new Map());
-      return;
+      // Defer setState off the render path to avoid cascading-render warnings.
+      const t = setTimeout(() => setFlags(new Map()), 0);
+      return () => clearTimeout(t);
     }
     let cancelled = false;
     const dates = stormDates.slice(0, 4).map((s) => s.date);
+    const lat = location.lat;
+    const lng = location.lng;
     Promise.all(
-      dates.map((date) => fetchConsilienceFlag(location.lat, location.lng, date)),
+      dates.map((date) => fetchConsilienceFlag(lat, lng, date)),
     ).then((results) => {
       if (cancelled) return;
       const next = new Map<string, ConsilienceFlag>();
@@ -37,7 +40,7 @@ export function useConsilienceFlags(
     return () => {
       cancelled = true;
     };
-  }, [stormDates, location?.lat, location?.lng]);
+  }, [stormDates, location]);
 
   return flags;
 }

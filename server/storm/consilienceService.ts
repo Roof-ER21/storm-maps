@@ -29,6 +29,8 @@ import { fetchIemHailReports } from './iemHailReports.js';
 import { fetchSpcWindReports } from './spcReports.js';
 import { fetchIemWindReports } from './iemLsr.js';
 import { corroborateSynopticObservations, type SynopticCorroboration } from './synopticObservationsService.js';
+import { fetchMpingReportsForDate, type MpingReport } from './mpingService.js';
+import { fetchHailtraceReportsForDate, isHailtraceConfigured, type HailtraceReport } from './hailtraceClient.js';
 import type { BoundingBox, WindReport } from './types.js';
 
 export interface ConsilienceQuery {
@@ -81,6 +83,18 @@ export interface ConsilienceSources {
     stationsWithSevereWindSignal: number;
     peakGustMph: number | null;
   };
+  mping: SourceResultBase & {
+    reportCount: number;
+    maxHailInches: number;
+    nearestMiles: number | null;
+  };
+  hailtrace: SourceResultBase & {
+    configured: boolean;
+    reportCount: number;
+    maxHailInches: number;
+    nearestMiles: number | null;
+    certifiedCount: number;
+  };
 }
 
 export type ConfidenceTier =
@@ -89,7 +103,9 @@ export type ConfidenceTier =
   | 'cross-verified'
   | 'triple-verified'
   | 'quadruple-verified'
-  | 'quintuple-verified';
+  | 'quintuple-verified'
+  | 'sextuple-verified'
+  | 'septuple-verified';
 
 export interface ConsilienceResult {
   query: Required<Pick<ConsilienceQuery, 'lat' | 'lng' | 'date' | 'radiusMiles'>> & {
@@ -131,16 +147,9 @@ export async function buildConsilience(
 
   const bounds = boundsFromPoint(query.lat, query.lng, radius + 5);
 
-  // Fire all 5 source fetches concurrently. Each handles its own errors
+  // Fire all source fetches concurrently. Each handles its own errors
   // (returns empty/null) so a single source failure doesn't fail the call.
-  const [
-    mrmsResult,
-    spcHailReports,
-    iemHailReportsResult,
-    spcWindReports,
-    iemWindReportsResult,
-    synopticResult,
-  ] = await Promise.all([
+  const results = await Promise.all([
     safeMrms(query.date, query.lat, query.lng, bounds),
     fetchSpcHailReportsForDate(query.date).catch(emptyArray<HailPointReport>),
     fetchIemHailReports({ date: query.date, bounds }).catch(emptyArray<HailPointReport>),
@@ -153,7 +162,20 @@ export async function buildConsilience(
       startUtc,
       endUtc,
     }).catch(emptySynoptic),
+    fetchMpingReportsForDate({ date: query.date, bounds }).catch(emptyArray<MpingReport>),
+    fetchHailtraceReportsForDate({
+      date: query.date,
+      bbox: { north: bounds.north, south: bounds.south, east: bounds.east, west: bounds.west },
+    }).catch(emptyArray<HailtraceReport>),
   ]);
+  const mrmsResult = results[0];
+  const spcHailReports = results[1] as HailPointReport[];
+  const iemHailReportsResult = results[2] as HailPointReport[];
+  const spcWindReports = results[3] as WindReport[];
+  const iemWindReportsResult = results[4] as WindReport[];
+  const synopticResult = results[5] as SynopticCorroboration;
+  const mpingResults = results[6] as MpingReport[];
+  const hailtraceResults = results[7] as HailtraceReport[];
 
   // ── MRMS ─────────────────────────────────────────────
   const mrms = analyzeMrms(mrmsResult);
@@ -186,25 +208,49 @@ export async function buildConsilience(
   // ── Synoptic ─────────────────────────────────────────
   const synoptic = analyzeSynoptic(synopticResult);
 
+  // ── mPING ────────────────────────────────────────────
+  const mping = analyzeMping(
+    mpingResults.filter((r) =>
+      withinRadius(r.lat, r.lng, query.lat, query.lng, radius),
+    ),
+    query.lat,
+    query.lng,
+  );
+
+  // ── HailTrace ────────────────────────────────────────
+  const hailtrace = analyzeHailtrace(
+    hailtraceResults.filter((r) =>
+      withinRadius(r.lat, r.lng, query.lat, query.lng, radius),
+    ),
+    query.lat,
+    query.lng,
+  );
+
   const confirmedCount =
     Number(mrms.confirmed) +
     Number(spcHail.confirmed) +
     Number(iemLsrHail.confirmed) +
     Number(windContext.confirmed) +
-    Number(synoptic.confirmed);
+    Number(synoptic.confirmed) +
+    Number(mping.confirmed) +
+    Number(hailtrace.confirmed);
 
   const confidenceTier: ConfidenceTier =
-    confirmedCount >= 5
-      ? 'quintuple-verified'
-      : confirmedCount === 4
-        ? 'quadruple-verified'
-        : confirmedCount === 3
-          ? 'triple-verified'
-          : confirmedCount === 2
-            ? 'cross-verified'
-            : confirmedCount === 1
-              ? 'single'
-              : 'none';
+    confirmedCount >= 7
+      ? 'septuple-verified'
+      : confirmedCount === 6
+        ? 'sextuple-verified'
+        : confirmedCount === 5
+          ? 'quintuple-verified'
+          : confirmedCount === 4
+            ? 'quadruple-verified'
+            : confirmedCount === 3
+              ? 'triple-verified'
+              : confirmedCount === 2
+                ? 'cross-verified'
+                : confirmedCount === 1
+                  ? 'single'
+                  : 'none';
 
   const sources: ConsilienceSources = {
     mrms,
@@ -212,6 +258,8 @@ export async function buildConsilience(
     iemLsrHail,
     windContext,
     synoptic,
+    mping,
+    hailtrace,
   };
 
   const curated = curateForAdjuster(sources, query.date);
@@ -349,6 +397,85 @@ function analyzeWindReports(
   };
 }
 
+function analyzeHailtrace(
+  reports: HailtraceReport[],
+  lat: number,
+  lng: number,
+): ConsilienceSources['hailtrace'] {
+  const configured = isHailtraceConfigured();
+  if (reports.length === 0) {
+    return {
+      confirmed: false,
+      configured,
+      reportCount: 0,
+      maxHailInches: 0,
+      nearestMiles: null,
+      certifiedCount: 0,
+    };
+  }
+  const maxInches = reports.reduce((m, r) => Math.max(m, r.sizeInches), 0);
+  const nearest = reports.reduce(
+    (best, r) => {
+      const d = haversineMiles(lat, lng, r.lat, r.lng);
+      return d < best ? d : best;
+    },
+    Number.POSITIVE_INFINITY,
+  );
+  const certifiedCount = reports.filter((r) => r.certified).length;
+  const confirmed = maxInches >= 0.25;
+  const certifiedSuffix =
+    certifiedCount > 0
+      ? `, ${certifiedCount} meteorologist-certified`
+      : '';
+  const evidence = confirmed
+    ? `HailTrace database: ${reports.length} hail event${reports.length === 1 ? '' : 's'} within ${nearest.toFixed(1)} mi, peak size ${maxInches.toFixed(2)}"${certifiedSuffix}.`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    configured,
+    reportCount: reports.length,
+    maxHailInches: maxInches,
+    nearestMiles: Number.isFinite(nearest) ? nearest : null,
+    certifiedCount,
+  };
+}
+
+function analyzeMping(
+  reports: MpingReport[],
+  lat: number,
+  lng: number,
+): ConsilienceSources['mping'] {
+  // Only Hail-category reports counted toward hail consilience. Wind/tornado
+  // reports could be wired into windContext later.
+  const hail = reports.filter((r) => r.category === 'Hail');
+  if (hail.length === 0) {
+    return { confirmed: false, reportCount: 0, maxHailInches: 0, nearestMiles: null };
+  }
+  const maxInches = hail.reduce((m, r) => Math.max(m, r.hailSizeInches), 0);
+  const nearest = hail.reduce(
+    (best, r) => {
+      const d = haversineMiles(lat, lng, r.lat, r.lng);
+      return d < best ? d : best;
+    },
+    Number.POSITIVE_INFINITY,
+  );
+  // mPING reports are crowdsourced — single-report bar is low (any sized
+  // hail report from a real human within 5mi is meaningful), but we still
+  // require ≥0.25" to filter out micro-hail / sleet noise.
+  const confirmed = maxInches >= 0.25;
+  const evidence = confirmed
+    ? `mPING crowd reports: ${hail.length} hail observation${hail.length === 1 ? '' : 's'} within ${nearest.toFixed(1)} mi, peak size ${maxInches.toFixed(2)}".`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    reportCount: hail.length,
+    maxHailInches: maxInches,
+    nearestMiles: Number.isFinite(nearest) ? nearest : null,
+  };
+}
+
 function analyzeSynoptic(c: SynopticCorroboration): ConsilienceSources['synoptic'] {
   // Require ≥2 stations with hail signal OR ≥1 hail-keyword + ≥1 severe-wind
   // station (avoids the lone-CWOP-sensor-error case from the POC).
@@ -409,6 +536,14 @@ function curateForAdjuster(
   if (sources.synoptic.confirmed && sources.synoptic.evidence) {
     confirmedSources.push('Synoptic surface stations');
     evidenceLines.push(sources.synoptic.evidence);
+  }
+  if (sources.mping.confirmed && sources.mping.evidence) {
+    confirmedSources.push('mPING crowd reports');
+    evidenceLines.push(sources.mping.evidence);
+  }
+  if (sources.hailtrace.confirmed && sources.hailtrace.evidence) {
+    confirmedSources.push('HailTrace');
+    evidenceLines.push(sources.hailtrace.evidence);
   }
 
   if (confirmedSources.length === 0) {

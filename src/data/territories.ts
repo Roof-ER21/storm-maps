@@ -1,5 +1,5 @@
 /**
- * Roof-ER21 territory definitions — VA / MD / PA focus.
+ * Roof-ER21 territory definitions — VA / MD / PA / DE / NJ + DC focus.
  *
  * Each territory has:
  *   - a state code (used to filter events by `state` field and to scope IEM
@@ -10,7 +10,7 @@
  * The bbox values are conservative — they cover the whole state plus a small
  * pad — and are intentionally hand-tuned rather than pulled from a Census
  * shapefile, because:
- *   1. Reps occasionally walk into adjacent counties (NJ, OH, NC) and we
+ *   1. Reps occasionally walk into adjacent counties (NC, OH, NY) and we
  *      don't want to silently drop those events.
  *   2. NOAA Storm Events records sometimes attribute a hail report to the
  *      nearest forecast zone rather than the lat/lng's actual state.
@@ -59,12 +59,46 @@ export const FOCUS_TERRITORIES: Territory[] = [
     center: { lat: 40.9, lng: -77.5 },
     defaultZoom: 7,
   },
+  {
+    code: 'DE',
+    name: 'Delaware',
+    stateCodes: ['DE'],
+    bounds: { north: 39.95, south: 38.4, east: -74.95, west: -75.85 },
+    center: { lat: 39.05, lng: -75.45 },
+    defaultZoom: 9,
+  },
+  {
+    code: 'NJ',
+    name: 'New Jersey',
+    stateCodes: ['NJ'],
+    bounds: { north: 41.4, south: 38.85, east: -73.85, west: -75.6 },
+    center: { lat: 40.1, lng: -74.65 },
+    defaultZoom: 8,
+  },
 ];
 
-/** All states that fall within the focus zone. Includes neighbors for IEM queries. */
-export const FOCUS_STATE_CODES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
+/**
+ * All states inside the focus zone PLUS direct neighbors used for IEM/SPC
+ * queries (so reps walking into adjacent counties don't silently lose data).
+ */
+export const FOCUS_STATE_CODES = [
+  'VA',
+  'MD',
+  'PA',
+  'WV',
+  'DC',
+  'DE',
+  'NJ',
+  // Neighbor pads — events on the wrong side of a state line still count.
+  'NC',
+  'NY',
+  'OH',
+];
 
-/** Combined VA+MD+PA bbox (used as a default search frame). */
+/** Just the primary focus states (no neighbors). For UI labeling. */
+export const PRIMARY_FOCUS_STATES = ['VA', 'MD', 'PA', 'DE', 'NJ', 'DC'];
+
+/** Combined focus bbox (used as a default search frame). */
 export const FOCUS_BOUNDS: BoundingBox = {
   north: Math.max(...FOCUS_TERRITORIES.map((t) => t.bounds.north)),
   south: Math.min(...FOCUS_TERRITORIES.map((t) => t.bounds.south)),
