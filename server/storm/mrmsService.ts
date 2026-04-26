@@ -21,7 +21,7 @@ import { readGrib2 } from './grib2/sections.js';
 import { decodeGribData } from './grib2/decode.js';
 import { buildMrmsVectorCollection, type MrmsVectorCollection } from './mrmsContour.js';
 import { getCachedSwath, setCachedSwath } from './cache.js';
-import { pointInRing } from './geometry.js';
+import { pointInRing, nearestRingDistanceMiles } from './geometry.js';
 import type { BoundingBox } from './types.js';
 
 interface BuildMrmsParams {
@@ -175,6 +175,14 @@ export interface MrmsImpactResult {
   label: string | null;
   severity: string | null;
   directHit: boolean;
+  /**
+   * True when the property is *outside* the strict swath polygon but within
+   * the near-miss buffer (≤0.1mi from a ≥0.5" swath edge). UI still shows
+   * DIRECT HIT — this flag is for the subtitle/distance breakdown.
+   */
+  nearMiss?: boolean;
+  /** Distance (miles) to the nearest ≥0.5" swath edge — only set when nearMiss. */
+  edgeDistanceMiles?: number;
 }
 
 export interface MrmsImpactResponse {
@@ -206,6 +214,15 @@ export async function buildMrmsImpactResponse(
     anchorIso: input.anchorIso,
   });
   if (!collection) return null;
+
+  // Near-miss buffer: properties within this distance of a ≥0.5" swath edge
+  // count as DIRECT HIT. Closes the gap with HailTrace's edge tolerance and
+  // captures the "lot edge brushed by storm" cases reps lose to competitors.
+  // 0.1 mi ≈ 528 ft ≈ one residential block.
+  const NEAR_MISS_BUFFER_MILES = 0.1;
+  // Near-miss only applies to actionable bands. Below ½" we don't generously
+  // extend a "trace" hit, even at the buffer distance.
+  const NEAR_MISS_FLOOR_INCHES = 0.5;
 
   const results: MrmsImpactResult[] = [];
   let directHits = 0;
@@ -260,6 +277,52 @@ export async function buildMrmsImpactResponse(
         label: bestBand.label,
         severity: bestBand.severity,
         directHit: true,
+      });
+      continue;
+    }
+
+    // No strict-inside hit — try the near-miss buffer pass against ≥0.5"
+    // bands only. We pick the highest band whose nearest edge is within
+    // the buffer distance.
+    let nearMissLevel = -1;
+    let nearMissBand: typeof bestBand = null;
+    let nearMissDistance = Infinity;
+    for (const feature of collection.features) {
+      if (feature.properties.sizeInches < NEAR_MISS_FLOOR_INCHES) continue;
+      const idx = feature.properties.level;
+      if (idx <= nearMissLevel) continue;
+      let minDist = Infinity;
+      for (const polygon of feature.geometry.coordinates) {
+        if (polygon.length === 0) continue;
+        for (const ring of polygon) {
+          const d = nearestRingDistanceMiles(pt.lat, pt.lng, ring);
+          if (d < minDist) minDist = d;
+        }
+      }
+      if (minDist <= NEAR_MISS_BUFFER_MILES) {
+        nearMissLevel = idx;
+        nearMissBand = {
+          sizeInches: feature.properties.sizeInches,
+          color: feature.properties.color,
+          label: feature.properties.label,
+          severity: feature.properties.severity,
+        };
+        nearMissDistance = minDist;
+      }
+    }
+
+    if (nearMissBand && nearMissLevel >= 0) {
+      directHits += 1;
+      results.push({
+        id: pt.id,
+        maxHailInches: nearMissBand.sizeInches,
+        level: nearMissLevel,
+        color: nearMissBand.color,
+        label: nearMissBand.label,
+        severity: nearMissBand.severity,
+        directHit: true,
+        nearMiss: true,
+        edgeDistanceMiles: nearMissDistance,
       });
     } else {
       results.push({

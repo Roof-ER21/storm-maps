@@ -215,6 +215,14 @@ export interface StormImpactResult {
   label: string | null;
   severity: string | null;
   directHit: boolean;
+  /**
+   * True when the property is just outside the strict swath polygon but
+   * inside the near-miss buffer. directHit is still true — this flag lets
+   * the UI add a distance-to-edge subtitle.
+   */
+  nearMiss?: boolean;
+  /** Distance (miles) from the property to the nearest ≥0.5" swath edge. */
+  edgeDistanceMiles?: number;
 }
 
 export interface StormImpactResponse {

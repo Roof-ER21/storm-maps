@@ -162,21 +162,24 @@ function styleFeature(
     };
   }
 
+  // Bumped fill opacities so the refined IHM palette actually displays
+  // close to its true RGB on the basemap — was 0.28/0.35/0.42 (washed
+  // out, almost translucent). Stroke widened slightly for sharper edges.
   let fillOpacity: number;
   let strokeOpacity: number;
   let strokeWeight: number;
   if (isEmphasized) {
-    fillOpacity = 0.42;
-    strokeOpacity = 0.95;
-    strokeWeight = 6;
+    fillOpacity = 0.62;
+    strokeOpacity = 1;
+    strokeWeight = 2.5;
   } else if (isFocused) {
-    fillOpacity = 0.35;
-    strokeOpacity = 0.85;
-    strokeWeight = 5;
+    fillOpacity = 0.55;
+    strokeOpacity = 0.9;
+    strokeWeight = 2;
   } else {
-    fillOpacity = 0.28;
-    strokeOpacity = 0.72;
-    strokeWeight = 4;
+    fillOpacity = 0.45;
+    strokeOpacity = 0.8;
+    strokeWeight = 1.5;
   }
 
   const baseZ = isEmphasized ? 18 : isFocused ? 14 : 10;
@@ -252,7 +255,7 @@ export default function HailSwathLayer({
         } else {
           data.overrideStyle(event.feature, {
             fillColor: color,
-            fillOpacity: 0.55,
+            fillOpacity: 0.75,
             strokeOpacity: 1,
           });
         }

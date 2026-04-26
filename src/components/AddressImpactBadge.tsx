@@ -106,8 +106,10 @@ export default function AddressImpactBadge({
   }
 
   const color = impact.color || '#ef4444';
-  const insuranceCrosses = (impact.maxHailInches ?? 0) >= 1.0;
-  const insuranceHigh = (impact.maxHailInches ?? 0) >= 1.75;
+  // Near-miss subtitle: factual distance, no claim guidance — reps decide.
+  const edgeFt = impact.nearMiss && typeof impact.edgeDistanceMiles === 'number'
+    ? Math.round(impact.edgeDistanceMiles * 5280)
+    : null;
 
   return (
     <div
@@ -126,7 +128,9 @@ export default function AddressImpactBadge({
             {impact.label} hail
           </h4>
           <p className="mt-1 text-[11px] text-stone-600">
-            Radar-estimated hail size at this exact coordinate.
+            {impact.nearMiss
+              ? `Property is ${edgeFt ?? '—'} ft from a ${impact.label} hail swath edge.`
+              : 'Radar-estimated hail size at this exact coordinate.'}
             {impact.severity && (
               <> Severity: <span className="capitalize">{impact.severity.replace('_', ' ')}</span>.</>
             )}
@@ -134,16 +138,6 @@ export default function AddressImpactBadge({
           {addressLabel && (
             <p className="mt-1 truncate text-[10px] text-stone-500">
               {addressLabel}
-            </p>
-          )}
-          {insuranceHigh && (
-            <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-semibold text-amber-700">
-              ⚠ Above common insurance claim threshold in most states
-            </p>
-          )}
-          {!insuranceHigh && insuranceCrosses && (
-            <p className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-[10px] text-amber-700">
-              ⚠ May qualify for insurance claim — verify on-site
             </p>
           )}
         </div>

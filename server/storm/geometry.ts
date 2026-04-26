@@ -106,3 +106,46 @@ export function pointInRing(lat: number, lng: number, ring: number[][]): boolean
   }
   return inside;
 }
+
+/**
+ * Minimum distance (miles) from (lat, lng) to any segment in a closed ring.
+ * Ring is [lng, lat][]. Local equirectangular projection — accurate to ~0.5%
+ * for small distances at any continental US latitude.
+ *
+ * Used for the swath near-miss buffer: a property within ~0.1mi of a ≥0.5"
+ * polygon edge counts as a DIRECT HIT (matches HailTrace's edge tolerance).
+ */
+export function nearestRingDistanceMiles(
+  lat: number,
+  lng: number,
+  ring: number[][],
+): number {
+  if (ring.length < 2) return Infinity;
+  const milesPerLat = 69;
+  const milesPerLng = 69 * Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  const px = lng * milesPerLng;
+  const py = lat * milesPerLat;
+  let min = Infinity;
+  for (let i = 0; i < ring.length - 1; i += 1) {
+    const ax = ring[i][0] * milesPerLng;
+    const ay = ring[i][1] * milesPerLat;
+    const bx = ring[i + 1][0] * milesPerLng;
+    const by = ring[i + 1][1] * milesPerLat;
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = 0;
+    if (len2 > 1e-12) {
+      t = ((px - ax) * dx + (py - ay) * dy) / len2;
+      if (t < 0) t = 0;
+      else if (t > 1) t = 1;
+    }
+    const cx = ax + dx * t;
+    const cy = ay + dy * t;
+    const ddx = px - cx;
+    const ddy = py - cy;
+    const d = Math.sqrt(ddx * ddx + ddy * ddy);
+    if (d < min) min = d;
+  }
+  return min;
+}
