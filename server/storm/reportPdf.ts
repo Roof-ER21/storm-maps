@@ -697,6 +697,57 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
   }
 
+  // ── MRMS swath DIRECT HIT check per historical date ──────────────────
+  // SA21's storm-maps shows multiple "Direct Hit (point)" tags because it
+  // checks point-in-polygon against the cached MRMS swath polygons for
+  // every historical storm date. Distance-band classification can't catch
+  // this — a 0.75" hail report 6 mi away might still mean the property
+  // sat under a swath polygon directly. Soft enhancement with a hard
+  // total timeout so the PDF renders even if the cache is cold.
+  const swathTinyBox = (lat: number, lng: number) => ({
+    north: lat + 0.05,
+    south: lat - 0.05,
+    east: lng + 0.05,
+    west: lng - 0.05,
+  });
+  const swathBounds = swathTinyBox(req.lat, req.lng);
+  await Promise.race([
+    Promise.allSettled(
+      sortedHistRows.map(async (r) => {
+        const resp = await buildMrmsImpactResponse({
+          date: r.dateIso,
+          bounds: swathBounds,
+          points: [{ id: 'property', lat: req.lat, lng: req.lng }],
+        }).catch(() => null);
+        const result = resp?.results[0];
+        if (!result) return;
+        // Promote atProperty when swath says we're INSIDE — overrides the
+        // 5mi-default era zero we may carry from before the lat/lng fix.
+        if (result.tier === 'direct_hit' && result.bands.atProperty != null) {
+          if (result.bands.atProperty > r.atProperty) {
+            r.atProperty = result.bands.atProperty;
+          }
+        }
+        // If the swath says we're inside even without an at-property hail
+        // value (rare: the polygon contains the point but the band assigned
+        // to that point is mi1to3 because the swath edge skews), still
+        // mark the row as direct hit by setting a small atProperty value
+        // matching the swath's max hail size in our radius.
+        if (
+          result.tier === 'direct_hit' &&
+          (result.bands.atProperty == null || result.bands.atProperty === 0) &&
+          result.maxHailInches > 0
+        ) {
+          if (result.maxHailInches > r.atProperty) {
+            r.atProperty = result.maxHailInches;
+          }
+        }
+      }),
+    ),
+    // 12-sec ceiling so a cold-cache cluster of dates doesn't block the PDF.
+    new Promise((resolve) => setTimeout(resolve, 12_000)),
+  ]);
+
   /** Tier from per-band maxes — matches the live UI classifier. */
   const rowTier = (
     r: HistRow,
