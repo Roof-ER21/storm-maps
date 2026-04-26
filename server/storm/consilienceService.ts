@@ -156,7 +156,40 @@ export interface ConsilienceResult {
 
 const DEFAULT_RADIUS_MI = 5;
 
+/**
+ * In-flight deduplication: when 4 reps click the same property+date in 1s,
+ * we only want ONE 10-source fan-out. Map keyed on (lat,lng,date,radius)
+ * holds the in-progress promise so concurrent callers all await the same
+ * compute. Cleared as soon as the promise settles.
+ */
+const inFlight = new Map<string, Promise<ConsilienceResult>>();
+
+function inFlightKey(q: ConsilienceQuery, radius: number): string {
+  const lat = Math.round(q.lat * 100) / 100;
+  const lng = Math.round(q.lng * 100) / 100;
+  return `${q.date}:${lat}:${lng}:${radius}`;
+}
+
 export async function buildConsilience(
+  query: ConsilienceQuery,
+  opts?: { skipCache?: boolean; persist?: boolean },
+): Promise<ConsilienceResult> {
+  const radiusInternal = query.radiusMiles ?? DEFAULT_RADIUS_MI;
+  const key = inFlightKey(query, radiusInternal);
+  // Skip dedup when caller wants a fresh recompute (prewarm scheduler).
+  if (!opts?.skipCache) {
+    const pending = inFlight.get(key);
+    if (pending) return pending;
+  }
+  const promise = buildConsilienceInner(query, opts);
+  if (!opts?.skipCache) {
+    inFlight.set(key, promise);
+    promise.finally(() => inFlight.delete(key));
+  }
+  return promise;
+}
+
+async function buildConsilienceInner(
   query: ConsilienceQuery,
   opts?: { skipCache?: boolean; persist?: boolean },
 ): Promise<ConsilienceResult> {

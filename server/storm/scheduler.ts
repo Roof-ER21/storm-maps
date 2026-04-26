@@ -25,6 +25,8 @@ import { buildMrmsVectorPolygons } from './mrmsService.js';
 import { fetchStormEventsCached } from './eventService.js';
 import { fetchSpcHailReportsForDate } from './spcHailReports.js';
 import { buildConsilience } from './consilienceService.js';
+import { purgeStaleCache } from './consilienceCache.js';
+import { purgeDeadSubscriptions } from './pushService.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 
@@ -420,6 +422,20 @@ async function runPrewarmCycle(): Promise<void> {
     console.log(
       `[prewarm] consilience warmed ${consilienceWarmed} pairs (${consilienceCertified} certified ≥3/10)`,
     );
+  }
+
+  // Periodic cleanup — purge stale consilience cache + dead push subs.
+  try {
+    const purgedCache = await purgeStaleCache(30);
+    const purgedSubs = await purgeDeadSubscriptions(30);
+    if (purgedCache > 0 || purgedSubs > 0) {
+      console.log(
+        `[prewarm] purged ${purgedCache} stale consilience rows + ${purgedSubs} dead push subs (>30d old)`,
+      );
+    }
+  } catch (err) {
+    cycleStats.errors += 1;
+    console.warn('[prewarm] purge step failed', err);
   }
 
   lastCycleStats = cycleStats;

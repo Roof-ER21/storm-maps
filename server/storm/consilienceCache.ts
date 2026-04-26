@@ -94,6 +94,25 @@ export async function writeConsilienceCache(
   }
 }
 
+/**
+ * Purge consilience_cache rows older than `daysOld` (default 30).
+ * Returns the number of rows deleted. Run periodically from the scheduler.
+ */
+export async function purgeStaleCache(daysOld = 30): Promise<number> {
+  if (!pgSql) return 0;
+  try {
+    const rows = await pgSql<Array<{ count: string }>>`
+      DELETE FROM consilience_cache
+       WHERE generated_at < NOW() - ${daysOld}::int * INTERVAL '1 day'
+       RETURNING 1 AS count
+    `;
+    return rows.length;
+  } catch (err) {
+    console.warn('[consilience-cache] purge failed:', (err as Error).message);
+    return 0;
+  }
+}
+
 export async function getConsilienceCacheStats(): Promise<{
   total: number;
   fresh: number;

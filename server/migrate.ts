@@ -280,7 +280,8 @@ async function migrate() {
     ADD COLUMN IF NOT EXISTS narrative TEXT,
     ADD COLUMN IF NOT EXISTS begin_time_utc TIMESTAMP,
     ADD COLUMN IF NOT EXISTS end_time_utc TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS consilience_generated_at TIMESTAMP
+    ADD COLUMN IF NOT EXISTS consilience_generated_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS tor_f_scale TEXT
   `;
   // Consilience cache table — keyed on (date, property point) at 0.01°
   // resolution (~0.7 mi). Stores the full 10-source result so dashboard

@@ -39,11 +39,14 @@ const FOCUS_TERRITORIES: FocusTerritory[] = [
 const POLL_INTERVAL_MS = 5 * 60 * 1000; // 5 min
 const INITIAL_DELAY_MS = 90 * 1000; // 90s after boot
 const MAX_QUIET_MINUTES = 90; // reset state after this much quiet time
+const MAX_FIRES_PER_STATE_PER_DAY = 3; // hard cap per state per UTC day
 const HAIL_BAND_THRESHOLDS_INCHES = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 2.5, 3.0];
 
 interface StateMemory {
   lastAlertedBand: number;
   lastSignalAt: number;
+  firedTodayCount: number;
+  firedToday: string;
 }
 
 const memory = new Map<string, StateMemory>();
@@ -134,6 +137,8 @@ async function pollAndFan(): Promise<void> {
       const mem = memory.get(stateCode) ?? {
         lastAlertedBand: -1,
         lastSignalAt: 0,
+        firedTodayCount: 0,
+        firedToday: '',
       };
 
       // Reset if quiet for too long.
@@ -142,7 +147,14 @@ async function pollAndFan(): Promise<void> {
       }
       mem.lastSignalAt = now;
 
-      if (bandIndex > mem.lastAlertedBand) {
+      // Daily rate limit per state — reset count on date rollover.
+      const today = new Date().toISOString().slice(0, 10);
+      if (mem.firedToday !== today) {
+        mem.firedToday = today;
+        mem.firedTodayCount = 0;
+      }
+
+      if (bandIndex > mem.lastAlertedBand && mem.firedTodayCount < MAX_FIRES_PER_STATE_PER_DAY) {
         const alertId = `mrms-${stateCode}-${HAIL_BAND_THRESHOLDS_INCHES[bandIndex]}-${new Date().toISOString().slice(0, 10)}`;
         const subs = await listSubscriptionsForStates({
           states: [stateCode],
@@ -156,6 +168,7 @@ async function pollAndFan(): Promise<void> {
           territoryName: territory.name,
           alertId,
         });
+        if (fired > 0) mem.firedTodayCount += 1;
         firedTotal += fired;
         mem.lastAlertedBand = bandIndex;
       }

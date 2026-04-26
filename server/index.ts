@@ -106,6 +106,17 @@ const adminLimiter = rateLimit({
 });
 app.use('/api/admin/', adminLimiter);
 
+// Consilience fan-out is expensive (10+ concurrent upstream fetches). Cap
+// at 60 req/min/IP so a misbehaving client can't wedge upstream feeds.
+const consilienceLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Consilience rate limit — try again in a minute' },
+});
+app.use('/api/storm/consilience', consilienceLimiter);
+
 // ── AI Property Analysis API ───────────────────────────
 // Auth + scan limits on write endpoints (POST), reads are open
 app.use('/api/ai/analyze', requireAuth, checkScanLimit, analysisRoutes);
@@ -1641,9 +1652,11 @@ app.get('/api/admin/ncei-stats', requireAdmin, async (_req, res) => {
         COUNT(*) FILTER (WHERE event_type = 'Hail')::int AS hail_count,
         COUNT(*) FILTER (WHERE event_type = 'Thunderstorm Wind')::int AS wind_count,
         COUNT(*) FILTER (WHERE event_type = 'Tornado')::int AS tornado_count,
+        COUNT(*) FILTER (WHERE event_type = 'Funnel Cloud')::int AS funnel_count,
         MIN(event_date)::text AS earliest_date,
         MAX(event_date)::text AS latest_date,
-        MAX(magnitude)::real AS max_hail_inches
+        MAX(magnitude) FILTER (WHERE event_type = 'Hail')::real AS max_hail_inches,
+        MAX(magnitude) FILTER (WHERE event_type IN ('Thunderstorm Wind','High Wind','Strong Wind'))::real AS max_wind_mph
         FROM verified_hail_events
        WHERE source_ncei_storm_events = TRUE
     `;

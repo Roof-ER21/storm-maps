@@ -124,6 +124,26 @@ export async function deletePushSubscription(
   }
 }
 
+/**
+ * Purge push_subscriptions rows that have been invalidated for ≥30 days.
+ * Cleanup task — run periodically from the scheduler.
+ */
+export async function purgeDeadSubscriptions(daysOld = 30): Promise<number> {
+  if (!pgSql) return 0;
+  try {
+    const rows = await pgSql<Array<{ count: number }>>`
+      DELETE FROM push_subscriptions
+       WHERE invalidated_at IS NOT NULL
+         AND invalidated_at < NOW() - ${daysOld}::int * INTERVAL '1 day'
+       RETURNING 1 AS count
+    `;
+    return rows.length;
+  } catch (err) {
+    console.warn('[push] purgeDeadSubscriptions failed:', (err as Error).message);
+    return 0;
+  }
+}
+
 interface FetchSubsForStatesOpts {
   states: string[];
   alertId?: string;

@@ -55,6 +55,8 @@ const STATE_TO_CODE: Record<string, string> = {
   'WEST VIRGINIA': 'WV',
 };
 
+// Funnel Cloud excluded — not insurance-actionable on its own (no roof
+// damage threshold). Tornado, Hail, Wind, Marine Hail all kept.
 const RELEVANT_EVENT_TYPES = new Set([
   'Hail',
   'Thunderstorm Wind',
@@ -62,7 +64,6 @@ const RELEVANT_EVENT_TYPES = new Set([
   'Strong Wind',
   'High Wind',
   'Marine Hail',
-  'Funnel Cloud',
 ]);
 
 interface Args {
@@ -113,6 +114,7 @@ interface NceiRow {
   magnitude: number;
   magnitude_type: string | null;
   narrative: string | null;
+  tor_f_scale: string | null;
 }
 
 /**
@@ -230,20 +232,17 @@ function rowToNcei(
   const magRaw = row[idx['MAGNITUDE']] || '';
   let magnitude = parseFloat(magRaw);
 
-  // Tornado / Funnel Cloud / Marine Hail can have an empty MAGNITUDE column —
-  // the EF scale is in TOR_F_SCALE (e.g. "EF0", "EF1"). For our purposes we
-  // care that the event existed, not its precise rating; we keep them with
-  // magnitude=0 if that's what NCEI gave us.
+  // Tornado / Marine Hail can have an empty MAGNITUDE column — for tornado
+  // the EF scale is in TOR_F_SCALE (e.g. "EF0", "EF1") which we now preserve.
   if (
     !Number.isFinite(magnitude) &&
-    (eventType === 'Tornado' ||
-      eventType === 'Funnel Cloud' ||
-      eventType === 'Marine Hail')
+    (eventType === 'Tornado' || eventType === 'Marine Hail')
   ) {
     magnitude = 0;
   } else if (!Number.isFinite(magnitude)) {
     return null;
   }
+  const tor_f_scale = (row[idx['TOR_F_SCALE']] || '').trim() || null;
 
   // Magnitude floors — radar already covers smaller events; we want NCEI as
   // the gold-standard insurance-relevant signal.
@@ -284,6 +283,7 @@ function rowToNcei(
           : magnitude,
     magnitude_type: row[idx['MAGNITUDE_TYPE']] || null,
     narrative: (row[idx['EVENT_NARRATIVE']] || '').trim() || null,
+    tor_f_scale,
   };
 }
 
@@ -312,7 +312,7 @@ async function upsertBatch(rows: NceiRow[]): Promise<void> {
           event_type, magnitude, magnitude_type,
           state_code, county, wfo,
           episode_id, ncei_event_id, narrative,
-          begin_time_utc, end_time_utc
+          begin_time_utc, end_time_utc, tor_f_scale
         ) VALUES (
           ${r.event_date_et}::date, ${r.lat}, ${r.lng},
           ${bucketStr(r.lat)}, ${bucketStr(r.lng)},
@@ -322,7 +322,8 @@ async function upsertBatch(rows: NceiRow[]): Promise<void> {
           ${r.state_code}, ${r.county}, ${r.wfo},
           ${r.episode_id}, ${r.ncei_event_id}, ${r.narrative},
           ${new Date(r.begin_iso).toISOString()}::timestamptz,
-          ${new Date(r.end_iso).toISOString()}::timestamptz
+          ${new Date(r.end_iso).toISOString()}::timestamptz,
+          ${r.tor_f_scale}
         )
         ON CONFLICT (event_date, lat_bucket, lng_bucket, event_type)
         DO UPDATE SET
@@ -344,6 +345,7 @@ async function upsertBatch(rows: NceiRow[]): Promise<void> {
           narrative = COALESCE(verified_hail_events.narrative, EXCLUDED.narrative),
           begin_time_utc = COALESCE(verified_hail_events.begin_time_utc, EXCLUDED.begin_time_utc),
           end_time_utc = COALESCE(verified_hail_events.end_time_utc, EXCLUDED.end_time_utc),
+          tor_f_scale = COALESCE(verified_hail_events.tor_f_scale, EXCLUDED.tor_f_scale),
           updated_at = NOW()
       `;
     } catch (err) {
