@@ -153,9 +153,22 @@ async function findLatestDetailsUrl(year: number): Promise<string | null> {
 
 function streamFromResponse(res: Response): AsyncIterable<Uint8Array> {
   if (!res.body) throw new Error('NCEI response has no body');
-  return Readable.fromWeb(
+  const fetchStream = Readable.fromWeb(
     res.body as unknown as import('node:stream/web').ReadableStream<Uint8Array>,
-  ).pipe(createGunzip()) as unknown as AsyncIterable<Uint8Array>;
+  );
+  const gunzip = createGunzip();
+  // Attach an error listener BEFORE pipe so a mid-stream undici socket drop
+  // (UND_ERR_SOCKET) propagates as a rejection on the for-await consumer
+  // rather than as an unhandled error on the gunzip stream — which Node 22
+  // treats as a process-killing exception.
+  fetchStream.on('error', (err) => {
+    console.warn('[ncei] fetch stream error:', (err as Error).message);
+    gunzip.destroy(err);
+  });
+  gunzip.on('error', (err) => {
+    console.warn('[ncei] gunzip stream error:', (err as Error).message);
+  });
+  return fetchStream.pipe(gunzip) as unknown as AsyncIterable<Uint8Array>;
 }
 
 function ymdToIso(yearmonth: string, day: string, time: string): string {
@@ -400,7 +413,6 @@ async function backfillYear(
       if (!header) {
         header = row;
         idx = indexer(header);
-        // Sanity: required columns present
         const required = ['STATE', 'EVENT_TYPE', 'BEGIN_LAT', 'BEGIN_LON', 'EVENT_ID'];
         for (const k of required) {
           if (!(k in idx)) {
@@ -430,6 +442,14 @@ async function backfillYear(
     if (batch.length > 0 && !args.dryRun) {
       await upsertBatch(batch);
     }
+  } catch (err) {
+    // Mid-stream errors (undici socket drops, gzip corruption, network
+    // resets) shouldn't kill the whole backfill. Log + return whatever
+    // partial stats we accumulated; the year-level loop continues.
+    console.warn(
+      `[ncei] year=${year} aborted mid-stream after rowsKept=${stats.rowsKept}:`,
+      (err as Error).message,
+    );
   } finally {
     clearTimeout(timer);
   }

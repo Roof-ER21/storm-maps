@@ -1561,6 +1561,19 @@ app.get('{*path}', (_req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
 });
 
+// Process-level safety net. Background tasks (backfills, push fanout, prewarm
+// scheduler) can hit transient errors — undici socket drops mid-stream,
+// upstream API hiccups, etc. Without these handlers, a single unhandled
+// rejection in a background task tears down the whole server (Node 22's
+// default for unhandled rejections is `throw`, which crashes the process).
+// Log loudly, don't die.
+process.on('unhandledRejection', (reason: unknown) => {
+  console.error('[unhandledRejection]', reason instanceof Error ? reason.stack : reason);
+});
+process.on('uncaughtException', (err: Error) => {
+  console.error('[uncaughtException]', err.stack);
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Hail Yes! running on port ${PORT}`);
   // Kick the cache prewarm scheduler. No-op in dev unless HAIL_YES_PREWARM=1.
