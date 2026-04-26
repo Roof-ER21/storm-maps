@@ -91,6 +91,13 @@ interface HistoricalMrmsParams {
   date: string;
   bounds: BoundingBox;
   anchorTimestamp?: string | null;
+  /**
+   * Which MRMS product to request. Default behavior matches existing —
+   * the server picks mesh1440 (24-hour composite). Pass 'mesh60' for
+   * the hourly scrubber so the GroundOverlay refetches an hour-specific
+   * file when the rep moves the slider.
+   */
+  product?: 'mesh1440' | 'mesh60';
 }
 
 function toHistoricalQuery(params: HistoricalMrmsParams): string {
@@ -104,6 +111,9 @@ function toHistoricalQuery(params: HistoricalMrmsParams): string {
 
   if (params.anchorTimestamp) {
     query.set('anchorTimestamp', params.anchorTimestamp);
+  }
+  if (params.product) {
+    query.set('product', params.product);
   }
 
   return query.toString();

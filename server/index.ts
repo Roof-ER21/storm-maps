@@ -977,6 +977,12 @@ interface MrmsRasterQuery {
   east?: string;
   west?: string;
   anchorTimestamp?: string;
+  /**
+   * Which MRMS product to fetch — drives the hourly scrubber. Default
+   * 'mesh1440' (24-hr composite); 'mesh60' grabs the 60-min rolling max
+   * file closest to anchorTimestamp so the rep can scrub hour-by-hour.
+   */
+  product?: 'mesh1440' | 'mesh60';
 }
 
 function parseRasterQuery(q: MrmsRasterQuery): {
@@ -1001,6 +1007,7 @@ app.get('/api/hail/mrms-image', async (req, res) => {
       date,
       bounds,
       anchorIso: q.anchorTimestamp,
+      product: q.product === 'mesh60' ? 'mesh60' : 'mesh1440',
     });
     if (!result) {
       res.status(502).json({ error: 'MRMS raster unavailable' });
@@ -1027,6 +1034,7 @@ app.get('/api/hail/mrms-meta', async (req, res) => {
       date,
       bounds,
       anchorIso: q.anchorTimestamp,
+      product: q.product === 'mesh60' ? 'mesh60' : 'mesh1440',
     });
     if (!result) {
       // Mirror the field-assistant shape so the frontend can render its

@@ -18,7 +18,7 @@
 
 import { PNG } from 'pngjs';
 import crypto from 'crypto';
-import { fetchMrmsMesh1440 } from './mrmsFetch.js';
+import { fetchMrmsMesh1440, fetchMrmsMesh60 } from './mrmsFetch.js';
 import { readGrib2 } from './grib2/sections.js';
 import { decodeGribData } from './grib2/decode.js';
 import { IHM_HAIL_LEVELS } from './hailFallbackService.js';
@@ -213,18 +213,31 @@ interface BuildRasterParams {
   anchorIso?: string;
   /** When true, use the today's-latest file path (now-cast). */
   live?: boolean;
+  /**
+   * Which MRMS MESH product to fetch.
+   *   - 'mesh1440' (default): 24-hour rolling max — daily composite
+   *   - 'mesh60': 60-min rolling max — drives the hourly scrubber
+   */
+  product?: 'mesh1440' | 'mesh60';
 }
 
 export async function buildMrmsRaster(
   params: BuildRasterParams,
 ): Promise<MrmsRasterResult | null> {
-  const key = cacheKey(params.date, params.bounds) + (params.live ? '|live' : '');
+  const product = params.product ?? 'mesh1440';
+  // Cache key folds in product so mesh60/mesh1440 don't share cache slots.
+  const key =
+    cacheKey(params.date, params.bounds) +
+    (params.live ? '|live' : '') +
+    (params.anchorIso ? `|${params.anchorIso}` : '') +
+    `|${product}`;
   const now = Date.now();
   const hit = cache.get(key);
   if (hit && hit.expiresAt > now) return hit.result;
 
   try {
-    const file = await fetchMrmsMesh1440({
+    const fetcher = product === 'mesh60' ? fetchMrmsMesh60 : fetchMrmsMesh1440;
+    const file = await fetcher({
       date: params.date,
       anchorIso: params.live ? undefined : params.anchorIso,
     });

@@ -443,12 +443,20 @@ function StormTimelineScrubber({
   frameIndex,
   timestamps,
   onChange,
+  mode,
+  onModeChange,
+  modesAvailable,
 }: {
   visible: boolean;
   frameCount: number;
   frameIndex: number | null;
   timestamps: string[];
   onChange: (next: number | null) => void;
+  /** Which timestamp source is feeding the scrubber. */
+  mode?: 'nexrad' | 'mrms';
+  onModeChange?: (next: 'nexrad' | 'mrms') => void;
+  /** Which modes the scrubber should expose toggles for. */
+  modesAvailable?: { nexrad: boolean; mrms: boolean };
 }) {
   // Auto-play loop: 1.2s per frame; loops back to 0 after the last frame.
   // Pauses automatically if the rep clicks Merged or drags the slider away
@@ -472,22 +480,59 @@ function StormTimelineScrubber({
 
   if (!visible || frameCount <= 1) return null;
   const activeTimestamp = timestamps[sliderValue] ?? timestamps[0];
+  const isMrms = mode === 'mrms';
+  const titleLabel = isMrms ? 'MRMS Hourly' : 'Storm Timeline';
+  const counterLabel = isMrms
+    ? isMerged
+      ? '24h composite'
+      : `Hour ${sliderValue + 1} / 24`
+    : isMerged
+      ? `All ${frameCount} frames`
+      : `Frame ${sliderValue + 1} / ${frameCount}`;
+  const compositeLabel = isMrms
+    ? '24-hour MESH composite'
+    : 'Composite of every ranked frame';
 
   return (
     <div className="pointer-events-none absolute bottom-24 left-1/2 z-20 w-[min(480px,80vw)] -translate-x-1/2">
       <div className="pointer-events-auto rounded-2xl border border-stone-200 bg-white/95 p-3 shadow-lg backdrop-blur">
         <div className="flex items-center justify-between gap-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-          <span>Storm Timeline</span>
+          <div className="flex items-center gap-2">
+            <span>{titleLabel}</span>
+            {/* Source toggle — only show when both modes are reachable. */}
+            {onModeChange && modesAvailable?.nexrad && modesAvailable?.mrms && (
+              <span className="flex gap-0.5 rounded-full bg-stone-100 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => onModeChange('nexrad')}
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                    mode === 'nexrad'
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-500 hover:text-stone-700'
+                  }`}
+                >
+                  NEXRAD
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onModeChange('mrms')}
+                  className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                    mode === 'mrms'
+                      ? 'bg-white text-stone-900 shadow-sm'
+                      : 'text-stone-500 hover:text-stone-700'
+                  }`}
+                >
+                  MRMS
+                </button>
+              </span>
+            )}
+          </div>
           <span className="font-mono normal-case tracking-normal text-stone-700">
-            {isMerged
-              ? `All ${frameCount} frames`
-              : `Frame ${sliderValue + 1} / ${frameCount}`}
+            {counterLabel}
           </span>
         </div>
         <div className="mt-1 text-xs font-semibold text-stone-800">
-          {isMerged
-            ? 'Composite of every ranked frame'
-            : formatEasternTimestamp(activeTimestamp)}
+          {isMerged ? compositeLabel : formatEasternTimestamp(activeTimestamp)}
         </div>
         <input
           type="range"
@@ -849,8 +894,14 @@ function MapContent({
   // Reset whenever the selected storm changes so an old index from a previous
   // storm doesn't leak into the new frame array.
   const [scrubFrameIndex, setScrubFrameIndex] = useState<number | null>(null);
+  // Scrubber mode — 'nexrad' steps through Level-2 radar frames (default,
+  // existing behavior); 'mrms' steps through 24 hourly MRMS MESH anchors
+  // for the ET day. Switching modes resets the frame index so we don't
+  // reuse a frame ordinal across different timestamp arrays.
+  const [scrubMode, setScrubMode] = useState<'nexrad' | 'mrms'>('nexrad');
   useEffect(() => {
     setScrubFrameIndex(null);
+    setScrubMode('nexrad');
   }, [selectedDate]);
   const [pointImpact, setPointImpact] = useState<{
     lat: number;
@@ -906,18 +957,67 @@ function MapContent({
     }
     return selectedDate ? [stormContext.radarTimestamp] : [];
   }, [selectedDate, stormContext.radarTimestamp, visibleHailEvents]);
+
+  /**
+   * 24 hourly UTC anchors covering the ET day for the selected storm date.
+   * Each anchor lines up with a 60-min MRMS MESH file the IEM archive
+   * publishes — picking frame N drives the GroundOverlay to refetch that
+   * specific hour's hail footprint, so reps can scrub MRMS hour-by-hour.
+   *
+   * ET day spans 04:00 UTC of the date through 04:00 UTC of the next day
+   * (EDT). EST shifts that to 05:00 UTC; we use 04:00 because:
+   *   1. Most claim-bearing storms in our territory are summer (EDT)
+   *   2. The MRMS fetcher's walk-back already absorbs the 1-hour DST diff
+   *   3. Choosing 04:00 lets the scrubber represent local-time hours 0-23
+   */
+  const mrmsHourlyTimestamps = useMemo(() => {
+    if (!selectedDate) return [] as string[];
+    const m = selectedDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return [] as string[];
+    const startUtc = Date.UTC(
+      parseInt(m[1], 10),
+      parseInt(m[2], 10) - 1,
+      parseInt(m[3], 10),
+      4, // EDT offset
+      0,
+      0,
+    );
+    return Array.from({ length: 24 }, (_, h) =>
+      new Date(startUtc + h * 3_600_000).toISOString(),
+    );
+  }, [selectedDate]);
+
   const mrmsHistoricalMode = showMrms && Boolean(selectedDate);
   const historicalMrmsParams = useMemo(() => {
     if (!selectedDate || !stormContext.eventBounds) {
       return null;
     }
+    // When the scrubber is in MRMS mode and pinned to a specific hour,
+    // override the day's default anchor with that hour's UTC anchor AND
+    // request the 60-min product so the overlay refetches a different
+    // hail blob each hour. Without product=mesh60 the IEM archive
+    // returns the 24-hr composite which doesn't change across anchors.
+    const hourlyAnchor =
+      scrubMode === 'mrms' &&
+      scrubFrameIndex !== null &&
+      mrmsHourlyTimestamps[scrubFrameIndex]
+        ? mrmsHourlyTimestamps[scrubFrameIndex]
+        : null;
 
     return {
       date: selectedDate,
       bounds: stormContext.eventBounds,
-      anchorTimestamp: stormContext.radarTimestamp,
+      anchorTimestamp: hourlyAnchor ?? stormContext.radarTimestamp,
+      product: hourlyAnchor ? ('mesh60' as const) : ('mesh1440' as const),
     };
-  }, [selectedDate, stormContext.eventBounds, stormContext.radarTimestamp]);
+  }, [
+    selectedDate,
+    stormContext.eventBounds,
+    stormContext.radarTimestamp,
+    scrubMode,
+    scrubFrameIndex,
+    mrmsHourlyTimestamps,
+  ]);
   const historicalMrmsUrl = useMemo(
     () =>
       historicalMrmsParams ? getHistoricalMrmsOverlayUrl(historicalMrmsParams) : null,
@@ -1765,14 +1865,34 @@ function MapContent({
       />
 
       <StormTimelineScrubber
-        visible={
-          Boolean(showNexrad && selectedDate) &&
-          historicalRadarTimestamps.length > 1
+        visible={(() => {
+          if (!selectedDate) return false;
+          // NEXRAD mode: need ≥2 frames to scrub.
+          // MRMS mode: always 24 hourly anchors when MRMS layer is on.
+          if (scrubMode === 'mrms') return mrmsHistoricalMode;
+          return Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
+        })()}
+        frameCount={
+          scrubMode === 'mrms'
+            ? mrmsHourlyTimestamps.length
+            : historicalRadarTimestamps.length
         }
-        frameCount={historicalRadarTimestamps.length}
         frameIndex={scrubFrameIndex}
-        timestamps={historicalRadarTimestamps}
+        timestamps={
+          scrubMode === 'mrms' ? mrmsHourlyTimestamps : historicalRadarTimestamps
+        }
         onChange={setScrubFrameIndex}
+        mode={scrubMode}
+        onModeChange={(next) => {
+          setScrubMode(next);
+          // Reset to merged view when flipping modes; the index meaning
+          // changes so we don't keep a stale ordinal across sources.
+          setScrubFrameIndex(null);
+        }}
+        modesAvailable={{
+          nexrad: Boolean(showNexrad) && historicalRadarTimestamps.length > 1,
+          mrms: mrmsHistoricalMode,
+        }}
       />
 
       <MRMSOverlay
