@@ -229,38 +229,35 @@ async function migrate() {
   `;
 
   // ── Migration to event-type-aware dedup ─────────────────────────────
-  // The original dedup key (event_date, lat_bucket, lng_bucket) merged
-  // Hail and Wind events at the same NCEI grid cell into one row, which
-  // corrupted the `magnitude` column (a 52 mph wind gust would overwrite
-  // a 1.5" hail row's magnitude via GREATEST). Switch to a key that
-  // separates by event_type so each storm signal stays in its own row.
-  //
-  // Idempotent: only flips when the OLD index has the wrong column count.
-  // The DELETE wipes only NCEI-sourced rows so they can be re-ingested
-  // cleanly; other sources (consilience-stateless) don't write here.
-  const oldIdx = await sql<Array<{ indexdef: string }>>`
-    SELECT indexdef FROM pg_indexes
-     WHERE indexname = 'verified_hail_events_dedup_idx'
-       AND tablename = 'verified_hail_events'
+  // Original dedup (event_date, lat_bucket, lng_bucket) merged Hail+Wind
+  // at the same cell, corrupting the magnitude column. Migrate to include
+  // event_type. Idempotent: counts the index's columns and only flips
+  // when it has 3 (old key) → 4 (new key with event_type).
+  const idxColCount = await sql<Array<{ count: number }>>`
+    SELECT array_length(indkey::int2[], 1) AS count
+      FROM pg_index pi
+      JOIN pg_class pc ON pc.oid = pi.indexrelid
+     WHERE pc.relname = 'verified_hail_events_dedup_idx'
+     LIMIT 1
   `;
-  const needsTypeKey =
-    oldIdx[0] && !oldIdx[0].indexdef.includes('event_type');
-  if (needsTypeKey) {
+  const colCount = idxColCount[0] ? Number(idxColCount[0].count) : 0;
+  console.log(`[migrate] verified_hail_events_dedup_idx column count: ${colCount}`);
+  if (colCount === 3) {
     console.log(
-      '[migrate] Switching verified_hail_events dedup key to include event_type…',
+      '[migrate] Switching verified_hail_events dedup key to (event_date, lat_bucket, lng_bucket, event_type)…',
     );
     await sql`DROP INDEX verified_hail_events_dedup_idx`;
-    const wiped = await sql<Array<{ count: string }>>`
+    const wiped = await sql<Array<{ count: number }>>`
       DELETE FROM verified_hail_events
        WHERE source_ncei_storm_events = TRUE
        RETURNING 1 AS count
     `;
-    console.log(`[migrate] Wiped ${wiped.length} NCEI rows for re-ingest with corrected dedup.`);
+    console.log(`[migrate] Wiped ${wiped.length} NCEI rows for clean re-ingest.`);
     await sql`
       CREATE UNIQUE INDEX verified_hail_events_dedup_idx
         ON verified_hail_events (event_date, lat_bucket, lng_bucket, event_type)
     `;
-    console.log('[migrate] New dedup key (event_date, lat_bucket, lng_bucket, event_type) created.');
+    console.log('[migrate] New 4-column dedup key created.');
   }
 
   // Extend verified_hail_events with the full source-flag set + event metadata
