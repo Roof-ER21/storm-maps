@@ -1,16 +1,23 @@
 /**
- * WindSwathLayer — renders gust-band MultiPolygons on Google Maps.
+ * WindSwathLayer — gust-band MultiPolygon renderer via google.maps.Data.
  *
- * Visual design:
- *   - Higher bands sit on top (z-index keyed off `level`).
- *   - Hover changes opacity for legibility without flashing the page.
- *   - Click opens an InfoWindow with the band, source mix, and field-grade
- *     guidance for canvassing reps.
+ * Same architectural shape as HailSwathLayer:
+ *   - one Data layer holds every band feature
+ *   - feature-level styling via setStyle((feature) => StyleOptions)
+ *   - hover via overrideStyle / revertStyle
+ *   - one click listener on the layer (not per polygon)
+ *
+ * Wind bands are rendered cumulatively (the ≥50 mph swath visually contains
+ * the ≥75 mph swath) so the higher bands stay on top — z-index keys off the
+ * `level` property in the same way.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from '@vis.gl/react-google-maps';
-import type { WindSwathCollection, WindSwathFeature } from '../services/windApi';
+import type {
+  WindSwathCollection,
+  WindSwathFeature,
+} from '../services/windApi';
 import { WIND_BAND_LEVELS } from '../types/windLevels';
 
 interface WindSwathLayerProps {
@@ -24,6 +31,18 @@ interface WindSwathLayerProps {
   }) => void;
 }
 
+interface FeatureProps {
+  level: number;
+  color: string;
+  isTop: boolean;
+  isEmphasized: boolean;
+  baseFillOpacity: number;
+  baseStrokeOpacity: number;
+  baseStrokeWeight: number;
+  infoContent: string;
+  bandJson: string;
+}
+
 function buildInfoContent(
   feature: WindSwathFeature,
   metadata: WindSwathCollection['metadata'],
@@ -33,7 +52,9 @@ function buildInfoContent(
       (b) => b.minMph === feature.properties.minMph,
     )?.fieldNotes ?? '';
   const sources =
-    metadata.sources.length > 0 ? metadata.sources.join(' · ') : 'No archived sources';
+    metadata.sources.length > 0
+      ? metadata.sources.join(' · ')
+      : 'No archived sources';
   const peak = metadata.maxGustMph
     ? `${Math.round(metadata.maxGustMph)} mph`
     : '—';
@@ -59,17 +80,33 @@ function buildInfoContent(
   `;
 }
 
-function getStyle(level: number, total: number, highlight: boolean) {
-  // Lower bands (≥50 mph) cover the most area but should fade so the higher
-  // bands stay visible on top. Top band gets a strong outline so 90+ mph cells
-  // pop on satellite views.
+function bandStyle(level: number, total: number, highlight: boolean) {
   const isTop = level === total - 1;
   const baseFill = highlight ? 0.42 : 0.3;
-  const baseStroke = highlight ? 0.95 : 0.78;
   return {
     fillOpacity: Math.max(0.12, baseFill - (total - 1 - level) * 0.04),
-    strokeOpacity: isTop ? 1.0 : baseStroke,
+    strokeOpacity: isTop ? 1.0 : highlight ? 0.95 : 0.78,
     strokeWeight: isTop ? 4 : 3,
+    isTop,
+  };
+}
+
+function styleFeature(
+  feature: google.maps.Data.Feature,
+): google.maps.Data.StyleOptions {
+  const color = (feature.getProperty('color') as string) ?? '#FF8800';
+  const level = (feature.getProperty('level') as number) ?? 0;
+  const fillOpacity = (feature.getProperty('baseFillOpacity') as number) ?? 0.3;
+  const strokeOpacity = (feature.getProperty('baseStrokeOpacity') as number) ?? 0.78;
+  const strokeWeight = (feature.getProperty('baseStrokeWeight') as number) ?? 3;
+  return {
+    fillColor: color,
+    fillOpacity,
+    strokeColor: color,
+    strokeOpacity,
+    strokeWeight,
+    zIndex: 100 + level * 10,
+    clickable: true,
   };
 }
 
@@ -80,79 +117,150 @@ export default function WindSwathLayer({
   onPointClick,
 }: WindSwathLayerProps) {
   const map = useMap();
-  const polygonsRef = useRef<google.maps.Polygon[]>([]);
-  const infoRef = useRef<google.maps.InfoWindow | null>(null);
+  const dataLayerRef = useRef<google.maps.Data | null>(null);
+  const infoWindowRef = useRef<google.maps.InfoWindow | null>(null);
+  const listenersRef = useRef<google.maps.MapsEventListener[]>([]);
+  const hoveredIdRef = useRef<string | null>(null);
+  // Hold the latest onPointClick in a ref so the long-lived click listener
+  // always calls the current callback without needing to re-bind.
+  const onPointClickRef = useRef(onPointClick);
+  useEffect(() => {
+    onPointClickRef.current = onPointClick;
+  }, [onPointClick]);
 
-  const clear = useCallback(() => {
-    for (const p of polygonsRef.current) {
-      p.setMap(null);
-    }
-    polygonsRef.current = [];
-    infoRef.current?.close();
-  }, []);
-
+  // One Data layer + listeners per map. Feature collection swaps via
+  // addGeoJson; the layer is reused.
   useEffect(() => {
     if (!map) return;
 
-    clear();
-    if (!visible || !collection || collection.features.length === 0) return;
+    const data = new google.maps.Data({ map });
+    data.setStyle(styleFeature);
+    dataLayerRef.current = data;
+    infoWindowRef.current = new google.maps.InfoWindow();
 
-    if (!infoRef.current) {
-      infoRef.current = new google.maps.InfoWindow();
-    }
-
-    const total = collection.features.length;
-    for (const feature of collection.features) {
-      const style = getStyle(feature.properties.level, total, highlightSelected);
-      const content = buildInfoContent(feature, collection.metadata);
-      const baseZ = 100 + feature.properties.level * 10;
-
-      for (const polygon of feature.geometry.coordinates) {
-        if (polygon.length === 0) continue;
-        const paths = polygon.map((ring) =>
-          ring.map(([lng, lat]) => ({ lat, lng })),
-        );
-        const shape = new google.maps.Polygon({
-          paths,
-          strokeColor: feature.properties.color,
-          strokeOpacity: style.strokeOpacity,
-          strokeWeight: style.strokeWeight,
-          fillColor: feature.properties.color,
-          fillOpacity: style.fillOpacity,
-          map,
-          zIndex: baseZ,
-          clickable: true,
-        });
-
-        shape.addListener('mouseover', () => {
-          shape.setOptions({
-            fillOpacity: Math.min(0.55, style.fillOpacity + 0.18),
-          });
-        });
-        shape.addListener('mouseout', () => {
-          shape.setOptions({ fillOpacity: style.fillOpacity });
-        });
-        shape.addListener('click', (e: google.maps.MapMouseEvent) => {
-          infoRef.current!.setContent(content);
-          if (e.latLng) {
-            infoRef.current!.setPosition(e.latLng);
+    const clickListener = data.addListener(
+      'click',
+      (event: google.maps.Data.MouseEvent) => {
+        const content = event.feature.getProperty('infoContent') as
+          | string
+          | undefined;
+        if (content) {
+          infoWindowRef.current!.setContent(content);
+          if (event.latLng) infoWindowRef.current!.setPosition(event.latLng);
+          infoWindowRef.current!.open(map);
+        }
+        if (onPointClickRef.current && event.latLng) {
+          let band: WindSwathFeature['properties'] | null = null;
+          const json = event.feature.getProperty('bandJson') as string | undefined;
+          if (json) {
+            try {
+              band = JSON.parse(json) as WindSwathFeature['properties'];
+            } catch {
+              band = null;
+            }
           }
-          infoRef.current!.open(map);
-          onPointClick?.({
-            lat: e.latLng?.lat() ?? 0,
-            lng: e.latLng?.lng() ?? 0,
-            band: feature.properties,
+          onPointClickRef.current({
+            lat: event.latLng.lat(),
+            lng: event.latLng.lng(),
+            band,
           });
-        });
+        }
+      },
+    );
 
-        polygonsRef.current.push(shape);
-      }
-    }
+    const overListener = data.addListener(
+      'mouseover',
+      (event: google.maps.Data.MouseEvent) => {
+        const id = event.feature.getId();
+        const idStr =
+          typeof id === 'string' || typeof id === 'number' ? String(id) : null;
+        if (!idStr) return;
+        if (hoveredIdRef.current === idStr) return;
+
+        if (hoveredIdRef.current !== null) {
+          const prev = data.getFeatureById(hoveredIdRef.current);
+          if (prev) data.revertStyle(prev);
+        }
+        hoveredIdRef.current = idStr;
+
+        const baseFill =
+          (event.feature.getProperty('baseFillOpacity') as number) ?? 0.3;
+        const color =
+          (event.feature.getProperty('color') as string) ?? '#FF8800';
+        data.overrideStyle(event.feature, {
+          fillColor: color,
+          fillOpacity: Math.min(0.55, baseFill + 0.18),
+          strokeOpacity: 1,
+        });
+      },
+    );
+
+    const outListener = data.addListener(
+      'mouseout',
+      (event: google.maps.Data.MouseEvent) => {
+        const id = event.feature.getId();
+        const idStr =
+          typeof id === 'string' || typeof id === 'number' ? String(id) : null;
+        if (idStr && hoveredIdRef.current === idStr) {
+          hoveredIdRef.current = null;
+        }
+        data.revertStyle(event.feature);
+      },
+    );
+
+    listenersRef.current = [clickListener, overListener, outListener];
 
     return () => {
-      clear();
+      for (const listener of listenersRef.current) listener.remove();
+      listenersRef.current = [];
+      infoWindowRef.current?.close();
+      infoWindowRef.current = null;
+      data.forEach((feature) => data.remove(feature));
+      data.setMap(null);
+      dataLayerRef.current = null;
     };
-  }, [map, collection, visible, highlightSelected, clear, onPointClick]);
+  }, [map]);
+
+  // Swap features on every input change. Cheaper than re-creating the layer.
+  useEffect(() => {
+    const data = dataLayerRef.current;
+    if (!data) return;
+    data.forEach((feature) => data.remove(feature));
+
+    if (!visible || !collection || collection.features.length === 0) return;
+
+    const total = collection.features.length;
+    const featureCollection = {
+      type: 'FeatureCollection' as const,
+      features: collection.features.map((feature) => {
+        const style = bandStyle(
+          feature.properties.level,
+          total,
+          highlightSelected,
+        );
+        const props: FeatureProps = {
+          level: feature.properties.level,
+          color: feature.properties.color,
+          isTop: style.isTop,
+          isEmphasized: highlightSelected,
+          baseFillOpacity: style.fillOpacity,
+          baseStrokeOpacity: style.strokeOpacity,
+          baseStrokeWeight: style.strokeWeight,
+          infoContent: buildInfoContent(feature, collection.metadata),
+          bandJson: JSON.stringify(feature.properties),
+        };
+        return {
+          type: 'Feature' as const,
+          id: `wind-band-${feature.properties.level}`,
+          properties: props,
+          geometry: feature.geometry,
+        };
+      }),
+    };
+
+    data.addGeoJson(featureCollection);
+    data.setStyle(styleFeature);
+  }, [collection, visible, highlightSelected]);
 
   return null;
 }

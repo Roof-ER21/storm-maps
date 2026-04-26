@@ -169,6 +169,28 @@ async function migrate() {
       ON swath_cache (source, date)
   `;
 
+  await sql`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id SERIAL PRIMARY KEY,
+      endpoint TEXT NOT NULL UNIQUE,
+      p256dh TEXT NOT NULL,
+      auth TEXT NOT NULL,
+      rep_id TEXT,
+      territory_states JSONB DEFAULT '[]',
+      user_agent TEXT,
+      label TEXT,
+      created_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW(),
+      invalidated_at TIMESTAMP,
+      last_pushed_at TIMESTAMP,
+      last_alert_id TEXT
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS push_subscriptions_active_idx
+      ON push_subscriptions (rep_id) WHERE invalidated_at IS NULL
+  `;
+
   // Storm-event cache for property-search responses.
   await sql`
     CREATE TABLE IF NOT EXISTS event_cache (
@@ -200,7 +222,7 @@ async function migrate() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
 
-  console.log('[migrate] All 9 core tables created successfully.');
+  console.log('[migrate] All 10 core tables created successfully.');
 
   // Create AI property analysis tables
   const aiDb = drizzle(sql);

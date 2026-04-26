@@ -148,6 +148,35 @@ export const eventCache = pgTable('event_cache', {
   expiresAt: timestamp('expires_at').notNull(),
 });
 
+/**
+ * Web push notification subscriptions.
+ *
+ * One row per browser/device that has hit "Enable storm alerts". The
+ * (endpoint) is unique per browser per VAPID key — we upsert on it so a
+ * single device can move between rep accounts without leaving stale rows.
+ *
+ * `territory_states` is the rep's focus list (e.g. `['VA','MD','PA']`); the
+ * fan-out worker filters NWS warnings by intersection with this column.
+ */
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: serial('id').primaryKey(),
+  endpoint: text('endpoint').notNull().unique(),
+  p256dh: text('p256dh').notNull(),
+  auth: text('auth').notNull(),
+  repId: text('rep_id'),
+  territoryStates: jsonb('territory_states').default([]),
+  /** Last UA + label so the rep can identify devices in their settings. */
+  userAgent: text('user_agent'),
+  label: text('label'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  /** Cleared after a 410 from the push service so we stop re-pushing. */
+  invalidatedAt: timestamp('invalidated_at'),
+  /** Bookkeeping for the fan-out worker so it doesn't double-push the same alert. */
+  lastPushedAt: timestamp('last_pushed_at'),
+  lastAlertId: text('last_alert_id'),
+});
+
 export const shareableReports = pgTable('shareable_reports', {
   id: serial('id').primaryKey(),
   slug: text('slug').notNull().unique(),

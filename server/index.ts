@@ -38,6 +38,13 @@ import {
   buildHailFallbackCollection,
   buildHailImpactResponse,
 } from './storm/hailFallbackService.js';
+import {
+  upsertPushSubscription,
+  deletePushSubscription,
+  getPublicVapidKey,
+  isPushConfigured,
+} from './storm/pushService.js';
+import { startPushFanout, getPushFanoutStatus } from './storm/pushFanout.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
@@ -1089,6 +1096,75 @@ app.get('/api/admin/prewarm-status', (_req, res) => {
   res.json(getPrewarmStatus(enabled));
 });
 
+// ── Push subscriptions ─────────────────────────────────────────
+// POST /api/push/subscribe  — body: { endpoint, keys, repId?, territoryStates?, label? }
+// DELETE /api/push/subscribe — body: { endpoint }
+// GET /api/push/vapid-public — for the frontend to grab the VAPID public key
+//   (also exposed as VITE_VAPID_PUBLIC_KEY at build time, but this endpoint
+//   keeps the rotation story simpler — no rebuild needed when keys change).
+app.get('/api/push/vapid-public', (_req, res) => {
+  res.json({
+    ok: isPushConfigured(),
+    publicKey: getPublicVapidKey() || null,
+  });
+});
+
+interface PushSubscribeBody {
+  endpoint?: string;
+  keys?: { p256dh?: string; auth?: string };
+  repId?: string;
+  territoryStates?: string[];
+  label?: string;
+}
+
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const body = (req.body || {}) as PushSubscribeBody;
+    if (!body.endpoint || !body.keys?.p256dh || !body.keys?.auth) {
+      res.status(400).json({ error: 'endpoint and keys required' });
+      return;
+    }
+    const result = await upsertPushSubscription({
+      endpoint: body.endpoint,
+      keys: { p256dh: body.keys.p256dh, auth: body.keys.auth },
+      repId: body.repId ?? null,
+      territoryStates:
+        body.territoryStates && body.territoryStates.length > 0
+          ? body.territoryStates
+          : ['VA', 'MD', 'PA'],
+      userAgent: req.headers['user-agent'] ?? undefined,
+      label: body.label,
+    });
+    if (!result.ok) {
+      res.status(500).json({ error: result.error ?? 'subscribe failed' });
+      return;
+    }
+    res.json({ ok: true, id: result.id });
+  } catch (err) {
+    console.error('[push/subscribe] failed', err);
+    res.status(500).json({ error: 'subscribe failed' });
+  }
+});
+
+app.delete('/api/push/subscribe', async (req, res) => {
+  try {
+    const body = (req.body || {}) as { endpoint?: string };
+    if (!body.endpoint) {
+      res.status(400).json({ error: 'endpoint required' });
+      return;
+    }
+    const result = await deletePushSubscription(body.endpoint);
+    res.json({ ok: result.ok });
+  } catch (err) {
+    console.error('[push/unsubscribe] failed', err);
+    res.status(500).json({ error: 'unsubscribe failed' });
+  }
+});
+
+app.get('/api/admin/push-status', (_req, res) => {
+  res.json(getPushFanoutStatus());
+});
+
 // Lazy purge timer so expired rows don't accumulate. 6-hour cadence is
 // plenty given the per-row index lookup we do on each read anyway.
 setInterval(() => {
@@ -1108,6 +1184,8 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Hail Yes! running on port ${PORT}`);
   // Kick the cache prewarm scheduler. No-op in dev unless HAIL_YES_PREWARM=1.
   startPrewarmScheduler();
+  // Kick the NWS-warning push fan-out. No-op without VAPID keys.
+  startPushFanout();
 });
 
 // ── Cache cleanup ───────────────────────────────────────

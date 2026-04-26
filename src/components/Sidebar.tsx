@@ -21,6 +21,12 @@ import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import AddressImpactBadge from './AddressImpactBadge';
 import WindImpactBadge from './WindImpactBadge';
 import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
+import {
+  enableStormAlerts,
+  disableStormAlerts,
+  getNotificationPermission,
+  isNotificationSupported,
+} from '../services/notificationService';
 
 const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
 
@@ -766,6 +772,8 @@ export default function Sidebar({
             onChange={onTerritoryOnlyChange}
           />
         )}
+
+        <PushAlertsToggle territoryStates={WIND_FOCUS_STATES} />
       </CollapsibleSection>
 
       <div className="min-h-0">
@@ -1136,6 +1144,140 @@ function TerritoryToggle({
       </div>
     </div>
   );
+}
+
+/**
+ * "Storm alerts" toggle — enables web push so the rep gets a notification
+ * when an NWS Severe Thunderstorm or Tornado Warning fires inside their
+ * territory, even when the app isn't focused. Backed by the
+ * /api/push/subscribe endpoint and the in-server fan-out worker.
+ */
+function PushAlertsToggle({
+  territoryStates,
+}: {
+  territoryStates: string[];
+}) {
+  const supported = isNotificationSupported();
+  const [permission, setPermission] = useState<NotificationPermission>(
+    supported ? getNotificationPermission() : 'denied',
+  );
+  const [pending, setPending] = useState(false);
+  const [hint, setHint] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function check() {
+      if (!supported || !('serviceWorker' in navigator)) return;
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = await reg?.pushManager.getSubscription();
+        if (!cancelled) setEnabled(Boolean(sub));
+      } catch {
+        // ignore
+      }
+    }
+    void check();
+    return () => {
+      cancelled = true;
+    };
+  }, [supported]);
+
+  if (!supported) {
+    return (
+      <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-2 text-[10px] text-stone-500">
+        Push notifications aren't supported on this browser.
+      </div>
+    );
+  }
+
+  const blocked = permission === 'denied';
+
+  async function handleEnable() {
+    setPending(true);
+    setHint(null);
+    const result = await enableStormAlerts({ territoryStates });
+    setPermission(getNotificationPermission());
+    setPending(false);
+    if (result.ok) {
+      setEnabled(true);
+      setHint('Alerts enabled — you’ll be notified for severe warnings in your territory.');
+    } else {
+      setHint(messageForReason(result.reason));
+    }
+  }
+
+  async function handleDisable() {
+    setPending(true);
+    await disableStormAlerts();
+    setEnabled(false);
+    setPending(false);
+    setHint('Alerts disabled.');
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+            Storm Alerts
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-stone-800">
+            {enabled ? 'On' : blocked ? 'Blocked' : 'Off'}
+          </p>
+          <p className="mt-0.5 text-[10px] leading-snug text-stone-500">
+            {enabled
+              ? `Push alerts for severe warnings in ${territoryStates.slice(0, 3).join(', ')}.`
+              : blocked
+              ? 'Notifications are blocked in this browser. Enable them from the address bar.'
+              : 'Get notified the moment NWS issues a SVR/Tornado warning in your territory.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={enabled ? handleDisable : handleEnable}
+          disabled={pending || blocked}
+          aria-pressed={enabled}
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            enabled
+              ? 'bg-orange-500'
+              : blocked
+              ? 'bg-stone-200 cursor-not-allowed'
+              : 'bg-stone-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+              enabled ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+      {hint && (
+        <p className="mt-2 text-[10px] leading-snug text-stone-500">{hint}</p>
+      )}
+    </div>
+  );
+}
+
+function messageForReason(reason: string): string {
+  switch (reason) {
+    case 'denied':
+      return 'Notification permission denied — enable it in your browser settings to turn on alerts.';
+    case 'unsupported':
+      return 'This browser does not support push notifications.';
+    case 'no-vapid-key':
+      return 'Push not configured on the server yet. Try again shortly.';
+    case 'subscribe-failed':
+      return 'Browser refused the subscription. Try reloading the page.';
+    case 'invalid-subscription':
+      return 'Browser returned an incomplete subscription — please retry.';
+    case 'server-rejected':
+    case 'network-error':
+      return 'Couldn’t reach the server. Check your connection and retry.';
+    default:
+      return 'Could not enable alerts.';
+  }
 }
 
 function formatHistoryRangeLabel(

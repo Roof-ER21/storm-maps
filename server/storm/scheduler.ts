@@ -22,6 +22,7 @@
 
 import { buildWindSwathCollection } from './windSwathService.js';
 import { fetchStormEventsCached } from './eventService.js';
+import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 
 const FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
@@ -77,7 +78,12 @@ async function sleep(ms: number): Promise<void> {
 let cyclesRun = 0;
 let lastCycleStartedAt: string | null = null;
 let lastCycleFinishedAt: string | null = null;
-let lastCycleStats = { warmedSwath: 0, warmedEvents: 0, errors: 0 };
+let lastCycleStats = {
+  warmedSwath: 0,
+  warmedEvents: 0,
+  warmedHotProperties: 0,
+  errors: 0,
+};
 
 export interface PrewarmStatus {
   enabled: boolean;
@@ -99,9 +105,60 @@ export function getPrewarmStatus(enabled: boolean): PrewarmStatus {
   };
 }
 
+interface HotProperty {
+  lat: number;
+  lng: number;
+  radius_miles: number | null;
+  history_preset: string | null;
+}
+
+/**
+ * Hot-properties pre-warm: top 25 most-recently-used property searches in
+ * VA/MD/PA. The list comes from the `properties` table (rep-pinned). Cached
+ * entries here mean the second rep to look up the same address gets the
+ * full storm history in <50 ms.
+ */
+async function readHotProperties(): Promise<HotProperty[]> {
+  if (!pgSql) return [];
+  try {
+    const rows = await pgSql<HotProperty[]>`
+      SELECT lat, lng, radius_miles, history_preset
+        FROM properties
+       WHERE lat BETWEEN 36 AND 43
+         AND lng BETWEEN -84 AND -74
+         AND updated_at > NOW() - INTERVAL '30 days'
+       ORDER BY updated_at DESC
+       LIMIT 25
+    `;
+    return rows;
+  } catch (err) {
+    console.warn('[prewarm] hot-properties read failed', err);
+    return [];
+  }
+}
+
+function monthsForPreset(preset: string | null): number {
+  switch (preset) {
+    case '10y':
+      return 120;
+    case '5y':
+      return 60;
+    case '2y':
+      return 24;
+    case '1y':
+    default:
+      return 12;
+  }
+}
+
 async function runPrewarmCycle(): Promise<void> {
   lastCycleStartedAt = new Date().toISOString();
-  const cycleStats = { warmedSwath: 0, warmedEvents: 0, errors: 0 };
+  const cycleStats = {
+    warmedSwath: 0,
+    warmedEvents: 0,
+    warmedHotProperties: 0,
+    errors: 0,
+  };
 
   // Wind swaths — 30 days × 3 regions.
   for (let dayOffset = 0; dayOffset < PREWARM_DAYS; dayOffset += 1) {
@@ -148,12 +205,37 @@ async function runPrewarmCycle(): Promise<void> {
     await sleep(PREWARM_PAUSE_BETWEEN_FETCH_MS);
   }
 
+  // Hot properties — the addresses reps actually canvass. Read from the
+  // `properties` table (recent activity, focus territory bbox).
+  const hotProperties = await readHotProperties();
+  for (const p of hotProperties) {
+    try {
+      const result = await fetchStormEventsCached({
+        lat: p.lat,
+        lng: p.lng,
+        radiusMiles: p.radius_miles ?? 35,
+        months: monthsForPreset(p.history_preset),
+        sinceDate: null,
+        states: FOCUS_STATES,
+      });
+      if (result.metadata.eventCount > 0) {
+        cycleStats.warmedHotProperties += 1;
+      }
+    } catch (err) {
+      cycleStats.errors += 1;
+      console.warn(`[prewarm] hot-property ${p.lat},${p.lng} failed`, err);
+    }
+    await sleep(PREWARM_PAUSE_BETWEEN_FETCH_MS);
+  }
+
   lastCycleStats = cycleStats;
   lastCycleFinishedAt = new Date().toISOString();
   cyclesRun += 1;
   console.log(
     `[prewarm] cycle ${cyclesRun} done — ` +
-      `swaths=${cycleStats.warmedSwath} events=${cycleStats.warmedEvents} ` +
+      `swaths=${cycleStats.warmedSwath} ` +
+      `events=${cycleStats.warmedEvents} ` +
+      `hot=${cycleStats.warmedHotProperties} ` +
       `errors=${cycleStats.errors}`,
   );
 }
