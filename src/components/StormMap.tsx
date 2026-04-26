@@ -33,14 +33,23 @@ import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
 import GpsTracker from './GpsTracker';
+import WindSwathLayer from './WindSwathLayer';
+import WindLegend from './WindLegend';
 import {
   fetchMrmsMetadata,
   fetchHistoricalMrmsMetadata,
   fetchSwathPolygons,
   fetchLiveSwathPolygons,
   getHistoricalMrmsOverlayUrl,
+  fetchStormImpact,
   type MrmsOverlayProduct,
 } from '../services/mrmsApi';
+import {
+  fetchWindSwathPolygons,
+  fetchLiveWindSwathPolygons,
+  type WindSwathCollection,
+} from '../services/windApi';
+import { geometryAreaSqMiles } from '../services/geoUtils';
 
 interface FitBoundsRequest {
   id: number;
@@ -71,6 +80,10 @@ interface StormMapProps {
   heatmapPoints?: Array<{ lat: number; lng: number; weight: number }>;
   showHeatmap?: boolean;
   onToggleHeatmap?: () => void;
+  /** When true, fetch & render the wind swath polygon layer. */
+  windEnabled?: boolean;
+  /** State filter for wind queries — defaults to VA/MD/PA focus territory. */
+  windStates?: string[];
 }
 
 interface StormContext {
@@ -95,6 +108,8 @@ type MapContentProps = Omit<
 > & {
   mapBounds: BoundingBox | null;
 };
+
+const DEFAULT_WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
 
 const LEAD_STAGE_COLORS: Record<LeadStage, string> = {
   new: '#38bdf8',
@@ -623,6 +638,8 @@ function MapContent({
   heatmapPoints,
   showHeatmap,
   onToggleHeatmap,
+  windEnabled,
+  windStates,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -646,6 +663,17 @@ function MapContent({
   const [liveNowCast, setLiveNowCast] = useState(false);
   const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
   const [liveSwathMeta, setLiveSwathMeta] = useState<{ maxInches: number; refTime: string } | null>(null);
+  const [windCollection, setWindCollection] = useState<WindSwathCollection | null>(null);
+  const [pointImpact, setPointImpact] = useState<{
+    lat: number;
+    lng: number;
+    label: string | null;
+    color: string | null;
+    severity: string | null;
+    sizeInches: number | null;
+    directHit: boolean;
+    loading: boolean;
+  } | null>(null);
   const [selectedDistanceMiles, setSelectedDistanceMiles] = useState<number | null>(null);
   const radarAutoFitKeyRef = useRef<string | null>(null);
   const mrmsAutoFitKeyRef = useRef<string | null>(null);
@@ -947,7 +975,7 @@ function MapContent({
         sourceGeometryType: 'polygon' as const,
         maxMeshInches: feature.properties.sizeInches,
         avgMeshInches: feature.properties.sizeInches,
-        areaSqMiles: 0,
+        areaSqMiles: geometryAreaSqMiles(feature.geometry),
         statesAffected: [],
         displayColor: feature.properties.color,
         displayLabel: feature.properties.label,
@@ -987,7 +1015,7 @@ function MapContent({
         sourceGeometryType: 'polygon' as const,
         maxMeshInches: feature.properties.sizeInches,
         avgMeshInches: feature.properties.sizeInches,
-        areaSqMiles: 0,
+        areaSqMiles: geometryAreaSqMiles(feature.geometry),
         statesAffected: [],
         displayColor: feature.properties.color,
         displayLabel: feature.properties.label,
@@ -1006,6 +1034,91 @@ function MapContent({
       clearInterval(id);
     };
   }, [liveNowCast, mapBounds]);
+
+  // ── Wind swath layer fetch ───────────────────────────────────────────────
+  // Pulls per-band wind polygons whenever the wind filter is on. In live mode
+  // (no selectedDate) this also folds in active SVR centroids.
+  const windStatesKey = (windStates ?? DEFAULT_WIND_FOCUS_STATES).join(',');
+  useEffect(() => {
+    if (!windEnabled) {
+      setWindCollection(null);
+      return;
+    }
+    const bounds =
+      stormContext.eventBounds ?? mapBounds ?? null;
+    if (!bounds) {
+      setWindCollection(null);
+      return;
+    }
+    let cancelled = false;
+    const states = windStates ?? DEFAULT_WIND_FOCUS_STATES;
+
+    const promise = selectedDate
+      ? fetchWindSwathPolygons({
+          date: selectedDate,
+          bounds,
+          states,
+          live: false,
+        })
+      : fetchLiveWindSwathPolygons(bounds, states);
+
+    promise.then((result) => {
+      if (!cancelled) setWindCollection(result);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+    // windStatesKey covers windStates without a referential check
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windEnabled, selectedDate, stormContext.eventBounds, mapBounds, windStatesKey]);
+
+  // ── Click-anywhere impact lookup ─────────────────────────────────────────
+  // Already-existing storm-impact endpoint is wired only for the searched
+  // address; here we expose it on any map click so reps can probe a
+  // neighborhood without re-searching.
+  useEffect(() => {
+    if (!map) return;
+    const listener = map.addListener('click', async (e: google.maps.MapMouseEvent) => {
+      if (!selectedDate) return;
+      const lat = e.latLng?.lat();
+      const lng = e.latLng?.lng();
+      if (lat === undefined || lng === undefined) return;
+      // Only run when MRMS historical mode is on; otherwise the marker click
+      // logic owns the click event and we skip the API call.
+      if (!mrmsHistoricalMode || !historicalMrmsParams) return;
+
+      setPointImpact({
+        lat,
+        lng,
+        label: null,
+        color: null,
+        severity: null,
+        sizeInches: null,
+        directHit: false,
+        loading: true,
+      });
+
+      const result = await fetchStormImpact({
+        date: selectedDate,
+        anchorTimestamp: historicalMrmsParams.anchorTimestamp,
+        points: [{ id: 'click', lat, lng }],
+      });
+
+      const impact = result?.results[0];
+      setPointImpact({
+        lat,
+        lng,
+        label: impact?.label ?? null,
+        color: impact?.color ?? null,
+        severity: impact?.severity ?? null,
+        sizeInches: impact?.maxHailInches ?? null,
+        directHit: Boolean(impact?.directHit),
+        loading: false,
+      });
+    });
+    return () => listener.remove();
+  }, [map, selectedDate, mrmsHistoricalMode, historicalMrmsParams]);
 
   const handleMarkerClick = useCallback(
     (event: StormEvent) => {
@@ -1290,6 +1403,45 @@ function MapContent({
         highlightSelected={mrmsHistoricalMode}
       />
 
+      <WindSwathLayer
+        collection={windCollection}
+        visible={Boolean(windEnabled)}
+        highlightSelected={Boolean(selectedDate)}
+      />
+
+      <WindLegend
+        visible={Boolean(windEnabled) && (windCollection?.features.length ?? 0) > 0}
+        reportCount={windCollection?.metadata.reportCount}
+        maxGustMph={windCollection?.metadata.maxGustMph}
+      />
+
+      {pointImpact && !pointImpact.loading && (
+        <InfoWindow
+          position={{ lat: pointImpact.lat, lng: pointImpact.lng }}
+          onCloseClick={() => setPointImpact(null)}
+        >
+          <div style={{ maxWidth: 240, fontFamily: 'system-ui, sans-serif' }}>
+            <div
+              style={{
+                fontWeight: 700,
+                fontSize: 13,
+                marginBottom: 4,
+                color: pointImpact.color ?? '#374151',
+              }}
+            >
+              {pointImpact.directHit
+                ? `Direct hit · ${pointImpact.label ?? 'hail'}`
+                : 'No direct hit at this point'}
+            </div>
+            <div style={{ fontSize: 11, color: '#6B7280', lineHeight: 1.5 }}>
+              {pointImpact.directHit
+                ? `Radar-estimated max hail at this exact coordinate during ${selectedDate}.`
+                : `Radar shows no hail-sized echoes at this exact coordinate for ${selectedDate}.`}
+            </div>
+          </div>
+        </InfoWindow>
+      )}
+
       <NexradOverlay
         visible={showNexrad}
         timestamp={radarTimestamp}
@@ -1487,6 +1639,8 @@ export default function StormMap({
   heatmapPoints,
   showHeatmap,
   onToggleHeatmap,
+  windEnabled,
+  windStates,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1537,6 +1691,8 @@ export default function StormMap({
         heatmapPoints={heatmapPoints}
         showHeatmap={showHeatmap}
         onToggleHeatmap={onToggleHeatmap}
+        windEnabled={windEnabled}
+        windStates={windStates}
       />
     </Map>
   );

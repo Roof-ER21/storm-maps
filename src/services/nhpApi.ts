@@ -75,6 +75,13 @@ interface NhpGeoJsonProperties {
   States?: string;
   FID?: number;
   OBJECTID?: number;
+  // Both casings appear in NHP and field-assistant exports.
+  MaxMESH?: number;
+  MAXMESH?: number;
+  AvgMESH?: number;
+  AVGMESH?: number;
+  Area_sqmi?: number;
+  AREA_SQMI?: number;
 }
 
 interface NhpGeoJsonFeature {
@@ -263,7 +270,27 @@ async function queryFeatureServer(
           dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
-        const estimatedMeshInches = estimateMeshInchesFromWidth(maxWidthKm);
+        // Prefer the NHP-published MaxMESH attribute; fall back to a width-based
+        // heuristic only when the attribute is absent. NHP stores MESH in mm,
+        // not inches.
+        const maxMeshMm = props.MaxMESH ?? props.MAXMESH ?? null;
+        const avgMeshMm = props.AvgMESH ?? props.AVGMESH ?? null;
+        const maxMeshInches =
+          maxMeshMm !== null
+            ? maxMeshMm / 25.4
+            : estimateMeshInchesFromWidth(maxWidthKm);
+        const avgMeshInches =
+          avgMeshMm !== null
+            ? avgMeshMm / 25.4
+            : Math.max(0.5, maxMeshInches * 0.72);
+
+        // Use the published Area_sqmi when present; else km² → mi² with the
+        // correct conversion (0.3861 — earlier code used the inverse).
+        const areaSqMilesPublished = props.Area_sqmi ?? props.AREA_SQMI ?? null;
+        const areaSqMiles =
+          areaSqMilesPublished !== null
+            ? areaSqMilesPublished
+            : hailLengthKm * maxWidthKm * 0.3861;
 
         return {
           id: String(props.FID || props.OBJECTID || Math.random()),
@@ -272,9 +299,9 @@ async function queryFeatureServer(
             feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon'
               ? 'polygon'
               : 'line',
-          maxMeshInches: estimatedMeshInches,
-          avgMeshInches: Math.max(0.5, estimatedMeshInches * 0.72),
-          areaSqMiles: hailLengthKm * maxWidthKm * 0.386, // km² to mi²
+          maxMeshInches,
+          avgMeshInches,
+          areaSqMiles,
           hailLengthKm,
           maxWidthKm,
           maxWidthLine,

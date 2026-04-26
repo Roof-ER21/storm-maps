@@ -19,6 +19,9 @@ import {
 } from '../types/storm';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import AddressImpactBadge from './AddressImpactBadge';
+import WindImpactBadge from './WindImpactBadge';
+
+const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
 
 interface SidebarProps {
   stormDates: StormDate[];
@@ -186,6 +189,42 @@ export default function Sidebar({
       .slice(0, 3)
       .map(([source]) => source);
   }, [selectedDateEvents]);
+  // Bounds across all reports for the selected storm date — used by the wind
+  // impact badge so we can constrain the wind swath fetch geographically.
+  // Falls back to a 1° box around the searched address when no events have
+  // been geocoded yet.
+  const selectedStormBounds = useMemo(() => {
+    if (selectedDateEvents.length === 0) {
+      if (searchLat !== null && searchLng !== null) {
+        return {
+          north: searchLat + 0.5,
+          south: searchLat - 0.5,
+          east: searchLng + 0.5,
+          west: searchLng - 0.5,
+        };
+      }
+      return null;
+    }
+    let north = -Infinity;
+    let south = Infinity;
+    let east = -Infinity;
+    let west = Infinity;
+    for (const e of selectedDateEvents) {
+      if (e.beginLat > north) north = e.beginLat;
+      if (e.beginLat < south) south = e.beginLat;
+      if (e.beginLon > east) east = e.beginLon;
+      if (e.beginLon < west) west = e.beginLon;
+    }
+    // Pad ~25 mi so the wind swath fetch picks up nearby gusts that may not
+    // have any hail report inside the immediate hail bounds.
+    const pad = 0.4;
+    return {
+      north: north + pad,
+      south: south - pad,
+      east: east + pad,
+      west: west - pad,
+    };
+  }, [selectedDateEvents, searchLat, searchLng]);
   const rankedStormHits = useMemo(
     () =>
       [...selectedDateEvents]
@@ -562,6 +601,15 @@ export default function Sidebar({
               anchorTimestamp={selectedStormAnchorTimestamp}
               searchLat={searchLat}
               searchLng={searchLng}
+              addressLabel={searchSummary?.locationLabel ?? null}
+            />
+
+            <WindImpactBadge
+              selectedDate={selectedDate.date}
+              searchLat={searchLat}
+              searchLng={searchLng}
+              bounds={selectedStormBounds}
+              states={WIND_FOCUS_STATES}
               addressLabel={searchSummary?.locationLabel ?? null}
             />
 
@@ -1155,6 +1203,28 @@ function StormDateCard({
   const sizeClass = getHailSizeClass(stormDate.maxHailInches);
   const severityColor = sizeClass?.color || HAIL_SIZE_CLASSES[0].color;
   const canvassPriority = getStormCanvassPriority(stormDate, evidenceCount);
+  // NOAA Storm Events publishes archive data on a 30–90 day lag; anything
+  // newer is "preliminary" (sourced from SPC same-day reports or LSRs which
+  // can be revised). Use the date age + source mix to pick the pill.
+  const isPreliminary = useMemo(() => {
+    // Date.now is unavoidable here — preliminary status is a function of
+    // wall-clock age, not derivable from props alone. The pill re-renders
+    // when StormDateCard does, which is fine for an at-a-glance freshness
+    // hint that doesn't need sub-second precision.
+    // eslint-disable-next-line react-hooks/purity
+    const ageMs = Date.now() - new Date(`${stormDate.date}T00:00:00Z`).getTime();
+    const ageDays = ageMs / (1000 * 60 * 60 * 24);
+    if (ageDays < 90) return true;
+    return dateEvents.some((e) => {
+      const s = e.source ?? '';
+      return (
+        /^SPC$/i.test(s) ||
+        /^LSR/i.test(s) ||
+        /^NEXRAD/i.test(s) ||
+        /preliminary/i.test(s)
+      );
+    });
+  }, [stormDate.date, dateEvents]);
 
   return (
     <div
@@ -1185,6 +1255,20 @@ function StormDateCard({
               />
               <span className="text-sm font-medium text-stone-900 truncate">
                 {stormDate.label}
+              </span>
+              <span
+                className={`flex-shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                  isPreliminary
+                    ? 'bg-amber-100 text-amber-700'
+                    : 'bg-emerald-100 text-emerald-700'
+                }`}
+                title={
+                  isPreliminary
+                    ? 'Preliminary — SPC/LSR same-day or recent radar; subject to revision when NOAA Storm Events publishes the official archive (typically 30–90 days).'
+                    : 'Verified — sourced from NOAA Storm Events archive.'
+                }
+              >
+                {isPreliminary ? 'PRELIM' : 'VERIFIED'}
               </span>
             </div>
             <div className={`mt-1 ml-4.5 flex flex-wrap items-center ${compact ? 'gap-2' : 'gap-3'}`}>

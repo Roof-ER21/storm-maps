@@ -24,6 +24,10 @@ import aiImageProxy from './ai/routes/imageProxy.js';
 import aiDashboardRoutes from './ai/routes/dashboardRoutes.js';
 import aiBridgeRoutes from './ai/routes/bridgeRoutes.js';
 import { requireAuth, checkScanLimit } from './ai/authMiddleware.js';
+import {
+  buildWindSwathCollection,
+  buildWindImpactResponse,
+} from './storm/windSwathService.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'hail-yes-dev-secret-change-in-production';
 const STRIPE_SECRET = process.env.STRIPE_SECRET_KEY || '';
@@ -739,6 +743,129 @@ app.post('/api/demo/seed', async (_req, res) => {
   } catch (err) {
     console.error('Demo seed error:', err);
     res.status(500).json({ error: 'Failed to seed demo data' });
+  }
+});
+
+// ── Wind swath polygons (storm-day or live now-cast) ──────
+const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
+
+interface WindBoundsQuery {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  states?: string;
+  live?: string;
+}
+
+function parseWindBounds(q: WindBoundsQuery) {
+  const n = parseFloat(q.north ?? '');
+  const s = parseFloat(q.south ?? '');
+  const e = parseFloat(q.east ?? '');
+  const w = parseFloat(q.west ?? '');
+  if (![n, s, e, w].every(Number.isFinite)) return null;
+  if (n <= s || e <= w) return null;
+  return { north: n, south: s, east: e, west: w };
+}
+
+function parseStates(raw?: string): string[] {
+  if (!raw) return WIND_FOCUS_STATES;
+  return raw
+    .split(',')
+    .map((s) => s.trim().toUpperCase())
+    .filter(Boolean);
+}
+
+function isValidIsoDate(value?: string): boolean {
+  return Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value));
+}
+
+app.get('/api/wind/swath-polygons', async (req, res) => {
+  try {
+    const q = req.query as WindBoundsQuery;
+    const bounds = parseWindBounds(q);
+    const date = q.date ?? new Date().toISOString().slice(0, 10);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const collection = await buildWindSwathCollection({
+      date,
+      bounds,
+      states: parseStates(q.states),
+      includeLive: q.live === '1',
+    });
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json(collection);
+  } catch (err) {
+    console.error('[wind] swath-polygons failed', err);
+    res.status(500).json({ error: 'Failed to build wind swaths' });
+  }
+});
+
+app.get('/api/wind/now-polygons', async (req, res) => {
+  try {
+    const q = req.query as WindBoundsQuery;
+    const bounds = parseWindBounds(q);
+    if (!bounds) {
+      res.status(400).json({ error: 'north/south/east/west required' });
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const collection = await buildWindSwathCollection({
+      date: today,
+      bounds,
+      states: parseStates(q.states),
+      includeLive: true,
+    });
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json(collection);
+  } catch (err) {
+    console.error('[wind] now-polygons failed', err);
+    res.status(500).json({ error: 'Failed to build live wind swaths' });
+  }
+});
+
+interface WindImpactRequestBody {
+  date?: string;
+  bounds?: { north: number; south: number; east: number; west: number };
+  states?: string[];
+  live?: boolean;
+  points?: Array<{ id: string; lat: number; lng: number }>;
+}
+
+app.post('/api/wind/impact', async (req, res) => {
+  try {
+    const body = (req.body || {}) as WindImpactRequestBody;
+    if (
+      !body.bounds ||
+      !Array.isArray(body.points) ||
+      body.points.length === 0
+    ) {
+      res.status(400).json({ error: 'bounds and points required' });
+      return;
+    }
+    const date = body.date ?? new Date().toISOString().slice(0, 10);
+    if (!isValidIsoDate(date)) {
+      res.status(400).json({ error: 'date must be YYYY-MM-DD' });
+      return;
+    }
+    const response = await buildWindImpactResponse({
+      date,
+      bounds: body.bounds,
+      states: body.states && body.states.length > 0 ? body.states : WIND_FOCUS_STATES,
+      includeLive: Boolean(body.live),
+      points: body.points,
+    });
+    res.json(response);
+  } catch (err) {
+    console.error('[wind] impact failed', err);
+    res.status(500).json({ error: 'Failed to compute wind impact' });
   }
 });
 

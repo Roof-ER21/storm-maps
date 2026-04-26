@@ -237,6 +237,20 @@ export default function HailSwathLayer({
           map,
           zIndex: baseZ + levelZ,
         });
+        // Hover bumps the fill so reps can scan a storm without clicking each
+        // band — restored on mouseout.
+        polygon.addListener('mouseover', () => {
+          polygon.setOptions({
+            fillOpacity: Math.min(0.6, polygonStyle.fillOpacity + 0.18),
+            strokeOpacity: Math.min(1, polygonStyle.strokeOpacity + 0.12),
+          });
+        });
+        polygon.addListener('mouseout', () => {
+          polygon.setOptions({
+            fillOpacity: polygonStyle.fillOpacity,
+            strokeOpacity: polygonStyle.strokeOpacity,
+          });
+        });
         polygon.addListener('click', (event: google.maps.MapMouseEvent) => {
           infoWindowRef.current!.setContent(infoContent);
           infoWindowRef.current!.setPosition(event.latLng || rings[0][0]);

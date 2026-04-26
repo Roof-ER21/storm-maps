@@ -450,11 +450,23 @@ export const HAIL_SIZE_CLASSES: HailSizeClass[] = [
 
 /**
  * Get the hail size class for a given diameter in inches.
+ * Uses an epsilon-tolerant lookup so values exactly on a band boundary
+ * (e.g. 0.75, 1.0) don't fall through the cracks. Anything ≥ the largest
+ * band's minInches lands in that band.
  */
 export function getHailSizeClass(inches: number): HailSizeClass | null {
-  return HAIL_SIZE_CLASSES.find(
-    (cls) => inches >= cls.minInches && inches < cls.maxInches
-  ) ?? null;
+  if (!Number.isFinite(inches) || inches < HAIL_SIZE_CLASSES[0].minInches) {
+    return null;
+  }
+  const epsilon = 1e-6;
+  for (let i = 0; i < HAIL_SIZE_CLASSES.length; i += 1) {
+    const cls = HAIL_SIZE_CLASSES[i];
+    if (inches >= cls.minInches - epsilon && inches < cls.maxInches) {
+      return cls;
+    }
+  }
+  // Anything past the last band's minInches sits in the top band.
+  return HAIL_SIZE_CLASSES[HAIL_SIZE_CLASSES.length - 1];
 }
 
 export function getStormCanvassPriority(

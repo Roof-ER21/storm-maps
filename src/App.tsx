@@ -32,6 +32,11 @@ import type {
   EvidenceItem,
 } from './types/storm';
 import { getStormCanvassPriority, DEFAULT_WIN_CHECKLIST } from './types/storm';
+import {
+  filterEventsToFocusTerritory,
+  isInFocusTerritory,
+  FOCUS_STATE_CODES,
+} from './data/territories';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
@@ -704,24 +709,67 @@ function App({ onLogout }: { onLogout: () => void }) {
 
   const activeStormAlerts = stormAlerts.filter((a) => !a.dismissed);
 
-  const filteredEvents = useMemo(
-    () =>
-      events.filter((event) => {
-        if (event.eventType === 'Hail') {
-          return eventFilters.hail;
-        }
-        if (event.eventType === 'Thunderstorm Wind') {
-          return eventFilters.wind;
+  const [territoryOnly, setTerritoryOnly] = useState<boolean>(true);
+
+  // Auto-disable the VA/MD/PA territory filter whenever a search lands the rep
+  // outside the focus zone (e.g. checking storms in NC during expansion).
+  // The toggle remains user-controllable; this just keeps it from silently
+  // hiding all events for an out-of-territory search.
+  useEffect(() => {
+    if (
+      !territoryOnly ||
+      !searchSummary ||
+      typeof queryLocation.lat !== 'number' ||
+      typeof queryLocation.lng !== 'number'
+    ) {
+      return;
+    }
+    const inTerritory = isInFocusTerritory({
+      lat: queryLocation.lat,
+      lng: queryLocation.lng,
+    });
+    if (!inTerritory) {
+      setTerritoryOnly(false);
+    }
+  }, [searchSummary, queryLocation.lat, queryLocation.lng, territoryOnly]);
+
+  const filteredEvents = useMemo(() => {
+    const byType = events.filter((event) => {
+      if (event.eventType === 'Hail') return eventFilters.hail;
+      if (event.eventType === 'Thunderstorm Wind') return eventFilters.wind;
+      return false;
+    });
+    if (!territoryOnly) return byType;
+    return filterEventsToFocusTerritory(byType);
+  }, [eventFilters, events, territoryOnly]);
+
+  const filteredSwaths = useMemo(() => {
+    if (!eventFilters.hail) return [];
+    if (!territoryOnly) return swaths;
+    // Keep any swath that intersects the focus bbox via at least one
+    // coordinate. NHP centerlines outside VA/MD/PA fall away here.
+    return swaths.filter((swath) => {
+      const geom = swath.geometry;
+      const accCoords = (coords: number[][]): boolean => {
+        for (const [lng, lat] of coords) {
+          if (isInFocusTerritory({ lat, lng })) return true;
         }
         return false;
-      }),
-    [eventFilters, events],
-  );
-
-  const filteredSwaths = useMemo(
-    () => (eventFilters.hail ? swaths : []),
-    [eventFilters.hail, swaths],
-  );
+      };
+      if (geom.type === 'Polygon') {
+        for (const ring of geom.coordinates) if (accCoords(ring)) return true;
+      } else if (geom.type === 'MultiPolygon') {
+        for (const poly of geom.coordinates) {
+          for (const ring of poly) if (accCoords(ring)) return true;
+        }
+      } else if (geom.type === 'LineString') {
+        if (accCoords(geom.coordinates)) return true;
+      } else if (geom.type === 'MultiLineString') {
+        for (const line of geom.coordinates) if (accCoords(line)) return true;
+      }
+      return false;
+    });
+  }, [eventFilters.hail, swaths, territoryOnly]);
 
   const filteredStormDates = useMemo(() => {
     const sourceDates = new Map(stormDates.map((stormDate) => [stormDate.date, stormDate]));
@@ -2547,6 +2595,8 @@ function App({ onLogout }: { onLogout: () => void }) {
         swaths={filteredSwaths}
         gpsPosition={gpsPosition}
         selectedDate={selectedDate?.date ?? null}
+        windEnabled={eventFilters.wind}
+        windStates={territoryOnly ? FOCUS_STATE_CODES : undefined}
         fitBoundsRequest={fitBoundsRequest}
         onCameraChanged={handleCameraChanged}
         onMapClick={handleMapClick}

@@ -59,3 +59,45 @@ self.addEventListener('notificationclick', (event) => {
     })
   );
 });
+
+// Push handler — fires when the server pushes a payload to the
+// browser's push subscription. Payload shape:
+//   { title, body, url, tag, data: { ... } }
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  let payload = {};
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: 'Storm Maps', body: event.data.text() };
+  }
+  const title = payload.title || 'Storm Alert';
+  const options = {
+    body: payload.body || '',
+    icon: payload.icon || '/favicon.svg',
+    badge: payload.badge || '/favicon.svg',
+    tag: payload.tag || 'storm-maps-alert',
+    renotify: Boolean(payload.renotify),
+    requireInteraction: Boolean(payload.requireInteraction),
+    data: { url: payload.url || self.location.origin, ...payload.data },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Allow the page to ask the SW to fire a notification (used by the
+// in-tab hail-zone proximity alert and the pre-storm alert hook).
+self.addEventListener('message', (event) => {
+  const data = event.data || {};
+  if (data.type === 'show-notification' && data.title) {
+    const options = {
+      body: data.body || '',
+      icon: data.icon || '/favicon.svg',
+      badge: data.badge || '/favicon.svg',
+      tag: data.tag || 'storm-maps-alert',
+      renotify: Boolean(data.renotify),
+      requireInteraction: Boolean(data.requireInteraction),
+      data: { url: data.url || self.location.origin, ...data.data },
+    };
+    self.registration.showNotification(data.title, options);
+  }
+});
