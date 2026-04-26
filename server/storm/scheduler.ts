@@ -373,17 +373,23 @@ async function runPrewarmCycle(): Promise<void> {
   for (const p of prioritizedProps.slice(0, consiliencePrewarmCap)) {
     if (!pgSql) break;
     try {
-      // Pull dates with Hail or insurance-actionable Wind events near this
-      // property. Order by date DESC to surface "Latest Hits" the dashboard
-      // shows; could change to magnitude DESC if the dashboard pivots to
-      // "biggest storms" mode.
+      // Pull dates with Hail / Wind / Tornado events that fall within the
+      // consilience radius (15mi here — matches the runtime "did this metro
+      // get hit?" use case). The 35mi bbox of v1 was way too loose: dates
+      // surfaced where events were 15-30 mi from the property, well outside
+      // the consilience radius → 0/10 → skip-on-zero cache write → empty
+      // trend chart. Now date-pull bbox ≈ consilience radius pad so almost
+      // every date that surfaces has events to find.
+      const PREWARM_RADIUS_MI = 15;
+      const latPad = (PREWARM_RADIUS_MI + 2) / 69;
+      const lngPad = (PREWARM_RADIUS_MI + 2) / (69 * Math.cos((p.lat * Math.PI) / 180));
       const dateRows = await pgSql<Array<{ event_date: string | Date }>>`
         SELECT DISTINCT event_date
           FROM verified_hail_events
          WHERE source_ncei_storm_events = TRUE
            AND event_type IN ('Hail', 'Thunderstorm Wind', 'Tornado')
-           AND lat BETWEEN ${p.lat - 0.5} AND ${p.lat + 0.5}
-           AND lng BETWEEN ${p.lng - 0.5} AND ${p.lng + 0.5}
+           AND lat BETWEEN ${p.lat - latPad} AND ${p.lat + latPad}
+           AND lng BETWEEN ${p.lng - lngPad} AND ${p.lng + lngPad}
          ORDER BY event_date DESC
          LIMIT ${datesPerProperty}
       `;
@@ -393,10 +399,8 @@ async function runPrewarmCycle(): Promise<void> {
             ? row.event_date.toISOString().slice(0, 10)
             : String(row.event_date).slice(0, 10);
         try {
-          // skipCache=true so we always re-compute (refreshing the cache).
-          // persist defaults to true so the result is written back.
           const r = await buildConsilience(
-            { lat: p.lat, lng: p.lng, date: dateStr, radiusMiles: 5 },
+            { lat: p.lat, lng: p.lng, date: dateStr, radiusMiles: PREWARM_RADIUS_MI },
             { skipCache: true },
           );
           consilienceWarmed += 1;

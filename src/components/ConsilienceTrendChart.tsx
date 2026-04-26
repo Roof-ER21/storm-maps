@@ -69,7 +69,7 @@ export default function ConsilienceTrendChart({
     let cancelled = false;
     setLoading(true);
     fetch(
-      `/api/storm/consilience-history?lat=${location.lat}&lng=${location.lng}&monthsBack=${monthsBack}`,
+      `/api/storm/consilience-history?lat=${location.lat}&lng=${location.lng}&monthsBack=${monthsBack}&radius=15`,
     )
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((data: { points?: HistoryPoint[] }) => {

@@ -1291,7 +1291,10 @@ app.get('/api/storm/consilience-history', async (req, res) => {
       return;
     }
     const monthsBack = Math.min(60, Math.max(1, parseInt(q.monthsBack ?? '12', 10) || 12));
-    const radius = q.radius ? Math.min(25, Math.max(1, parseFloat(q.radius) || 5)) : 5;
+    // Default radius=15mi to match the prewarm scheduler — the cached entries
+    // are computed at radius=15. Specify `?radius=N` to query other radii
+    // (cache miss triggers live recompute via the consilience endpoint).
+    const radius = q.radius ? Math.min(25, Math.max(1, parseFloat(q.radius) || 15)) : 15;
     const latQ = Math.round(lat * 100) / 100;
     const lngQ = Math.round(lng * 100) / 100;
     const rows = await pgSql<
