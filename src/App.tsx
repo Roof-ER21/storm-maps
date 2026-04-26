@@ -2859,6 +2859,7 @@ function App() {
         {activeView === 'dashboard' && (
           <DashboardPage
             searchSummary={searchSummary}
+            queryLocation={queryLocation}
             stormDates={filteredStormDates}
             events={filteredEvents}
             evidenceItems={propertyEvidenceItems}

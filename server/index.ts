@@ -29,6 +29,7 @@ import {
 } from './storm/windSwathService.js';
 import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
 import { fetchStormEventsCached } from './storm/eventService.js';
+import { buildConsilience } from './storm/consilienceService.js';
 import {
   startPrewarmScheduler,
   getPrewarmStatus,
@@ -1197,6 +1198,51 @@ app.get('/api/storm/events', async (req, res) => {
   } catch (err) {
     console.error('[storm-events] failed', err);
     res.status(500).json({ error: 'Failed to fetch storm events' });
+  }
+});
+
+// ── Consilience (5-source corroboration) ──────────────────────
+// GET /api/storm/consilience?lat=X&lng=Y&date=YYYY-MM-DD[&radius=5]
+//   Returns the 5-source consilience result for a property + date.
+//   Rep dashboard hits this to render the yellow-flag low-confidence indicator
+//   on storm date cards. Synoptic source is silently skipped if SYNOPTIC_TOKEN
+//   isn't set in env.
+interface ConsilienceQuery {
+  lat?: string;
+  lng?: string;
+  date?: string;
+  radius?: string;
+}
+
+app.get('/api/storm/consilience', async (req, res) => {
+  try {
+    const q = req.query as ConsilienceQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    if (!q.date || !/^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      res.status(400).json({ error: 'date (YYYY-MM-DD) required' });
+      return;
+    }
+    const radius = q.radius
+      ? Math.min(25, Math.max(1, parseFloat(q.radius) || 5))
+      : 5;
+    const result = await buildConsilience({
+      lat,
+      lng,
+      date: q.date,
+      radiusMiles: radius,
+    });
+    // 10-min browser cache; consilience drift over <10min is negligible
+    // because the underlying SPC/IEM/MRMS/Synoptic feeds update slower.
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json(result);
+  } catch (err) {
+    console.error('[consilience] failed', err);
+    res.status(500).json({ error: 'Failed to compute consilience' });
   }
 });
 

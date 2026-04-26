@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type {
   CanvassRouteStop,
   EvidenceItem,
+  LatLng,
   PinnedProperty,
   PropertySearchSummary,
   StormDate,
@@ -11,10 +12,12 @@ import type { StormAlert } from '../hooks/useStormAlerts';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import { getAiDashboard } from '../services/aiApi';
 import { getTodayEasternKey } from '../services/dateUtils';
+import { useConsilienceFlags } from '../hooks/useConsilienceFlags';
 import type { AiDashboardStats } from '../types/analysis';
 
 interface DashboardPageProps {
   searchSummary: PropertySearchSummary | null;
+  queryLocation: LatLng | null;
   stormDates: StormDate[];
   events: StormEvent[];
   evidenceItems: EvidenceItem[];
@@ -41,6 +44,7 @@ interface DashboardPageProps {
 
 export default function DashboardPage({
   searchSummary,
+  queryLocation,
   stormDates,
   events,
   evidenceItems,
@@ -66,6 +70,7 @@ export default function DashboardPage({
 }: DashboardPageProps) {
   const [aiStats, setAiStats] = useState<AiDashboardStats | null>(null);
   const [devToolsOpen, setDevToolsOpen] = useState(false);
+  const consilienceFlags = useConsilienceFlags(stormDates, queryLocation);
 
   useEffect(() => {
     getAiDashboard()
@@ -589,9 +594,34 @@ export default function DashboardPage({
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-base font-semibold text-stone-900">
-                        {stormDate.label}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-base font-semibold text-stone-900">
+                          {stormDate.label}
+                        </p>
+                        {(() => {
+                          const flag = consilienceFlags.get(stormDate.date);
+                          if (!flag) return null;
+                          if (flag.lowConfidence) {
+                            return (
+                              <span
+                                title={`Only ${flag.confirmedCount}/5 independent sources confirm this storm at this property. Verify before claiming.`}
+                                className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
+                              >
+                                <span aria-hidden="true">⚠</span>
+                                Low confidence ({flag.confirmedCount}/5)
+                              </span>
+                            );
+                          }
+                          return (
+                            <span
+                              title={`${flag.confirmedCount}/5 independent sources confirmed (${flag.confidenceTier})`}
+                              className="inline-flex items-center rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
+                            >
+                              {flag.confirmedCount}/5 confirmed
+                            </span>
+                          );
+                        })()}
+                      </div>
                       <p className="mt-1 text-sm text-stone-500">
                         {stormDate.eventCount} report
                         {stormDate.eventCount === 1 ? '' : 's'}

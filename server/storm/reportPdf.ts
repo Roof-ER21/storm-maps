@@ -18,6 +18,7 @@ import PDFDocument from 'pdfkit';
 import { buildMrmsVectorPolygons } from './mrmsService.js';
 import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
+import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
 import type { BoundingBox } from './types.js';
 
 const GOOGLE_STATIC_MAPS_API_KEY =
@@ -218,6 +219,22 @@ function severityScore(events: StormEventDto[]): {
 }
 
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
+  // Fire consilience (5-source corroboration) early so it overlaps with the
+  // event/swath fetch work below. 25s soft cap — PDF still renders without
+  // it. Auto-curate rule applied at render time: only positives are shown.
+  const consiliencePromise: Promise<ConsilienceResult | null> = Promise.race([
+    buildConsilience({
+      lat: req.lat,
+      lng: req.lng,
+      date: req.dateOfLoss,
+      radiusMiles: Math.min(req.radiusMiles, 10),
+    }).catch((err) => {
+      console.warn('[reportPdf] consilience failed:', (err as Error).message);
+      return null;
+    }),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 25_000)),
+  ]);
+
   // 1. Resolve events (fall through to cached aggregator if not passed).
   let events = req.events;
   if (!events) {
@@ -371,6 +388,28 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   });
   doc.y = sumY + cardHeight + 18;
+
+  // ── Storm Corroboration (5-source consilience) ────────────────────────
+  // Auto-curate rule: render only confirmed sources. If no source confirms
+  // the storm, the section is silently omitted from the PDF.
+  const consilience = await consiliencePromise;
+  if (consilience && consilience.curated.confirmedSources.length > 0) {
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Storm Corroboration');
+    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
+    const tierLabel = consilience.confidenceTier
+      .replace('-', ' ')
+      .replace(/^./, (c) => c.toUpperCase());
+    doc.text(
+      `${consilience.confirmedCount}/5 independent sources · ${tierLabel}`,
+    );
+    doc.moveDown(0.4);
+    doc.fontSize(9.5).font('Helvetica').fillColor('#0f172a');
+    for (const line of consilience.curated.evidenceLines) {
+      doc.text(`• ${line}`, { width: 504 });
+      doc.moveDown(0.15);
+    }
+    doc.moveDown(0.5);
+  }
 
   // ── Vector swath map ──────────────────────────────────────────────────
   doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('Hail Footprint');

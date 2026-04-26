@@ -191,6 +191,43 @@ async function migrate() {
       ON push_subscriptions (rep_id) WHERE invalidated_at IS NULL
   `;
 
+  // Verified hail events — write-after-compute target for the consilience
+  // service (server/storm/consilienceService.ts). Optional optimization layer:
+  // the consilience service runs stateless from the 5 underlying sources, but
+  // when it produces a positive result the row gets upserted here so repeat
+  // adjuster-PDF generation for the same (date, property) doesn't re-fetch.
+  // Schema mirrors a minimal subset of sa21's verified_hail_events (per-source
+  // boolean flags + a confidence tier); add columns as more sources land.
+  await sql`
+    CREATE TABLE IF NOT EXISTS verified_hail_events (
+      id SERIAL PRIMARY KEY,
+      event_date DATE NOT NULL,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      lat_bucket TEXT NOT NULL,
+      lng_bucket TEXT NOT NULL,
+      hail_size_inches REAL DEFAULT 0,
+      source_mrms BOOLEAN DEFAULT FALSE,
+      source_spc_hail BOOLEAN DEFAULT FALSE,
+      source_iem_lsr BOOLEAN DEFAULT FALSE,
+      source_wind_context BOOLEAN DEFAULT FALSE,
+      source_synoptic BOOLEAN DEFAULT FALSE,
+      confirmed_count INTEGER DEFAULT 0,
+      confidence_tier TEXT DEFAULT 'none',
+      consilience_payload JSONB,
+      generated_at TIMESTAMP DEFAULT NOW(),
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS verified_hail_events_dedup_idx
+      ON verified_hail_events (event_date, lat_bucket, lng_bucket)
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS verified_hail_events_date_idx
+      ON verified_hail_events (event_date)
+  `;
+
   // Storm-event cache for property-search responses.
   await sql`
     CREATE TABLE IF NOT EXISTS event_cache (
@@ -222,7 +259,7 @@ async function migrate() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
 
-  console.log('[migrate] All 10 core tables created successfully.');
+  console.log('[migrate] All 11 core tables created successfully.');
 
   // Create AI property analysis tables
   const aiDb = drizzle(sql);
