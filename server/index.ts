@@ -1521,6 +1521,17 @@ app.get('/api/admin/consilience-cache-status', requireAdmin, async (_req, res) =
   }
 });
 
+app.post('/api/admin/consilience-cache-purge', requireAdmin, async (req, res) => {
+  try {
+    const days = Math.max(0, parseInt((req.query.days as string) ?? '0', 10) || 0);
+    const { purgeStaleCache } = await import('./storm/consilienceCache.js');
+    const purged = await purgeStaleCache(days);
+    res.json({ ok: true, purged, daysOldThreshold: days });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // NCEI Storm Events drill-down — adjuster-facing search against the
 // official NOAA archive. Backed by the verified_hail_events table; only
 // rows with source_ncei_storm_events=TRUE are queried.
