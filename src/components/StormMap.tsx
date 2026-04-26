@@ -33,6 +33,8 @@ import MpingLayer from './MpingLayer';
 import CocorahsLayer from './CocorahsLayer';
 import MesocycloneLayer from './MesocycloneLayer';
 import SynopticLayer from './SynopticLayer';
+import ParcelLayer from './ParcelLayer';
+import SketchLayer from './SketchLayer';
 import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
@@ -815,6 +817,10 @@ function MapContent({
   const [showCocorahs, setShowCocorahs] = useState(false);
   const [showMeso, setShowMeso] = useState(false);
   const [showSynoptic, setShowSynoptic] = useState(false);
+  // Field Inspection mode — opens DrawingManager so reps can mark damage
+  // spots / hail streaks during a roof walk. Sketches persist in
+  // localStorage by property+date.
+  const [showSketch, setShowSketch] = useState(false);
   // Forces NexradOverlay to refresh its tile URLs on an interval while in
   // LIVE mode (no selected date). Each tick is a monotonic counter that gets
   // folded into the effective timestamp so tiles re-request every 2 min.
@@ -1685,6 +1691,18 @@ function MapContent({
         bounds={mapBounds}
       />
 
+      <ParcelLayer
+        lat={propertyMarker?.lat ?? null}
+        lng={propertyMarker?.lng ?? null}
+      />
+
+      <SketchLayer
+        enabled={showSketch}
+        propertyLat={propertyMarker?.lat ?? null}
+        propertyLng={propertyMarker?.lng ?? null}
+        dateOfLoss={selectedDate}
+      />
+
       <WindLegend
         visible={Boolean(windEnabled) && (windCollection?.features.length ?? 0) > 0}
         reportCount={windCollection?.metadata.reportCount}
@@ -1962,6 +1980,24 @@ function MapContent({
             aria-label="Toggle Synoptic surface stations"
           >
             Stations
+          </button>
+          {/* Field Inspection — drawing tools for marking damage spots
+              during a roof walk. Sketches persist by property+date. */}
+          <button
+            onClick={() => setShowSketch((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showSketch
+                ? 'bg-rose-700 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showSketch
+                ? 'Field Inspection mode active — click to exit'
+                : 'Enter Field Inspection mode (draw damage paths, mark dings, outline impact zones)'
+            }
+            aria-label="Toggle Field Inspection drawing tools"
+          >
+            ✍ Sketch
           </button>
           <button
             onClick={() => setLiveNowCast((v) => !v)}

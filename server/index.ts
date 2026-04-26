@@ -32,6 +32,7 @@ import { fetchStormEventsCached } from './storm/eventService.js';
 import { buildConsilience } from './storm/consilienceService.js';
 import { fetchRecentMpingReports, fetchMpingReportsForDate, isMpingConfigured } from './storm/mpingService.js';
 import { fetchCocorahsHailReports } from './storm/cocorahsClient.js';
+import { fetchParcelGeometry } from './property/parcelGeometry.js';
 import { fetchMesocyclones } from './storm/nceiNx3MdaClient.js';
 import { corroborateSynopticObservations } from './storm/synopticObservationsService.js';
 import { etDayUtcWindow } from './storm/timeUtils.js';
@@ -1357,6 +1358,32 @@ app.get('/api/storm/consilience-history', async (req, res) => {
 
 // ── mPING crowd-source feed ───────────────────────────────────
 // GET /api/storm/mping?windowMinutes=60[&north&south&east&west]   live window
+// ── Parcel geometry (for the property polygon overlay) ─────────────────
+// GET /api/property/parcel?lat=X&lng=Y
+//   Returns the lot's polygon rings if the point falls inside a county
+//   we have an ArcGIS endpoint for. Outside coverage → 200 + null payload.
+interface ParcelQuery {
+  lat?: string;
+  lng?: string;
+}
+app.get('/api/property/parcel', async (req, res) => {
+  try {
+    const q = req.query as ParcelQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    const parcel = await fetchParcelGeometry(lat, lng);
+    res.set('Cache-Control', 'public, max-age=86400'); // 24h — parcels rarely change
+    res.json({ ok: true, parcel });
+  } catch (err) {
+    console.error('[parcel] failed', err);
+    res.status(500).json({ error: 'Failed to fetch parcel geometry' });
+  }
+});
+
 // ── CoCoRaHS observer hail reports ─────────────────────────────────────
 // GET /api/storm/cocorahs?date=YYYY-MM-DD&state=VA[&state=MD&state=PA]
 //   Returns daily citizen-observer hail-pad measurements. Free, no key.
