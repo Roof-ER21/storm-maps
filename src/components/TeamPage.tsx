@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CanvassRouteStop, LeadStage } from '../types/storm';
 import type { RepProfile } from '../hooks/useRepProfile';
-import { createCheckout, openBillingPortal, getBillingStatus } from '../services/api';
 import { getTodayEasternKey } from '../services/dateUtils';
 
 const TEAM_ROSTER_KEY = 'hail-yes:team-roster';
@@ -40,7 +39,6 @@ interface TeamPageProps {
   repProfile: RepProfile | null;
   onUpdateProfile: (profile: RepProfile) => void;
   searchLabel: string | null;
-  onLogout?: () => void;
 }
 
 const STAGE_LABELS: Record<LeadStage, string> = {
@@ -51,22 +49,13 @@ const STAGE_COLORS: Record<LeadStage, string> = {
   new: 'text-sky-600', contacted: 'text-amber-600', inspection_set: 'text-violet-600', won: 'text-emerald-600', lost: 'text-stone-400',
 };
 
-export default function TeamPage({ routeStops, repProfile, onUpdateProfile, searchLabel, onLogout }: TeamPageProps) {
+export default function TeamPage({ routeStops, repProfile, onUpdateProfile, searchLabel }: TeamPageProps) {
   const [name, setName] = useState(repProfile?.name || '');
   const [phone, setPhone] = useState(repProfile?.phone || '');
   const [companyName, setCompanyName] = useState(repProfile?.companyName || '');
   const [teamCode, setTeamCode] = useState(repProfile?.teamCode || '');
   const [role, setRole] = useState<'rep' | 'manager'>(repProfile?.role || 'rep');
   const [roster, setRoster] = useState<TeamMemberSnapshot[]>(loadRoster);
-  const [billingPlan, setBillingPlan] = useState<string>('free');
-  const [billingLoading, setBillingLoading] = useState(false);
-  const [billingMsg, setBillingMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    void getBillingStatus().then((status) => {
-      if (status) setBillingPlan(status.plan);
-    });
-  }, []);
 
   // Auto-sync own data to roster when profile exists
   useEffect(() => {
@@ -218,80 +207,6 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
               </>
             )}
           </div>
-          {/* Billing */}
-          <div className="mt-4 border-t border-stone-200 pt-4">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500 mb-3">Subscription</p>
-            <div className="flex items-center gap-3">
-              <span className={`rounded-full border px-3 py-1 text-xs font-bold ${
-                billingPlan === 'company' ? 'border-violet-300 bg-violet-50 text-violet-700' :
-                billingPlan === 'pro' ? 'border-orange-300 bg-orange-50 text-orange-700' :
-                'border-stone-300 bg-stone-100 text-stone-500'
-              }`}>
-                {billingPlan === 'company' ? 'Company' : billingPlan === 'pro' ? 'Pro' : 'Free'}
-              </span>
-              {billingPlan === 'free' ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    disabled={billingLoading}
-                    onClick={async () => {
-                      setBillingLoading(true);
-                      setBillingMsg(null);
-                      const url = await createCheckout('pro');
-                      if (url) window.location.href = url;
-                      else { console.log('Stripe not configured (pro)'); setBillingMsg('Upgrades coming soon!'); }
-                      setBillingLoading(false);
-                    }}
-                    className="rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-                  >
-                    {billingLoading ? 'Loading...' : 'Upgrade to Pro — $49/mo'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={billingLoading}
-                    onClick={async () => {
-                      setBillingLoading(true);
-                      setBillingMsg(null);
-                      const url = await createCheckout('company');
-                      if (url) window.location.href = url;
-                      else { console.log('Stripe not configured (company)'); setBillingMsg('Upgrades coming soon!'); }
-                      setBillingLoading(false);
-                    }}
-                    className="rounded-xl border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
-                  >
-                    Company — $149/mo
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled={billingLoading}
-                  onClick={async () => {
-                    setBillingLoading(true);
-                    setBillingMsg(null);
-                    const url = await openBillingPortal();
-                    if (url) window.location.href = url;
-                    else { console.log('Billing portal not available'); setBillingMsg('Billing portal coming soon!'); }
-                    setBillingLoading(false);
-                  }}
-                  className="rounded-xl border border-stone-200 px-3 py-2 text-xs font-semibold text-stone-900 hover:bg-stone-100 disabled:opacity-50"
-                >
-                  Manage Subscription
-                </button>
-              )}
-            </div>
-            {billingMsg && (
-              <p className="mt-2 text-xs text-orange-600">{billingMsg}</p>
-            )}
-          </div>
-
-          {onLogout && (
-            <div className="mt-4 border-t border-stone-200 pt-4">
-              <button type="button" onClick={onLogout} className="rounded-2xl border border-red-200 bg-red-50 px-4 py-2.5 text-sm font-semibold text-red-600 hover:bg-red-100">
-                Log Out
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Team stats */}

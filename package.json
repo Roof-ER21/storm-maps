@@ -44,7 +44,6 @@
     "postgres": "^3.4.8",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "stripe": "^21.0.1",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
     "web-push": "^3.6.7",

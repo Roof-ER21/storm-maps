@@ -549,18 +549,9 @@ function downloadRouteCsv(params: {
 }
 
 const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
-const LandingPage = lazy(() => import('./components/LandingPage'));
 
-const USER_NAME_KEY = 'hail-yes:user-name';
 const TOKEN_KEY = 'hailyes_token';
 const USER_KEY = 'hailyes_user';
-
-interface AuthUser {
-  id: number;
-  email: string;
-  name: string;
-  plan: string;
-}
 
 function ReportRoute({ slug }: { slug: string }) {
   return (
@@ -570,50 +561,42 @@ function ReportRoute({ slug }: { slug: string }) {
   );
 }
 
+// Admin-default mode. The app no longer has a signup/landing gate. On boot
+// we hit /api/auth/admin-bootstrap to mint a JWT for the seeded admin user
+// (server/migrate.ts) so the SPA can authenticate against /api/admin/*
+// transparently. If bootstrap fails (e.g. DB cold), we fall back to a
+// synthetic admin user so the UI still renders — admin endpoints will 401
+// until the next bootstrap retry.
 function AppRouter() {
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    const stored = localStorage.getItem(USER_KEY);
-    return stored ? (JSON.parse(stored) as AuthUser) : null;
-  });
-
-  // Keep old name key working for backwards compat
-  const [userName, setUserName] = useState(() => localStorage.getItem(USER_NAME_KEY) || '');
-
   const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
+
+  useEffect(() => {
+    if (reportSlug) return;
+    if (localStorage.getItem(TOKEN_KEY) && localStorage.getItem(USER_KEY)) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/auth/admin-bootstrap');
+        if (!res.ok) throw new Error(`bootstrap ${res.status}`);
+        const data = await res.json();
+        if (cancelled) return;
+        if (data?.token && data?.user) {
+          localStorage.setItem(TOKEN_KEY, data.token);
+          localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        }
+      } catch {
+        // Non-fatal — synthetic user below covers the UI render path.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [reportSlug]);
+
   if (reportSlug) return <ReportRoute slug={reportSlug} />;
 
-  // Show landing if neither auth method has a user
-  if (!user && !userName) {
-    return (
-      <Suspense fallback={<div className="min-h-screen bg-slate-950" />}>
-        <LandingPage
-          onGetStarted={(authUser) => {
-            localStorage.setItem(USER_KEY, JSON.stringify(authUser));
-            localStorage.setItem(USER_NAME_KEY, authUser.name);
-            setUser(authUser);
-            setUserName(authUser.name);
-          }}
-          onLogin={(authUser) => {
-            localStorage.setItem(USER_KEY, JSON.stringify(authUser));
-            localStorage.setItem(USER_NAME_KEY, authUser.name);
-            setUser(authUser);
-            setUserName(authUser.name);
-          }}
-        />
-      </Suspense>
-    );
-  }
-
-  return <App onLogout={() => {
-    localStorage.removeItem(USER_NAME_KEY);
-    localStorage.removeItem(USER_KEY);
-    localStorage.removeItem(TOKEN_KEY);
-    setUserName('');
-    setUser(null);
-  }} />;
+  return <App />;
 }
 
-function App({ onLogout }: { onLogout: () => void }) {
+function App() {
   const notificationsSupported = isNotificationSupported();
   const { profile: repProfile, updateProfile: updateRepProfile } = useRepProfile();
   const { showOnboarding, markComplete: completeOnboarding } = useOnboarding();
@@ -3032,7 +3015,6 @@ function App({ onLogout }: { onLogout: () => void }) {
             repProfile={repProfile}
             onUpdateProfile={updateRepProfile}
             searchLabel={searchSummary?.locationLabel ?? null}
-            onLogout={onLogout}
           />
         )}
 
