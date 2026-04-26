@@ -1518,35 +1518,48 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   doc.fillOpacity(1).strokeOpacity(1);
   doc.restore();
 
-  // Subject property pin
+  // Subject property pin — larger, clearer, with white halo for contrast
   const [pinX, pinY] = project(req.lng, req.lat);
-  doc.fillColor('#fbbf24').strokeColor('#0f172a').lineWidth(1.2);
+  doc.fillColor('#ffffff').strokeColor('#0f172a').lineWidth(1.4);
+  doc.circle(pinX, pinY, 8).fillAndStroke();
+  doc.fillColor('#dc2626').strokeColor('#7f1d1d').lineWidth(0.8);
   doc.circle(pinX, pinY, 5).fillAndStroke();
-  doc.fillColor('#fbbf24').fontSize(8).font('Helvetica-Bold');
-  doc.text(' Property', pinX + 6, pinY - 4);
+  doc.fillColor('#0f172a').fontSize(9).font('Helvetica-Bold');
+  doc.text('Property', pinX + 10, pinY - 5);
 
-  // Bounding box label
-  doc.fillColor('#94a3b8').font('Helvetica').fontSize(8);
-  doc.text(
-    `bbox: ${bounds.south.toFixed(2)}, ${bounds.west.toFixed(2)} → ${bounds.north.toFixed(2)}, ${bounds.east.toFixed(2)}`,
-    mapX + 8,
-    mapY + mapH - 12,
-  );
+  // Frame the map with a thin border so the polygons sit inside a clean box
+  doc
+    .rect(mapX, mapY, mapW, mapH)
+    .strokeColor('#cbd5e1')
+    .lineWidth(0.6)
+    .stroke();
 
-  // Legend strip across the top of the map area
-  const legendY = mapY + 8;
-  let legendX = mapX + 8;
-  doc.fontSize(7).font('Helvetica').fillColor('#cbd5e1').text('Hail size:', legendX, legendY);
-  legendX += 38;
+  // Legend strip BELOW the map — bigger swatches, dark labels, readable
+  doc.y = mapY + mapH + 6;
+  const legendStripY = doc.y;
+  doc
+    .fontSize(8.5)
+    .fillColor('#475569')
+    .font('Helvetica-Bold')
+    .text('Hail size scale (MRMS MESH):', mapX, legendStripY, { lineBreak: false });
+  let legendX = mapX + 156;
   for (const lvl of IHM_HAIL_LEVELS) {
     const [lr, lg, lb] = hexToRgb(lvl.color);
-    doc.fillColor([lr, lg, lb]).rect(legendX, legendY, 8, 8).fill();
-    doc.fillColor('#cbd5e1').text(lvl.label, legendX + 10, legendY + 1);
-    legendX += 36;
+    doc.fillColor([lr, lg, lb]).rect(legendX, legendStripY - 1, 14, 11).fill();
+    doc
+      .strokeColor('#0f172a')
+      .lineWidth(0.4)
+      .rect(legendX, legendStripY - 1, 14, 11)
+      .stroke();
+    doc
+      .fillColor('#0f172a')
+      .font('Helvetica')
+      .fontSize(7.5)
+      .text(lvl.label, legendX + 16, legendStripY + 1, { lineBreak: false });
+    legendX += 50;
     if (legendX > mapX + mapW - 30) break;
   }
-
-  doc.y = mapY + mapH + 12;
+  doc.y = legendStripY + 18;
 
   // ── Event detail table ────────────────────────────────────────────────
   // Sort all reports up front; render until we're out of page space, then
