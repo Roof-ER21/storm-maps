@@ -2668,7 +2668,7 @@ function App() {
   }, []);
 
   const mapArea = (
-    <main className="relative flex min-h-[70vh] flex-1 flex-col min-w-0 lg:min-h-0">
+    <main className="relative order-1 flex min-h-[70vh] flex-1 flex-col min-w-0 lg:order-2 lg:min-h-0">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 
@@ -2982,10 +2982,13 @@ function App() {
         )}
 
         {activeView === 'map' && (
-          // Mobile: map first (flex-col-reverse), sidebar below — reps on
-          // phones see the actual map without scrolling past 1100px of
-          // sidebar chrome. Desktop unchanged: sidebar left, map right.
-          <div className="flex min-h-0 flex-1 flex-col-reverse lg:flex-row">
+          // Mobile: map first via Tailwind `order` (Sidebar gets order-2,
+          // map main gets order-1) so the map shows at top on phones
+          // without scrolling past 1100px of sidebar chrome. Desktop
+          // unchanged: sidebar left, map right via lg:flex-row.
+          // (flex-col-reverse was tried first but its bottom-anchoring
+          //  breaks scroll on mobile when content exceeds viewport.)
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
             <Sidebar
               stormDates={filteredStormDates}
               events={filteredEvents}
