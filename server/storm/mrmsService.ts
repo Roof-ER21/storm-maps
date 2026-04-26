@@ -167,6 +167,41 @@ export interface MrmsImpactInput {
   points: Array<{ id: string; lat: number; lng: number }>;
 }
 
+/**
+ * Three-tier impact classification — mirrors Gemini Field Assistant's
+ * `addressImpactService` pattern so reps reading both products see the
+ * same vocabulary. Order is rep-usefulness desc.
+ *
+ *   direct_hit  — property INSIDE the MRMS swath polygon. Authoritative.
+ *   near_miss   — property within 1mi of any swath edge (Verisk/ISO "At
+ *                 Property" zone, equivalent to a confirming point report
+ *                 within 1mi). Still claim-worthy.
+ *   area_impact — property within 1–10mi of a swath. Context only.
+ *   no_impact   — no swath within 10mi.
+ */
+export type ImpactTier = 'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact';
+
+/**
+ * Per-tier max hail size in mutually-exclusive distance bands.
+ * Matches Gemini Field's PDF column layout exactly so the rep narrative
+ * is consistent across both products' reports.
+ *
+ *   atProperty: 0.0 ≤ dist ≤ 1.0  (inside swath OR within 1mi)
+ *   mi1to3:     1.0 < dist ≤ 3.0
+ *   mi3to5:     3.0 < dist ≤ 5.0
+ *   mi5to10:    5.0 < dist ≤ 10.0
+ *
+ * Each value is the MAX hail size (inches) found in that band — null
+ * when no swath overlaps the band. ¼" display floor applied at PDF
+ * render time, not here.
+ */
+export interface ImpactBands {
+  atProperty: number | null;
+  mi1to3: number | null;
+  mi3to5: number | null;
+  mi5to10: number | null;
+}
+
 export interface MrmsImpactResult {
   id: string;
   maxHailInches: number | null;
@@ -175,14 +210,19 @@ export interface MrmsImpactResult {
   label: string | null;
   severity: string | null;
   directHit: boolean;
+  /** Three-tier label — primary signal for rep + adjuster. */
+  tier: ImpactTier;
+  /** Distance (miles) to the nearest swath edge of any size. */
+  edgeDistanceMiles?: number;
+  /** Distance (miles) to the nearest ≥0.5" swath edge. */
+  edgeDistanceHalfInchMiles?: number;
+  /** Per-tier max hail in mutually-exclusive distance bands. */
+  bands: ImpactBands;
   /**
-   * True when the property is *outside* the strict swath polygon but within
-   * the near-miss buffer (≤0.1mi from a ≥0.5" swath edge). UI still shows
-   * DIRECT HIT — this flag is for the subtitle/distance breakdown.
+   * @deprecated use `tier === 'near_miss'`. Kept for one release cycle so
+   * existing clients don't break.
    */
   nearMiss?: boolean;
-  /** Distance (miles) to the nearest ≥0.5" swath edge — only set when nearMiss. */
-  edgeDistanceMiles?: number;
 }
 
 export interface MrmsImpactResponse {
@@ -215,19 +255,21 @@ export async function buildMrmsImpactResponse(
   });
   if (!collection) return null;
 
-  // Near-miss buffer: properties within this distance of a ≥0.5" swath edge
-  // count as DIRECT HIT. Closes the gap with HailTrace's edge tolerance and
-  // captures the "lot edge brushed by storm" cases reps lose to competitors.
-  // 0.1 mi ≈ 528 ft ≈ one residential block.
-  const NEAR_MISS_BUFFER_MILES = 0.1;
-  // Near-miss only applies to actionable bands. Below ½" we don't generously
-  // extend a "trace" hit, even at the buffer distance.
-  const NEAR_MISS_FLOOR_INCHES = 0.5;
+  // Tier band boundaries — mutually exclusive, mirror Gemini Field's
+  // PDF column layout. "At Property" is 0–1.0mi (Verisk/ISO convention
+  // for direct-hit zone + MRMS pixel resolution).
+  const AT_PROPERTY_MILES = 1.0;
+  const MI_3 = 3.0;
+  const MI_5 = 5.0;
+  const MI_10 = 10.0;
+  const HALF_INCH = 0.5;
 
   const results: MrmsImpactResult[] = [];
   let directHits = 0;
 
   for (const pt of input.points) {
+    // ── Pass 1: strict point-in-polygon for all bands.
+    //   Find the highest-band swath the point is INSIDE.
     let bestLevel = -1;
     let bestBand: {
       sizeInches: number;
@@ -267,7 +309,70 @@ export async function buildMrmsImpactResponse(
       }
     }
 
+    // ── Pass 2: per-band edge distance scan.
+    //   For every feature, compute the minimum distance from the point
+    //   to its nearest polygon edge. Track:
+    //     - overall closest swath edge (any size)
+    //     - closest ≥½" edge (for the rep "claim-grade hail nearby" tier)
+    //     - per-tier MAX hail size in each distance band
+    let edgeAny = Infinity;
+    let edgeHalf = Infinity;
+    let atPropertyMax: number | null = null;
+    let mi1to3Max: number | null = null;
+    let mi3to5Max: number | null = null;
+    let mi5to10Max: number | null = null;
+
+    for (const feature of collection.features) {
+      const sizeIn = feature.properties.sizeInches;
+      let minDist = Infinity;
+      for (const polygon of feature.geometry.coordinates) {
+        if (polygon.length === 0) continue;
+        for (const ring of polygon) {
+          const d = nearestRingDistanceMiles(pt.lat, pt.lng, ring);
+          if (d < minDist) minDist = d;
+        }
+      }
+      if (minDist === Infinity) continue;
+      if (minDist < edgeAny) edgeAny = minDist;
+      if (sizeIn >= HALF_INCH && minDist < edgeHalf) edgeHalf = minDist;
+
+      // Bucket into the band whose UPPER bound this feature first crosses.
+      // bestBand ↑ already covers the inside-swath case (distance 0); the
+      // band assignment here uses the polygon-edge distance, which goes
+      // to 0 when the point is inside. So inside-swath features land in
+      // atProperty automatically.
+      if (minDist <= AT_PROPERTY_MILES) {
+        if (atPropertyMax === null || sizeIn > atPropertyMax) atPropertyMax = sizeIn;
+      } else if (minDist <= MI_3) {
+        if (mi1to3Max === null || sizeIn > mi1to3Max) mi1to3Max = sizeIn;
+      } else if (minDist <= MI_5) {
+        if (mi3to5Max === null || sizeIn > mi3to5Max) mi3to5Max = sizeIn;
+      } else if (minDist <= MI_10) {
+        if (mi5to10Max === null || sizeIn > mi5to10Max) mi5to10Max = sizeIn;
+      }
+    }
+
+    const bands: ImpactBands = {
+      atProperty: atPropertyMax,
+      mi1to3: mi1to3Max,
+      mi3to5: mi3to5Max,
+      mi5to10: mi5to10Max,
+    };
+
+    // ── Tier classification (Gemini-Field-aligned)
+    let tier: ImpactTier;
     if (bestBand && bestLevel >= 0) {
+      tier = 'direct_hit';
+    } else if (atPropertyMax !== null) {
+      // Property within 1mi of a swath edge — Verisk/ISO "At Property".
+      tier = 'near_miss';
+    } else if (mi1to3Max !== null || mi3to5Max !== null || mi5to10Max !== null) {
+      tier = 'area_impact';
+    } else {
+      tier = 'no_impact';
+    }
+
+    if (tier === 'direct_hit' && bestBand) {
       directHits += 1;
       results.push({
         id: pt.id,
@@ -277,52 +382,25 @@ export async function buildMrmsImpactResponse(
         label: bestBand.label,
         severity: bestBand.severity,
         directHit: true,
+        tier,
+        edgeDistanceMiles: edgeAny === Infinity ? undefined : edgeAny,
+        edgeDistanceHalfInchMiles: edgeHalf === Infinity ? undefined : edgeHalf,
+        bands,
       });
-      continue;
-    }
-
-    // No strict-inside hit — try the near-miss buffer pass against ≥0.5"
-    // bands only. We pick the highest band whose nearest edge is within
-    // the buffer distance.
-    let nearMissLevel = -1;
-    let nearMissBand: typeof bestBand = null;
-    let nearMissDistance = Infinity;
-    for (const feature of collection.features) {
-      if (feature.properties.sizeInches < NEAR_MISS_FLOOR_INCHES) continue;
-      const idx = feature.properties.level;
-      if (idx <= nearMissLevel) continue;
-      let minDist = Infinity;
-      for (const polygon of feature.geometry.coordinates) {
-        if (polygon.length === 0) continue;
-        for (const ring of polygon) {
-          const d = nearestRingDistanceMiles(pt.lat, pt.lng, ring);
-          if (d < minDist) minDist = d;
-        }
-      }
-      if (minDist <= NEAR_MISS_BUFFER_MILES) {
-        nearMissLevel = idx;
-        nearMissBand = {
-          sizeInches: feature.properties.sizeInches,
-          color: feature.properties.color,
-          label: feature.properties.label,
-          severity: feature.properties.severity,
-        };
-        nearMissDistance = minDist;
-      }
-    }
-
-    if (nearMissBand && nearMissLevel >= 0) {
-      directHits += 1;
+    } else if (tier === 'near_miss') {
       results.push({
         id: pt.id,
-        maxHailInches: nearMissBand.sizeInches,
-        level: nearMissLevel,
-        color: nearMissBand.color,
-        label: nearMissBand.label,
-        severity: nearMissBand.severity,
-        directHit: true,
+        maxHailInches: atPropertyMax,
+        level: null,
+        color: null,
+        label: null,
+        severity: null,
+        directHit: false,
+        tier,
+        edgeDistanceMiles: edgeAny === Infinity ? undefined : edgeAny,
+        edgeDistanceHalfInchMiles: edgeHalf === Infinity ? undefined : edgeHalf,
+        bands,
         nearMiss: true,
-        edgeDistanceMiles: nearMissDistance,
       });
     } else {
       results.push({
@@ -333,6 +411,10 @@ export async function buildMrmsImpactResponse(
         label: null,
         severity: null,
         directHit: false,
+        tier,
+        edgeDistanceMiles: edgeAny === Infinity ? undefined : edgeAny,
+        edgeDistanceHalfInchMiles: edgeHalf === Infinity ? undefined : edgeHalf,
+        bands,
       });
     }
   }

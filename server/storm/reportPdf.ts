@@ -15,7 +15,11 @@
  */
 
 import PDFDocument from 'pdfkit';
-import { buildMrmsVectorPolygons } from './mrmsService.js';
+import {
+  buildMrmsVectorPolygons,
+  buildMrmsImpactResponse,
+  type MrmsImpactResult,
+} from './mrmsService.js';
 import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
@@ -190,6 +194,66 @@ async function fetchStaticBasemap(
   }
 }
 
+/**
+ * Fetch a Google Street View Static image of the searched property.
+ * Returns null if no API key, no Street View available at this lat/lng,
+ * or the network call fails. Adjusters seeing the actual house in the
+ * PDF closes a credibility gap HailTrace doesn't address.
+ */
+async function fetchStreetViewImage(
+  lat: number,
+  lng: number,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
+  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
+  const sizeH = Math.min(640, Math.max(120, Math.round(height)));
+  // First check if Street View is available at this point — saves a 0-byte
+  // image fetch when the address is in a coverage gap.
+  try {
+    const meta = new URLSearchParams({
+      location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+      key: GOOGLE_STATIC_MAPS_API_KEY,
+    });
+    const metaAc = new AbortController();
+    const metaTimer = setTimeout(() => metaAc.abort(), 4_000);
+    const metaRes = await fetch(
+      `https://maps.googleapis.com/maps/api/streetview/metadata?${meta.toString()}`,
+      { signal: metaAc.signal },
+    );
+    clearTimeout(metaTimer);
+    if (!metaRes.ok) return null;
+    const metaJson = (await metaRes.json()) as { status?: string };
+    if (metaJson.status !== 'OK') return null;
+  } catch {
+    return null;
+  }
+
+  const params = new URLSearchParams({
+    location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    size: `${sizeW}x${sizeH}`,
+    fov: '85',
+    pitch: '0',
+    return_error_code: 'true',
+    key: GOOGLE_STATIC_MAPS_API_KEY,
+  });
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8_000);
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
 async function fetchEvidenceImageBytes(
   item: ReportEvidenceItem,
 ): Promise<Buffer | null> {
@@ -247,6 +311,16 @@ function deriveBounds(events: StormEventDto[], lat: number, lng: number): Boundi
     east: east + 0.4,
     west: west - 0.4,
   };
+}
+
+/**
+ * Display floor — sub-¼" hail rounded UP to "0.25"" so adjusters don't
+ * dismiss "0.13"" trace radar signatures. Matches Verisk/ISO + Gemini
+ * Field's display convention.
+ */
+function displayHailIn(inches: number | null): string {
+  if (inches === null || inches <= 0) return '—';
+  return `${Math.max(0.25, inches).toFixed(2)}"`;
 }
 
 function severityScore(events: StormEventDto[]): {
@@ -378,6 +452,160 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     `Search radius: ${req.radiusMiles} mi  ·  Generated ${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} ET`,
   );
   doc.moveDown(0.8);
+
+  // ── Storm Coverage at Property (three-tier + per-band table) ──────────
+  // Mirrors Gemini Field Assistant's PDF layout. The tier label headlines
+  // the entire report — adjusters reading our PDF and HailTrace's PDF see
+  // the same "DIRECT HIT" / "NEAR MISS" / "AREA IMPACT" vocabulary.
+  let propertyImpact: MrmsImpactResult | null = null;
+  if (collection) {
+    try {
+      const resp = await buildMrmsImpactResponse({
+        date: req.dateOfLoss,
+        bounds,
+        anchorIso: req.anchorTimestamp ?? undefined,
+        points: [{ id: 'property', lat: req.lat, lng: req.lng }],
+      });
+      propertyImpact = resp?.results[0] ?? null;
+    } catch (err) {
+      console.warn('[reportPdf] impact response failed:', (err as Error).message);
+    }
+  }
+
+  // Street View thumbnail (left side), tier card (right side).
+  const streetViewPromise = fetchStreetViewImage(req.lat, req.lng, 200, 130);
+  const streetViewImg = await Promise.race([
+    streetViewPromise,
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 9_000)),
+  ]);
+
+  if (propertyImpact) {
+    const TIER_STYLE: Record<
+      'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact',
+      { label: string; bg: string; border: string; text: string }
+    > = {
+      direct_hit: {
+        label: 'DIRECT HIT',
+        bg: '#fef2f2',
+        border: '#dc2626',
+        text: '#991b1b',
+      },
+      near_miss: {
+        label: 'NEAR MISS',
+        bg: '#fff7ed',
+        border: '#ea580c',
+        text: '#9a3412',
+      },
+      area_impact: {
+        label: 'AREA IMPACT',
+        bg: '#fefce8',
+        border: '#ca8a04',
+        text: '#854d0e',
+      },
+      no_impact: {
+        label: 'NO IMPACT',
+        bg: '#f8fafc',
+        border: '#94a3b8',
+        text: '#475569',
+      },
+    };
+    const tier = propertyImpact.tier;
+    const tStyle = TIER_STYLE[tier];
+
+    const cardX = 54;
+    const cardY = doc.y;
+    const cardW = 504;
+    const cardH = 152;
+    doc.roundedRect(cardX, cardY, cardW, cardH, 6).fill(tStyle.bg);
+    doc.roundedRect(cardX, cardY, cardW, cardH, 6).strokeColor(tStyle.border).lineWidth(1.5).stroke();
+
+    // Street View thumbnail
+    let textX = cardX + 14;
+    let textW = cardW - 28;
+    if (streetViewImg) {
+      const svW = 130;
+      const svH = 100;
+      try {
+        doc.save();
+        doc.roundedRect(cardX + 14, cardY + 14, svW, svH, 4).clip();
+        doc.image(streetViewImg, cardX + 14, cardY + 14, {
+          width: svW,
+          height: svH,
+          fit: [svW, svH],
+        });
+        doc.restore();
+        doc.roundedRect(cardX + 14, cardY + 14, svW, svH, 4)
+          .strokeColor('#cbd5e1')
+          .lineWidth(0.5)
+          .stroke();
+      } catch (err) {
+        console.warn('[reportPdf] street view embed failed:', (err as Error).message);
+      }
+      textX = cardX + 14 + svW + 14;
+      textW = cardW - (svW + 14 + 28);
+    }
+
+    // Tier label + at-property hail
+    doc
+      .fillColor(tStyle.text)
+      .font('Helvetica-Bold')
+      .fontSize(10)
+      .text(tStyle.label, textX, cardY + 14, { width: textW });
+    const headline =
+      tier === 'direct_hit'
+        ? `${propertyImpact.label ?? `${(propertyImpact.maxHailInches ?? 0).toFixed(2)}″`} hail at property`
+        : tier === 'near_miss'
+          ? `${displayHailIn(propertyImpact.bands.atProperty)} hail within 1 mi of property`
+          : tier === 'area_impact'
+            ? `Storm cell within 10 mi`
+            : 'No verified hail within 10 mi';
+    doc
+      .fillColor(tStyle.text)
+      .font('Helvetica-Bold')
+      .fontSize(15)
+      .text(headline, textX, cardY + 28, { width: textW });
+
+    // Per-band 4-column table (At Property / 1-3mi / 3-5mi / 5-10mi)
+    const bandY = cardY + 70;
+    const bandH = 60;
+    const bandW = textW / 4;
+    const bandLabels: Array<[string, string, number | null]> = [
+      ['At Property', '0–1 mi', propertyImpact.bands.atProperty],
+      ['1–3 mi', '', propertyImpact.bands.mi1to3],
+      ['3–5 mi', '', propertyImpact.bands.mi3to5],
+      ['5–10 mi', '', propertyImpact.bands.mi5to10],
+    ];
+    bandLabels.forEach(([label, sub, value], i) => {
+      const x = textX + i * bandW;
+      doc.roundedRect(x + 2, bandY, bandW - 4, bandH, 4).fill('#ffffff');
+      doc
+        .fillColor('#64748b')
+        .font('Helvetica-Bold')
+        .fontSize(8)
+        .text(label.toUpperCase(), x + 2, bandY + 6, {
+          width: bandW - 4,
+          align: 'center',
+        });
+      if (sub) {
+        doc
+          .fillColor('#94a3b8')
+          .font('Helvetica')
+          .fontSize(7)
+          .text(sub, x + 2, bandY + 16, { width: bandW - 4, align: 'center' });
+      }
+      const filled = value !== null && value > 0;
+      doc
+        .fillColor(filled ? '#0f172a' : '#cbd5e1')
+        .font('Helvetica-Bold')
+        .fontSize(14)
+        .text(filled ? displayHailIn(value) : '—', x + 2, bandY + 30, {
+          width: bandW - 4,
+          align: 'center',
+        });
+    });
+
+    doc.y = cardY + cardH + 12;
+  }
 
   // ── Storm summary ─────────────────────────────────────────────────────
   const score = severityScore(datedEvents);

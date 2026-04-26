@@ -207,6 +207,19 @@ export interface StormImpactPoint {
   lng: number;
 }
 
+export type ImpactTier = 'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact';
+
+export interface ImpactBands {
+  /** Max hail (inches) at-property: 0–1.0 mi. Null when no swath. */
+  atProperty: number | null;
+  /** Max hail in 1–3 mi band (exclusive of inner). */
+  mi1to3: number | null;
+  /** Max hail in 3–5 mi band. */
+  mi3to5: number | null;
+  /** Max hail in 5–10 mi band. */
+  mi5to10: number | null;
+}
+
 export interface StormImpactResult {
   id: string;
   maxHailInches: number | null;
@@ -215,14 +228,16 @@ export interface StormImpactResult {
   label: string | null;
   severity: string | null;
   directHit: boolean;
-  /**
-   * True when the property is just outside the strict swath polygon but
-   * inside the near-miss buffer. directHit is still true — this flag lets
-   * the UI add a distance-to-edge subtitle.
-   */
-  nearMiss?: boolean;
-  /** Distance (miles) from the property to the nearest ≥0.5" swath edge. */
+  /** Three-tier classification (Gemini-Field-aligned). */
+  tier: ImpactTier;
+  /** Distance (miles) to the nearest swath edge of any size. */
   edgeDistanceMiles?: number;
+  /** Distance (miles) to the nearest ≥0.5" swath edge. */
+  edgeDistanceHalfInchMiles?: number;
+  /** Per-tier max hail in mutually-exclusive distance bands. */
+  bands: ImpactBands;
+  /** @deprecated use `tier === 'near_miss'`. */
+  nearMiss?: boolean;
 }
 
 export interface StormImpactResponse {
