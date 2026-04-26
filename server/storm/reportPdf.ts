@@ -25,7 +25,7 @@ import {
   biggestHailCallout,
   closestHailCallout,
 } from './narrativeComposer.js';
-import { haversineMiles } from './geometry.js';
+import { haversineMiles, pointInRing } from './geometry.js';
 import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
@@ -697,56 +697,112 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
   }
 
-  // ── MRMS swath DIRECT HIT check per historical date ──────────────────
-  // SA21's storm-maps shows multiple "Direct Hit (point)" tags because it
-  // checks point-in-polygon against the cached MRMS swath polygons for
-  // every historical storm date. Distance-band classification can't catch
-  // this — a 0.75" hail report 6 mi away might still mean the property
-  // sat under a swath polygon directly. Soft enhancement with a hard
-  // total timeout so the PDF renders even if the cache is cold.
-  const swathTinyBox = (lat: number, lng: number) => ({
-    north: lat + 0.05,
-    south: lat - 0.05,
-    east: lng + 0.05,
-    west: lng - 0.05,
-  });
-  const swathBounds = swathTinyBox(req.lat, req.lng);
-  await Promise.race([
-    Promise.allSettled(
-      sortedHistRows.map(async (r) => {
-        const resp = await buildMrmsImpactResponse({
-          date: r.dateIso,
-          bounds: swathBounds,
-          points: [{ id: 'property', lat: req.lat, lng: req.lng }],
-        }).catch(() => null);
-        const result = resp?.results[0];
-        if (!result) return;
-        // Promote atProperty when swath says we're INSIDE — overrides the
-        // 5mi-default era zero we may carry from before the lat/lng fix.
-        if (result.tier === 'direct_hit' && result.bands.atProperty != null) {
-          if (result.bands.atProperty > r.atProperty) {
-            r.atProperty = result.bands.atProperty;
+  // ── MRMS swath DIRECT HIT check across ALL cached dates ──────────────
+  // SA21 shows "Direct Hit (point)" by point-in-polygon against the
+  // mrms_swath_cache table for every cached date. We do the same here:
+  // grab every swath_cache entry from the last 24 months whose bbox
+  // contains the property point, decode the GeoJSON payload, run
+  // point-in-polygon, and emit a HistRow for any date where the
+  // property is inside a polygon. This catches storms that aren't in
+  // verified_hail_events at all (e.g. SA21's Aug 16/17 2025 dates which
+  // we don't have NCEI rows for) — those are pure swath hits.
+  if (pgSql) {
+    try {
+      type SwathRow = {
+        date: string;
+        payload: { features: Array<{ properties: { sizeInches: number }; geometry: { coordinates: number[][][][] } }> };
+      };
+      const swathRows = await pgSql<SwathRow[]>`
+        SELECT date::text, payload
+          FROM swath_cache
+         WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
+           AND date::date BETWEEN
+               (${req.dateOfLoss}::date - 730)
+           AND (${req.dateOfLoss}::date)
+           AND bbox_south <= ${req.lat}
+           AND bbox_north >= ${req.lat}
+           AND bbox_west  <= ${req.lng}
+           AND bbox_east  >= ${req.lng}
+         LIMIT 1000
+      `;
+      for (const sr of swathRows) {
+        let bestSize = 0;
+        const features = sr.payload?.features ?? [];
+        for (const feat of features) {
+          const polys = feat.geometry?.coordinates ?? [];
+          let inside = false;
+          for (const polygon of polys) {
+            if (!polygon || polygon.length === 0) continue;
+            if (!pointInRing(req.lat, req.lng, polygon[0])) continue;
+            // Hole rejection — outer-must-contain, holes must not.
+            let inHole = false;
+            for (let r = 1; r < polygon.length; r += 1) {
+              if (pointInRing(req.lat, req.lng, polygon[r])) {
+                inHole = true;
+                break;
+              }
+            }
+            if (!inHole) {
+              inside = true;
+              break;
+            }
+          }
+          if (inside) {
+            const sz = Number(feat.properties?.sizeInches ?? 0);
+            if (sz > bestSize) bestSize = sz;
           }
         }
-        // If the swath says we're inside even without an at-property hail
-        // value (rare: the polygon contains the point but the band assigned
-        // to that point is mi1to3 because the swath edge skews), still
-        // mark the row as direct hit by setting a small atProperty value
-        // matching the swath's max hail size in our radius.
-        if (
-          result.tier === 'direct_hit' &&
-          (result.bands.atProperty == null || result.bands.atProperty === 0) &&
-          result.maxHailInches > 0
-        ) {
-          if (result.maxHailInches > r.atProperty) {
-            r.atProperty = result.maxHailInches;
+        if (bestSize > 0) {
+          const dateIso = sr.date.slice(0, 10);
+          const existing = histGroups.get(dateIso);
+          if (existing) {
+            // Existing row from NCEI — promote atProperty if the swath
+            // says we're inside.
+            if (bestSize > existing.atProperty) existing.atProperty = bestSize;
+            if (bestSize > existing.biggestNearby) {
+              existing.biggestNearby = bestSize;
+              existing.biggestNearbyMi = 0;
+            }
+          } else {
+            // New row — swath-only direct hit (no NCEI/SWDI/etc record
+            // for this date in our DB, but the property was clearly
+            // inside the swath).
+            histGroups.set(dateIso, {
+              dateIso,
+              label: '',
+              atProperty: bestSize,
+              mi1to3: 0,
+              mi3to5: 0,
+              mi5to10: 0,
+              biggestNearby: bestSize,
+              biggestNearbyMi: 0,
+            });
           }
         }
-      }),
-    ),
-    // 12-sec ceiling so a cold-cache cluster of dates doesn't block the PDF.
-    new Promise((resolve) => setTimeout(resolve, 12_000)),
-  ]);
+      }
+    } catch (err) {
+      console.warn('[reportPdf] swath direct-hit scan failed:', (err as Error).message);
+    }
+  }
+
+  // sortedHistRows might need re-sorting now that the swath scan added new
+  // dates. Recompute below after this block (the original sort happens on
+  // line ~689). Move sort here to capture the swath-injected rows too:
+  const finalSortedHistRows = Array.from(histGroups.values())
+    .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
+    .slice(0, 14);
+  for (const r of finalSortedHistRows) {
+    if (!r.label) {
+      r.label = new Date(`${r.dateIso}T12:00:00`).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    }
+  }
+  // Replace sortedHistRows with the post-swath set.
+  sortedHistRows.length = 0;
+  sortedHistRows.push(...finalSortedHistRows);
 
   /** Tier from per-band maxes — matches the live UI classifier. */
   const rowTier = (
