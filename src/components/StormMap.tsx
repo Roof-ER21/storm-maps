@@ -903,6 +903,23 @@ function MapContent({
     setScrubFrameIndex(null);
     setScrubMode('nexrad');
   }, [selectedDate]);
+  // Auto-switch to MRMS mode when NEXRAD has no usable frames but MRMS
+  // is active. Avoids stranding the rep with a hidden scrubber when the
+  // only viable timeline source is MRMS hourly.
+  useEffect(() => {
+    if (!selectedDate) return;
+    const nexradAvailable =
+      Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
+    if (!nexradAvailable && mrmsHistoricalMode && scrubMode !== 'mrms') {
+      setScrubMode('mrms');
+    }
+  }, [
+    selectedDate,
+    showNexrad,
+    historicalRadarTimestamps.length,
+    mrmsHistoricalMode,
+    scrubMode,
+  ]);
   const [pointImpact, setPointImpact] = useState<{
     lat: number;
     lng: number;
@@ -1867,10 +1884,14 @@ function MapContent({
       <StormTimelineScrubber
         visible={(() => {
           if (!selectedDate) return false;
-          // NEXRAD mode: need ≥2 frames to scrub.
-          // MRMS mode: always 24 hourly anchors when MRMS layer is on.
-          if (scrubMode === 'mrms') return mrmsHistoricalMode;
-          return Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
+          // Show whenever EITHER source is reachable so the rep can
+          // toggle modes from inside the scrubber chrome. Per-mode
+          // viability checks happen at the timestamps array; the toggle
+          // pills only render when both modes are alive simultaneously.
+          const nexradAvailable =
+            Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
+          const mrmsAvailable = mrmsHistoricalMode;
+          return nexradAvailable || mrmsAvailable;
         })()}
         frameCount={
           scrubMode === 'mrms'
