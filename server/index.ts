@@ -31,6 +31,10 @@ import { getCacheSummary, purgeExpiredSwaths } from './storm/cache.js';
 import { fetchStormEventsCached } from './storm/eventService.js';
 import { buildConsilience } from './storm/consilienceService.js';
 import { fetchRecentMpingReports, fetchMpingReportsForDate, isMpingConfigured } from './storm/mpingService.js';
+import { fetchCocorahsHailReports } from './storm/cocorahsClient.js';
+import { fetchMesocyclones } from './storm/nceiNx3MdaClient.js';
+import { corroborateSynopticObservations } from './storm/synopticObservationsService.js';
+import { etDayUtcWindow } from './storm/timeUtils.js';
 import {
   startPrewarmScheduler,
   getPrewarmStatus,
@@ -1353,6 +1357,132 @@ app.get('/api/storm/consilience-history', async (req, res) => {
 
 // ── mPING crowd-source feed ───────────────────────────────────
 // GET /api/storm/mping?windowMinutes=60[&north&south&east&west]   live window
+// ── CoCoRaHS observer hail reports ─────────────────────────────────────
+// GET /api/storm/cocorahs?date=YYYY-MM-DD&state=VA[&state=MD&state=PA]
+//   Returns daily citizen-observer hail-pad measurements. Free, no key.
+//   When multiple states are passed, fetches in parallel and merges.
+interface CocorahsQuery {
+  date?: string;
+  state?: string | string[];
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+}
+app.get('/api/storm/cocorahs', async (req, res) => {
+  try {
+    const q = req.query as CocorahsQuery;
+    if (!q.date || !/^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      res.status(400).json({ error: 'date (YYYY-MM-DD) required' });
+      return;
+    }
+    const states = Array.isArray(q.state)
+      ? q.state.map((s) => s.toUpperCase())
+      : q.state
+        ? [q.state.toUpperCase()]
+        : ['VA', 'MD', 'PA', 'WV', 'DC', 'DE', 'NJ'];
+    const bbox =
+      q.north && q.south && q.east && q.west
+        ? {
+            north: parseFloat(q.north),
+            south: parseFloat(q.south),
+            east: parseFloat(q.east),
+            west: parseFloat(q.west),
+          }
+        : undefined;
+    const settled = await Promise.allSettled(
+      states.map((state) => fetchCocorahsHailReports({ date: q.date as string, state, bbox })),
+    );
+    const reports = settled.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({ ok: true, reports, count: reports.length, states });
+  } catch (err) {
+    console.error('[cocorahs] failed', err);
+    res.status(500).json({ error: 'Failed to fetch CoCoRaHS reports' });
+  }
+});
+
+// ── NEXRAD Mesocyclone (nx3mda) detections ─────────────────────────────
+// GET /api/storm/mesocyclones?date=YYYY-MM-DD&north=...&south=...&east=...&west=...
+//   Returns rotating-updraft (supercell) detections from NEXRAD Level-3
+//   nx3mda. Strength ≥6 is supercell-class; ≥8 is tornado-warning class.
+interface MesoQueryParams {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  minStrength?: string;
+}
+app.get('/api/storm/mesocyclones', async (req, res) => {
+  try {
+    const q = req.query as MesoQueryParams;
+    if (!q.date || !/^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      res.status(400).json({ error: 'date (YYYY-MM-DD) required' });
+      return;
+    }
+    if (!q.north || !q.south || !q.east || !q.west) {
+      res.status(400).json({ error: 'bbox (north/south/east/west) required' });
+      return;
+    }
+    const bbox = {
+      north: parseFloat(q.north),
+      south: parseFloat(q.south),
+      east: parseFloat(q.east),
+      west: parseFloat(q.west),
+    };
+    const minStrength = q.minStrength ? parseInt(q.minStrength, 10) || 5 : 5;
+    const detections = await fetchMesocyclones({ date: q.date, bbox, minStrength });
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json({ ok: true, detections, count: detections.length });
+  } catch (err) {
+    console.error('[mesocyclones] failed', err);
+    res.status(500).json({ error: 'Failed to fetch mesocyclone detections' });
+  }
+});
+
+// ── Synoptic surface stations corroboration ────────────────────────────
+// GET /api/storm/synoptic-stations?date=YYYY-MM-DD&north&south&east&west
+//   Returns ground-station observations (gust, precip, hail flag) for a
+//   single ET day across the bbox. Uses MADIS-fed Synoptic API.
+//   Empty result when SYNOPTIC_TOKEN is unset (no error — silent skip).
+interface SynopticQueryParams {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+}
+app.get('/api/storm/synoptic-stations', async (req, res) => {
+  try {
+    const q = req.query as SynopticQueryParams;
+    if (!q.date || !/^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      res.status(400).json({ error: 'date (YYYY-MM-DD) required' });
+      return;
+    }
+    if (!q.north || !q.south || !q.east || !q.west) {
+      res.status(400).json({ error: 'bbox (north/south/east/west) required' });
+      return;
+    }
+    const dayWindow = etDayUtcWindow(q.date);
+    const result = await corroborateSynopticObservations({
+      bbox: {
+        minLat: parseFloat(q.south),
+        minLng: parseFloat(q.west),
+        maxLat: parseFloat(q.north),
+        maxLng: parseFloat(q.east),
+      },
+      startUtc: dayWindow.startUtc,
+      endUtc: dayWindow.endUtc,
+    });
+    res.set('Cache-Control', 'public, max-age=900');
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    console.error('[synoptic-stations] failed', err);
+    res.status(500).json({ error: 'Failed to fetch Synoptic stations' });
+  }
+});
+
 // GET /api/storm/mping?date=YYYY-MM-DD[&north&south&east&west]    historical
 //   Returns mPING hail reports as the map layer + the 6th consilience source.
 //   Returns empty array when MPING_API_TOKEN is unset (no error — silent skip).

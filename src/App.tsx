@@ -2696,6 +2696,7 @@ function App() {
               }
             : null
         }
+        searchRadiusMiles={searchSummary?.radiusMiles ?? null}
         leadPins={routeStops.filter((stop) =>
           stop.outcome === 'interested' || stop.outcome === 'follow_up' || stop.outcome === 'inspection_booked'
         )}

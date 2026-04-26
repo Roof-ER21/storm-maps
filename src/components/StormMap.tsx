@@ -30,6 +30,9 @@ import type {
 import { getHailSizeClass } from '../types/storm';
 import HailSwathLayer from './HailSwathLayer';
 import MpingLayer from './MpingLayer';
+import CocorahsLayer from './CocorahsLayer';
+import MesocycloneLayer from './MesocycloneLayer';
+import SynopticLayer from './SynopticLayer';
 import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
@@ -93,6 +96,8 @@ interface StormMapProps {
   windStates?: string[];
   /** Searched property — drops a pin so the rep sees exactly which house. */
   propertyMarker?: { lat: number; lng: number; label?: string; pinned?: boolean } | null;
+  /** Search radius in miles — when set, renders a faint perimeter circle around the property pin. */
+  searchRadiusMiles?: number | null;
 }
 
 interface StormContext {
@@ -763,15 +768,53 @@ function MapContent({
   windEnabled,
   windStates,
   propertyMarker,
+  searchRadiusMiles,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
+
+  // Search radius circle around the property pin. Faint dashed perimeter
+  // so reps see exactly where their search includes vs excludes events.
+  // Implemented as imperative google.maps.Circle since @vis.gl doesn't
+  // export a React Circle component.
+  useEffect(() => {
+    if (!map || !propertyMarker || !searchRadiusMiles || searchRadiusMiles <= 0) {
+      return;
+    }
+    const radiusMeters = searchRadiusMiles * 1609.344;
+    const circle = new google.maps.Circle({
+      map,
+      center: { lat: propertyMarker.lat, lng: propertyMarker.lng },
+      radius: radiusMeters,
+      strokeColor: '#f97316',
+      strokeOpacity: 0.5,
+      strokeWeight: 1.5,
+      fillColor: '#f97316',
+      fillOpacity: 0.04,
+      clickable: false,
+      zIndex: 1,
+    });
+    return () => {
+      circle.setMap(null);
+    };
+  }, [
+    map,
+    propertyMarker?.lat,
+    propertyMarker?.lng,
+    searchRadiusMiles,
+  ]);
+
   // NEXRAD is a secondary/fallback layer — MRMS MESH is the primary hail
   // signal, but MESH under-detects small hail (<½") that reps routinely feel
   // in the field. When MRMS is empty and reps report hail in GroupMe, they
   // toggle NEXRAD reflectivity on to see the actual storm cells.
   const [showNexrad, setShowNexrad] = useState(false);
   const [showMping, setShowMping] = useState(false);
+  // Three latent map layers — collapsed by default to keep the map clean.
+  // Power-rep toggles for forensic-grade verification.
+  const [showCocorahs, setShowCocorahs] = useState(false);
+  const [showMeso, setShowMeso] = useState(false);
+  const [showSynoptic, setShowSynoptic] = useState(false);
   // Forces NexradOverlay to refresh its tile URLs on an interval while in
   // LIVE mode (no selected date). Each tick is a monotonic counter that gets
   // folded into the effective timestamp so tiles re-request every 2 min.
@@ -1624,6 +1667,24 @@ function MapContent({
         liveWindowMinutes={120}
       />
 
+      <CocorahsLayer
+        enabled={showCocorahs}
+        selectedDate={selectedDate}
+        bounds={mapBounds}
+      />
+
+      <MesocycloneLayer
+        enabled={showMeso}
+        selectedDate={selectedDate}
+        bounds={mapBounds}
+      />
+
+      <SynopticLayer
+        enabled={showSynoptic}
+        selectedDate={selectedDate}
+        bounds={mapBounds}
+      />
+
       <WindLegend
         visible={Boolean(windEnabled) && (windCollection?.features.length ?? 0) > 0}
         reportCount={windCollection?.metadata.reportCount}
@@ -1851,6 +1912,57 @@ function MapContent({
               mPING
             </div>
           </button>
+          {/* CoCoRaHS — citizen-observer daily hail-pad measurements. */}
+          <button
+            onClick={() => setShowCocorahs((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showCocorahs
+                ? 'bg-amber-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showCocorahs
+                ? 'CoCoRaHS observers — click to hide'
+                : 'Show CoCoRaHS citizen-observer hail-pad measurements (daily structured reports)'
+            }
+            aria-label="Toggle CoCoRaHS observer reports"
+          >
+            CoCoRaHS
+          </button>
+          {/* NEXRAD Mesocyclone — Level-3 nx3mda rotating-updraft detections. */}
+          <button
+            onClick={() => setShowMeso((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showMeso
+                ? 'bg-purple-700 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showMeso
+                ? 'Mesocyclone detections — click to hide'
+                : 'Show NEXRAD mesocyclone (rotating-updraft) detections — supercell signatures and tornado precursors'
+            }
+            aria-label="Toggle NEXRAD mesocyclone detections"
+          >
+            Meso
+          </button>
+          {/* Synoptic — MADIS-fed surface stations with hail/wind signal flags. */}
+          <button
+            onClick={() => setShowSynoptic((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showSynoptic
+                ? 'bg-sky-700 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showSynoptic
+                ? 'Synoptic stations — click to hide'
+                : 'Show MADIS surface-station observations (gust + precip + hail keyword detection)'
+            }
+            aria-label="Toggle Synoptic surface stations"
+          >
+            Stations
+          </button>
           <button
             onClick={() => setLiveNowCast((v) => !v)}
             className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
@@ -1915,6 +2027,7 @@ export default function StormMap({
   windEnabled,
   windStates,
   propertyMarker,
+  searchRadiusMiles,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1968,6 +2081,7 @@ export default function StormMap({
         windEnabled={windEnabled}
         windStates={windStates}
         propertyMarker={propertyMarker}
+        searchRadiusMiles={searchRadiusMiles}
       />
     </Map>
   );
