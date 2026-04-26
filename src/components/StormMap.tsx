@@ -903,26 +903,8 @@ function MapContent({
     setScrubFrameIndex(null);
     setScrubMode('nexrad');
   }, [selectedDate]);
-  // Auto-switch to MRMS mode when NEXRAD has no usable frames. Avoids
-  // stranding the rep with a hidden scrubber when the only viable
-  // timeline source is MRMS hourly. Also auto-enables the MRMS layer so
-  // the GroundOverlay actually renders when the slider moves — without
-  // this the scrubber would drag silently with no visual change.
-  useEffect(() => {
-    if (!selectedDate) return;
-    const nexradAvailable =
-      Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
-    if (!nexradAvailable) {
-      if (scrubMode !== 'mrms') setScrubMode('mrms');
-      if (!showMrms) setShowMrms(true);
-    }
-  }, [
-    selectedDate,
-    showNexrad,
-    historicalRadarTimestamps.length,
-    showMrms,
-    scrubMode,
-  ]);
+  // (auto-switch to MRMS mode when NEXRAD has no frames lives below,
+  //  AFTER historicalRadarTimestamps is declared — TDZ otherwise.)
   const [pointImpact, setPointImpact] = useState<{
     lat: number;
     lng: number;
@@ -1008,6 +990,30 @@ function MapContent({
   }, [selectedDate]);
 
   const mrmsHistoricalMode = showMrms && Boolean(selectedDate);
+
+  // Auto-switch to MRMS mode when NEXRAD has no usable frames. Avoids
+  // stranding the rep with a hidden scrubber when the only viable
+  // timeline source is MRMS hourly. Also auto-enables the MRMS layer so
+  // the GroundOverlay actually renders when the slider moves — without
+  // this the scrubber would drag silently with no visual change.
+  // Lives here (after historicalRadarTimestamps + mrmsHistoricalMode are
+  // both declared) so we don't hit a TDZ on the deps array.
+  useEffect(() => {
+    if (!selectedDate) return;
+    const nexradAvailable =
+      Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
+    if (!nexradAvailable) {
+      if (scrubMode !== 'mrms') setScrubMode('mrms');
+      if (!showMrms) setShowMrms(true);
+    }
+  }, [
+    selectedDate,
+    showNexrad,
+    historicalRadarTimestamps.length,
+    showMrms,
+    scrubMode,
+  ]);
+
   const historicalMrmsParams = useMemo(() => {
     if (!selectedDate || !stormContext.eventBounds) {
       return null;
