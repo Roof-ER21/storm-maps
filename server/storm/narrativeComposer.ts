@@ -107,19 +107,19 @@ export function composeStormNarrative(input: NarrativeInputs): string {
 
   if (hasMeaningfulHail && hasMeaningfulWind) {
     n += `On ${formattedDate}, a severe weather system impacted the ${location} area, producing `;
-    n += `${hailDesc} hail measuring up to ${maxHailInches.toFixed(2)}″ in diameter alongside `;
+    n += `${hailDesc} hail measuring up to ${maxHailInches.toFixed(2)}" in diameter alongside `;
     n += `damaging straight-line winds measured up to ${Math.round(maxWindMph)} mph. `;
     n += `Documented impact includes ${getHailDamagePotential(maxHailInches)}, `;
     n += `as well as ${getWindDamagePotential(maxWindMph)}. `;
   } else if (hasMeaningfulWind) {
     // Lead with wind when hail was sub-threshold — don't tell adjuster
-    // "0.00″ hail" if a 60 mph gust is the actual story.
+    // "0.00" hail" if a 60 mph gust is the actual story.
     n += `On ${formattedDate}, a severe weather system impacted the ${location} area, producing `;
     n += `damaging straight-line winds measured up to ${Math.round(maxWindMph)} mph. `;
     n += `${capitalize(getWindDamagePotential(maxWindMph))} was documented in the search area. `;
   } else if (hasMeaningfulHail) {
     n += `On ${formattedDate}, a severe weather system impacted the ${location} area, producing `;
-    n += `${hailDesc} hail measuring up to ${maxHailInches.toFixed(2)}″ in diameter. `;
+    n += `${hailDesc} hail measuring up to ${maxHailInches.toFixed(2)}" in diameter. `;
     n += `${capitalize(getHailDamagePotential(maxHailInches))}. `;
   } else {
     n += `On ${formattedDate}, weather activity was documented in the ${location} area within `;
@@ -136,7 +136,7 @@ export function composeStormNarrative(input: NarrativeInputs): string {
   }
   if ((severeHailCount ?? 0) > 0) {
     n += `Of these, ${severeHailCount} hail event${severeHailCount === 1 ? '' : 's'} `;
-    n += `${severeHailCount === 1 ? 'was' : 'were'} classified as severe (1.5″ or larger). `;
+    n += `${severeHailCount === 1 ? 'was' : 'were'} classified as severe (1.5" or larger). `;
   }
   if (
     biggestHailInches !== undefined &&
@@ -144,8 +144,8 @@ export function composeStormNarrative(input: NarrativeInputs): string {
     biggestHailMiles !== undefined
   ) {
     const biggestDesc = getHailSizeDesc(biggestHailInches);
-    n += `The largest hail recorded in the area was ${biggestDesc ?? `${biggestHailInches.toFixed(2)}″`} `;
-    n += `(${biggestHailInches.toFixed(2)}″) at ${biggestHailMiles.toFixed(1)} mi from the property. `;
+    n += `The largest hail recorded in the area was ${biggestDesc ?? `${biggestHailInches.toFixed(2)}"`} `;
+    n += `(${biggestHailInches.toFixed(2)}") at ${biggestHailMiles.toFixed(1)} mi from the property. `;
   }
 
   return n.trim();
@@ -165,8 +165,8 @@ export function biggestHailCallout(
   miles: number | undefined,
 ): string | null {
   if (inches === undefined || inches <= 0) return null;
-  if (miles === undefined) return `BIGGEST HAIL: ${inches.toFixed(2)}″`;
-  return `BIGGEST HAIL: ${inches.toFixed(2)}″ at ${miles.toFixed(1)} mi`;
+  if (miles === undefined) return `BIGGEST HAIL: ${inches.toFixed(2)}"`;
+  return `BIGGEST HAIL: ${inches.toFixed(2)}" at ${miles.toFixed(1)} mi`;
 }
 
 export function closestHailCallout(
@@ -174,5 +174,5 @@ export function closestHailCallout(
   miles: number | undefined,
 ): string | null {
   if (inches === undefined || inches <= 0 || miles === undefined) return null;
-  return `CLOSEST HAIL: ${inches.toFixed(2)}″ at ${miles === 0 ? 'property' : `${miles.toFixed(1)} mi`}`;
+  return `CLOSEST HAIL: ${inches.toFixed(2)}" at ${miles === 0 ? 'property' : `${miles.toFixed(1)} mi`}`;
 }

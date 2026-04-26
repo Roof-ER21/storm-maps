@@ -605,7 +605,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // ── Storm Narrative (adjuster prose) ──────────────────────────────────
   // Composes Gemini-Field-style language: "On April 1, 2026, a severe
   // weather system impacted the Loudoun area producing pea-sized hail
-  // measuring up to 0.86″..." Avoids prescriptive claim wording so
+  // measuring up to 0.86"..." Avoids prescriptive claim wording so
   // adversarial counsel can't flag it.
   {
     const peakHailEvents = datedEvents
@@ -714,13 +714,13 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     },
     {
       label: 'Peak Hail (radar)',
-      value: stormMax > 0 ? `${stormMax.toFixed(2)}″` : '—',
+      value: stormMax > 0 ? `${stormMax.toFixed(2)}"` : '—',
       sub: 'MRMS MESH',
       color: '#0f172a',
     },
     {
       label: 'Peak Hail (reports)',
-      value: peakHail > 0 ? `${peakHail.toFixed(2)}″` : '—',
+      value: peakHail > 0 ? `${peakHail.toFixed(2)}"` : '—',
       sub: 'SPC + IEM LSR',
       color: '#0f172a',
     },
@@ -1184,7 +1184,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.text(e.eventType === 'Hail' ? 'Hail' : 'Wind', 130, rowY);
     const mag =
       e.eventType === 'Hail'
-        ? `${e.magnitude.toFixed(2)}″`
+        ? `${e.magnitude.toFixed(2)}"`
         : `${Math.round(e.magnitude)} mph`;
     doc.text(mag, 200, rowY);
     const loc =
@@ -1218,7 +1218,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
     const mag =
       pick.eventType === 'Hail'
-        ? `${pick.magnitude.toFixed(2)}″ hail`
+        ? `${pick.magnitude.toFixed(2)}" hail`
         : `${Math.round(pick.magnitude)} mph wind`;
     nexradSnapshots.push({
       buf,
@@ -1372,14 +1372,14 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
             : (r.event_type ?? '');
       doc.text(typeLabel, 220, nceiRowY, { width: 64 });
       // Tornado rows carry no `magnitude` (ingest stores 0) — surface the
-      // F/EF scale instead so the appendix doesn't show "0″" for an EF2.
+      // F/EF scale instead so the appendix doesn't show "0"" for an EF2.
       let magStr: string;
       if (r.event_type === 'Tornado') {
         magStr = r.tor_f_scale ? r.tor_f_scale.toUpperCase() : '—';
       } else if (r.magnitude === null) {
         magStr = '';
       } else if (r.event_type === 'Hail') {
-        magStr = `${r.magnitude.toFixed(2)}″`;
+        magStr = `${r.magnitude.toFixed(2)}"`;
       } else {
         magStr = `${Math.round(r.magnitude)} mph`;
       }
