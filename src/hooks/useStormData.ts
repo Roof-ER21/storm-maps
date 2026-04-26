@@ -10,6 +10,7 @@ import type { StormEvent, MeshSwath, StormDate } from '../types/storm';
 import { searchByCoordinates, fetchLocalStormReports, fetchSpcStormReports } from '../services/stormApi';
 import { fetchMeshSwathsByLocation } from '../services/nhpApi';
 import { getHailSizeClass } from '../types/storm';
+import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
 
 function appendStormEvents(target: StormEvent[], next: StormEvent[]): void {
   for (const event of next) {
@@ -80,19 +81,7 @@ function groupEventsByDate(events: StormEvent[]): StormDate[] {
 }
 
 function formatDateLabel(dateStr: string): string {
-  const dateKey = getStormDateKey(dateStr);
-  if (!dateKey) {
-    return dateStr;
-  }
-
-  const d = new Date(`${dateKey}T12:00:00Z`);
-  return d.toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  return formatEasternDateLabel(dateStr);
 }
 
 export function useStormData({
@@ -232,29 +221,63 @@ export function useStormData({
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Collapse near-duplicate reports that came from different upstream sources
+ * (NOAA SWDI / IEM LSR / SPC) of the same physical storm cell. Two reports
+ * are treated as duplicates if they're within ~0.7 mi of each other AND
+ * within ~90 minutes of each other, regardless of which Eastern calendar
+ * day they fall on. The 90-minute window is the key fix: an SPC report
+ * stamped 23:55 Eastern and an LSR stamped 00:10 the next morning UTC for
+ * the same hail core used to produce two separate map markers.
+ */
 function deduplicateEvents(events: StormEvent[]): StormEvent[] {
-  const seen = new Map<string, StormEvent>();
+  // Sort newest-first so the more-detailed narrative tends to win when a
+  // tie occurs between equally-good candidates.
+  const sorted = [...events].sort(
+    (a, b) => Date.parse(b.beginDate) - Date.parse(a.beginDate),
+  );
 
-  for (const event of events) {
+  const kept: StormEvent[] = [];
+  for (const event of sorted) {
     const dateKey = getStormDateKey(event.beginDate);
     if (!dateKey) continue;
+    const eventTime = Date.parse(event.beginDate);
+    if (Number.isNaN(eventTime)) continue;
 
-    const latKey = Math.round(event.beginLat * 100);
-    const lonKey = Math.round(event.beginLon * 100);
-    const key = `${dateKey}-${latKey}-${lonKey}`;
+    const dupIndex = kept.findIndex((existing) => {
+      if (existing.eventType !== event.eventType) return false;
+      // Sub-mile proximity: 0.01° latitude ≈ 0.69 mi.
+      if (Math.abs(existing.beginLat - event.beginLat) > 0.01) return false;
+      if (Math.abs(existing.beginLon - event.beginLon) > 0.01) return false;
 
-    const existing = seen.get(key);
-    if (!existing) {
-      seen.set(key, event);
-    } else {
-      // Keep the one with more information
-      if (event.narrative.length > existing.narrative.length) {
-        seen.set(key, event);
-      }
+      const existingTime = Date.parse(existing.beginDate);
+      if (Number.isNaN(existingTime)) return false;
+      const dtMin = Math.abs(existingTime - eventTime) / 60_000;
+      return dtMin <= 90;
+    });
+
+    if (dupIndex === -1) {
+      kept.push(event);
+      continue;
     }
+
+    // Prefer the event with the longer narrative (typically the NOAA Storm
+    // Events archived record over the SPC same-day stub) but always keep
+    // the higher magnitude when sources disagree.
+    const existing = kept[dupIndex];
+    const merged: StormEvent = {
+      ...existing,
+      magnitude: Math.max(existing.magnitude, event.magnitude),
+      narrative:
+        event.narrative.length > existing.narrative.length
+          ? event.narrative
+          : existing.narrative,
+      damageProperty: Math.max(existing.damageProperty, event.damageProperty),
+    };
+    kept[dupIndex] = merged;
   }
 
-  return Array.from(seen.values());
+  return kept;
 }
 
 function getEffectiveMonths(months: number, sinceDate: string | null): number {
@@ -371,15 +394,5 @@ function mergeDateLists(
 }
 
 function getStormDateKey(dateStr: string): string | null {
-  if (!dateStr) return null;
-
-  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
-  if (!match) return null;
-
-  const parsed = new Date(`${match[1]}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return null;
-  }
-
-  return match[1];
+  return toEasternDateKey(dateStr);
 }

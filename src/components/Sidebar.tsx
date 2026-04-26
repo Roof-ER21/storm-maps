@@ -20,6 +20,7 @@ import {
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import AddressImpactBadge from './AddressImpactBadge';
 import WindImpactBadge from './WindImpactBadge';
+import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
 
 const WIND_FOCUS_STATES = ['VA', 'MD', 'PA', 'WV', 'DC', 'DE'];
 
@@ -181,7 +182,7 @@ export default function Sidebar({
       return [];
     }
 
-    return events.filter((event) => event.beginDate.slice(0, 10) === selectedDate.date);
+    return events.filter((event) => toEasternDateKey(event.beginDate) === selectedDate.date);
   }, [events, selectedDate]);
   const selectedStormSources = useMemo(() => {
     const ranked = new Map<string, number>();
@@ -876,7 +877,7 @@ export default function Sidebar({
                 isSelected={selectedDate?.date === sd.date}
                 isExpanded={expandedDate === sd.date}
                 compact={false}
-                events={events.filter((e) => e.beginDate.slice(0, 10) === sd.date)}
+                events={events.filter((e) => toEasternDateKey(e.beginDate) === sd.date)}
                 evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
                 generatingReport={generatingReport}
                 onGenerateReport={onGenerateReport}
@@ -1151,16 +1152,10 @@ function formatHistoryRangeLabel(
 }
 
 function formatShortDate(date: string): string {
-  const parsed = new Date(`${date}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return date;
-  }
-
-  return parsed.toLocaleDateString('en-US', {
+  return formatEasternDateLabel(date, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
-    timeZone: 'UTC',
   });
 }
 

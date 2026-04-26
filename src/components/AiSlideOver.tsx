@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { analyzeProperty, getAnalysis } from '../services/aiApi';
 import { createShareableReport } from '../services/api';
+import { getTodayEasternKey } from '../services/dateUtils';
 import type {
   AnalysisMode,
   AnalysisStatus,
@@ -1136,7 +1137,7 @@ export default function AiSlideOver({
         address:       analysis.inputAddress,
         lat:           analysis.lat ?? 0,
         lng:           analysis.lng ?? 0,
-        stormDate:     new Date().toISOString().slice(0, 10),
+        stormDate:     getTodayEasternKey(),
         stormLabel:    'AI Property Analysis',
         maxHailInches,
         maxWindMph:    0,

@@ -10,6 +10,7 @@ import type {
 import type { StormAlert } from '../hooks/useStormAlerts';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import { getAiDashboard } from '../services/aiApi';
+import { getTodayEasternKey } from '../services/dateUtils';
 import type { AiDashboardStats } from '../types/analysis';
 
 interface DashboardPageProps {
@@ -86,7 +87,7 @@ export default function DashboardPage({
   const lostStops = routeStops.filter((stop) => stop.leadStage === 'lost');
 
   // Your Day digest
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayEasternKey();
   const activeLeads = routeStops.filter((s) =>
     s.outcome === 'interested' || s.outcome === 'follow_up' || s.outcome === 'inspection_booked',
   );

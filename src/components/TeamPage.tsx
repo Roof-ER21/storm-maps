@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { CanvassRouteStop, LeadStage } from '../types/storm';
 import type { RepProfile } from '../hooks/useRepProfile';
 import { createCheckout, openBillingPortal, getBillingStatus } from '../services/api';
+import { getTodayEasternKey } from '../services/dateUtils';
 
 const TEAM_ROSTER_KEY = 'hail-yes:team-roster';
 
@@ -70,7 +71,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
   // Auto-sync own data to roster when profile exists
   useEffect(() => {
     if (!repProfile) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = getTodayEasternKey();
     const activeLeads = routeStops.filter((s) =>
       s.outcome === 'interested' || s.outcome === 'follow_up' || s.outcome === 'inspection_booked',
     );
@@ -143,7 +144,7 @@ export default function TeamPage({ routeStops, repProfile, onUpdateProfile, sear
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hail-yes-team-${repProfile.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `hail-yes-team-${repProfile.name.toLowerCase().replace(/\s+/g, '-')}-${getTodayEasternKey()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

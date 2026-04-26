@@ -7,6 +7,7 @@ import type {
   DamageIndicator,
 } from '../types/analysis';
 import { HAIL_YES_HAIL_API_BASE } from './backendConfig';
+import { toEasternDateKey } from './dateUtils';
 
 // ============================================================
 // AI analysis formatting helpers
@@ -466,7 +467,7 @@ export async function generateStormReport({
   aiAnalysis,
 }: GenerateStormReportParams): Promise<void> {
   const datedEvents = events.filter(
-    (event) => event.beginDate.slice(0, 10) === dateOfLoss,
+    (event) => toEasternDateKey(event.beginDate) === dateOfLoss,
   );
 
   if (datedEvents.length === 0) {

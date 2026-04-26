@@ -8,6 +8,7 @@ import type {
   LeadStageEntry,
   PropertySearchSummary,
 } from '../types/storm';
+import { toEasternDateKey, getTodayEasternKey } from '../services/dateUtils';
 
 interface LeadsPageProps {
   searchSummary: PropertySearchSummary | null;
@@ -56,15 +57,17 @@ const STAGE_CONFIG: Record<LeadStage, { label: string; color: string; bg: string
 };
 
 function getQuickDate(preset: 'today' | 'tomorrow' | 'next_week'): string {
+  // Anchor on Eastern noon so the calendar arithmetic doesn't tip over the
+  // wrong day for reps in EDT/EST when the browser's UTC date differs.
   const d = new Date();
   if (preset === 'tomorrow') d.setDate(d.getDate() + 1);
   if (preset === 'next_week') d.setDate(d.getDate() + 7);
-  return d.toISOString().slice(0, 10);
+  return toEasternDateKey(d.toISOString()) ?? d.toISOString().slice(0, 10);
 }
 
 function getReminderUrgency(reminderAt: string | null | undefined): 'overdue' | 'today' | 'upcoming' | 'none' {
   if (!reminderAt) return 'none';
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getTodayEasternKey();
   if (reminderAt < today) return 'overdue';
   if (reminderAt === today) return 'today';
   return 'upcoming';

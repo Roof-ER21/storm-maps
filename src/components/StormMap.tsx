@@ -50,6 +50,12 @@ import {
   type WindSwathCollection,
 } from '../services/windApi';
 import { geometryAreaSqMiles } from '../services/geoUtils';
+import {
+  toEasternDateKey,
+  getTodayEasternKey,
+  formatEasternDateLabel,
+  formatEasternTimestamp,
+} from '../services/dateUtils';
 
 interface FitBoundsRequest {
   id: number;
@@ -226,7 +232,7 @@ function getStormContext(
   }
 
   const selectedEvents = events.filter(
-    (event) => event.beginDate.slice(0, 10) === selectedDate,
+    (event) => toEasternDateKey(event.beginDate) === selectedDate,
   );
   const selectedSwaths = swaths.filter((swath) => swath.date === selectedDate);
 
@@ -289,30 +295,8 @@ function getSelectedStormRadarTimestamp(
   return `${selectedDate}T16:00:00Z`;
 }
 
-function formatEasternTimestamp(timestamp: string): string {
-  try {
-    return new Date(timestamp).toLocaleString('en-US', {
-      timeZone: 'America/New_York',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return timestamp;
-  }
-}
-
 function formatDateBadge(dateStr: string): string {
-  const parsed = new Date(`${dateStr}T12:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    return dateStr;
-  }
-
-  return parsed.toLocaleDateString('en-US', {
-    timeZone: 'UTC',
+  return formatEasternDateLabel(dateStr, {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
@@ -681,7 +665,7 @@ function MapContent({
 
   const visibleEvents = useMemo(() => {
     if (!selectedDate) return events;
-    return events.filter((event) => event.beginDate.slice(0, 10) === selectedDate);
+    return events.filter((event) => toEasternDateKey(event.beginDate) === selectedDate);
   }, [events, selectedDate]);
 
   const visibleHailEvents = useMemo(
@@ -1007,7 +991,7 @@ function MapContent({
 
       const result = await fetchLiveSwathPolygons(mapBounds);
       if (cancelled || !result) return;
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayEasternKey();
       const converted: MeshSwath[] = result.features.map((feature, i) => ({
         id: `live-mrms-${feature.properties.level}-${i}`,
         date: today,
@@ -1238,8 +1222,8 @@ function MapContent({
             position={{ lat: event.beginLat, lng: event.beginLon }}
             title={
               event.eventType === 'Thunderstorm Wind'
-                ? `${event.magnitude} mph wind - ${event.beginDate.slice(0, 10)}`
-                : `${event.magnitude}" hail - ${event.beginDate.slice(0, 10)}`
+                ? `${event.magnitude} mph wind - ${formatEasternDateLabel(event.beginDate)}`
+                : `${event.magnitude}" hail - ${formatEasternDateLabel(event.beginDate)}`
             }
             onClick={() => handleMarkerClick(event)}
             zIndex={Math.round(event.magnitude * 100)}
@@ -1356,7 +1340,7 @@ function MapContent({
             </div>
             <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.6 }}>
               <div>
-                <strong>Date:</strong> {selectedEvent.beginDate.slice(0, 10)}
+                <strong>Date:</strong> {formatEasternDateLabel(selectedEvent.beginDate)}
               </div>
               <div>
                 <strong>Type:</strong> {selectedEvent.eventType}
@@ -1706,7 +1690,7 @@ function StormMapPlaceholder({
   selectedDate,
 }: Omit<StormMapProps, 'onMapClick' | 'onCameraChanged' | 'fitBoundsRequest' | 'bounds'>) {
   const visibleEvents = selectedDate
-    ? events.filter((event) => event.beginDate.slice(0, 10) === selectedDate)
+    ? events.filter((event) => toEasternDateKey(event.beginDate) === selectedDate)
     : events;
 
   return (

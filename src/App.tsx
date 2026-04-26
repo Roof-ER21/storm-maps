@@ -37,6 +37,10 @@ import {
   isInFocusTerritory,
   FOCUS_STATE_CODES,
 } from './data/territories';
+import {
+  toEasternDateKey,
+  getTodayEasternKey,
+} from './services/dateUtils';
 import { useGeolocation } from './hooks/useGeolocation';
 import { useStormData } from './hooks/useStormData';
 import { useHailAlert } from './hooks/useHailAlert';
@@ -776,7 +780,8 @@ function App({ onLogout }: { onLogout: () => void }) {
     const visibleDateKeys = new Set<string>();
 
     for (const event of filteredEvents) {
-      visibleDateKeys.add(event.beginDate.slice(0, 10));
+      const key = toEasternDateKey(event.beginDate);
+      if (key) visibleDateKeys.add(key);
     }
 
     if (eventFilters.hail) {
@@ -952,7 +957,7 @@ function App({ onLogout }: { onLogout: () => void }) {
     if (notificationPermission !== 'granted') return;
 
     function checkReminders() {
-      const today = new Date().toISOString().slice(0, 10);
+      const today = getTodayEasternKey();
       const dueLeads = routeStopsState.filter(
         (stop) =>
           stop.reminderAt &&
@@ -1085,7 +1090,7 @@ function App({ onLogout }: { onLogout: () => void }) {
       return;
     }
 
-    const clickedDate = event.beginDate.slice(0, 10);
+    const clickedDate = toEasternDateKey(event.beginDate);
     const matchingStormDate =
       filteredStormDates.find((stormDate) => stormDate.date === clickedDate) ?? null;
     setSelectedDate(matchingStormDate);
@@ -1336,7 +1341,7 @@ function App({ onLogout }: { onLogout: () => void }) {
 
     for (const stormDate of filteredStormDates) {
       const dateEvents = filteredEvents.filter(
-        (event) => event.beginDate.slice(0, 10) === stormDate.date,
+        (event) => toEasternDateKey(event.beginDate) === stormDate.date,
       );
       const existingStops = currentPropertyRouteStops.filter(
         (stop) => stop.stormDate === stormDate.date,
@@ -2090,7 +2095,7 @@ function App({ onLogout }: { onLogout: () => void }) {
 
     // Seed to localStorage immediately
     const now = new Date().toISOString();
-    const today = now.slice(0, 10);
+    const today = getTodayEasternKey();
     const demoStops: CanvassRouteStop[] = [
       {
         id: 'demo-lead-1', propertyLabel: 'Dallas, TX', stormDate: '2024-05-28', stormLabel: 'Tue, May 28, 2024',
@@ -2268,7 +2273,7 @@ function App({ onLogout }: { onLogout: () => void }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `hail-yes-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `hail-yes-backup-${getTodayEasternKey()}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

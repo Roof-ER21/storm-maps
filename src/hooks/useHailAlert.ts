@@ -13,6 +13,7 @@
 import { useCallback, useMemo } from 'react';
 import type { GpsPosition, StormEvent, CanvassingAlert } from '../types/storm';
 import { getHailSizeClass } from '../types/storm';
+import { toEasternDateKey } from '../services/dateUtils';
 
 /** Proximity threshold in miles to trigger an alert */
 const ALERT_RADIUS_MILES = 0.5;
@@ -155,8 +156,9 @@ export function useHailAlert({
       return null;
     }
 
-    // In a hail zone
-    const stormDate = closestEvent.beginDate.slice(0, 10);
+    // In a hail zone — bucket on the Eastern calendar so cross-midnight UTC
+    // events don't get tagged with the next day's storm date.
+    const stormDate = toEasternDateKey(closestEvent.beginDate) ?? closestEvent.beginDate.slice(0, 10);
 
     return {
       inHailZone: true,

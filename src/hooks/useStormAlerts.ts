@@ -16,6 +16,7 @@ import type { LatLng, StormEvent } from '../types/storm';
 import { searchByCoordinates } from '../services/stormApi';
 import { fetchAlertsByArea } from '../services/nwsAlerts';
 import { showHailZoneNotification } from '../services/notificationService';
+import { toEasternDateKey } from '../services/dateUtils';
 
 const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
 const LOOKBACK_MONTHS = 1; // Check last ~30 days
@@ -154,10 +155,12 @@ export function useStormAlerts({
         );
 
         if (newHistoricalEvents.length > 0) {
-          // Group new events by date for one alert per storm day.
+          // Group new events by Eastern calendar day so cross-midnight UTC
+          // crossings don't fire two separate alerts for the same storm.
           const byDate = new Map<string, StormEvent[]>();
           for (const event of newHistoricalEvents) {
-            const dateKey = event.beginDate.slice(0, 10);
+            const dateKey = toEasternDateKey(event.beginDate);
+            if (!dateKey) continue;
             if (!byDate.has(dateKey)) byDate.set(dateKey, []);
             byDate.get(dateKey)!.push(event);
           }
