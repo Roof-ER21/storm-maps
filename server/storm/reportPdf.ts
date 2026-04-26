@@ -416,7 +416,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const doc = new PDFDocument({
     size: 'LETTER',
     margin: 54,
-    bufferPages: true, // needed so switchToPage can paint the navy footer on every page at the end
     info: {
       Title: `Storm Impact Analysis - ${req.address}`,
       Author: 'NOAA/NWS Data Analysis',
@@ -1714,30 +1713,23 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       { width: CW, align: 'justify' },
     );
 
-  // ── Navy footer bar ───────────────────────────────────────────────────
-  // Same color as the header banner; closes the document with the same
-  // gravity. Drawn on every page so reps emailing single pages still get
-  // the legal frame. Uses bufferPages (set in PDFDocument options) so we
-  // can iterate every page after rendering and paint the footer last.
-  const range = (doc as any).bufferedPageRange?.() ?? { start: 0, count: 0 };
+  // ── Closing footer ────────────────────────────────────────────────────
+  // Single closing line on the last page — mirrors the SA21 approach.
+  // Per-page navy bar via bufferPages was tried first and was creating
+  // phantom blank pages because text() at y>page-margin auto-paginates
+  // even with bufferPages=true. The single-line ending is cleaner anyway.
   const yearStr = String(new Date().getFullYear());
-  for (let p = range.start; p < range.start + range.count; p += 1) {
-    if (typeof (doc as any).switchToPage === 'function') {
-      (doc as any).switchToPage(p);
-    }
-    const footY = 758;
-    doc.rect(0, footY, PW, 22).fill(C.accent);
-    doc
-      .fontSize(8)
-      .fillColor('#ffffff')
-      .font('Helvetica')
-      .text(
-        `Prepared by ${req.company.name}  ·  Data sourced from NOAA, NWS, and NEXRAD federal weather systems  ·  © ${yearStr}`,
-        M,
-        footY + 7,
-        { width: CW, align: 'center' },
-      );
-  }
+  doc.moveDown(0.6);
+  doc
+    .fontSize(8)
+    .fillColor(C.mutedText)
+    .font('Helvetica-Oblique')
+    .text(
+      `Prepared by ${req.company.name}  ·  Data sourced from NOAA, NWS, and NEXRAD federal weather systems  ·  © ${yearStr}`,
+      M,
+      doc.y,
+      { width: CW, align: 'center' },
+    );
 
   doc.end();
   return done;
