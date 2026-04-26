@@ -333,7 +333,7 @@ export default function Sidebar({
   }, [selectedDate?.date]);
 
   return (
-    <aside className="order-2 flex w-full shrink-0 flex-col overflow-y-auto border-b border-stone-200 bg-white text-stone-900 min-h-0 lg:order-1 lg:w-80 lg:border-b-0 lg:border-r">
+    <aside className="order-2 flex w-full flex-1 flex-col overflow-y-auto border-b border-stone-200 bg-white text-stone-900 min-h-0 lg:order-1 lg:w-80 lg:flex-initial lg:shrink-0 lg:border-b-0 lg:border-r">
       <div className="border-b border-stone-200 p-4">
         <div className="flex items-center gap-2">
           <svg
