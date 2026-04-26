@@ -13,6 +13,7 @@ import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import { getAiDashboard } from '../services/aiApi';
 import { getTodayEasternKey } from '../services/dateUtils';
 import { useConsilienceFlags } from '../hooks/useConsilienceFlags';
+import ConsilienceTrendChart from './ConsilienceTrendChart';
 import type { AiDashboardStats } from '../types/analysis';
 
 interface DashboardPageProps {
@@ -672,6 +673,8 @@ export default function DashboardPage({
               )}
             </div>
           </div>
+
+          <ConsilienceTrendChart location={queryLocation} monthsBack={24} />
 
           <div className="rounded-[28px] border border-stone-200 bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">

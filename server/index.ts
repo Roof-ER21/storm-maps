@@ -1269,6 +1269,70 @@ app.get('/api/storm/consilience', async (req, res) => {
   }
 });
 
+// ── Consilience history (per-property trend) ────────────────────
+// GET /api/storm/consilience-history?lat=X&lng=Y[&monthsBack=12]
+//   Returns the cached consilience timeline for a property — used by the
+//   dashboard trend chart. Reads from consilience_cache so each row is
+//   pre-computed, no live fan-out per chart render.
+interface ConsilienceHistoryQuery {
+  lat?: string;
+  lng?: string;
+  monthsBack?: string;
+  radius?: string;
+}
+
+app.get('/api/storm/consilience-history', async (req, res) => {
+  try {
+    const q = req.query as ConsilienceHistoryQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    const monthsBack = Math.min(60, Math.max(1, parseInt(q.monthsBack ?? '12', 10) || 12));
+    const radius = q.radius ? Math.min(25, Math.max(1, parseFloat(q.radius) || 5)) : 5;
+    const latQ = Math.round(lat * 100) / 100;
+    const lngQ = Math.round(lng * 100) / 100;
+    const rows = await pgSql<
+      Array<{
+        event_date: string | Date;
+        confirmed_count: number;
+        confidence_tier: string;
+        payload: Record<string, unknown>;
+      }>
+    >`
+      SELECT event_date::text, confirmed_count, confidence_tier, payload
+        FROM consilience_cache
+       WHERE lat_q BETWEEN ${latQ - 0.02} AND ${latQ + 0.02}
+         AND lng_q BETWEEN ${lngQ - 0.02} AND ${lngQ + 0.02}
+         AND radius_miles = ${radius}
+         AND event_date >= (CURRENT_DATE - ${monthsBack}::int * INTERVAL '1 month')::date
+       ORDER BY event_date ASC
+       LIMIT 500
+    `;
+    const points = rows.map((r) => {
+      const dateStr =
+        r.event_date instanceof Date
+          ? r.event_date.toISOString().slice(0, 10)
+          : String(r.event_date).slice(0, 10);
+      const curated = (r.payload as { curated?: { confirmedSources?: string[] } })
+        ?.curated;
+      return {
+        date: dateStr,
+        confirmedCount: Number(r.confirmed_count),
+        confidenceTier: r.confidence_tier,
+        confirmedSources: curated?.confirmedSources ?? [],
+      };
+    });
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({ ok: true, points, count: points.length });
+  } catch (err) {
+    console.error('[consilience-history] failed', err);
+    res.status(500).json({ error: 'Failed to fetch history' });
+  }
+});
+
 // ── mPING crowd-source feed ───────────────────────────────────
 // GET /api/storm/mping?windowMinutes=60[&north&south&east&west]   live window
 // GET /api/storm/mping?date=YYYY-MM-DD[&north&south&east&west]    historical

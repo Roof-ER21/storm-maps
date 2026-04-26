@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@google/genai": "^1.48.0",
+    "@googlemaps/markerclusterer": "^2.6.2",
     "@tailwindcss/vite": "^4.2.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",

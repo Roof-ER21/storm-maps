@@ -20,7 +20,52 @@ import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackServ
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
 import { fetchNexradSnapshot } from './nexradImageService.js';
+import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
+
+interface NceiAppendixRow {
+  event_date: string;
+  state_code: string | null;
+  county: string | null;
+  event_type: string | null;
+  magnitude: number | null;
+  ncei_event_id: string | null;
+  begin_time_utc: string | null;
+  narrative: string | null;
+}
+
+async function fetchNceiArchiveForReport(opts: {
+  lat: number;
+  lng: number;
+  dateOfLoss: string;
+  radiusMiles: number;
+  windowDays?: number;
+}): Promise<NceiAppendixRow[]> {
+  if (!pgSql) return [];
+  const days = opts.windowDays ?? 30;
+  // Tight bbox around property — radius+pad in degrees.
+  const latPad = (opts.radiusMiles + 5) / 69;
+  const lngPad = (opts.radiusMiles + 5) / (69 * Math.cos((opts.lat * Math.PI) / 180));
+  try {
+    const rows = await pgSql<NceiAppendixRow[]>`
+      SELECT event_date::text, state_code, county, event_type,
+             magnitude, ncei_event_id::text, begin_time_utc::text, narrative
+        FROM verified_hail_events
+       WHERE source_ncei_storm_events = TRUE
+         AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
+         AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
+         AND event_date BETWEEN
+             (${opts.dateOfLoss}::date - ${days}::int)
+         AND (${opts.dateOfLoss}::date + ${days}::int)
+       ORDER BY event_date DESC, magnitude DESC NULLS LAST
+       LIMIT 200
+    `;
+    return rows;
+  } catch (err) {
+    console.warn('[reportPdf] NCEI appendix fetch failed:', (err as Error).message);
+    return [];
+  }
+}
 
 const GOOGLE_STATIC_MAPS_API_KEY =
   process.env.GOOGLE_STATIC_MAPS_API_KEY?.trim() ||
@@ -707,10 +752,87 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
+  // ── NCEI Archive appendix (official NOAA Storm Events DB) ────────────
+  // The same data adjusters cite. Pulled from verified_hail_events where
+  // source_ncei_storm_events=TRUE; window ±30 days of date_of_loss; radius
+  // matches the property search radius. Each row carries an NCEI EVENT_ID
+  // for direct cross-reference against ncdc.noaa.gov/stormevents.
+  const nceiRows = await fetchNceiArchiveForReport({
+    lat: req.lat,
+    lng: req.lng,
+    dateOfLoss: req.dateOfLoss,
+    radiusMiles: req.radiusMiles,
+    windowDays: 30,
+  });
+  if (nceiRows.length > 0) {
+    doc.addPage();
+    doc.fillColor('#0f172a').fontSize(13).font('Helvetica-Bold').text('NCEI Storm Events Archive (Appendix)');
+    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
+    doc.text(
+      `${nceiRows.length} official NOAA Storm Events Database record${nceiRows.length === 1 ? '' : 's'} within ${req.radiusMiles} mi of the property and ±30 days of ${req.dateOfLoss}. Each row is independently citable via its NCEI EVENT_ID at ncdc.noaa.gov/stormevents/.`,
+      { width: 504 },
+    );
+    doc.moveDown(0.5);
+
+    const drawNceiHeader = (yStart: number): number => {
+      doc.font('Helvetica-Bold').fontSize(8).fillColor('#475569');
+      doc.text('Date (ET)', 54, yStart);
+      doc.text('County', 130, yStart);
+      doc.text('Type', 220, yStart);
+      doc.text('Magnitude', 290, yStart);
+      doc.text('NCEI ID', 360, yStart);
+      doc.text('Notes', 420, yStart);
+      doc
+        .strokeColor('#e2e8f0')
+        .lineWidth(0.5)
+        .moveTo(54, yStart + 12)
+        .lineTo(558, yStart + 12)
+        .stroke();
+      return yStart + 16;
+    };
+
+    let nceiRowY = drawNceiHeader(doc.y);
+    const tableBottom = 720;
+    for (const r of nceiRows) {
+      if (nceiRowY > tableBottom) {
+        doc.addPage();
+        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('NCEI Archive (continued)');
+        doc.moveDown(0.3);
+        nceiRowY = drawNceiHeader(doc.y);
+      }
+      doc.font('Helvetica').fontSize(8).fillColor('#0f172a');
+      doc.text(r.event_date, 54, nceiRowY, { width: 70 });
+      doc.text((r.county ?? '').slice(0, 18), 130, nceiRowY, { width: 84 });
+      const typeLabel =
+        r.event_type === 'Hail'
+          ? 'Hail'
+          : r.event_type === 'Thunderstorm Wind'
+            ? 'T-Wind'
+            : (r.event_type ?? '');
+      doc.text(typeLabel, 220, nceiRowY, { width: 64 });
+      const magStr =
+        r.magnitude === null
+          ? ''
+          : r.event_type === 'Hail'
+            ? `${r.magnitude.toFixed(2)}″`
+            : `${Math.round(r.magnitude)} mph`;
+      doc.text(magStr, 290, nceiRowY, { width: 64 });
+      doc.fillColor('#64748b');
+      doc.text((r.ncei_event_id ?? '').slice(0, 9), 360, nceiRowY, { width: 56 });
+      doc.fillColor('#475569');
+      doc.text((r.narrative ?? '').slice(0, 120), 420, nceiRowY, {
+        width: 138,
+        ellipsis: true,
+        height: 24,
+      });
+      nceiRowY += 16;
+    }
+  }
+
   // ── Footer (last page) ────────────────────────────────────────────────
   doc.font('Helvetica').fontSize(7).fillColor('#94a3b8');
   doc.text(
-    `Sources: SPC, IEM Local Storm Reports, MRMS MESH (${collection?.metadata.sourceFile ?? 'unavailable'})`,
+    `Sources: SPC, IEM Local Storm Reports, MRMS MESH (${collection?.metadata.sourceFile ?? 'unavailable'})${nceiRows.length > 0 ? `, NCEI Storm Events Database (${nceiRows.length} appendix rows)` : ''}`,
     54,
     760,
     { width: 504 },
