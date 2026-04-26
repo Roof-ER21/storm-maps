@@ -31,6 +31,8 @@ import { fetchIemWindReports } from './iemLsr.js';
 import { corroborateSynopticObservations, type SynopticCorroboration } from './synopticObservationsService.js';
 import { fetchMpingReportsForDate, type MpingReport } from './mpingService.js';
 import { fetchHailtraceReportsForDate, isHailtraceConfigured, type HailtraceReport } from './hailtraceClient.js';
+import { fetchSwdiHailReports, type SwdiHailReport } from './ncerSwdiClient.js';
+import { fetchIemVtecForDate, pointInWarning, type IemVtecWarning } from './iemVtecClient.js';
 import type { BoundingBox, WindReport } from './types.js';
 
 export interface ConsilienceQuery {
@@ -95,6 +97,17 @@ export interface ConsilienceSources {
     nearestMiles: number | null;
     certifiedCount: number;
   };
+  ncerSwdi: SourceResultBase & {
+    cellCount: number;
+    maxHailInches: number;
+    peakSeverePct: number;
+    radarStations: string[];
+  };
+  nwsWarnings: SourceResultBase & {
+    warningCount: number;
+    inWarningPolygon: boolean;
+    types: string[];
+  };
 }
 
 export type ConfidenceTier =
@@ -105,7 +118,9 @@ export type ConfidenceTier =
   | 'quadruple-verified'
   | 'quintuple-verified'
   | 'sextuple-verified'
-  | 'septuple-verified';
+  | 'septuple-verified'
+  | 'octuple-verified'
+  | 'nontuple-verified';
 
 export interface ConsilienceResult {
   query: Required<Pick<ConsilienceQuery, 'lat' | 'lng' | 'date' | 'radiusMiles'>> & {
@@ -167,6 +182,8 @@ export async function buildConsilience(
       date: query.date,
       bbox: { north: bounds.north, south: bounds.south, east: bounds.east, west: bounds.west },
     }).catch(emptyArray<HailtraceReport>),
+    fetchSwdiHailReports({ date: query.date, bbox: bounds }).catch(emptyArray<SwdiHailReport>),
+    fetchIemVtecForDate({ date: query.date, bounds }).catch(emptyArray<IemVtecWarning>),
   ]);
   const mrmsResult = results[0];
   const spcHailReports = results[1] as HailPointReport[];
@@ -176,6 +193,8 @@ export async function buildConsilience(
   const synopticResult = results[5] as SynopticCorroboration;
   const mpingResults = results[6] as MpingReport[];
   const hailtraceResults = results[7] as HailtraceReport[];
+  const swdiResults = results[8] as SwdiHailReport[];
+  const vtecResults = results[9] as IemVtecWarning[];
 
   // ── MRMS ─────────────────────────────────────────────
   const mrms = analyzeMrms(mrmsResult);
@@ -226,6 +245,16 @@ export async function buildConsilience(
     query.lng,
   );
 
+  // ── NCEI SWDI (NX3HAIL — radar TVS-based hail detection) ─────
+  const ncerSwdi = analyzeSwdi(
+    swdiResults.filter((r) =>
+      withinRadius(r.lat, r.lng, query.lat, query.lng, radius),
+    ),
+  );
+
+  // ── NWS warnings (IEM VTEC — point-in-polygon) ──────────────
+  const nwsWarnings = analyzeNwsWarnings(vtecResults, query.lat, query.lng);
+
   const confirmedCount =
     Number(mrms.confirmed) +
     Number(spcHail.confirmed) +
@@ -233,24 +262,30 @@ export async function buildConsilience(
     Number(windContext.confirmed) +
     Number(synoptic.confirmed) +
     Number(mping.confirmed) +
-    Number(hailtrace.confirmed);
+    Number(hailtrace.confirmed) +
+    Number(ncerSwdi.confirmed) +
+    Number(nwsWarnings.confirmed);
 
   const confidenceTier: ConfidenceTier =
-    confirmedCount >= 7
-      ? 'septuple-verified'
-      : confirmedCount === 6
-        ? 'sextuple-verified'
-        : confirmedCount === 5
-          ? 'quintuple-verified'
-          : confirmedCount === 4
-            ? 'quadruple-verified'
-            : confirmedCount === 3
-              ? 'triple-verified'
-              : confirmedCount === 2
-                ? 'cross-verified'
-                : confirmedCount === 1
-                  ? 'single'
-                  : 'none';
+    confirmedCount >= 9
+      ? 'nontuple-verified'
+      : confirmedCount === 8
+        ? 'octuple-verified'
+        : confirmedCount === 7
+          ? 'septuple-verified'
+          : confirmedCount === 6
+            ? 'sextuple-verified'
+            : confirmedCount === 5
+              ? 'quintuple-verified'
+              : confirmedCount === 4
+                ? 'quadruple-verified'
+                : confirmedCount === 3
+                  ? 'triple-verified'
+                  : confirmedCount === 2
+                    ? 'cross-verified'
+                    : confirmedCount === 1
+                      ? 'single'
+                      : 'none';
 
   const sources: ConsilienceSources = {
     mrms,
@@ -260,6 +295,8 @@ export async function buildConsilience(
     synoptic,
     mping,
     hailtrace,
+    ncerSwdi,
+    nwsWarnings,
   };
 
   const curated = curateForAdjuster(sources, query.date);
@@ -394,6 +431,76 @@ function analyzeWindReports(
     peakGustMph: peak,
     nearestMiles: Number.isFinite(nearest) ? nearest : null,
     sources,
+  };
+}
+
+function analyzeSwdi(reports: SwdiHailReport[]): ConsilienceSources['ncerSwdi'] {
+  if (reports.length === 0) {
+    return {
+      confirmed: false,
+      cellCount: 0,
+      maxHailInches: 0,
+      peakSeverePct: 0,
+      radarStations: [],
+    };
+  }
+  const max = reports.reduce((m, r) => Math.max(m, r.maxSizeInches), 0);
+  const peakSev = reports.reduce((m, r) => Math.max(m, r.severeProb), 0);
+  const stations = [...new Set(reports.map((r) => r.wsrId).filter(Boolean))];
+  // ≥0.5" detected hail with ≥30% severe-prob is meaningful corroboration.
+  const confirmed = max >= 0.5 && peakSev >= 30;
+  const evidence = confirmed
+    ? `NEXRAD TVS hail detection (NCEI SWDI): ${reports.length} cell${reports.length === 1 ? '' : 's'} from ${stations.join(', ') || 'WSR-88D'}, peak ${max.toFixed(2)}" (${peakSev.toFixed(0)}% severe).`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    cellCount: reports.length,
+    maxHailInches: max,
+    peakSeverePct: peakSev,
+    radarStations: stations,
+  };
+}
+
+function analyzeNwsWarnings(
+  warnings: IemVtecWarning[],
+  lat: number,
+  lng: number,
+): ConsilienceSources['nwsWarnings'] {
+  if (warnings.length === 0) {
+    return {
+      confirmed: false,
+      warningCount: 0,
+      inWarningPolygon: false,
+      types: [],
+    };
+  }
+  // Check whether the property fell inside ANY warning polygon — that's
+  // the strongest signal (NWS officially declared a SVR/Tornado warning at
+  // this location during the storm).
+  const overlapping = warnings.filter((w) => pointInWarning(lat, lng, w));
+  const inPolygon = overlapping.length > 0;
+  const typeSet = new Set<string>();
+  for (const w of overlapping.length > 0 ? overlapping : warnings) {
+    if (w.phenomenon === 'SV') typeSet.add('Severe Thunderstorm');
+    else if (w.phenomenon === 'TO') typeSet.add('Tornado');
+    else if (w.phenomenon === 'FF') typeSet.add('Flash Flood');
+    else if (w.phenomenon === 'EW') typeSet.add('Extreme Wind');
+  }
+  const types = [...typeSet];
+  // If the property is inside a warning polygon, that's a confirmation.
+  // Nearby (in radius) warnings count as supporting context but not
+  // confirmation here — we already have radial sources for that.
+  const confirmed = inPolygon;
+  const evidence = confirmed
+    ? `NWS warning archive: property fell inside ${overlapping.length} ${types.join(' + ')} warning${overlapping.length === 1 ? '' : 's'} (${overlapping[0]?.wfo || 'NWS'}).`
+    : undefined;
+  return {
+    confirmed,
+    evidence,
+    warningCount: warnings.length,
+    inWarningPolygon: inPolygon,
+    types,
   };
 }
 
@@ -544,6 +651,14 @@ function curateForAdjuster(
   if (sources.hailtrace.confirmed && sources.hailtrace.evidence) {
     confirmedSources.push('HailTrace');
     evidenceLines.push(sources.hailtrace.evidence);
+  }
+  if (sources.ncerSwdi.confirmed && sources.ncerSwdi.evidence) {
+    confirmedSources.push('NCEI SWDI radar');
+    evidenceLines.push(sources.ncerSwdi.evidence);
+  }
+  if (sources.nwsWarnings.confirmed && sources.nwsWarnings.evidence) {
+    confirmedSources.push('NWS warnings');
+    evidenceLines.push(sources.nwsWarnings.evidence);
   }
 
   if (confirmedSources.length === 0) {

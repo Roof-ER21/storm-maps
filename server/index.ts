@@ -130,8 +130,21 @@ app.use(express.static(path.join(__dirname, '../dist')));
 // SPA can transparently authenticate against /api/admin/* with the JWT
 // path in `requireAdmin`.
 
-app.get('/api/auth/admin-bootstrap', async (_req, res) => {
+app.get('/api/auth/admin-bootstrap', async (req, res) => {
   try {
+    // Optional soft gate: when BOOTSTRAP_PIN is set in env, require it as a
+    // ?pin= query param OR x-bootstrap-pin header. Default-open when unset
+    // so private deploys keep working without configuration.
+    const pin = process.env.BOOTSTRAP_PIN?.trim();
+    if (pin) {
+      const supplied =
+        ((req.query.pin as string | undefined) ?? '').trim() ||
+        ((req.headers['x-bootstrap-pin'] as string | undefined) ?? '').trim();
+      if (supplied !== pin) {
+        res.status(401).json({ error: 'Bootstrap PIN required' });
+        return;
+      }
+    }
     const result = await pgSql`SELECT id, email, name, plan FROM users WHERE email = ${ADMIN_EMAIL} LIMIT 1`;
     const user = result[0] as { id: number; email: string; name: string; plan: string } | undefined;
     if (!user) {
@@ -143,6 +156,14 @@ app.get('/api/auth/admin-bootstrap', async (_req, res) => {
   } catch {
     res.status(500).json({ error: 'Bootstrap failed' });
   }
+});
+
+/** Public-facing config endpoint — tells the SPA whether bootstrap requires a PIN. */
+app.get('/api/auth/bootstrap-config', (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=300');
+  res.json({
+    bootstrapPinRequired: Boolean(process.env.BOOTSTRAP_PIN?.trim()),
+  });
 });
 
 app.post('/api/auth/login', async (req, res) => {

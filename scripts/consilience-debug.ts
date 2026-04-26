@@ -124,7 +124,7 @@ function printSummary(r: ConsilienceResult): void {
   console.log(`Date:          ${q.date}`);
   console.log(`Window:        ${q.startUtc} → ${q.endUtc}`);
   console.log('');
-  console.log(`Confirmed:     ${r.confirmedCount} / 7 sources  (${r.confidenceTier})`);
+  console.log(`Confirmed:     ${r.confirmedCount} / 9 sources  (${r.confidenceTier})`);
   console.log('');
 
   const rows: { name: string; status: string; detail: string }[] = [];
@@ -185,6 +185,22 @@ function printSummary(r: ConsilienceResult): void {
       : r.sources.hailtrace.reportCount > 0
         ? `${r.sources.hailtrace.reportCount} rpts, peak ${r.sources.hailtrace.maxHailInches.toFixed(2)}", ${r.sources.hailtrace.certifiedCount} certified`
         : 'no reports in radius',
+  });
+
+  rows.push({
+    name: 'NCEI SWDI',
+    status: r.sources.ncerSwdi.confirmed ? 'YES' : 'no',
+    detail: r.sources.ncerSwdi.cellCount > 0
+      ? `${r.sources.ncerSwdi.cellCount} cells, peak ${r.sources.ncerSwdi.maxHailInches.toFixed(2)}", ${r.sources.ncerSwdi.peakSeverePct.toFixed(0)}% severe`
+      : 'no NX3HAIL cells in radius',
+  });
+
+  rows.push({
+    name: 'NWS warnings',
+    status: r.sources.nwsWarnings.confirmed ? 'YES' : 'no',
+    detail: r.sources.nwsWarnings.warningCount > 0
+      ? `${r.sources.nwsWarnings.warningCount} warning${r.sources.nwsWarnings.warningCount === 1 ? '' : 's'}, in-polygon: ${r.sources.nwsWarnings.inWarningPolygon ? 'YES' : 'no'}, types: ${r.sources.nwsWarnings.types.join('+') || '-'}`
+      : 'no warnings on date',
   });
 
   const header = `${pad('SOURCE', 16)}  ${pad('SIGNAL', 6)}  DETAIL`;

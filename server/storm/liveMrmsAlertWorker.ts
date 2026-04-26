@@ -54,8 +54,12 @@ let lastError: string | null = null;
 let lastRunAt: string | null = null;
 
 export function isLiveMrmsAlertEnabled(): boolean {
-  if (process.env.HAIL_YES_LIVE_MRMS_ALERT === '1') return true;
-  return process.env.NODE_ENV === 'production';
+  // Default-OFF. The worker can spam push subs on first deploy if a storm
+  // is active and the state map starts empty (no remembered last band).
+  // Require explicit opt-in via env. Flip HAIL_YES_LIVE_MRMS_ALERT=1 once
+  // push subscriptions are validated and the band-tracking state has had a
+  // chance to warm up.
+  return process.env.HAIL_YES_LIVE_MRMS_ALERT === '1';
 }
 
 export function getLiveMrmsAlertStatus(): {

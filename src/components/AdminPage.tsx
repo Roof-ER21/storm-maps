@@ -12,6 +12,12 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
+import {
+  enableStormAlerts,
+  disableStormAlerts,
+  getNotificationPermission,
+  isNotificationSupported,
+} from '../services/notificationService';
 
 interface CacheSourceEntry {
   source: string;
@@ -57,6 +63,15 @@ interface PushStatus {
     failed: number;
   };
   intervalMs: number;
+}
+
+interface LiveMrmsStatus {
+  active: boolean;
+  runs: number;
+  firedTotal: number;
+  lastError: string | null;
+  lastRunAt: string | null;
+  states: Array<{ state: string; lastAlertedBand: number; lastSignalAt: string | null }>;
 }
 
 const ADMIN_TOKEN_KEY = 'hail-yes:admin-token';
@@ -127,6 +142,12 @@ export default function AdminPage() {
   const [cache, setCache] = useState<CacheStatus | null>(null);
   const [prewarm, setPrewarm] = useState<PrewarmStatus | null>(null);
   const [push, setPush] = useState<PushStatus | null>(null);
+  const [liveMrms, setLiveMrms] = useState<LiveMrmsStatus | null>(null);
+  const [pushPermState, setPushPermState] = useState<NotificationPermission>(
+    isNotificationSupported() ? getNotificationPermission() : 'denied',
+  );
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushMessage, setPushMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [purging, setPurging] = useState(false);
@@ -134,10 +155,11 @@ export default function AdminPage() {
   const refresh = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const [c, p, pu] = await Promise.all([
+    const [c, p, pu, lm] = await Promise.all([
       fetchAdminJson<CacheStatus>('/api/admin/cache-status', token),
       fetchAdminJson<PrewarmStatus>('/api/admin/prewarm-status', token),
       fetchAdminJson<PushStatus>('/api/admin/push-status', token),
+      fetchAdminJson<LiveMrmsStatus>('/api/admin/live-mrms-status', token),
     ]);
     if (!c.ok) {
       setError(`cache-status: ${c.error}`);
@@ -147,8 +169,40 @@ export default function AdminPage() {
     }
     if (p.ok) setPrewarm(p.data);
     if (pu.ok) setPush(pu.data);
+    if (lm.ok) setLiveMrms(lm.data);
     setLoading(false);
   }, [token]);
+
+  const handleEnableAlerts = async () => {
+    setPushBusy(true);
+    setPushMessage(null);
+    try {
+      const result = await enableStormAlerts({
+        territoryStates: ['VA', 'MD', 'PA', 'DE', 'NJ', 'DC'],
+        label: 'admin-onboarded',
+      });
+      if (result.ok) {
+        setPushMessage('Storm alerts enabled on this device.');
+        setPushPermState(getNotificationPermission());
+      } else {
+        setPushMessage(`Could not enable: ${result.reason}`);
+      }
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
+  const handleDisableAlerts = async () => {
+    setPushBusy(true);
+    setPushMessage(null);
+    try {
+      const ok = await disableStormAlerts();
+      setPushMessage(ok ? 'Storm alerts disabled on this device.' : 'No active subscription found.');
+      setPushPermState(getNotificationPermission());
+    } finally {
+      setPushBusy(false);
+    }
+  };
 
   useEffect(() => {
     // Defer the setState path one tick so refresh() doesn't synchronously
@@ -256,7 +310,7 @@ export default function AdminPage() {
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <SummaryCard
           label="Cache entries (live)"
           value={cache ? cache.totals.live.toLocaleString() : '—'}
@@ -276,7 +330,7 @@ export default function AdminPage() {
           }
         />
         <SummaryCard
-          label="Push fan-out cycles"
+          label="NWS push fan-out"
           value={push ? String(push.cyclesRun) : '—'}
           sub={
             push
@@ -284,6 +338,48 @@ export default function AdminPage() {
               : undefined
           }
         />
+        <SummaryCard
+          label="Live MRMS alerts"
+          value={liveMrms ? String(liveMrms.firedTotal) : '—'}
+          sub={
+            liveMrms
+              ? `${liveMrms.runs} runs · ${liveMrms.active ? 'active' : 'disabled'} · last ${formatRelative(liveMrms.lastRunAt)}`
+              : undefined
+          }
+        />
+      </div>
+
+      {/* Push subscription onboarding (this device) */}
+      <div className="mt-6 rounded-xl border border-stone-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-stone-900">Storm alerts on this device</h2>
+        <p className="mt-1 text-xs text-stone-500">
+          Subscribes the browser/phone to push notifications for live MRMS hail bands and NWS severe-thunderstorm/tornado warnings across VA / MD / PA / DE / NJ / DC.
+        </p>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void handleEnableAlerts()}
+            disabled={pushBusy || !isNotificationSupported()}
+            className="rounded-md bg-orange-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-orange-600 disabled:opacity-50"
+          >
+            {pushBusy ? 'Working…' : 'Enable Storm Alerts'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleDisableAlerts()}
+            disabled={pushBusy || pushPermState !== 'granted'}
+            className="rounded-md border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 disabled:opacity-50"
+          >
+            Disable
+          </button>
+          <span className="text-[11px] text-stone-500">
+            Permission: <code>{pushPermState}</code>
+            {!isNotificationSupported() && ' · this browser does not support push'}
+          </span>
+        </div>
+        {pushMessage && (
+          <p className="mt-2 text-[11px] text-stone-600">{pushMessage}</p>
+        )}
       </div>
 
       {/* swath_cache breakdown */}
@@ -325,6 +421,30 @@ export default function AdminPage() {
             )}
           </tbody>
         </table>
+      </div>
+
+      {/* live MRMS alert worker */}
+      <div className="mt-6 rounded-xl border border-stone-200 bg-white p-4">
+        <h2 className="text-sm font-semibold text-stone-900">Live MRMS alert worker</h2>
+        {liveMrms ? (
+          <div className="mt-3 grid gap-x-6 gap-y-2 md:grid-cols-2 text-xs">
+            <DetailItem label="Status" value={liveMrms.active ? 'active' : 'disabled (set HAIL_YES_LIVE_MRMS_ALERT=1)'} />
+            <DetailItem label="Runs" value={String(liveMrms.runs)} />
+            <DetailItem label="Pushes fired" value={String(liveMrms.firedTotal)} />
+            <DetailItem label="Last run" value={formatRelative(liveMrms.lastRunAt)} />
+            <DetailItem label="Last error" value={liveMrms.lastError ?? '—'} />
+            <DetailItem
+              label="Bands by state"
+              value={
+                liveMrms.states.length === 0
+                  ? '—'
+                  : liveMrms.states.map((s) => `${s.state}=${s.lastAlertedBand}`).join(' · ')
+              }
+            />
+          </div>
+        ) : (
+          <p className="mt-3 text-xs text-stone-500">No data.</p>
+        )}
       </div>
 
       {/* prewarm details */}

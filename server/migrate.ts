@@ -228,6 +228,28 @@ async function migrate() {
       ON verified_hail_events (event_date)
   `;
 
+  // storm_days materialized view — pre-computed (event_date, region) ->
+  // (max_hail_inches, max_wind_mph, source_count, confidence_tier) rollup
+  // from verified_hail_events. Backs the dashboard's "Recent Storm Dates"
+  // list without re-running the multi-source aggregator on every render.
+  // Created as a view (not materialized) initially so it stays correct as
+  // verified_hail_events grows; can be promoted to materialized + REFRESH
+  // CONCURRENTLY scheduled once row counts justify the cost.
+  await sql`
+    CREATE OR REPLACE VIEW storm_days AS
+    SELECT
+      event_date,
+      lat_bucket,
+      lng_bucket,
+      MAX(hail_size_inches) AS max_hail_inches,
+      MAX(confirmed_count) AS confirmed_count,
+      MAX(confidence_tier) AS confidence_tier,
+      COUNT(*) AS event_count,
+      MAX(generated_at) AS last_seen
+    FROM verified_hail_events
+    GROUP BY event_date, lat_bucket, lng_bucket
+  `;
+
   // Storm-event cache for property-search responses.
   await sql`
     CREATE TABLE IF NOT EXISTS event_cache (
