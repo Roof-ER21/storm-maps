@@ -1434,6 +1434,80 @@ app.get('/api/admin/live-mrms-status', requireAdmin, (_req, res) => {
   res.json(getLiveMrmsAlertStatus());
 });
 
+// NCEI Storm Events drill-down — adjuster-facing search against the
+// official NOAA archive. Backed by the verified_hail_events table; only
+// rows with source_ncei_storm_events=TRUE are queried.
+//   GET /api/admin/ncei-search?date=YYYY-MM-DD[&state=XX][&type=Hail][&min_size=N][&min_mph=N][&limit=N]
+// Returns matching events sorted by magnitude desc.
+interface NceiSearchQuery {
+  date?: string;
+  start_date?: string;
+  end_date?: string;
+  state?: string;
+  type?: 'Hail' | 'Thunderstorm Wind' | 'Tornado' | 'Funnel Cloud';
+  min_size?: string;
+  min_mph?: string;
+  limit?: string;
+}
+
+app.get('/api/admin/ncei-search', requireAdmin, async (req, res) => {
+  try {
+    const q = req.query as NceiSearchQuery;
+    const limit = Math.min(500, Math.max(1, parseInt(q.limit ?? '100', 10) || 100));
+
+    // Build WHERE clauses dynamically. postgres-js's tagged-template binding
+    // is awkward for variable WHERE — accumulate fragments.
+    const filters: string[] = [`source_ncei_storm_events = TRUE`];
+    const params: unknown[] = [];
+    let p = 1;
+    const add = (sql: string, val: unknown) => {
+      filters.push(sql.replace('?', `$${p}`));
+      params.push(val);
+      p += 1;
+    };
+
+    if (q.date && /^\d{4}-\d{2}-\d{2}$/.test(q.date)) {
+      add('event_date = ?::date', q.date);
+    } else {
+      if (q.start_date && /^\d{4}-\d{2}-\d{2}$/.test(q.start_date)) {
+        add('event_date >= ?::date', q.start_date);
+      }
+      if (q.end_date && /^\d{4}-\d{2}-\d{2}$/.test(q.end_date)) {
+        add('event_date <= ?::date', q.end_date);
+      }
+    }
+    if (q.state && /^[A-Z]{2}$/i.test(q.state)) {
+      add('state_code = ?', q.state.toUpperCase());
+    }
+    if (q.type) {
+      add('event_type = ?', q.type);
+    }
+    if (q.min_size && Number.isFinite(parseFloat(q.min_size))) {
+      add('hail_size_inches >= ?', parseFloat(q.min_size));
+    }
+    if (q.min_mph && Number.isFinite(parseFloat(q.min_mph))) {
+      add(`(event_type IN ('Thunderstorm Wind','Strong Wind','High Wind') AND magnitude >= ?)`, parseFloat(q.min_mph));
+    }
+
+    const sqlText = `
+      SELECT id, event_date::text, state_code, county, wfo,
+             lat::real, lng::real, event_type, magnitude::real, magnitude_type,
+             ncei_event_id, episode_id, narrative,
+             begin_time_utc::text, end_time_utc::text
+        FROM verified_hail_events
+       WHERE ${filters.join(' AND ')}
+       ORDER BY event_date DESC, magnitude DESC NULLS LAST
+       LIMIT ${limit}
+    `;
+    const rows = await pgSql.unsafe(sqlText, params as never[]);
+    res.set('Cache-Control', 'public, max-age=300');
+    res.json({ ok: true, count: rows.length, events: rows });
+  } catch (err) {
+    console.error('[ncei-search] failed', err);
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // Sanity-check endpoint for the NCEI backfill — returns counts + a small
 // sample of hail events so we can verify the data lands and is queryable.
 app.get('/api/admin/ncei-stats', requireAdmin, async (_req, res) => {
@@ -1496,7 +1570,35 @@ app.listen(PORT, '0.0.0.0', () => {
   // Kick the live MRMS hail-band alert worker. No-op unless production OR
   // HAIL_YES_LIVE_MRMS_ALERT=1.
   startLiveMrmsAlertWorker();
+  // Optional NCEI backfill (BACKFILL_NCEI_ON_BOOT env). Fire-and-forget so
+  // the server stays responsive while it runs (a multi-year backfill can
+  // take 10+ minutes to download + parse + upsert).
+  void maybeRunNceiBackfill();
 });
+
+async function maybeRunNceiBackfill(): Promise<void> {
+  const flag = process.env.BACKFILL_NCEI_ON_BOOT?.trim();
+  if (!flag) return;
+  const years: number[] = [];
+  const m = flag.match(/^(\d{4})-(\d{4})$/);
+  if (m) {
+    for (let y = parseInt(m[1], 10); y <= parseInt(m[2], 10); y++) years.push(y);
+  } else if (/^\d{4}$/.test(flag)) {
+    years.push(parseInt(flag, 10));
+  } else {
+    return; // sentinel value like "done" — silently skip
+  }
+  console.log(`[server] BACKFILL_NCEI_ON_BOOT=${flag} — running NCEI backfill in background…`);
+  try {
+    const { runNceiBackfill } = await import('../scripts/ncei-backfill.js');
+    await runNceiBackfill({ years }, { closeSql: false });
+    console.log(
+      `[server] NCEI backfill finished — set BACKFILL_NCEI_ON_BOOT=done to stop re-running.`,
+    );
+  } catch (err) {
+    console.error('[server] backfill failed:', err);
+  }
+}
 
 // ── Cache cleanup ───────────────────────────────────────
 // Run once 30 s after startup (lets DB connections settle), then every 6 hours.

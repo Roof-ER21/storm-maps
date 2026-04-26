@@ -29,6 +29,7 @@ import type {
 } from '../types/storm';
 import { getHailSizeClass } from '../types/storm';
 import HailSwathLayer from './HailSwathLayer';
+import MpingLayer from './MpingLayer';
 import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
@@ -767,6 +768,7 @@ function MapContent({
   // in the field. When MRMS is empty and reps report hail in GroupMe, they
   // toggle NEXRAD reflectivity on to see the actual storm cells.
   const [showNexrad, setShowNexrad] = useState(false);
+  const [showMping, setShowMping] = useState(false);
   // Forces NexradOverlay to refresh its tile URLs on an interval while in
   // LIVE mode (no selected date). Each tick is a monotonic counter that gets
   // folded into the effective timestamp so tiles re-request every 2 min.
@@ -1565,6 +1567,13 @@ function MapContent({
         highlightSelected={Boolean(selectedDate)}
       />
 
+      <MpingLayer
+        enabled={showMping}
+        selectedDate={selectedDate}
+        bounds={null}
+        liveWindowMinutes={120}
+      />
+
       <WindLegend
         visible={Boolean(windEnabled) && (windCollection?.features.length ?? 0) > 0}
         reportCount={windCollection?.metadata.reportCount}
@@ -1753,6 +1762,43 @@ function MapContent({
                 />
               </svg>
               {showNexrad && !selectedDate ? 'LIVE' : 'Radar'}
+            </div>
+          </button>
+          {/*
+            mPING toggle — crowd-sourced hail/wind/tornado reports from
+            NSSL's mPING phone app. Hail=red, wind=blue, tornado=purple.
+            In LIVE mode (no selected date) shows last 2 hours; in
+            historical mode shows reports for the selected ET date.
+          */}
+          <button
+            onClick={() => setShowMping((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showMping
+                ? 'bg-rose-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showMping
+                ? 'mPING crowd reports — click to hide'
+                : 'Show mPING crowd reports (citizen-scientist hail/wind/tornado pings from NSSL)'
+            }
+            aria-label="Toggle mPING reports"
+          >
+            <div className="flex items-center gap-1.5">
+              <svg
+                className="w-3.5 h-3.5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+              mPING
             </div>
           </button>
           <button

@@ -24,6 +24,7 @@ import { buildWindSwathCollection } from './windSwathService.js';
 import { buildMrmsVectorPolygons } from './mrmsService.js';
 import { fetchStormEventsCached } from './eventService.js';
 import { fetchSpcHailReportsForDate } from './spcHailReports.js';
+import { buildConsilience } from './consilienceService.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 
@@ -287,6 +288,57 @@ async function runPrewarmCycle(): Promise<void> {
       console.warn(`[prewarm] hot-property ${p.lat},${p.lng} failed`, err);
     }
     await sleep(PREWARM_PAUSE_BETWEEN_FETCH_MS);
+  }
+
+  // Consilience prewarm — for each hot property, pre-compute the 10-source
+  // corroboration for any storm date that turned up in the event cache. This
+  // makes the dashboard "yellow flag / certified" badges sub-50ms instead
+  // of waiting on 10 concurrent network fetches per render.
+  // Cap at top 25 properties × top 4 dates = 100 consilience computes per
+  // cycle (about 5 minutes of fetches at 10 sources each).
+  const consiliencePrewarmCap = 25;
+  const datesPerProperty = 4;
+  let consilienceWarmed = 0;
+  for (const p of hotProperties.slice(0, consiliencePrewarmCap)) {
+    if (!pgSql) break;
+    try {
+      // Pull the 4 most recent dates from this property's event cache —
+      // those are the dashboard "Latest Hits" entries.
+      const dateRows = await pgSql<Array<{ event_date: string | Date }>>`
+        SELECT DISTINCT event_date
+          FROM verified_hail_events
+         WHERE source_ncei_storm_events = TRUE
+           AND lat BETWEEN ${p.lat - 0.5} AND ${p.lat + 0.5}
+           AND lng BETWEEN ${p.lng - 0.5} AND ${p.lng + 0.5}
+         ORDER BY event_date DESC
+         LIMIT ${datesPerProperty}
+      `;
+      for (const row of dateRows) {
+        const dateStr =
+          row.event_date instanceof Date
+            ? row.event_date.toISOString().slice(0, 10)
+            : String(row.event_date).slice(0, 10);
+        try {
+          await buildConsilience({
+            lat: p.lat,
+            lng: p.lng,
+            date: dateStr,
+            radiusMiles: 5,
+          });
+          consilienceWarmed += 1;
+        } catch (err) {
+          cycleStats.errors += 1;
+          console.warn(`[prewarm] consilience ${p.lat},${p.lng} ${dateStr} failed`, err);
+        }
+        await sleep(PREWARM_PAUSE_BETWEEN_FETCH_MS);
+      }
+    } catch (err) {
+      cycleStats.errors += 1;
+      console.warn(`[prewarm] consilience hot-property ${p.lat},${p.lng} failed`, err);
+    }
+  }
+  if (consilienceWarmed > 0) {
+    console.log(`[prewarm] consilience warmed ${consilienceWarmed} (date,property) pairs`);
   }
 
   lastCycleStats = cycleStats;
