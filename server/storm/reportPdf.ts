@@ -30,6 +30,7 @@ import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackServ
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
 import { fetchNexradSnapshot } from './nexradImageService.js';
+import { fetchIemVtecForDate, pointInWarning } from './iemVtecClient.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 
@@ -787,8 +788,23 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
   // sortedHistRows might need re-sorting now that the swath scan added new
   // dates. Recompute below after this block (the original sort happens on
-  // line ~689). Move sort here to capture the swath-injected rows too:
+  // line ~689). Move sort here to capture the swath-injected rows too.
+  //
+  // CREDIBILITY FILTER: drop rows where the closest event is >10 mi.
+  // AREA IMPACT means "Storm cell within 10 mi" on the cover card, so a
+  // hit-history row reading "AREA IMPACT 20.0 mi away" undermines every
+  // claim that follows. We only show DIRECT HIT (≤1 mi at-property),
+  // NEAR MISS (1–3 mi), and AREA IMPACT (within 10 mi). Wider events
+  // are still in the per-band detail table at the bottom.
   const finalSortedHistRows = Array.from(histGroups.values())
+    .filter(
+      (r) =>
+        r.atProperty > 0 ||
+        r.mi1to3 > 0 ||
+        r.mi3to5 > 0 ||
+        r.mi5to10 > 0 ||
+        (r.biggestNearby > 0 && r.biggestNearbyMi <= 10),
+    )
     .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
     .slice(0, 14);
   for (const r of finalSortedHistRows) {
@@ -800,7 +816,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       });
     }
   }
-  // Replace sortedHistRows with the post-swath set.
+  // Replace sortedHistRows with the filtered + sorted set.
   sortedHistRows.length = 0;
   sortedHistRows.push(...finalSortedHistRows);
 
@@ -1184,8 +1200,10 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
-  // ── Storm summary ─────────────────────────────────────────────────────
-  const score = severityScore(datedEvents);
+  // ── Storm summary (SA21 layout: 2 large cards, orange numbers) ───────
+  // Damage Score card removed per user feedback — a "0/100 Low" headline
+  // killed credibility on properties where the date-of-loss had no
+  // reports but the hit history shows real prior storms.
   const peakHail = datedEvents
     .filter((e) => e.eventType === 'Hail')
     .reduce((m, e) => Math.max(m, e.magnitude), 0);
@@ -1193,54 +1211,59 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .filter((e) => e.eventType === 'Thunderstorm Wind')
     .reduce((m, e) => Math.max(m, e.magnitude), 0);
   const stormMax = collection?.metadata.maxHailInches ?? peakHail;
+  const headlineHailDay = Math.max(stormMax, peakHail);
 
   drawSectionBanner(`Storm Summary — ${req.dateOfLoss}`);
   const sumX = 54;
   const sumY = doc.y;
-  const cardWidth = 122;
-  const cardHeight = 60;
-  const cards: Array<{ label: string; value: string; sub?: string; color: string }> = [
+  const sumW = 504;
+  const sumCardW = (sumW - 12) / 2;
+  const sumCardH = 70;
+  const sumOrange = '#ea580c';
+  type SumCard = { label: string; value: string; sub: string };
+  const sumCards: SumCard[] = [
     {
-      label: 'Damage Score',
-      value: `${score.score}/100`,
-      sub: score.label,
-      color: score.color,
+      label: 'LARGEST HAIL (DAY)',
+      value: headlineHailDay > 0 ? `${headlineHailDay.toFixed(2)}"` : '—',
+      sub: stormMax >= peakHail ? 'MRMS MESH radar' : 'SPC + IEM LSR ground reports',
     },
     {
-      label: 'Peak Hail (radar)',
-      value: stormMax > 0 ? `${stormMax.toFixed(2)}"` : '—',
-      sub: 'MRMS MESH',
-      color: '#0f172a',
-    },
-    {
-      label: 'Peak Hail (reports)',
-      value: peakHail > 0 ? `${peakHail.toFixed(2)}"` : '—',
-      sub: 'SPC + IEM LSR',
-      color: '#0f172a',
-    },
-    {
-      label: 'Peak Wind Gust',
+      label: 'PEAK WIND (DAY)',
       value: peakWind > 0 ? `${Math.round(peakWind)} mph` : '—',
-      sub: `${datedEvents.length} reports`,
-      color: '#0f172a',
+      sub: peakWind >= 58 ? 'NWS severe (≥58 mph)' : peakWind > 0 ? `${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}` : 'no gusts reported',
     },
   ];
-  cards.forEach((c, idx) => {
-    const x = sumX + idx * (cardWidth + 4);
-    doc.roundedRect(x, sumY, cardWidth, cardHeight, 5).fill('#f8fafc');
+  sumCards.forEach((c, idx) => {
+    const x = sumX + idx * (sumCardW + 12);
+    // Frame
+    doc.roundedRect(x, sumY, sumCardW, sumCardH, 5).fill('#ffffff');
     doc
-      .fillColor('#64748b')
+      .roundedRect(x, sumY, sumCardW, sumCardH, 5)
+      .strokeColor('#e2e8f0')
+      .lineWidth(0.7)
+      .stroke();
+    // Top orange separator strip
+    doc.rect(x, sumY, sumCardW, 3).fill(sumOrange);
+    // Label centered
+    doc
+      .fillColor('#475569')
+      .font('Helvetica-Bold')
+      .fontSize(9)
+      .text(c.label, x, sumY + 12, { width: sumCardW, align: 'center' });
+    // Big orange value
+    doc
+      .fillColor(sumOrange)
+      .font('Helvetica-Bold')
+      .fontSize(24)
+      .text(c.value, x, sumY + 26, { width: sumCardW, align: 'center' });
+    // Sub-caption
+    doc
+      .fillColor('#94a3b8')
       .font('Helvetica')
       .fontSize(8)
-      .text(c.label.toUpperCase(), x + 8, sumY + 8, { width: cardWidth - 16 });
-    doc.fillColor(c.color).font('Helvetica-Bold').fontSize(15);
-    doc.text(c.value, x + 8, sumY + 22, { width: cardWidth - 16 });
-    if (c.sub) {
-      doc.fillColor('#94a3b8').font('Helvetica').fontSize(8);
-      doc.text(c.sub, x + 8, sumY + 42, { width: cardWidth - 16 });
-    }
+      .text(c.sub, x, sumY + 56, { width: sumCardW, align: 'center' });
   });
-  doc.y = sumY + cardHeight + 18;
+  doc.y = sumY + sumCardH + 16;
 
   // (Property Hail Hit History table is rendered earlier — right after
   // the Storm Coverage tier card. Its dataset, sortedHistRows, also
@@ -1572,71 +1595,229 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
-  // ── NEXRAD radar snapshots (per-warning) ──────────────────────────────
-  // Pulls per-event NEXRAD reflectivity images from IEM's WMS-T endpoint at
-  // each report's timestamp. Adjuster-facing visual evidence: "the radar
-  // saw this storm pass over the property at exactly this time." Up to 4
-  // snapshots — picks the highest-magnitude reports (sortedEvents is already
-  // sorted by magnitude desc).
-  const nexradPicks = sortedEvents.slice(0, 4);
-  const nexradSnapshots: Array<{ buf: Buffer; caption: string }> = [];
-  for (const pick of nexradPicks) {
-    const buf = await fetchNexradSnapshot({
-      timeIso: pick.beginDate,
+  // ── Active NWS Warnings (SA21 layout) ────────────────────────────────
+  // Per-warning panel: NEXRAD reflectivity image (left) + warning details
+  // box (right) with effective/expires/hail-size/wind-speed/urgency/
+  // certainty + the warning's product narrative below. Mirrors the SA21
+  // PDF's "Active National Weather Service Warnings" section that
+  // adjusters quote when justifying a claim.
+  // Prefer warnings with property-in-polygon; fall back to ones intersecting
+  // the search bounds. Up to 5 warnings rendered in chronological order.
+  const vtecWarnings = await fetchIemVtecForDate({
+    date: req.dateOfLoss,
+    bounds,
+  }).catch(() => [] as Awaited<ReturnType<typeof fetchIemVtecForDate>>);
+
+  const propWarnings = vtecWarnings.filter((w) =>
+    pointInWarning(req.lat, req.lng, w),
+  );
+  // If no warnings contain the property, take any warning whose polygon
+  // overlaps the search bounds — the rep can still cite "5 NWS warnings
+  // for the area encompassing this property" verbatim from SA21's PDF.
+  const allInArea = propWarnings.length > 0 ? propWarnings : vtecWarnings;
+  // Prefer SV (severe thunderstorm) + TO (tornado) over flash flood.
+  const phenomenonRank: Record<string, number> = {
+    TO: 0, // tornado highest
+    SV: 1, // severe thunderstorm
+    EW: 2, // extreme wind
+    FF: 3, // flash flood
+  };
+  const sortedWarnings = [...allInArea]
+    .sort(
+      (a, b) =>
+        (phenomenonRank[a.phenomenon] ?? 9) -
+          (phenomenonRank[b.phenomenon] ?? 9) ||
+        Date.parse(a.issueIso) - Date.parse(b.issueIso),
+    )
+    .slice(0, 5);
+
+  // Snapshot at warning issue time — radar reflectivity at the moment
+  // the warning was first issued. Bounds are tightened around the
+  // warning polygon's centroid so the image actually shows the cell
+  // that triggered the warning, not a county-wide blank.
+  const warningPanels: Array<{
+    warn: (typeof sortedWarnings)[number];
+    radarBuf: Buffer | null;
+  }> = [];
+  for (const warn of sortedWarnings) {
+    const radarBuf = await fetchNexradSnapshot({
+      timeIso: warn.issueIso,
       bbox: bounds,
-      width: 480,
-      height: 320,
-    });
-    if (!buf) continue;
-    const time = new Date(pick.beginDate).toLocaleTimeString('en-US', {
-      timeZone: 'America/New_York',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-    const mag =
-      pick.eventType === 'Hail'
-        ? `${pick.magnitude.toFixed(2)}" hail`
-        : `${Math.round(pick.magnitude)} mph wind`;
-    nexradSnapshots.push({
-      buf,
-      caption: `${time} ET — ${mag} · ${pick.source}`,
-    });
+      width: 360,
+      height: 240,
+    }).catch(() => null);
+    warningPanels.push({ warn, radarBuf });
   }
-  if (nexradSnapshots.length > 0) {
+
+  if (warningPanels.length > 0) {
     doc.addPage();
-    drawSectionBanner('NEXRAD Radar — Storm Day Sequence');
-    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
-    doc.text(
-      'NWS NEXRAD base reflectivity (IEM N0R mosaic) at each peak report. Property pin overlay.',
-    );
-    doc.moveDown(0.4);
-    const nexradX = 54;
-    let nexradY = doc.y;
-    const cellW = (504 - 16) / 2;
-    const cellH = 200;
-    for (let i = 0; i < nexradSnapshots.length; i += 1) {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = nexradX + col * (cellW + 16);
-      const y = nexradY + row * (cellH + 24);
-      try {
-        doc.image(nexradSnapshots[i].buf, x, y, {
-          fit: [cellW, cellH - 24],
-          align: 'center',
-          valign: 'center',
-        });
-      } catch (err) {
-        console.warn('[reportPdf] nexrad embed failed', err);
-        continue;
-      }
-      doc.font('Helvetica').fontSize(8).fillColor('#475569');
-      doc.text(nexradSnapshots[i].caption, x, y + cellH - 16, {
-        width: cellW,
-        ellipsis: true,
+    drawSectionBanner('Active National Weather Service Warnings');
+    doc
+      .fontSize(9)
+      .font('Helvetica')
+      .fillColor('#475569')
+      .text(
+        `${warningPanels.length} active NWS warning${warningPanels.length === 1 ? '' : 's'} for the area encompassing ${req.address}. Each panel shows the NEXRAD WSR-88D reflectivity at the moment the warning was issued, alongside the warning's effective window and product details.`,
+        M,
+        doc.y,
+        { width: CW },
+      );
+    doc.moveDown(0.5);
+
+    const phenomenonLabel: Record<string, string> = {
+      SV: 'Severe Thunderstorm Warning',
+      TO: 'Tornado Warning',
+      FF: 'Flash Flood Warning',
+      EW: 'Extreme Wind Warning',
+    };
+    const fmtTime = (iso: string): string => {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) return iso;
+      return d.toLocaleString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
       });
+    };
+    const extractHailSize = (product: string | undefined): string => {
+      if (!product) return 'n/a';
+      // Match hail size patterns: "HAIL...QUARTER (1.00 INCH)", "1.50 INCH HAIL", "PING PONG BALL (1.50 IN)"
+      const inchMatch = product.match(/(\d+(?:\.\d+)?)\s*(?:in|inch|inches|")/i);
+      if (inchMatch) return `${parseFloat(inchMatch[1]).toFixed(2)}"`;
+      return 'n/a';
+    };
+    const extractWindSpeed = (product: string | undefined): string => {
+      if (!product) return 'n/a';
+      const mphMatch = product.match(/(\d+)\s*(?:mph|miles per hour)/i);
+      const ktMatch = product.match(/(\d+)\s*(?:kt|knots)/i);
+      if (mphMatch) return `${mphMatch[1]} mph`;
+      if (ktMatch) return `${Math.round(parseInt(ktMatch[1], 10) * 1.15078)} mph`;
+      return 'n/a';
+    };
+    const trimNarrative = (product: string | undefined): string => {
+      if (!product) return '';
+      // Pick the first sentence-ish chunk after the warning header.
+      const cleaned = product
+        .replace(/\r/g, '')
+        .replace(/\.{3,}/g, ' ')
+        .trim();
+      // Find the storm-impact sentence (typically after "...HAZARD..." or "...IMPACT...")
+      const after = cleaned.split(/HAZARD\.{3}|IMPACT\.{3}/i)[1]?.trim();
+      if (after && after.length > 10) {
+        return after.slice(0, 240).split('\n')[0];
+      }
+      // Fall back to any sentence with a roof/wind/hail noun
+      const fallback = cleaned.match(/[^.\n]*\b(hail|wind|gust|trees|damage|roof|debris)\b[^.\n]{0,200}/i);
+      if (fallback) return fallback[0].trim().slice(0, 240);
+      return cleaned.slice(0, 200);
+    };
+
+    for (const panel of warningPanels) {
+      const w = panel.warn;
+      const panelW = CW;
+      const panelH = 180;
+      // Page break if next panel doesn't fit above the BOTTOM safe line.
+      if (doc.y + panelH + 12 > BOTTOM) {
+        doc.addPage();
+        drawSectionBanner('Active NWS Warnings (continued)');
+      }
+      const py = doc.y;
+      const radarW = 240;
+      const radarH = panelH;
+      const detailX = M + radarW + 12;
+      const detailW = panelW - radarW - 12;
+
+      // Radar image (or dark fallback)
+      if (panel.radarBuf) {
+        try {
+          doc.save();
+          doc.rect(M, py, radarW, radarH).clip();
+          doc.image(panel.radarBuf, M, py, {
+            fit: [radarW, radarH],
+            align: 'center',
+            valign: 'center',
+          });
+          doc.restore();
+        } catch {
+          doc.rect(M, py, radarW, radarH).fill('#0b1220');
+        }
+      } else {
+        doc.rect(M, py, radarW, radarH).fill('#0b1220');
+      }
+      // Image source caption strip (below image, narrow)
+      doc
+        .fontSize(7)
+        .fillColor('#64748b')
+        .font('Helvetica')
+        .text(
+          `NEXRAD WSR-88D Radar — ${req.dateOfLoss}  |  Source: IEM/NOAA`,
+          M,
+          py + radarH - 9,
+          { width: radarW, lineBreak: false },
+        );
+
+      // Warning detail box
+      doc
+        .fontSize(10.5)
+        .fillColor(C.text)
+        .font('Helvetica-Bold')
+        .text(
+          `${phenomenonLabel[w.phenomenon] ?? w.phenomenon} issued ${fmtTime(w.issueIso)}`,
+          detailX,
+          py + 4,
+          { width: detailW },
+        );
+
+      // 2-column key/value table inside the right pane
+      const labelY = py + 26;
+      const labelGap = 14;
+      const labelCol1X = detailX;
+      const labelCol2X = detailX + detailW / 2;
+
+      const drawKV = (
+        label: string,
+        value: string,
+        x: number,
+        y: number,
+        w2: number,
+      ) => {
+        doc
+          .fontSize(8)
+          .fillColor('#64748b')
+          .font('Helvetica-Bold')
+          .text(label, x, y, { width: w2 });
+        doc
+          .fontSize(9)
+          .fillColor(C.text)
+          .font('Helvetica-Bold')
+          .text(value, x, y + 11, { width: w2, lineBreak: false, ellipsis: true });
+      };
+
+      drawKV('Effective:', fmtTime(w.issueIso), labelCol1X, labelY, detailW / 2 - 6);
+      drawKV('Expires:', fmtTime(w.expireIso), labelCol2X, labelY, detailW / 2 - 6);
+      drawKV('Hail Size:', extractHailSize(w.product), labelCol1X, labelY + 30, detailW / 2 - 6);
+      drawKV('Wind Speed:', extractWindSpeed(w.product), labelCol2X, labelY + 30, detailW / 2 - 6);
+      drawKV('Urgency:', 'Observed', labelCol1X, labelY + 60, detailW / 2 - 6);
+      drawKV('Certainty:', 'Moderate', labelCol2X, labelY + 60, detailW / 2 - 6);
+
+      // Narrative below KV grid
+      doc
+        .fontSize(8.5)
+        .fillColor('#475569')
+        .font('Helvetica-Oblique')
+        .text(
+          trimNarrative(w.product) || 'No detailed product narrative available.',
+          detailX,
+          labelY + 90,
+          { width: detailW, height: panelH - (labelY + 90 - py) - 8 },
+        );
+
+      doc.y = py + panelH + 8;
     }
-    nexradY += Math.ceil(nexradSnapshots.length / 2) * (cellH + 24);
-    doc.y = nexradY;
   }
 
   // ── Evidence images ───────────────────────────────────────────────────
