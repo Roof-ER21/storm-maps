@@ -378,6 +378,12 @@ async function maybeRunBackfill(): Promise<void> {
 
 migrate()
   .then(() => maybeRunBackfill())
+  .then(() => {
+    // Force-exit so any lingering SQL connection from the backfill (which we
+    // intentionally don't close, in case the server reuses the pool) doesn't
+    // keep the event loop alive and block the `&& node server/index.ts` step.
+    process.exit(0);
+  })
   .catch((err) => {
     console.error('[migrate] Failed:', err);
     process.exit(1);
