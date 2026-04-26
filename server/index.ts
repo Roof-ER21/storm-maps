@@ -43,6 +43,9 @@ import {
   buildMrmsNowVectorPolygons,
   buildMrmsImpactResponse,
 } from './storm/mrmsService.js';
+import { buildMrmsRaster } from './storm/mrmsRaster.js';
+import { buildStormReportPdf } from './storm/reportPdf.js';
+import type { BoundingBox } from './storm/types.js';
 import {
   upsertPushSubscription,
   deletePushSubscription,
@@ -975,6 +978,154 @@ app.get('/api/hail/mrms-vector', async (req, res) => {
   } catch (err) {
     console.error('[mrms-vector] failed', err);
     res.status(500).json({ error: 'Failed to build MRMS vector polygons' });
+  }
+});
+
+// In-repo storm-day PDF report — fallback when Susan21 is unavailable.
+// Uses PDFKit (no headless browser) and pulls vector swaths from
+// swath_cache so the PDF reflects the same hail polygons the map shows.
+interface ReportPdfBody {
+  address?: string;
+  lat?: number;
+  lng?: number;
+  radiusMiles?: number;
+  dateOfLoss?: string;
+  anchorTimestamp?: string;
+  rep?: { name?: string; phone?: string; email?: string };
+  company?: { name?: string };
+}
+
+app.post('/api/hail/storm-report-pdf', async (req, res) => {
+  try {
+    const body = (req.body || {}) as ReportPdfBody;
+    if (
+      !body.address ||
+      typeof body.lat !== 'number' ||
+      typeof body.lng !== 'number' ||
+      !body.dateOfLoss ||
+      !isValidIsoDate(body.dateOfLoss)
+    ) {
+      res.status(400).json({
+        error: 'address, lat, lng, dateOfLoss (YYYY-MM-DD) all required',
+      });
+      return;
+    }
+    const pdf = await buildStormReportPdf({
+      address: body.address,
+      lat: body.lat,
+      lng: body.lng,
+      radiusMiles: Math.max(1, Math.min(200, body.radiusMiles ?? 35)),
+      dateOfLoss: body.dateOfLoss,
+      anchorTimestamp: body.anchorTimestamp ?? null,
+      rep: {
+        name: body.rep?.name ?? 'Roof-ER21 Rep',
+        phone: body.rep?.phone,
+        email: body.rep?.email,
+      },
+      company: { name: body.company?.name ?? 'Roof-ER21' },
+    });
+    res.set('Content-Type', 'application/pdf');
+    res.set(
+      'Content-Disposition',
+      `attachment; filename="StormReport_${body.address.replace(/[^a-zA-Z0-9]/g, '_')}_${body.dateOfLoss}.pdf"`,
+    );
+    res.send(pdf);
+  } catch (err) {
+    console.error('[storm-report-pdf] failed', err);
+    res.status(500).json({ error: 'Failed to build PDF' });
+  }
+});
+
+// MRMS raster overlay (PNG image + metadata) — replaces the cross-repo
+// Susan21 endpoints `mrms-historical-image` and `mrms-historical-meta`.
+// Same color palette as the vector pipeline so the two layers always agree.
+interface MrmsRasterQuery {
+  date?: string;
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+  anchorTimestamp?: string;
+}
+
+function parseRasterQuery(q: MrmsRasterQuery): {
+  date: string | null;
+  bounds: BoundingBox | null;
+} {
+  const bounds = parseHailFallbackBounds(q);
+  const date = q.date ?? new Date().toISOString().slice(0, 10);
+  if (!isValidIsoDate(date)) return { date: null, bounds: null };
+  return { date, bounds };
+}
+
+app.get('/api/hail/mrms-image', async (req, res) => {
+  try {
+    const q = req.query as MrmsRasterQuery;
+    const { date, bounds } = parseRasterQuery(q);
+    if (!date || !bounds) {
+      res.status(400).json({ error: 'date + north/south/east/west required' });
+      return;
+    }
+    const result = await buildMrmsRaster({
+      date,
+      bounds,
+      anchorIso: q.anchorTimestamp,
+    });
+    if (!result) {
+      res.status(502).json({ error: 'MRMS raster unavailable' });
+      return;
+    }
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=600');
+    res.send(Buffer.from(result.pngBytes));
+  } catch (err) {
+    console.error('[mrms-image] failed', err);
+    res.status(500).json({ error: 'Failed to build MRMS raster' });
+  }
+});
+
+app.get('/api/hail/mrms-meta', async (req, res) => {
+  try {
+    const q = req.query as MrmsRasterQuery;
+    const { date, bounds } = parseRasterQuery(q);
+    if (!date || !bounds) {
+      res.status(400).json({ error: 'date + north/south/east/west required' });
+      return;
+    }
+    const result = await buildMrmsRaster({
+      date,
+      bounds,
+      anchorIso: q.anchorTimestamp,
+    });
+    if (!result) {
+      // Mirror the field-assistant shape so the frontend can render its
+      // "No archived MRMS hail pixels" message instead of erroring.
+      res.json({
+        product: 'mesh1440',
+        ref_time: q.anchorTimestamp ?? `${date}T23:30:00Z`,
+        has_hail: false,
+        max_mesh_inches: 0,
+        bounds,
+      });
+      return;
+    }
+    res.set('Cache-Control', 'public, max-age=600');
+    res.json({
+      product: 'mesh1440',
+      ref_time: result.metadata.refTime,
+      generated_at: new Date().toISOString(),
+      has_hail: result.metadata.hasHail,
+      max_mesh_inches: result.metadata.maxMeshInches,
+      max_mesh_mm: result.metadata.maxMeshInches * 25.4,
+      hail_pixels: result.metadata.hailPixels,
+      bounds: result.metadata.bounds,
+      requested_bounds: result.metadata.requestedBounds,
+      image_size: result.metadata.imageSize,
+      archive_url: result.metadata.sourceFile,
+    });
+  } catch (err) {
+    console.error('[mrms-meta] failed', err);
+    res.status(500).json({ error: 'Failed to fetch MRMS metadata' });
   }
 });
 

@@ -109,15 +109,31 @@ function toHistoricalQuery(params: HistoricalMrmsParams): string {
   return query.toString();
 }
 
+/**
+ * Fetch historical MRMS metadata. Tries the in-repo `/api/hail/mrms-meta`
+ * first; falls back to the Susan21 endpoint when that's unreachable.
+ */
 export async function fetchHistoricalMrmsMetadata(
   params: HistoricalMrmsParams,
 ): Promise<HistoricalMrmsMetadata | null> {
+  // 1. In-repo
+  try {
+    const res = await fetch(
+      `/api/hail/mrms-meta?${toHistoricalQuery(params)}`,
+      { signal: AbortSignal.timeout(45000) },
+    );
+    if (res.ok) {
+      return (await res.json()) as HistoricalMrmsMetadata;
+    }
+  } catch (err) {
+    console.warn('[mrmsApi] in-repo MRMS meta failed, trying Susan21', err);
+  }
+
+  // 2. Susan21 legacy
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-historical-meta?${toHistoricalQuery(params)}`,
-      {
-        signal: AbortSignal.timeout(45000),
-      },
+      { signal: AbortSignal.timeout(45000) },
     );
     if (!res.ok) {
       throw new Error(`Historical MRMS metadata returned ${res.status}`);
@@ -129,7 +145,21 @@ export async function fetchHistoricalMrmsMetadata(
   }
 }
 
+/**
+ * Build the URL for the historical MRMS PNG overlay. Returns the in-repo
+ * path; the frontend overlay falls back gracefully because if the in-repo
+ * endpoint isn't reachable the GroundOverlay just shows a broken image
+ * (and the vector polygons render anyway). The Susan21 URL is exposed via
+ * `getHistoricalMrmsOverlayUrlSusan21` for explicit fallback wiring if
+ * needed.
+ */
 export function getHistoricalMrmsOverlayUrl(params: HistoricalMrmsParams): string {
+  return `/api/hail/mrms-image?${toHistoricalQuery(params)}`;
+}
+
+export function getHistoricalMrmsOverlayUrlSusan21(
+  params: HistoricalMrmsParams,
+): string {
   return `${HAIL_YES_HAIL_API_BASE}/mrms-historical-image?${toHistoricalQuery(params)}`;
 }
 
