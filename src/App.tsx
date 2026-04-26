@@ -2905,6 +2905,8 @@ function App({ onLogout }: { onLogout: () => void }) {
               searchLng={searchSummary ? queryLocation.lng : null}
               eventFilters={eventFilters}
               onFilterChange={handleFilterChange}
+              territoryOnly={territoryOnly}
+              onTerritoryOnlyChange={setTerritoryOnly}
               generatingReport={generatingReport}
               onGenerateReport={handleGenerateReport}
               onOpenReports={() => setActiveView('reports')}

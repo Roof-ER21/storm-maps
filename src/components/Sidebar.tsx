@@ -45,6 +45,9 @@ interface SidebarProps {
   selectedStormAnchorTimestamp?: string | null;
   eventFilters: EventFilterState;
   onFilterChange: (filters: EventFilterState) => void;
+  /** When true, the map clips events/swaths to the VA/MD/PA focus territory. */
+  territoryOnly?: boolean;
+  onTerritoryOnlyChange?: (value: boolean) => void;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
   onOpenReports: () => void;
@@ -127,6 +130,8 @@ export default function Sidebar({
   selectedStormAnchorTimestamp = null,
   eventFilters,
   onFilterChange,
+  territoryOnly = true,
+  onTerritoryOnlyChange,
   generatingReport,
   onGenerateReport,
   onOpenReports,
@@ -753,6 +758,13 @@ export default function Sidebar({
             }
           />
         </div>
+
+        {onTerritoryOnlyChange && (
+          <TerritoryToggle
+            value={territoryOnly}
+            onChange={onTerritoryOnlyChange}
+          />
+        )}
       </CollapsibleSection>
 
       <div className="min-h-0">
@@ -1078,6 +1090,50 @@ function FilterButton({
     >
       {label}
     </button>
+  );
+}
+
+function TerritoryToggle({
+  value,
+  onChange,
+}: {
+  value: boolean;
+  onChange: (next: boolean) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-stone-200 bg-stone-50 p-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+            Coverage
+          </p>
+          <p className="mt-0.5 text-xs font-semibold text-stone-800">
+            {value ? 'VA · MD · PA' : 'All states'}
+          </p>
+          <p className="mt-0.5 text-[10px] text-stone-500 leading-snug">
+            {value
+              ? 'Events and swaths clipped to focus territory.'
+              : 'Showing every report in the search radius.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => onChange(!value)}
+          role="switch"
+          aria-checked={value}
+          aria-label="Toggle VA/MD/PA territory clipping"
+          className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${
+            value ? 'bg-orange-500' : 'bg-stone-300'
+          }`}
+        >
+          <span
+            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
+              value ? 'translate-x-5' : 'translate-x-0.5'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
   );
 }
 
