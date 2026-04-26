@@ -752,6 +752,12 @@ function App() {
     stopTracking,
   } = useGeolocation();
 
+  // Geofence auto-knock-log: when the rep stays within 60m of a queued
+  // stop for ≥20s, auto-mark it visited. Uses a ref-tracked timer per
+  // stop so we don't re-render on every GPS tick. The handler closure
+  // is stable so we can call it from the effect without dep churn.
+  const geofenceTimersRef = useRef<Map<string, number>>(new Map());
+
   const activeLat = queryLocation.lat;
   const activeLng = queryLocation.lng;
   const effectiveSinceDate = historyRange === 'since' && sinceDate ? sinceDate : null;
@@ -1968,6 +1974,43 @@ function App() {
     },
     [],
   );
+
+  // Geofence auto-log effect — fires whenever GPS position updates.
+  // For each queued stop within 60m of the rep, start (or maintain) a
+  // timer; once the timer hits 20s the stop auto-marks as 'visited'.
+  // When the rep moves out of range, the timer resets.
+  useEffect(() => {
+    if (!gpsPosition || !routeStopsState.length) return;
+    const PROXIMITY_METERS = 60;
+    const PROXIMITY_MILES = PROXIMITY_METERS / 1609.344;
+    const DWELL_MS = 20_000;
+    const here: LatLng = { lat: gpsPosition.lat, lng: gpsPosition.lng };
+    const now = Date.now();
+    const timers = geofenceTimersRef.current;
+
+    const inRangeIds = new Set<string>();
+    for (const stop of routeStopsState) {
+      if (stop.status !== 'queued') continue;
+      if (!Number.isFinite(stop.lat) || !Number.isFinite(stop.lng)) continue;
+      const dMi = haversineDistanceMiles(here, { lat: stop.lat, lng: stop.lng });
+      if (dMi <= PROXIMITY_MILES) {
+        inRangeIds.add(stop.id);
+        const since = timers.get(stop.id);
+        if (since === undefined) {
+          timers.set(stop.id, now);
+        } else if (now - since >= DWELL_MS) {
+          // Auto-fire visited and remove the timer so we don't keep
+          // firing on subsequent GPS ticks.
+          timers.delete(stop.id);
+          handleUpdateRouteStopStatus(stop.id, 'visited');
+        }
+      }
+    }
+    // Clean up timers for stops no longer in range or no longer queued.
+    for (const id of Array.from(timers.keys())) {
+      if (!inRangeIds.has(id)) timers.delete(id);
+    }
+  }, [gpsPosition, routeStopsState, handleUpdateRouteStopStatus]);
 
   const handleUpdateRouteStopOutcome = useCallback(
     (stopId: string, outcome: CanvassOutcome) => {

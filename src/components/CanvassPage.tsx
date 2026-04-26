@@ -53,6 +53,28 @@ export default function CanvassPage({
   const visitedStops = routeStops.filter((stop) => stop.status === 'visited');
   const completedStops = routeStops.filter((stop) => stop.status === 'completed');
   const bookedStops = routeStops.filter((stop) => stop.outcome === 'inspection_booked');
+
+  /**
+   * Build a Google Maps multi-waypoint URL from the queued stops.
+   * Google Maps `dir/?api=1&waypoints=` supports up to 9 intermediate
+   * waypoints + origin + destination. We trim to that limit and let the
+   * native maps app handle turn-by-turn from there.
+   */
+  const navigationHref = (() => {
+    const queued = routeStops.filter((s) => s.status === 'queued');
+    if (queued.length === 0) return null;
+    const head = queued.slice(0, 9);
+    const dest = head[head.length - 1];
+    const waypoints = head.slice(0, -1).map((s) => `${s.lat},${s.lng}`).join('|');
+    const params = new URLSearchParams({
+      api: '1',
+      origin: 'Current+Location',
+      destination: `${dest.lat},${dest.lng}`,
+      travelmode: 'driving',
+    });
+    if (waypoints) params.set('waypoints', waypoints);
+    return `https://www.google.com/maps/dir/?${params.toString()}`;
+  })();
   const followUps = routeStops.filter((stop) => stop.outcome === 'follow_up');
 
   return (
@@ -78,14 +100,26 @@ export default function CanvassPage({
             >
               Build Knock-Now Route
             </button>
-            <button
-              type="button"
-              onClick={onOpenNavigation}
-              disabled={pendingStops.length === 0}
-              className="rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Turn-by-Turn
-            </button>
+            {navigationHref ? (
+              <a
+                href={navigationHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={onOpenNavigation}
+                className="rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100 text-center"
+              >
+                🧭 Turn-by-Turn
+              </a>
+            ) : (
+              <button
+                type="button"
+                onClick={onOpenNavigation}
+                disabled
+                className="rounded-2xl border border-stone-200 bg-stone-50 px-3 sm:px-4 py-2.5 text-xs sm:text-sm font-semibold text-stone-900 transition-colors hover:bg-stone-100 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                🧭 Turn-by-Turn
+              </button>
+            )}
             <button
               type="button"
               onClick={onExportSummary}
@@ -169,6 +203,17 @@ export default function CanvassPage({
                     >
                       Open on Map
                     </button>
+                    {/* Maps deep-link — opens platform-native maps app
+                        with directions to the stop. iOS picks Apple
+                        Maps, Android/desktop picks Google Maps. */}
+                    <a
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${stop.lat},${stop.lng}&travelmode=driving`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="rounded-xl border border-orange-300 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700 transition-colors hover:bg-orange-100"
+                    >
+                      🧭 Navigate
+                    </a>
                     <button
                       type="button"
                       onClick={() => onRemoveStop(stop.id)}
@@ -243,9 +288,19 @@ export default function CanvassPage({
                     <textarea
                       id={`notes-${stop.id}`}
                       value={stop.notes}
-                      onChange={(event) => onUpdateStopNotes(stop.id, event.target.value)}
+                      onChange={(event) => {
+                        onUpdateStopNotes(stop.id, event.target.value);
+                        // Auto-resize so reps don't lose visibility on
+                        // longer notes. min-h preserves the original feel.
+                        const el = event.target;
+                        el.style.height = 'auto';
+                        el.style.height = `${Math.min(360, el.scrollHeight)}px`;
+                      }}
                       placeholder="Gate code, homeowner name, roof age, follow-up timing..."
-                      className="mt-2 h-28 w-full resize-none rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
+                      // text-base (16px) prevents iOS Safari from zooming
+                      // when the input gets focus. Same change applied to
+                      // homeowner inputs below.
+                      className="mt-2 min-h-28 w-full resize-none rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-base text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                     />
                     {(stop.outcome === 'inspection_booked' || stop.homeownerName || stop.homeownerPhone || stop.homeownerEmail) && (
                       <div className="mt-4 grid gap-2 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
@@ -256,7 +311,7 @@ export default function CanvassPage({
                             onUpdateStopHomeowner(stop.id, 'homeownerName', event.target.value)
                           }
                           placeholder="Homeowner name"
-                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
+                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-base text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                         />
                         <input
                           aria-label="Phone number"
@@ -265,7 +320,7 @@ export default function CanvassPage({
                             onUpdateStopHomeowner(stop.id, 'homeownerPhone', event.target.value)
                           }
                           placeholder="Phone number"
-                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
+                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-base text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                         />
                         <input
                           aria-label="Email address"
@@ -274,7 +329,7 @@ export default function CanvassPage({
                             onUpdateStopHomeowner(stop.id, 'homeownerEmail', event.target.value)
                           }
                           placeholder="Email address"
-                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-sm text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
+                          className="rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2 text-base text-stone-900 placeholder:text-stone-400 focus:border-orange-400/40 focus:outline-none"
                         />
                       </div>
                     )}

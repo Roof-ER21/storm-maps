@@ -21,6 +21,7 @@ import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import AddressImpactBadge from './AddressImpactBadge';
 import WindImpactBadge from './WindImpactBadge';
 import DatePicker from './DatePicker';
+import ActiveStormsPanel from './ActiveStormsPanel';
 import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
 import {
   enableStormAlerts,
@@ -434,6 +435,11 @@ export default function Sidebar({
           )}
         </div>
       </form>
+
+      {/* Active Storms — auto-fills when something is firing in
+          territory. Visible regardless of whether a property is searched
+          so reps see live activity the moment they open the app. */}
+      <ActiveStormsPanel />
 
       {searchSummary && (
         <div className="border-b border-stone-200 px-3 py-3">

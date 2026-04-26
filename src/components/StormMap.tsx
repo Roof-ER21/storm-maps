@@ -35,6 +35,7 @@ import MesocycloneLayer from './MesocycloneLayer';
 import SynopticLayer from './SynopticLayer';
 import ParcelLayer from './ParcelLayer';
 import SketchLayer from './SketchLayer';
+import LiveStormCellsLayer from './LiveStormCellsLayer';
 import HeatmapLayer from './HeatmapLayer';
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
@@ -821,6 +822,12 @@ function MapContent({
   // spots / hail streaks during a roof walk. Sketches persist in
   // localStorage by property+date.
   const [showSketch, setShowSketch] = useState(false);
+  // Live Storm Cells — auto-refreshing MRMS now-cast + NWS active warnings.
+  // Default ON in LIVE mode (no selectedDate) so reps watching the map
+  // during an active event see cells immediately. Default OFF when
+  // browsing historical dates so they don't conflict with the daily
+  // composite.
+  const [showLiveCells, setShowLiveCells] = useState(false);
   // Forces NexradOverlay to refresh its tile URLs on an interval while in
   // LIVE mode (no selected date). Each tick is a monotonic counter that gets
   // folded into the effective timestamp so tiles re-request every 2 min.
@@ -1703,6 +1710,12 @@ function MapContent({
         dateOfLoss={selectedDate}
       />
 
+      {/* Live storm cells — auto-on in LIVE mode (no historical date). */}
+      <LiveStormCellsLayer
+        enabled={showLiveCells || (!selectedDate && !showCocorahs && !showMping)}
+        bounds={mapBounds}
+      />
+
       <WindLegend
         visible={Boolean(windEnabled) && (windCollection?.features.length ?? 0) > 0}
         reportCount={windCollection?.metadata.reportCount}
@@ -1980,6 +1993,25 @@ function MapContent({
             aria-label="Toggle Synoptic surface stations"
           >
             Stations
+          </button>
+          {/* Live Cells — current MRMS now-cast hail polygons + NWS
+              active warnings. Auto-on in LIVE mode; this toggle forces
+              it on/off explicitly. */}
+          <button
+            onClick={() => setShowLiveCells((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showLiveCells || (!selectedDate && !showCocorahs && !showMping)
+                ? 'bg-red-600 text-white animate-pulse'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showLiveCells
+                ? 'Live storm cells visible — click to hide'
+                : 'Show current MRMS now-cast hail polygons + active NWS warnings (auto-on in LIVE mode)'
+            }
+            aria-label="Toggle live storm cells"
+          >
+            🔴 Live Cells
           </button>
           {/* Field Inspection — drawing tools for marking damage spots
               during a roof walk. Sketches persist by property+date. */}

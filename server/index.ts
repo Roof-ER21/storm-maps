@@ -33,6 +33,7 @@ import { buildConsilience } from './storm/consilienceService.js';
 import { fetchRecentMpingReports, fetchMpingReportsForDate, isMpingConfigured } from './storm/mpingService.js';
 import { fetchCocorahsHailReports } from './storm/cocorahsClient.js';
 import { fetchParcelGeometry } from './property/parcelGeometry.js';
+import { fetchActiveSvrPolygons } from './storm/nwsAlerts.js';
 import { fetchMesocyclones } from './storm/nceiNx3MdaClient.js';
 import { corroborateSynopticObservations } from './storm/synopticObservationsService.js';
 import { etDayUtcWindow } from './storm/timeUtils.js';
@@ -1358,6 +1359,67 @@ app.get('/api/storm/consilience-history', async (req, res) => {
 
 // ── mPING crowd-source feed ───────────────────────────────────
 // GET /api/storm/mping?windowMinutes=60[&north&south&east&west]   live window
+// ── Live storm cells (for the Active Storms panel + map layer) ────────
+// GET /api/storm/live-cells[?north=&south=&east=&west=]
+//   Returns the current MRMS now-cast hail polygons + NWS active SVR
+//   warnings + summary metadata in one response. Powers the rep-facing
+//   "Active Storms" panel that auto-fills when something is firing.
+//   Cached 90s — alignment with NWS poll cadence.
+interface LiveCellsQuery {
+  north?: string;
+  south?: string;
+  east?: string;
+  west?: string;
+}
+app.get('/api/storm/live-cells', async (req, res) => {
+  try {
+    const q = req.query as LiveCellsQuery;
+    // Default bounds: NoVA / VA / MD / PA / DC / DE / NJ focus territory.
+    const bounds = {
+      north: parseFloat(q.north ?? '42.5'),
+      south: parseFloat(q.south ?? '36.5'),
+      east: parseFloat(q.east ?? '-74.5'),
+      west: parseFloat(q.west ?? '-83.5'),
+    };
+    const [collection, svrPolygons] = await Promise.all([
+      buildMrmsNowVectorPolygons(bounds).catch(() => null),
+      fetchActiveSvrPolygons({ bounds }).catch(() => [] as Awaited<ReturnType<typeof fetchActiveSvrPolygons>>),
+    ]);
+    const maxBandIn =
+      collection?.features.reduce(
+        (m, f) => Math.max(m, f.properties.sizeInches),
+        0,
+      ) ?? 0;
+    const cellCount = collection?.features.length ?? 0;
+    const status = getLiveMrmsAlertStatus();
+    res.set('Cache-Control', 'public, max-age=90');
+    res.json({
+      ok: true,
+      // Active = either current radar shows ≥¼" hail OR an SVR/Tornado warning is up.
+      active: maxBandIn >= 0.25 || svrPolygons.length > 0,
+      mrms: {
+        refTime: collection?.metadata.refTime ?? null,
+        maxHailInches: maxBandIn,
+        cellCount,
+        // Lightweight feature collection for the map layer (no metadata).
+        features: collection?.features ?? [],
+      },
+      nws: {
+        warnings: svrPolygons,
+        count: svrPolygons.length,
+      },
+      worker: {
+        active: status.active,
+        firedTodayByState: status.firedTodayByState,
+        lastFiredAt: status.lastFiredAt,
+      },
+    });
+  } catch (err) {
+    console.error('[live-cells] failed', err);
+    res.status(500).json({ error: 'Failed to build live cells response' });
+  }
+});
+
 // ── Parcel geometry (for the property polygon overlay) ─────────────────
 // GET /api/property/parcel?lat=X&lng=Y
 //   Returns the lot's polygon rings if the point falls inside a county
