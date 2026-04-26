@@ -45,6 +45,7 @@ import {
 } from './storm/mrmsService.js';
 import { buildMrmsRaster } from './storm/mrmsRaster.js';
 import { buildStormReportPdf } from './storm/reportPdf.js';
+import { requireAdmin } from './storm/adminAuth.js';
 import type { BoundingBox } from './storm/types.js';
 import {
   upsertPushSubscription,
@@ -108,7 +109,8 @@ app.post('/api/billing/webhook', express.raw({ type: 'application/json' }), asyn
 
 app.use(express.json({ limit: '10mb' }));
 
-// Rate limiting
+// Rate limiting — global apiLimiter is generous (300 req / 15 min). The
+// push-subscribe and admin endpoints get their own tighter buckets.
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 300, // 300 requests per window per IP
@@ -117,6 +119,28 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests, try again later' },
 });
 app.use('/api/', apiLimiter);
+
+// Push subscribe is browser-driven and idempotent on `endpoint`. A real
+// rep hits it once per device per day. Allow ~20/hr/IP — enough for
+// device migration, well below abuse territory.
+const pushSubscribeLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many push subscribe requests' },
+});
+app.use('/api/push/subscribe', pushSubscribeLimiter);
+
+// Admin endpoints get a lower ceiling than the rest of the API.
+const adminLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many admin requests' },
+});
+app.use('/api/admin/', adminLimiter);
 
 // ── AI Property Analysis API ───────────────────────────
 // Auth + scan limits on write endpoints (POST), reads are open
@@ -1314,7 +1338,7 @@ app.get('/api/storm/events', async (req, res) => {
 // Anyone can hit it — the response is metadata only (counts + dates), no
 // cached payloads. Useful for the admin dashboard and for quick "is the
 // pre-warm working?" checks.
-app.get('/api/admin/cache-status', async (_req, res) => {
+app.get('/api/admin/cache-status', requireAdmin, async (_req, res) => {
   try {
     const summary = await getCacheSummary();
     const total = summary.reduce((sum, row) => sum + row.total, 0);
@@ -1331,7 +1355,7 @@ app.get('/api/admin/cache-status', async (_req, res) => {
   }
 });
 
-app.post('/api/admin/cache-purge', async (_req, res) => {
+app.post('/api/admin/cache-purge', requireAdmin, async (_req, res) => {
   try {
     const purged = await purgeExpiredSwaths();
     res.json({ ok: true, purged });
@@ -1341,7 +1365,7 @@ app.post('/api/admin/cache-purge', async (_req, res) => {
   }
 });
 
-app.get('/api/admin/prewarm-status', (_req, res) => {
+app.get('/api/admin/prewarm-status', requireAdmin, (_req, res) => {
   const enabled =
     process.env.HAIL_YES_PREWARM === '1' ||
     process.env.NODE_ENV === 'production';
@@ -1413,7 +1437,7 @@ app.delete('/api/push/subscribe', async (req, res) => {
   }
 });
 
-app.get('/api/admin/push-status', (_req, res) => {
+app.get('/api/admin/push-status', requireAdmin, (_req, res) => {
   res.json(getPushFanoutStatus());
 });
 
