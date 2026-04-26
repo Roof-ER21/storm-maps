@@ -68,6 +68,7 @@ import AppHeader from './components/AppHeader';
 
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const PipelinePage = lazy(() => import('./components/PipelinePage'));
+const AdminPage = lazy(() => import('./components/AdminPage'));
 const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
@@ -616,7 +617,21 @@ function App({ onLogout }: { onLogout: () => void }) {
   const notificationsSupported = isNotificationSupported();
   const { profile: repProfile, updateProfile: updateRepProfile } = useRepProfile();
   const { showOnboarding, markComplete: completeOnboarding } = useOnboarding();
-  const [activeView, setActiveView] = useState<AppView>('dashboard');
+  // Hidden admin route — bookmark `https://app/#admin` to access. Not added
+  // to the main nav so reps don't see it.
+  const initialView: AppView =
+    typeof window !== 'undefined' && window.location.hash === '#admin'
+      ? 'admin'
+      : 'dashboard';
+  const [activeView, setActiveView] = useState<AppView>(initialView);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onHashChange = () => {
+      if (window.location.hash === '#admin') setActiveView('admin');
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
   const [mapLoadError, setMapLoadError] = useState<string | null>(null);
   const [aiSlideOpen, setAiSlideOpen] = useState(false);
   const [aiSlideAddress, setAiSlideAddress] = useState('');
@@ -3020,6 +3035,8 @@ function App({ onLogout }: { onLogout: () => void }) {
             onLogout={onLogout}
           />
         )}
+
+        {activeView === 'admin' && <AdminPage />}
         </Suspense>
         </ErrorBoundary>
       </div>

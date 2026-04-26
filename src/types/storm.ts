@@ -60,7 +60,8 @@ export type AppView =
   | 'pipeline'
   | 'reports'
   | 'evidence'
-  | 'team';
+  | 'team'
+  | 'admin';
 
 // ============================================================
 // Storm Event Types
