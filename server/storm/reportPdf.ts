@@ -405,7 +405,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       .replace(/-/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase());
     doc.text(
-      `${consilience.confirmedCount}/7 independent sources · ${tierLabel}`,
+      `${consilience.confirmedCount}/10 independent sources · ${tierLabel}`,
     );
     doc.moveDown(0.4);
 

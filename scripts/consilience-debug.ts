@@ -124,7 +124,7 @@ function printSummary(r: ConsilienceResult): void {
   console.log(`Date:          ${q.date}`);
   console.log(`Window:        ${q.startUtc} → ${q.endUtc}`);
   console.log('');
-  console.log(`Confirmed:     ${r.confirmedCount} / 9 sources  (${r.confidenceTier})`);
+  console.log(`Confirmed:     ${r.confirmedCount} / 10 sources  (${r.confidenceTier})`);
   console.log('');
 
   const rows: { name: string; status: string; detail: string }[] = [];
@@ -201,6 +201,14 @@ function printSummary(r: ConsilienceResult): void {
     detail: r.sources.nwsWarnings.warningCount > 0
       ? `${r.sources.nwsWarnings.warningCount} warning${r.sources.nwsWarnings.warningCount === 1 ? '' : 's'}, in-polygon: ${r.sources.nwsWarnings.inWarningPolygon ? 'YES' : 'no'}, types: ${r.sources.nwsWarnings.types.join('+') || '-'}`
       : 'no warnings on date',
+  });
+
+  rows.push({
+    name: 'NCEI archive',
+    status: r.sources.nceiStormEvents.confirmed ? 'YES' : 'no',
+    detail: r.sources.nceiStormEvents.eventCount > 0
+      ? `${r.sources.nceiStormEvents.eventCount} events, types: ${r.sources.nceiStormEvents.eventTypes.join('+')}, peak hail ${r.sources.nceiStormEvents.maxHailInches.toFixed(2)}", nearest ${r.sources.nceiStormEvents.nearestMiles?.toFixed(1) ?? '?'}mi`
+      : 'no events / not yet backfilled',
   });
 
   const header = `${pad('SOURCE', 16)}  ${pad('SIGNAL', 6)}  DETAIL`;

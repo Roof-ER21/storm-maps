@@ -1434,6 +1434,44 @@ app.get('/api/admin/live-mrms-status', requireAdmin, (_req, res) => {
   res.json(getLiveMrmsAlertStatus());
 });
 
+// Sanity-check endpoint for the NCEI backfill — returns counts + a small
+// sample of hail events so we can verify the data lands and is queryable.
+app.get('/api/admin/ncei-stats', requireAdmin, async (_req, res) => {
+  try {
+    const totals = await pgSql`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE event_type = 'Hail')::int AS hail_count,
+        COUNT(*) FILTER (WHERE event_type = 'Thunderstorm Wind')::int AS wind_count,
+        COUNT(*) FILTER (WHERE event_type = 'Tornado')::int AS tornado_count,
+        MIN(event_date)::text AS earliest_date,
+        MAX(event_date)::text AS latest_date,
+        MAX(magnitude)::real AS max_hail_inches
+        FROM verified_hail_events
+       WHERE source_ncei_storm_events = TRUE
+    `;
+    const byState = await pgSql`
+      SELECT state_code, COUNT(*)::int AS n
+        FROM verified_hail_events
+       WHERE source_ncei_storm_events = TRUE
+       GROUP BY state_code
+       ORDER BY n DESC
+    `;
+    const sampleHail = await pgSql`
+      SELECT event_date::text, state_code, county, lat::real, lng::real,
+             magnitude::real, magnitude_type, ncei_event_id, narrative
+        FROM verified_hail_events
+       WHERE source_ncei_storm_events = TRUE
+         AND event_type = 'Hail'
+       ORDER BY magnitude DESC NULLS LAST
+       LIMIT 10
+    `;
+    res.json({ totals: totals[0], byState, sampleTopHail: sampleHail });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 // Lazy purge timer so expired rows don't accumulate. 6-hour cadence is
 // plenty given the per-row index lookup we do on each read anyway.
 setInterval(() => {
