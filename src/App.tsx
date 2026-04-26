@@ -2934,7 +2934,7 @@ function App() {
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-black text-white">
+    <div className="flex min-h-screen flex-col bg-black text-white lg:h-full lg:min-h-0 lg:overflow-hidden">
       <AppHeader
         activeView={activeView}
         onChangeView={setActiveView}
