@@ -903,21 +903,24 @@ function MapContent({
     setScrubFrameIndex(null);
     setScrubMode('nexrad');
   }, [selectedDate]);
-  // Auto-switch to MRMS mode when NEXRAD has no usable frames but MRMS
-  // is active. Avoids stranding the rep with a hidden scrubber when the
-  // only viable timeline source is MRMS hourly.
+  // Auto-switch to MRMS mode when NEXRAD has no usable frames. Avoids
+  // stranding the rep with a hidden scrubber when the only viable
+  // timeline source is MRMS hourly. Also auto-enables the MRMS layer so
+  // the GroundOverlay actually renders when the slider moves — without
+  // this the scrubber would drag silently with no visual change.
   useEffect(() => {
     if (!selectedDate) return;
     const nexradAvailable =
       Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
-    if (!nexradAvailable && mrmsHistoricalMode && scrubMode !== 'mrms') {
-      setScrubMode('mrms');
+    if (!nexradAvailable) {
+      if (scrubMode !== 'mrms') setScrubMode('mrms');
+      if (!showMrms) setShowMrms(true);
     }
   }, [
     selectedDate,
     showNexrad,
     historicalRadarTimestamps.length,
-    mrmsHistoricalMode,
+    showMrms,
     scrubMode,
   ]);
   const [pointImpact, setPointImpact] = useState<{
@@ -1884,13 +1887,15 @@ function MapContent({
       <StormTimelineScrubber
         visible={(() => {
           if (!selectedDate) return false;
-          // Show whenever EITHER source is reachable so the rep can
-          // toggle modes from inside the scrubber chrome. Per-mode
-          // viability checks happen at the timestamps array; the toggle
-          // pills only render when both modes are alive simultaneously.
+          // MRMS hourly is always reachable when a historical storm
+          // date is selected — 24 anchors are synthetic, no upstream
+          // dependency. Show scrubber whenever either NEXRAD frames or
+          // MRMS hourly is viable. The mode toggle pills only render
+          // when both are simultaneously alive (NEXRAD ≥2 frames AND
+          // showMrms=true).
           const nexradAvailable =
             Boolean(showNexrad) && historicalRadarTimestamps.length > 1;
-          const mrmsAvailable = mrmsHistoricalMode;
+          const mrmsAvailable = mrmsHourlyTimestamps.length > 1;
           return nexradAvailable || mrmsAvailable;
         })()}
         frameCount={
