@@ -91,20 +91,62 @@ export default function ReportsPage({
             </p>
           </div>
         ) : (
-          <div className="rounded-3xl border border-dashed border-stone-300 bg-white p-8 text-center shadow-sm">
-            <p className="text-lg font-semibold text-stone-900">
-              No property is loaded yet
+          <div className="rounded-3xl border border-stone-200 bg-white p-6 shadow-sm">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-400">
+              How Reports Work
             </p>
-            <p className="mt-2 text-sm text-stone-500">
-              Open the Map page, search an address, and come back here once the storm
-              history is loaded.
-            </p>
+            <h3 className="mt-2 text-xl font-semibold text-stone-900">
+              Three steps to a forensic-grade adjuster PDF
+            </h3>
+            <ol className="mt-5 space-y-4">
+              <li className="flex gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 text-[13px] font-bold text-white">
+                  1
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">
+                    Search the property
+                  </p>
+                  <p className="mt-1 text-sm text-stone-500">
+                    Open the map, type the customer's address.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 text-[13px] font-bold text-white">
+                  2
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">
+                    Pin it &amp; pick a date of loss
+                  </p>
+                  <p className="mt-1 text-sm text-stone-500">
+                    Hit <span className="font-semibold text-orange-600">★ Pin Property</span> in
+                    the sidebar — picks of known storm dates appear, or type any DOL.
+                  </p>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-500 text-[13px] font-bold text-white">
+                  3
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-stone-900">
+                    Generate the PDF here
+                  </p>
+                  <p className="mt-1 text-sm text-stone-500">
+                    12-source consilience runs server-side, the Forensic
+                    Verification stamp prints when ≥3 confirm.
+                  </p>
+                </div>
+              </li>
+            </ol>
             <button
               type="button"
               onClick={onOpenMap}
-              className="mt-5 rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600"
+              className="mt-6 w-full rounded-2xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-600 sm:w-auto"
             >
-              Go to Map
+              Open Storm Map →
             </button>
           </div>
         )}

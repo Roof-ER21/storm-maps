@@ -20,6 +20,7 @@ import {
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
 import AddressImpactBadge from './AddressImpactBadge';
 import WindImpactBadge from './WindImpactBadge';
+import DatePicker from './DatePicker';
 import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
 import {
   enableStormAlerts,
@@ -456,13 +457,15 @@ export default function Sidebar({
               type="button"
               onClick={onPinProperty}
               disabled={!canPinProperty}
-              className={`rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${
+              title={isPinned ? 'Unpin this property' : 'Pin this property to your saved list'}
+              className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors ${
                 isPinned
-                  ? 'bg-amber-500 text-white'
-                  : 'bg-stone-100 text-stone-700 hover:bg-stone-200'
-              } disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400`}
+                  ? 'bg-amber-500 text-white shadow-sm hover:bg-amber-600'
+                  : 'bg-orange-500 text-white shadow-sm hover:bg-orange-600'
+              } disabled:cursor-not-allowed disabled:bg-stone-100 disabled:text-stone-400 disabled:shadow-none`}
             >
-              {isPinned ? 'Pinned' : 'Pin'}
+              <span aria-hidden="true">{isPinned ? '★' : '☆'}</span>
+              {isPinned ? 'Pinned' : 'Pin Property'}
             </button>
           </div>
           {!loading && latestStorms[0] && (
@@ -938,32 +941,42 @@ export default function Sidebar({
               </button>
             </div>
             <p className="mt-2 text-sm text-stone-500">
-              Choose the storm date to include as the Date of Loss in the PDF report.
+              Type a date or pick from verified storms. The PDF runs a fresh
+              consilience check either way.
             </p>
-            <div className="mt-4 max-h-80 space-y-2 overflow-y-auto">
-              {latestStorms.length > 0 ? (
-                stormDates.map((stormDate) => (
-                  <button
-                    key={`dol-${stormDate.date}`}
-                    onClick={() => setSelectedDateOfLoss(stormDate.date)}
-                    className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
-                      selectedDateOfLoss === stormDate.date
-                        ? 'border-orange-400 bg-orange-50'
-                        : 'border-stone-200 bg-stone-50 hover:bg-stone-100'
-                    }`}
-                  >
-                    <p className="text-sm font-semibold text-stone-900">
-                      {stormDate.label}
-                    </p>
-                    <p className="mt-1 text-xs text-stone-500">
-                      {stormDate.eventCount} event{stormDate.eventCount === 1 ? '' : 's'} · {formatStormImpactSummary(stormDate)}
-                    </p>
-                  </button>
-                ))
-              ) : (
-                <p className="text-sm text-stone-400">No storm dates available.</p>
-              )}
+            <div className="mt-4">
+              <DatePicker
+                value={selectedDateOfLoss}
+                onChange={(d) => setSelectedDateOfLoss(d)}
+              />
             </div>
+            {stormDates.length > 0 && (
+              <>
+                <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+                  Or pick a known storm
+                </p>
+                <div className="mt-2 max-h-56 space-y-2 overflow-y-auto">
+                  {stormDates.map((stormDate) => (
+                    <button
+                      key={`dol-${stormDate.date}`}
+                      onClick={() => setSelectedDateOfLoss(stormDate.date)}
+                      className={`w-full rounded-xl border px-3 py-2.5 text-left transition-colors ${
+                        selectedDateOfLoss === stormDate.date
+                          ? 'border-orange-400 bg-orange-50'
+                          : 'border-stone-200 bg-stone-50 hover:bg-stone-100'
+                      }`}
+                    >
+                      <p className="text-sm font-semibold text-stone-900">
+                        {stormDate.label}
+                      </p>
+                      <p className="mt-0.5 text-xs text-stone-500">
+                        {stormDate.eventCount} event{stormDate.eventCount === 1 ? '' : 's'} · {formatStormImpactSummary(stormDate)}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <button
                 onClick={() => setShowDateOfLossModal(false)}

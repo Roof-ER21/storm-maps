@@ -162,11 +162,40 @@ export default function ConsilienceTrendChart({
       </div>
 
       <div ref={containerRef} className="relative mt-4">
-        {points.length === 0 && !loading ? (
+        {loading && points.length === 0 ? (
+          <svg
+            viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+            preserveAspectRatio="xMidYMid meet"
+            className="w-full animate-pulse"
+            role="img"
+            aria-label="Loading consilience trend chart"
+          >
+            {[0.25, 0.5, 0.75, 1].map((f) => (
+              <line
+                key={f}
+                x1={PAD_LEFT}
+                x2={PAD_LEFT + PLOT_W}
+                y1={PAD_TOP + f * PLOT_H}
+                y2={PAD_TOP + f * PLOT_H}
+                stroke="#e7e5e4"
+                strokeWidth={0.5}
+                strokeDasharray="2 2"
+              />
+            ))}
+            {[0.1, 0.3, 0.5, 0.7, 0.9].map((f) => (
+              <circle
+                key={f}
+                cx={PAD_LEFT + f * PLOT_W}
+                cy={PAD_TOP + (0.4 + 0.3 * Math.sin(f * 6)) * PLOT_H}
+                r={4}
+                fill="#d6d3d1"
+              />
+            ))}
+          </svg>
+        ) : points.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-stone-200 bg-stone-50 px-4 py-6 text-center text-xs text-stone-500">
-            No consilience data cached for this property yet. The 6-hour prewarm
-            cycle covers the top 30 properties in VA / MD / PA. Open the property
-            on the map to trigger a live consilience query.
+            No consilience data cached for this property yet. Open it on the
+            map to trigger a live verification query.
           </p>
         ) : (
           <svg

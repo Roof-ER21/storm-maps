@@ -586,85 +586,97 @@ export default function DashboardPage({
               Most recent storm dates for this workspace
             </h3>
             <div className="mt-5 grid gap-3">
-              {stormDates.slice(0, 4).map((stormDate) => (
-                <button
-                  type="button"
-                  key={stormDate.date}
-                  onClick={() => onOpenStormDate(stormDate)}
-                  className="rounded-2xl border border-stone-200 bg-stone-50 p-4 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-base font-semibold text-stone-900">
+              {stormDates.slice(0, 4).map((stormDate) => {
+                const flag = consilienceFlags.get(stormDate.date);
+                // Single source of truth for the card's confidence color.
+                // We map the same value to (a) a 4px left stripe + (b) the
+                // badge chip — so a rep scanning the list reads confidence
+                // before they read date or magnitude.
+                const tone: 'certified' | 'low' | 'unverified' | 'pending' = !flag
+                  ? 'pending'
+                  : flag.certified
+                    ? 'certified'
+                    : flag.lowConfidence
+                      ? 'low'
+                      : 'unverified';
+                const stripeColor =
+                  tone === 'certified'
+                    ? 'bg-emerald-500'
+                    : tone === 'low'
+                      ? 'bg-amber-500'
+                      : tone === 'unverified'
+                        ? 'bg-sky-500'
+                        : 'bg-stone-300';
+                return (
+                  <button
+                    type="button"
+                    key={stormDate.date}
+                    onClick={() => onOpenStormDate(stormDate)}
+                    className="relative overflow-hidden rounded-2xl border border-stone-200 bg-stone-50 p-4 pl-5 text-left transition-colors hover:border-stone-300 hover:bg-stone-100"
+                  >
+                    <span
+                      aria-hidden="true"
+                      className={`absolute inset-y-0 left-0 w-1 ${stripeColor}`}
+                    />
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        {flag &&
+                          (tone === 'certified' ? (
+                            <span
+                              title="Adjuster PDF will include the Forensic Verification stamp."
+                              className="inline-flex items-center gap-1.5 rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm"
+                            >
+                              <span aria-hidden="true">✓</span>
+                              {flag.confirmedCount}/{flag.totalSources} Certified
+                            </span>
+                          ) : tone === 'low' ? (
+                            <span
+                              title="Verify before claiming — fewer than 3 independent sources confirm."
+                              className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm"
+                            >
+                              <span aria-hidden="true">⚠</span>
+                              {flag.confirmedCount}/{flag.totalSources} Caution
+                            </span>
+                          ) : (
+                            <span
+                              title="No independent source confirms this storm at this property."
+                              className="inline-flex items-center gap-1.5 rounded-md border border-stone-300 bg-white px-2 py-1 text-[11px] font-semibold uppercase tracking-wider text-stone-600"
+                            >
+                              {flag.confirmedCount}/{flag.totalSources} unverified
+                            </span>
+                          ))}
+                        <p className="mt-2 truncate text-base font-semibold text-stone-900">
                           {stormDate.label}
                         </p>
-                        {(() => {
-                          const flag = consilienceFlags.get(stormDate.date);
-                          if (!flag) return null;
-                          const denom = flag.totalSources;
-                          if (flag.certified) {
-                            return (
-                              <span
-                                title={`${flag.confirmedCount}/${denom} independent sources confirmed — adjuster PDF will include the Forensic Verification stamp.`}
-                                className="inline-flex items-center gap-1 rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700"
-                              >
-                                <span aria-hidden="true">✓</span>
-                                Certified ({flag.confirmedCount}/{denom})
-                              </span>
-                            );
-                          }
-                          if (flag.lowConfidence) {
-                            return (
-                              <span
-                                title={`Only ${flag.confirmedCount}/${denom} independent sources confirm this storm at this property. Verify before claiming.`}
-                                className="inline-flex items-center gap-1 rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700"
-                              >
-                                <span aria-hidden="true">⚠</span>
-                                Low confidence ({flag.confirmedCount}/{denom})
-                              </span>
-                            );
-                          }
-                          return (
-                            <span
-                              title={`${flag.confirmedCount}/${denom} independent sources confirmed (${flag.confidenceTier})`}
-                              className="inline-flex items-center rounded-full border border-sky-300 bg-sky-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-sky-700"
-                            >
-                              {flag.confirmedCount}/{denom} confirmed
-                            </span>
-                          );
-                        })()}
                       </div>
-                      <p className="mt-1 text-sm text-stone-500">
-                        {stormDate.eventCount} report
-                        {stormDate.eventCount === 1 ? '' : 's'}
-                      </p>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-semibold text-amber-600">
+                          {stormDate.maxHailInches > 0
+                            ? `${stormDate.maxHailInches.toFixed(2)}" hail`
+                            : '—'}
+                        </p>
+                        <p className="mt-1 text-sm text-violet-600">
+                          {stormDate.maxWindMph > 0
+                            ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
+                            : '—'}
+                        </p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-amber-600">
-                        {stormDate.maxHailInches > 0
-                          ? `${stormDate.maxHailInches.toFixed(2)}" hail`
-                          : 'No hail'}
-                      </p>
-                      <p className="mt-1 text-sm text-violet-600">
-                        {stormDate.maxWindMph > 0
-                          ? `${stormDate.maxWindMph.toFixed(0)} mph wind`
-                          : 'No wind'}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="mt-4">
-                    <EvidenceThumbnailStrip
-                      items={evidenceItems.filter((item) => item.stormDate === stormDate.date)}
-                      title="Evidence Preview"
-                      subtitle="Attached proof for this storm date."
-                      emptyLabel="No storm-date evidence attached yet."
-                      compact
-                      prioritizeIncluded
-                    />
-                  </div>
-                </button>
-              ))}
+                    {evidenceItems.some((item) => item.stormDate === stormDate.date) && (
+                      <div className="mt-4">
+                        <EvidenceThumbnailStrip
+                          items={evidenceItems.filter((item) => item.stormDate === stormDate.date)}
+                          title="Evidence"
+                          subtitle="Attached proof for this storm date."
+                          emptyLabel=""
+                          compact
+                          prioritizeIncluded
+                        />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
 
               {stormDates.length === 0 && (
                 <EmptyPanel

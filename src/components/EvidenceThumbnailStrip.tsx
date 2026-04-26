@@ -76,7 +76,20 @@ export default function EvidenceThumbnailStrip({
         </div>
 
         {items.length === 0 ? (
-          <p className="mt-3 text-xs text-stone-400">{emptyLabel}</p>
+          onOpenEvidence ? (
+            <button
+              type="button"
+              onClick={onOpenEvidence}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-stone-300 bg-white px-3 py-3 text-xs font-semibold text-stone-600 transition-colors hover:border-orange-400 hover:bg-orange-50 hover:text-orange-700"
+            >
+              <span aria-hidden="true">+</span>
+              Add evidence for this storm
+            </button>
+          ) : (
+            emptyLabel ? (
+              <p className="mt-3 text-xs text-stone-400">{emptyLabel}</p>
+            ) : null
+          )
         ) : (
           <>
             <div className="mt-3 flex gap-3 overflow-x-auto pb-1">

@@ -214,14 +214,15 @@ export default function SearchBar({ onResult }: SearchBarProps) {
         </div>
       </form>
 
-      {/* Error message */}
+      {/* Error message — full-width banner so reps on phones don't miss it. */}
       {errorMsg && (
         <div
           id="search-error"
-          className="mt-1 rounded-lg bg-orange-50 px-3 py-1.5 text-xs text-orange-700 shadow"
+          className="mt-2 flex items-start gap-2 rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 shadow-sm"
           role="alert"
         >
-          {errorMsg}
+          <span aria-hidden="true" className="mt-0.5 text-red-500">⚠</span>
+          <span>{errorMsg}</span>
         </div>
       )}
 
