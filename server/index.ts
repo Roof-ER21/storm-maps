@@ -835,7 +835,7 @@ app.get('/api/spc-proxy', async (req, res) => {
     const text = await response.text();
     res.set('Content-Type', 'text/csv');
     res.send(text);
-  } catch (err) {
+  } catch {
     res.status(502).json({ error: 'Failed to fetch SPC data' });
   }
 });

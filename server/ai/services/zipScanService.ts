@@ -207,7 +207,7 @@ async function searchNominatim(
   }
 }
 
-function generateResidentialGrid(
+function _generateResidentialGrid(
   centerLat: number,
   centerLng: number,
   radiusMeters: number,
@@ -217,7 +217,7 @@ function generateResidentialGrid(
   const results: ZipScanAddress[] = [];
   const mPerDegLat = 111320;
   const mPerDegLng = 111320 * Math.cos((centerLat * Math.PI) / 180);
-  const spacing = 30; // meters between points (typical lot width)
+  const _spacing = 30; // meters between points (typical lot width)
 
   const stepsPerSide = Math.ceil(Math.sqrt(count)) + 1;
   const stepLat = (radiusMeters * 2) / stepsPerSide / mPerDegLat;
@@ -250,7 +250,7 @@ function generateResidentialGrid(
  * Respects Nominatim 1 req/sec rate limit.
  * Only enriches up to 10 points to avoid excessive API calls.
  */
-async function enrichGridAddresses(
+async function _enrichGridAddresses(
   points: ZipScanAddress[]
 ): Promise<ZipScanAddress[]> {
   const MAX_REVERSE = 10;

@@ -24,7 +24,7 @@ import { getPropertyData, type PropertyData } from "./propertyDataService.js";
 
 // Cache TTLs in days
 const CENSUS_TTL_DAYS = 180;
-const FEMA_FLOOD_TTL_DAYS = 180;
+const _FEMA_FLOOD_TTL_DAYS = 180;
 const FEMA_DISASTER_TTL_DAYS = 30;
 const PROPERTY_TTL_DAYS = 90;
 

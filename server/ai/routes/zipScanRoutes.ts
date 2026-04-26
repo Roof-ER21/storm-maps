@@ -9,7 +9,6 @@ import { getBuildingInsights, estimateReplacementCost, areaToSquares } from "../
 import type { AnalysisMode } from "../services/analysisMode.js";
 import { computeProspectScore } from "../services/analysisMode.js";
 import { storeImages } from "../services/imageStorageService.js";
-import { logActivity } from "../services/activityLogger.js";
 import { validate, zipScanSchema } from "../validation.js";
 
 const router = Router();

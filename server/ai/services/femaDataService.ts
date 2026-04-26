@@ -174,7 +174,7 @@ async function getRecentDisasters(
   fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
   const dateFilter = fiveYearsAgo.toISOString().split("T")[0];
 
-  let filter = `state eq '${state}' and declarationDate gt '${dateFilter}'`;
+  const filter = `state eq '${state}' and declarationDate gt '${dateFilter}'`;
   // Only filter by county if the incident types are weather-related
   // County names in FEMA data include " (County)" suffix sometimes
 

@@ -40,7 +40,7 @@ export interface PropertyData {
 export async function getPropertyData(
   lat: number,
   lng: number,
-  address?: string
+  _address?: string
 ): Promise<PropertyData> {
   // Try OSM building data + county GIS in parallel
   const [osmResult, countyResult] = await Promise.all([

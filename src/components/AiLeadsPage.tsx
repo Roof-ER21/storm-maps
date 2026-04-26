@@ -97,9 +97,10 @@ function LeadCard({
   const [localNotes, setLocalNotes] = useState(lead.repNotes ?? '');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync if the parent updates
+  // Sync local notes when the parent's lead.repNotes changes — e.g. when
+  // a different lead is selected. Setter no-ops when value matches.
   useEffect(() => {
-    setLocalNotes(lead.repNotes ?? '');
+    setLocalNotes((prev) => (prev === (lead.repNotes ?? '') ? prev : lead.repNotes ?? ''));
   }, [lead.repNotes]);
 
   const handleNotesChange = (value: string) => {

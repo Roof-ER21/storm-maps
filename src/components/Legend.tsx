@@ -17,7 +17,10 @@ interface LegendProps {
 }
 
 export default function Legend({ mode = 'ihm' }: LegendProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  // Collapsed by default — the legend was eating ~25% of the map. Reps can
+  // expand it via the chevron when they need to read a band, but the
+  // default state must keep the actual map visible.
+  const [collapsed, setCollapsed] = useState(true);
 
   const title = mode === 'ihm' ? 'Hail Size (MRMS)' : 'Hail Size';
 

@@ -180,7 +180,7 @@ function parseCsvLine(line: string): string[] {
 function combineDateTimeIso(date: string, time: string): string {
   // CoCoRaHS reports are stamped in observer's local time; without TZ info
   // we treat them as ET (the focus territory). Fallback: midnight ET.
-  const m = date.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  const m = date.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
   if (!m) return new Date().toISOString();
   const mm = m[1].padStart(2, '0');
   const dd = m[2].padStart(2, '0');

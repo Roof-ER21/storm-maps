@@ -29,7 +29,7 @@ export async function storeImages(
   for (const img of images) {
     try {
       // Check if already stored (avoid duplicates)
-      const existing = await db.query.propertyImages.findFirst({
+      const _existing = await db.query.propertyImages.findFirst({
         where: eq(propertyImages.analysisId, analysisId),
       });
       // Simple check — if any image exists for this analysis, skip

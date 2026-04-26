@@ -3,7 +3,7 @@ import { eq, desc, and, sql } from "drizzle-orm";
 import { db } from "../../db.js";
 import { propertyAnalyses } from "../schema.js";
 import { logActivity } from "../services/activityLogger.js";
-import { validate, leadStatusSchema, leadNotesSchema, correctionSchema } from "../validation.js";
+import { validate, leadStatusSchema } from "../validation.js";
 
 const router = Router();
 

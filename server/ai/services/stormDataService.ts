@@ -385,7 +385,7 @@ function parseSPCCsv(
   const lines = text.trim().split("\n");
 
   const today = new Date().toISOString().split("T")[0];
-  const yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
+  const _yesterday = new Date(Date.now() - 86400000).toISOString().split("T")[0];
 
   for (let i = 1; i < lines.length; i++) {
     const cols = lines[i].split(",");

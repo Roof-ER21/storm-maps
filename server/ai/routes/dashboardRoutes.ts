@@ -146,21 +146,21 @@ router.get("/backup/info", (_req, res) => {
 router.post("/fix-image-urls", async (_req, res) => {
   try {
     // Fix street view URLs
-    const svResult = await db.execute(
+    const _svResult = await db.execute(
       sql`UPDATE property_analyses
           SET street_view_url = '/api/images/streetview?lat=' || lat || '&lng=' || lng
           WHERE street_view_url LIKE 'https://maps.googleapis.com%'
             AND lat IS NOT NULL AND lng IS NOT NULL`
     );
     // Fix satellite URLs
-    const satResult = await db.execute(
+    const _satResult = await db.execute(
       sql`UPDATE property_analyses
           SET satellite_url = '/api/images/satellite?lat=' || lat || '&lng=' || lng
           WHERE satellite_url LIKE 'https://maps.googleapis.com%'
             AND lat IS NOT NULL AND lng IS NOT NULL`
     );
     res.json({ fixed: true, message: "Image URLs migrated to proxy" });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Migration failed" });
   }
 });

@@ -2668,7 +2668,7 @@ function App() {
   }, []);
 
   const mapArea = (
-    <main className="relative flex min-h-[55vh] flex-1 flex-col min-w-0 lg:min-h-0">
+    <main className="relative flex min-h-[70vh] flex-1 flex-col min-w-0 lg:min-h-0">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 
@@ -2686,6 +2686,16 @@ function App() {
         fitBoundsRequest={fitBoundsRequest}
         onCameraChanged={handleCameraChanged}
         onMapClick={handleMapClick}
+        propertyMarker={
+          searchSummary
+            ? {
+                lat: queryLocation.lat,
+                lng: queryLocation.lng,
+                label: searchSummary.locationLabel,
+                pinned: isCurrentPropertyPinned,
+              }
+            : null
+        }
         leadPins={routeStops.filter((stop) =>
           stop.outcome === 'interested' || stop.outcome === 'follow_up' || stop.outcome === 'inspection_booked'
         )}
@@ -2972,7 +2982,10 @@ function App() {
         )}
 
         {activeView === 'map' && (
-          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          // Mobile: map first (flex-col-reverse), sidebar below — reps on
+          // phones see the actual map without scrolling past 1100px of
+          // sidebar chrome. Desktop unchanged: sidebar left, map right.
+          <div className="flex min-h-0 flex-1 flex-col-reverse lg:flex-row">
             <Sidebar
               stormDates={filteredStormDates}
               events={filteredEvents}

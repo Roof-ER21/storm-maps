@@ -6,7 +6,6 @@
 
 import { sql } from "drizzle-orm";
 import type { DB } from "../../db.js";
-import { propertyAnalyses, batchJobs, activityLog } from "../schema.js";
 
 export interface BackupResult {
   timestamp: string;
@@ -67,14 +66,14 @@ export async function createBackup(db: DB): Promise<{ json: string; result: Back
  * Stores backups in memory for the /api/backup/latest endpoint.
  */
 let latestBackup: { json: string; result: BackupResult } | null = null;
-let backupTimer: ReturnType<typeof setInterval> | null = null;
+let _backupTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startAutoBackup(db: DB): void {
   // Run immediately on startup
   runBackup(db);
 
   // Then every 24 hours
-  backupTimer = setInterval(() => runBackup(db), 24 * 60 * 60 * 1000);
+  _backupTimer = setInterval(() => runBackup(db), 24 * 60 * 60 * 1000);
 }
 
 async function runBackup(db: DB): Promise<void> {

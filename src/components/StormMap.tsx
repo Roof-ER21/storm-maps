@@ -91,6 +91,8 @@ interface StormMapProps {
   windEnabled?: boolean;
   /** State filter for wind queries — defaults to VA/MD/PA focus territory. */
   windStates?: string[];
+  /** Searched property — drops a pin so the rep sees exactly which house. */
+  propertyMarker?: { lat: number; lng: number; label?: string; pinned?: boolean } | null;
 }
 
 interface StormContext {
@@ -760,6 +762,7 @@ function MapContent({
   onToggleHeatmap,
   windEnabled,
   windStates,
+  propertyMarker,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -1459,6 +1462,53 @@ function MapContent({
         visible={Boolean(showHeatmap && heatmapPoints && heatmapPoints.length > 0)}
       />
 
+      {/* Searched-property pin — always rendered above storm/lead/evidence
+          markers so the rep can see exactly which house was searched. */}
+      {propertyMarker && (
+        <AdvancedMarker
+          key="property-marker"
+          position={{ lat: propertyMarker.lat, lng: propertyMarker.lng }}
+          title={propertyMarker.label ?? 'Searched property'}
+          zIndex={5000}
+        >
+          <div
+            style={{
+              position: 'relative',
+              transform: 'translateY(-12px)',
+            }}
+          >
+            <div
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: '50% 50% 50% 0',
+                transform: 'rotate(-45deg)',
+                background: propertyMarker.pinned
+                  ? 'linear-gradient(135deg, #f59e0b, #f97316)'
+                  : 'linear-gradient(135deg, #f97316, #ea580c)',
+                border: '3px solid #ffffff',
+                boxShadow: '0 4px 12px rgba(249,115,22,0.5), 0 2px 4px rgba(0,0,0,0.3)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <span
+                style={{
+                  transform: 'rotate(45deg)',
+                  fontSize: 14,
+                  color: '#fff',
+                  fontWeight: 700,
+                  lineHeight: 1,
+                }}
+              >
+                {propertyMarker.pinned ? '★' : '•'}
+              </span>
+            </div>
+          </div>
+        </AdvancedMarker>
+      )}
+
       {/* Evidence pins */}
       {evidencePins && evidencePins.map((pin) => (
         <AdvancedMarker
@@ -1864,6 +1914,7 @@ export default function StormMap({
   onToggleHeatmap,
   windEnabled,
   windStates,
+  propertyMarker,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1916,6 +1967,7 @@ export default function StormMap({
         onToggleHeatmap={onToggleHeatmap}
         windEnabled={windEnabled}
         windStates={windStates}
+        propertyMarker={propertyMarker}
       />
     </Map>
   );

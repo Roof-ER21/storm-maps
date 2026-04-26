@@ -77,7 +77,7 @@ router.get("/:id", async (req, res) => {
       return;
     }
     res.json({ analysis, images: images || [] });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch analysis" });
   }
 });

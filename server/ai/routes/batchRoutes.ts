@@ -174,7 +174,7 @@ router.get("/:id", async (req, res) => {
     });
 
     res.json({ ...job, results: analyses });
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch batch status" });
   }
 });
@@ -232,7 +232,7 @@ router.get("/:id/export", async (req, res) => {
       `attachment; filename=property-analysis-${req.params.id}.csv`
     );
     res.send(csv);
-  } catch (error) {
+  } catch {
     res.status(500).json({ error: "Export failed" });
   }
 });

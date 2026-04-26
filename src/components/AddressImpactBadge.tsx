@@ -33,7 +33,9 @@ export default function AddressImpactBadge({
 
   useEffect(() => {
     if (!selectedDate || searchLat === null || searchLng === null) {
-      setData(null);
+      // Clear stale data when input goes invalid; keep-same-ref so we
+      // don't trigger an extra render when data was already null.
+      setData((prev) => (prev === null ? prev : null));
       return;
     }
 

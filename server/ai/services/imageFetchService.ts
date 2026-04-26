@@ -71,7 +71,7 @@ function calculateHeading(
     Math.cos(fromLatRad) * Math.sin(toLatRad) -
     Math.sin(fromLatRad) * Math.cos(toLatRad) * Math.cos(dLng);
 
-  let heading = (Math.atan2(x, y) * 180) / Math.PI;
+  const heading = (Math.atan2(x, y) * 180) / Math.PI;
   return (heading + 360) % 360; // normalize to 0-360
 }
 
