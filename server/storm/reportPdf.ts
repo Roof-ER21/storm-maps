@@ -1087,6 +1087,45 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
+  // Sync the date-of-loss histRow with the tier card's band data so the
+  // hit-history table row and the tier card agree (they're the same date,
+  // they should not show different values). Without this, the tier card
+  // surfaces MRMS swath edge-distance bands while the hit-history row
+  // only shows ground-report bands — same date, different numbers, which
+  // is what was confusing on the 2025-05-16 PDF.
+  if (propertyImpact?.bands) {
+    const dolRow = histGroups.get(req.dateOfLoss) ?? newRow(req.dateOfLoss);
+    const b = propertyImpact.bands;
+    if (typeof b.atProperty === 'number' && b.atProperty > 0) {
+      if (b.atProperty > dolRow.atProperty) dolRow.atProperty = b.atProperty;
+      // Only push synthetic MRMS report if no primary report already exists
+      // for this band — avoids duplicates when ground reports also covered.
+      if (dolRow.primaryAtProperty.length === 0) {
+        dolRow.primaryAtProperty.push({ source: 'mrms', sizeIn: b.atProperty });
+      }
+    }
+    if (typeof b.mi1to3 === 'number' && b.mi1to3 > 0) {
+      if (b.mi1to3 > dolRow.mi1to3) dolRow.mi1to3 = b.mi1to3;
+      if (dolRow.primaryMi1to3.length === 0) {
+        dolRow.primaryMi1to3.push({ source: 'mrms', sizeIn: b.mi1to3 });
+      }
+    }
+    if (typeof b.mi3to5 === 'number' && b.mi3to5 > 0) {
+      if (b.mi3to5 > dolRow.mi3to5) dolRow.mi3to5 = b.mi3to5;
+      if (dolRow.primaryMi3to5.length === 0) {
+        dolRow.primaryMi3to5.push({ source: 'mrms', sizeIn: b.mi3to5 });
+      }
+    }
+    if (typeof b.mi5to10 === 'number' && b.mi5to10 > 0) {
+      if (b.mi5to10 > dolRow.mi5to10) dolRow.mi5to10 = b.mi5to10;
+    }
+    if (b.atProperty && b.atProperty > dolRow.biggestNearby) {
+      dolRow.biggestNearby = b.atProperty;
+      dolRow.biggestNearbyMi = 0;
+    }
+    histGroups.set(req.dateOfLoss, dolRow);
+  }
+
   // 2026-04-27 cap algorithm — pull verification context for the date of
   // loss + every hit-history date in one bulk SQL round-trip. Drives the
   // tier card hail value AND every hit-history row's banded display.
@@ -1584,22 +1623,28 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   type SumCard = { label: string; value: string; sub: string };
   const sumCards: SumCard[] = [
     {
-      label: 'LARGEST HAIL (DAY)',
-      // Storm Summary card "LARGEST HAIL (DAY)" — this is the day's
-      // peak across the search radius, not at-property. Use the
-      // property's verification context (it's the same property and
-      // date) but without consensus override (consensus is at-property
-      // only). The cap still applies so we don't print "4.00\"" here.
+      // Renamed from "LARGEST HAIL (DAY)" → "STORM PEAK (AREA)" because
+      // adjusters scanning the page were reading the storm-wide peak
+      // (35-mi search radius) as if it applied to the property — and
+      // the tier card 0.75 ft above showed a different number for the
+      // same property. The new label + sub-label make it explicit this
+      // is a context number for the broader area, not what hit the roof.
+      label: 'STORM PEAK (AREA)',
       value:
         headlineHailDay > 0
           ? displayHailIn(headlineHailDay, farBandCtx(propertyVerification))
           : '—',
-      sub: stormMax >= peakHail ? 'MRMS MESH radar' : 'SPC + IEM LSR ground reports',
+      sub: `within ${req.radiusMiles} mi · ${stormMax >= peakHail ? 'MRMS MESH radar' : 'SPC + IEM LSR ground reports'}`,
     },
     {
-      label: 'PEAK WIND (DAY)',
+      label: 'PEAK WIND (AREA)',
       value: peakWind > 0 ? `${Math.round(peakWind)} mph` : '—',
-      sub: peakWind >= 58 ? 'NWS severe (>=58 mph)' : peakWind > 0 ? `${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}` : 'no gusts reported',
+      sub:
+        peakWind >= 58
+          ? `within ${req.radiusMiles} mi · NWS severe (≥58 mph)`
+          : peakWind > 0
+            ? `within ${req.radiusMiles} mi · ${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}`
+            : 'no gusts reported',
     },
   ];
   sumCards.forEach((c, idx) => {
