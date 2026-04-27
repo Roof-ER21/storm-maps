@@ -71,18 +71,38 @@ export interface HistoricalMrmsMetadata extends MrmsMetadata {
 
 /**
  * Fetch MRMS overlay metadata from the MRMS proxy.
+ *
+ * Hits sa21's `${PROXY_BASE}/${product}.json` which is an external
+ * service — cold responses can take 6–10s. The old 5s timeout was
+ * unrealistic and routinely fired TimeoutError to the console even
+ * though the metadata was about to arrive. Bumped to 25s to match
+ * the cold-cache reality.
+ *
+ * This metadata only drives the live-mode now-cast UI (timestamp
+ * label + bounds). When a historical storm date is selected
+ * (mrmsHistoricalMode=true) the caller skips this fetch entirely;
+ * failing here is non-critical — the map still renders the swath
+ * polygons via /api/hail/mrms-vector regardless.
  */
+let mrmsMetaWarned = false;
+
 export async function fetchMrmsMetadata(
   product: MrmsOverlayProduct = 'mesh60',
 ): Promise<MrmsMetadata | null> {
   try {
     const res = await fetch(`${PROXY_BASE}/${product}.json`, {
-      signal: AbortSignal.timeout(5000),
+      signal: AbortSignal.timeout(25000),
     });
     if (!res.ok) throw new Error(`MRMS metadata returned ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error('[mrmsApi] Failed to fetch MRMS metadata:', err);
+    if (!mrmsMetaWarned) {
+      mrmsMetaWarned = true;
+      console.warn(
+        '[mrmsApi] live-mode metadata unavailable (suppressing further):',
+        (err as Error).message,
+      );
+    }
     return null;
   }
 }
