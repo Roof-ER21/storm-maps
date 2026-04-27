@@ -266,9 +266,19 @@ export async function buildMrmsImpactResponse(
   if (!collection) return null;
 
   // Tier band boundaries — mutually exclusive, mirror Gemini Field's
-  // PDF column layout. "At Property" is 0–1.0mi (Verisk/ISO convention
-  // for direct-hit zone + MRMS pixel resolution).
-  const AT_PROPERTY_MILES = 1.0;
+  // PDF column layout.
+  //
+  // 2026-04-27 meeting clarification: "At Property" should be the actual
+  // band the house is INSIDE (point-in-polygon containment), NOT the
+  // max polygon-edge proximity. Reps and adjusters care about what hit
+  // the roof, not what the storm did down the street.
+  //
+  // Edge-distance bucketing still drives the 1–3 mi and 3–5 mi columns
+  // (they're rep-context for "the storm did X 2 mi away"). Boundary
+  // tightened from the prior 1.0 → 0.5 mi so polygons whose edge is
+  // 0.5–3 mi land in the 1-3 mi bucket (the new explicit gap below 0.5
+  // is reserved for the polygon-containment path → bands.atProperty).
+  const AT_PROPERTY_MILES = 0.5;
   const MI_3 = 3.0;
   const MI_5 = 5.0;
   const MI_10 = 10.0;
@@ -362,9 +372,18 @@ export async function buildMrmsImpactResponse(
       }
     }
 
+    // Per the 2026-04-27 meeting clarification, "At Property" is the band
+    // the house is INSIDE (Pass 1 polygon-containment), not the closest
+    // edge. Pass 2's atPropertyMax (≤0.5 mi edge proximity) is folded
+    // into the 1-3 mi bucket when there's no containment — that's a
+    // visibility signal that the polygon is right next door even though
+    // the house technically isn't inside.
     const bands: ImpactBands = {
-      atProperty: atPropertyMax,
-      mi1to3: mi1to3Max,
+      atProperty: bestBand ? bestBand.sizeInches : null,
+      mi1to3:
+        atPropertyMax !== null && (mi1to3Max === null || atPropertyMax > mi1to3Max)
+          ? atPropertyMax
+          : mi1to3Max,
       mi3to5: mi3to5Max,
       mi5to10: mi5to10Max,
     };

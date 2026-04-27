@@ -37,6 +37,8 @@ import { fetchActiveSvrPolygons } from './storm/nwsAlerts.js';
 import { fetchMesocyclones } from './storm/nceiNx3MdaClient.js';
 import { corroborateSynopticObservations } from './storm/synopticObservationsService.js';
 import { etDayUtcWindow } from './storm/timeUtils.js';
+import { displayHailInches } from './storm/displayCapService.js';
+import { buildVerificationBulk } from './storm/verificationService.js';
 import {
   startPrewarmScheduler,
   getPrewarmStatus,
@@ -1226,12 +1228,30 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
 
     const dates = body.dates.slice(0, 60).filter(isValidIsoDate);
 
-    // Path B candidates — one round-trip for the whole date set.
-    const groundUpgradeByDate = await fetchGroundReportUpgrades(
-      body.lat,
-      body.lng,
-      dates,
-    );
+    // Two bulk lookups in parallel: Path B ground-report upgrade AND
+    // per-date VerificationContext (≥3 ground / ≥1 gov / consensus
+    // size). The verification context drives the display-cap algorithm;
+    // raw MRMS values stay in the database, only the display layer caps.
+    const [groundUpgradeByDate, verificationByDate] = await Promise.all([
+      fetchGroundReportUpgrades(body.lat, body.lng, dates),
+      buildVerificationBulk({ lat: body.lat, lng: body.lng, dates }),
+    ]);
+
+    /** Cap a raw at-property hail size for display; returns the raw
+     *  alongside so consumers / debug tooling can still see truth. */
+    const cap = (
+      raw: number | null | undefined,
+      date: string,
+    ): { display: number | null; raw: number | null } => {
+      const v = verificationByDate.get(date) ?? {
+        isVerified: false,
+        isAtLocation: false,
+        isSterlingClass: false,
+        consensusSize: null,
+      };
+      const r = raw ?? 0;
+      return { display: displayHailInches(r, v), raw: raw ?? null };
+    };
 
     const results = await Promise.all(
       dates.map(async (date) => {
@@ -1243,37 +1263,45 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
           });
           const r = resp?.results[0];
           if (!r) {
-            // Path A returned no MRMS data at all. Path B can still fire
-            // when ground-report criteria are met for this date.
             const ground = groundUpgradeByDate.get(date);
             if (ground) {
+              const { display, raw } = cap(ground.maxHail, date);
               return {
                 date,
                 tier: 'direct_hit',
                 directHit: true,
                 upgradedVia: 'ground_report',
                 closestMiles: ground.closestMi,
-                atPropertyInches: ground.maxHail,
+                atPropertyInches: display,
+                rawAtPropertyInches: raw,
                 stormPeakInches: ground.maxHail,
               };
             }
             return { date, tier: 'unknown', directHit: false, closestMiles: null };
           }
-          // Path A was direct_hit — no upgrade needed.
+          // Path A direct hit — polygon contains property; bands.atProperty
+          // is now the band-the-house-is-in size (per 2026-04-27 meeting).
           if (r.tier === 'direct_hit') {
+            const { display, raw } = cap(r.bands?.atProperty ?? null, date);
             return {
               date,
               tier: r.tier,
               directHit: true,
               upgradedVia: 'polygon',
               closestMiles: r.edgeDistanceMiles ?? null,
-              atPropertyInches: r.bands?.atProperty ?? null,
+              atPropertyInches: display,
+              rawAtPropertyInches: raw,
               stormPeakInches: resp?.metadata.stormMaxInches ?? null,
             };
           }
-          // Path A missed — try Path B (ground-report upgrade).
+          // Path B — polygon missed, but federal ground reports confirm.
           const ground = groundUpgradeByDate.get(date);
           if (ground) {
+            const rawCombined = Math.max(
+              ground.maxHail,
+              r.bands?.atProperty ?? 0,
+            );
+            const { display, raw } = cap(rawCombined, date);
             return {
               date,
               tier: 'direct_hit',
@@ -1283,22 +1311,23 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
                 ground.closestMi,
                 r.edgeDistanceMiles ?? Number.POSITIVE_INFINITY,
               ),
-              atPropertyInches: Math.max(
-                ground.maxHail,
-                r.bands?.atProperty ?? 0,
-              ),
+              atPropertyInches: display,
+              rawAtPropertyInches: raw,
               stormPeakInches: Math.max(
                 ground.maxHail,
                 resp?.metadata.stormMaxInches ?? 0,
               ),
             };
           }
+          // No direct hit — distance-band tier from polygon edge scan.
+          const { display, raw } = cap(r.bands?.atProperty ?? null, date);
           return {
             date,
             tier: r.tier,
             directHit: r.directHit,
             closestMiles: r.edgeDistanceMiles ?? null,
-            atPropertyInches: r.bands?.atProperty ?? null,
+            atPropertyInches: display,
+            rawAtPropertyInches: raw,
             stormPeakInches: resp?.metadata.stormMaxInches ?? null,
           };
         } catch {
@@ -1340,12 +1369,48 @@ app.post('/api/hail/mrms-impact', async (req, res) => {
       res.status(502).json({ error: 'MRMS pipeline unavailable' });
       return;
     }
+
+    // Apply display-cap algorithm per point. Each point gets its own
+    // verification context (consensus from cross-source ground reports,
+    // ≥3/≥1 verification, Sterling-class membership). Raw values are
+    // preserved in `rawBands` so the frontend / debug tools can still
+    // see truth — `bands` itself becomes the display-capped values.
+    const verificationByPoint = await Promise.all(
+      body.points.map((p) =>
+        buildVerificationBulk({ lat: p.lat, lng: p.lng, dates: [date] }).then(
+          (m) => m.get(date) ?? null,
+        ),
+      ),
+    );
+    for (let i = 0; i < response.results.length; i += 1) {
+      const r = response.results[i];
+      const v = verificationByPoint[i];
+      if (!v || !r.bands) continue;
+      const rawBands = { ...r.bands };
+      r.bands = {
+        atProperty: displayHailInches(r.bands.atProperty ?? 0, v),
+        mi1to3: displayHailInches(r.bands.mi1to3 ?? 0, v),
+        mi3to5: displayHailInches(r.bands.mi3to5 ?? 0, v),
+        mi5to10: displayHailInches(r.bands.mi5to10 ?? 0, v),
+      };
+      // Attach raw alongside for transparency / audit trail.
+      (r as MrmsImpactResultWithRaw).rawBands = rawBands;
+      // The headline maxHailInches should also reflect the capped
+      // at-property reading when present.
+      r.maxHailInches = r.bands.atProperty ?? r.maxHailInches;
+    }
     res.json(response);
   } catch (err) {
     console.error('[mrms-impact] failed', err);
     res.status(500).json({ error: 'Failed to compute MRMS impact' });
   }
 });
+
+// Internal helper type — augments MrmsImpactResult with the raw bands
+// snapshot for callers that want the underlying truth alongside display.
+type MrmsImpactResultWithRaw = import('./storm/mrmsService.js').MrmsImpactResult & {
+  rawBands?: import('./storm/mrmsService.js').ImpactBands;
+};
 
 app.get('/api/hail/swath-fallback', async (req, res) => {
   try {
