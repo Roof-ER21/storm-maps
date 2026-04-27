@@ -968,14 +968,20 @@ function MapContent({
       return liveSwaths;
     }
 
-    // When we have vector polygons from MRMS, use those — they're the highest quality
-    if (vectorSwaths.length > 0) {
-      return vectorSwaths;
+    // Historical mode + raster overlay rendering — return [] so the
+    // smooth gradient raster (Trace→Pea→Penny→Quarter→…) reads as a
+    // continuous footprint without hard vector contour edges layered
+    // on top. Per Ahmed (4/27/26) the raster look is what reps want;
+    // adding polygon outlines made it look fragmented. (Vector data
+    // still flows backend-side for the cap algorithm and per-band
+    // verification — just not rendered here.)
+    if (mrmsHistoricalMode && mrmsMeta?.has_hail) {
+      return [];
     }
 
-    if (mrmsHistoricalMode && mrmsMeta?.has_hail) {
-      // MRMS raster is showing — hide NHP swaths to avoid visual clutter
-      return [];
+    // Outside historical mode: prefer vectors when we have them.
+    if (vectorSwaths.length > 0) {
+      return vectorSwaths;
     }
 
     if (!mrmsHistoricalMode) {
@@ -1759,8 +1765,16 @@ function MapContent({
           reps actually look at. The StormTimelineScrubber function and
           scrub state are kept in case the panel is re-enabled later. */}
 
+      {/* Historical MRMS raster — always show when in historical mode.
+          Per Ahmed (4/27/26), the sa21 storm-maps look (smooth color
+          gradient from Trace→Pea→Penny→Quarter→…) is what reps want
+          to see; the vector polygon contours alone looked patchy where
+          storm intensity is uniform. Raster paints every pixel by
+          MESH value so the swath reads as a continuous footprint.
+          The HailSwathLayer vector polygons stay rendered on top for
+          click interactivity / exact contour selection. */}
       <MRMSOverlay
-        visible={canRenderHistoricalMrms && vectorSwaths.length === 0}
+        visible={canRenderHistoricalMrms}
         product="mesh1440"
         opacity={0.72}
         bounds={historicalMrmsBounds}
