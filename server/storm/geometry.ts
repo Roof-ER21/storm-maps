@@ -108,6 +108,67 @@ export function pointInRing(lat: number, lng: number, ring: number[][]): boolean
 }
 
 /**
+ * Initial bearing (degrees, 0=N, clockwise) from a→b on the great circle.
+ * Pure math — no haversine sqrt; just atan2 on rotated unit vectors.
+ *
+ * Used by computeStormDirectionAndSpeed (PDF Section 2 + Section 7
+ * direction columns). Accurate to within a few tenths of a degree for
+ * continental-US event spreads.
+ */
+export function bearingDegrees(
+  aLat: number,
+  aLng: number,
+  bLat: number,
+  bLng: number,
+): number {
+  const φ1 = (aLat * Math.PI) / 180;
+  const φ2 = (bLat * Math.PI) / 180;
+  const Δλ = ((bLng - aLng) * Math.PI) / 180;
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x =
+    Math.cos(φ1) * Math.sin(φ2) -
+    Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  const θ = Math.atan2(y, x);
+  return ((θ * 180) / Math.PI + 360) % 360;
+}
+
+/**
+ * Convert a 0–360° bearing to a 16-point compass label. Matches what
+ * adjusters and reps say out loud ("northeast" / "south-southwest").
+ * Falls back to "—" for non-finite input.
+ */
+export function bearingToCardinal(degrees: number | null | undefined): string {
+  if (degrees === null || degrees === undefined || !Number.isFinite(degrees)) {
+    return '—';
+  }
+  const POINTS = [
+    'N', 'NNE', 'NE', 'ENE',
+    'E', 'ESE', 'SE', 'SSE',
+    'S', 'SSW', 'SW', 'WSW',
+    'W', 'WNW', 'NW', 'NNW',
+  ];
+  // Normalize to [0, 360), then bucket into 22.5° wedges with -11.25° offset.
+  const norm = ((degrees % 360) + 360) % 360;
+  const idx = Math.floor((norm + 11.25) / 22.5) % 16;
+  return POINTS[idx];
+}
+
+/**
+ * Coarse cardinal — N / NE / E / SE / S / SW / W / NW (8-point) +
+ * spelled-out word matching the target reference PDF ("East", "Northeast"…).
+ * Sub-cardinals collapse to the nearest 8-point.
+ */
+export function bearingToCardinalWord(degrees: number | null | undefined): string {
+  if (degrees === null || degrees === undefined || !Number.isFinite(degrees)) {
+    return '—';
+  }
+  const norm = ((degrees % 360) + 360) % 360;
+  const POINTS = ['North', 'Northeast', 'East', 'Southeast', 'South', 'Southwest', 'West', 'Northwest'];
+  const idx = Math.floor((norm + 22.5) / 45) % 8;
+  return POINTS[idx];
+}
+
+/**
  * Minimum distance (miles) from (lat, lng) to any segment in a closed ring.
  * Ring is [lng, lat][]. Local equirectangular projection — accurate to ~0.5%
  * for small distances at any continental US latitude.
