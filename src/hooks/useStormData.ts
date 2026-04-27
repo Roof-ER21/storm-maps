@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { StormEvent, MeshSwath, StormDate, StormImpactTier } from '../types/storm';
-import { searchByCoordinates, fetchLocalStormReports, fetchSpcStormReports } from '../services/stormApi';
+import { searchByCoordinates } from '../services/stormApi';
 import { fetchMeshSwathsByLocation } from '../services/nhpApi';
 import { getHailSizeClass } from '../types/storm';
 import { toEasternDateKey, formatEasternDateLabel } from '../services/dateUtils';
@@ -205,8 +205,13 @@ export function useStormData({
     try {
       const effectiveMonths = getEffectiveMonths(months, sinceDate);
 
-      // Fetch SWDI hail reports, IEM LSR, SPC same-day reports, and NHP swaths in parallel
-      const [swdiEvents, lsrEvents, spcEvents, nhpSwaths] = await Promise.allSettled([
+      // Storm event aggregation — server-side `/api/storm/events` already
+      // pulls IEM LSR + SPC + NCEI, dedupes, and caches; the previous code
+      // ALSO fired direct browser-to-NOAA fetches in parallel which were
+      // CORS-blocked + timing out (10+ seconds of dead time per request,
+      // visible in console as `[stormApi] SPC fetch failed for ...`). Now
+      // we trust the server aggregator and just pull NHP swaths in parallel.
+      const [swdiEvents, nhpSwaths] = await Promise.allSettled([
         searchByCoordinates(
           lat,
           lng,
@@ -214,8 +219,6 @@ export function useStormData({
           radiusMiles,
           controller.signal,
         ),
-        fetchLocalStormReports(controller.signal),
-        fetchSpcStormReports(controller.signal),
         fetchMeshSwathsByLocation(
           lat,
           lng,
@@ -228,22 +231,10 @@ export function useStormData({
 
       if (controller.signal.aborted) return;
 
-      // Merge events from all sources
+      // Merge events from the server aggregator only
       const allEvents: StormEvent[] = [];
       if (swdiEvents.status === 'fulfilled') {
         appendStormEvents(allEvents, swdiEvents.value);
-      }
-      if (lsrEvents.status === 'fulfilled') {
-        appendStormEvents(
-          allEvents,
-          filterEventsByRadius(lsrEvents.value, lat, lng, radiusMiles),
-        );
-      }
-      if (spcEvents.status === 'fulfilled') {
-        appendStormEvents(
-          allEvents,
-          filterEventsByRadius(spcEvents.value, lat, lng, radiusMiles),
-        );
       }
 
       // Deduplicate by proximity: if two events are within 0.01 deg and same date, keep the one with more detail
@@ -341,12 +332,10 @@ export function useStormData({
 
       // Report partial failures as warnings
       const failures: string[] = [];
-      if (swdiEvents.status === 'rejected') failures.push('NOAA SWDI');
-      if (lsrEvents.status === 'rejected') failures.push('IEM LSR');
-      if (spcEvents.status === 'rejected') failures.push('SPC Reports');
+      if (swdiEvents.status === 'rejected') failures.push('Storm Events API');
       if (nhpSwaths.status === 'rejected') failures.push('NHP Swaths');
 
-      const totalSources = 4;
+      const totalSources = 2;
       if (failures.length > 0 && failures.length < totalSources) {
         console.warn(`[useStormData] Partial failure: ${failures.join(', ')}`);
       } else if (failures.length === totalSources) {
@@ -488,23 +477,6 @@ function haversineDistanceMiles(
   return earthRadiusMiles * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-function filterEventsByRadius(
-  events: StormEvent[],
-  centerLat: number,
-  centerLng: number,
-  radiusMiles: number,
-): StormEvent[] {
-  return events.filter((event) => {
-    const distance = haversineDistanceMiles(
-      centerLat,
-      centerLng,
-      event.beginLat,
-      event.beginLon,
-    );
-
-    return distance <= radiusMiles;
-  });
-}
 
 function sanitizeEvents(
   events: StormEvent[],

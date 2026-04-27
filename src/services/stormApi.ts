@@ -61,10 +61,16 @@ function haversineDistanceMiles(
 }
 
 function getFieldAssistantTimeoutMs(months: number): number {
-  if (months >= 120) return 45000;
-  if (months >= 60) return 30000;
-  if (months >= 24) return 20000;
-  return 10000;
+  // /api/storm/events runs the multi-source aggregator server-side
+  // (NCEI archive scan + IEM LSR span + SPC + dedup + radius filter).
+  // Cached responses come back in 8–12s; cold ones can hit 25s. The
+  // previous limits (10s for 12mo, 20s for 24mo) were tripping the
+  // browser timeout right at the cache-hit time, dropping reps to the
+  // empty fallback path and showing zero storm dates.
+  if (months >= 120) return 60000;
+  if (months >= 60) return 45000;
+  if (months >= 24) return 35000;
+  return 25000;
 }
 
 function shouldUseSwdiFallback(months: number): boolean {
