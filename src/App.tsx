@@ -2724,11 +2724,11 @@ function App() {
     );
   }, []);
 
+  // Mobile: 55vh map / 45vh sidebar — was 70vh, but reps couldn't scroll the
+  // storm-dates list under the map because the sidebar was squeezed to ~30vh.
+  // 55vh keeps the map dominant while leaving real room for the dates panel
+  // below. Desktop unchanged.
   const mapArea = (
-    {/* Mobile: 55vh map / 45vh sidebar — was 70vh, but reps couldn't scroll
-        the storm-dates list under the map because the sidebar was squeezed
-        to ~30vh. 55vh keeps the map dominant while leaving real room for
-        the dates panel below. Desktop unchanged. */}
     <main className="relative order-1 flex h-[55vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />

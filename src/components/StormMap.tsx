@@ -861,7 +861,11 @@ function MapContent({
   // signal, but MESH under-detects small hail (<½") that reps routinely feel
   // in the field. When MRMS is empty and reps report hail in GroupMe, they
   // toggle NEXRAD reflectivity on to see the actual storm cells.
-  const [showNexrad, setShowNexrad] = useState(false);
+  // Nexrad/advanced toggles were removed from the right-rail per 4/27/26
+  // rep feedback. The state value stays in the tree (cheap, and other layer
+  // logic still reads it) but no UI flips the setter — drop it from the
+  // destructure so noUnusedLocals stays happy.
+  const [showNexrad] = useState(false);
   const [showMping, setShowMping] = useState(false);
   // Three latent map layers — collapsed by default to keep the map clean.
   // Power-rep toggles for forensic-grade verification.
@@ -888,7 +892,7 @@ function MapContent({
   // (Satellite/MRMS/Radar). Power-rep toggles (mPING, CoCoRaHS, Meso,
   // Stations, Live Cells, Sketch, LIVE, Heat Map) live behind a "More"
   // expander so the default rail matches IHM-style simplicity.
-  const [showAdvancedLayers, setShowAdvancedLayers] = useState(false);
+  const [showAdvancedLayers] = useState(false);
   const [mrmsProduct, setMrmsProduct] =
     useState<MrmsOverlayProduct>('mesh1440');
   const [mrmsMeta, setMrmsMeta] = useState<MrmsStatus | null>(null);
@@ -1157,19 +1161,9 @@ function MapContent({
     vectorSwaths,
   ]);
 
-  const handleMrmsToggle = useCallback(() => {
-    setShowMrms((current) => {
-      const next = !current;
-      if (next) {
-        setMrmsLoading(true);
-        setMrmsError(null);
-        setMrmsMeta(null);
-      } else {
-        setMrmsLoading(false);
-      }
-      return next;
-    });
-  }, []);
+  // handleMrmsToggle removed — no UI surface flips MRMS manually anymore.
+  // MRMS auto-enables via the "Auto-enable MRMS layer whenever a historical
+  // storm date is selected" effect above.
 
   const handleSelectMrmsProduct = useCallback(
     (product: MrmsOverlayProduct) => {
