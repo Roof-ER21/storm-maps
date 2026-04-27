@@ -107,7 +107,7 @@ export function composeStormNarrative(input: NarrativeInputs): string {
 
   if (hasMeaningfulHail && hasMeaningfulWind) {
     n += `On ${formattedDate}, a severe weather system impacted the ${location} area, producing `;
-    n += `${hailDesc} hail measuring up to ${maxHailInches.toFixed(2)}" in diameter alongside `;
+    n += `${hailDesc} hail measuring up to ${roundUpHailIn(maxHailInches)}" in diameter alongside `;
     n += `damaging straight-line winds measured up to ${Math.round(maxWindMph)} mph. `;
     n += `Documented impact includes ${getHailDamagePotential(maxHailInches)}, `;
     n += `as well as ${getWindDamagePotential(maxWindMph)}. `;
@@ -119,7 +119,7 @@ export function composeStormNarrative(input: NarrativeInputs): string {
     n += `${capitalize(getWindDamagePotential(maxWindMph))} was documented in the search area. `;
   } else if (hasMeaningfulHail) {
     n += `On ${formattedDate}, a severe weather system impacted the ${location} area, producing `;
-    n += `${hailDesc} hail measuring up to ${maxHailInches.toFixed(2)}" in diameter. `;
+    n += `${hailDesc} hail measuring up to ${roundUpHailIn(maxHailInches)}" in diameter. `;
     n += `${capitalize(getHailDamagePotential(maxHailInches))}. `;
   } else {
     n += `On ${formattedDate}, weather activity was documented in the ${location} area within `;
@@ -159,14 +159,29 @@ function capitalize(s: string): string {
 /**
  * Short callout helpers for the Storm Coverage card — render alongside
  * the per-band table when we have meaningful values.
+ *
+ * Hail sizes are rounded UP to the nearest standard adjuster size
+ * (¼", ½", ¾", 1", 1¼", 1½", 1¾", 2"...) so reps and adjusters
+ * see the size they actually quote/file under.
  */
+const STANDARD_HAIL_STEPS = [
+  0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0,
+  3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0,
+];
+function roundUpHailIn(inches: number): string {
+  for (const step of STANDARD_HAIL_STEPS) {
+    if (inches <= step + 0.001) return step.toFixed(2);
+  }
+  return inches.toFixed(2);
+}
+
 export function biggestHailCallout(
   inches: number | undefined,
   miles: number | undefined,
 ): string | null {
   if (inches === undefined || inches <= 0) return null;
-  if (miles === undefined) return `BIGGEST HAIL: ${inches.toFixed(2)}"`;
-  return `BIGGEST HAIL: ${inches.toFixed(2)}" at ${miles.toFixed(1)} mi`;
+  if (miles === undefined) return `BIGGEST HAIL: ${roundUpHailIn(inches)}"`;
+  return `BIGGEST HAIL: ${roundUpHailIn(inches)}" at ${miles.toFixed(1)} mi`;
 }
 
 export function closestHailCallout(
@@ -174,5 +189,5 @@ export function closestHailCallout(
   miles: number | undefined,
 ): string | null {
   if (inches === undefined || inches <= 0 || miles === undefined) return null;
-  return `CLOSEST HAIL: ${inches.toFixed(2)}" at ${miles === 0 ? 'property' : `${miles.toFixed(1)} mi`}`;
+  return `CLOSEST HAIL: ${roundUpHailIn(inches)}" at ${miles === 0 ? 'property' : `${miles.toFixed(1)} mi`}`;
 }
