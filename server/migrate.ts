@@ -3,7 +3,16 @@ import { drizzle } from 'drizzle-orm/postgres-js';
 import { ensureAiTables } from './ai/migrate.js';
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/hailyes';
-const sql = postgres(connectionString);
+// Same onnotice handler as server/db.ts — suppresses the wall of
+// "relation X already exists, skipping" NOTICEs that flooded boot
+// logs because every CREATE TABLE / CREATE INDEX is idempotent.
+const sql = postgres(connectionString, {
+  onnotice: (notice) => {
+    if (notice.severity && notice.severity !== 'NOTICE') {
+      console.warn('[pg notice]', notice.severity, notice.message);
+    }
+  },
+});
 
 async function migrate() {
   console.log('[migrate] Creating tables...');

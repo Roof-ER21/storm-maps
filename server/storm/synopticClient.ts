@@ -166,7 +166,20 @@ async function fetchAndParse(
     const env = (await res.json()) as SynopticEnvelope;
     const code = env.SUMMARY?.RESPONSE_CODE;
     if (code !== 1) {
-      console.warn(`[synoptic] response_code=${code} msg=${env.SUMMARY?.RESPONSE_MESSAGE}`);
+      const msg = env.SUMMARY?.RESPONSE_MESSAGE ?? '';
+      // Free-tier history-depth limit is the dominant non-success path
+      // (every PDF for a >1y-old date hits it). Log once per process and
+      // suppress thereafter — otherwise each report floods stderr.
+      if (typeof msg === 'string' && msg.includes('does not have access to the requested history')) {
+        if (!historyLimitWarned) {
+          historyLimitWarned = true;
+          console.warn(
+            '[synoptic] free-tier 365-day history limit reached — suppressing further per-request warnings',
+          );
+        }
+        return [];
+      }
+      console.warn(`[synoptic] response_code=${code} msg=${msg}`);
       return [];
     }
     return (env.STATION ?? []).map(toGroundStation);
@@ -175,6 +188,8 @@ async function fetchAndParse(
     return [];
   }
 }
+
+let historyLimitWarned = false;
 
 function toSynopticUtc(d: Date): string {
   const yyyy = d.getUTCFullYear().toString().padStart(4, '0');
