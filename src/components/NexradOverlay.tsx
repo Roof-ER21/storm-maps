@@ -134,14 +134,32 @@ export default function NexradOverlay({
             return '';
           }
 
-          const bbox = `${tileBounds.west},${tileBounds.south},${tileBounds.east},${tileBounds.north}`;
+          // Convert lat/lng tile bounds to Web Mercator (EPSG:3857) meters.
+          // Google Maps tiles are Web Mercator; asking the WMS for EPSG:4326
+          // returned a Plate Carrée image that got stretched onto a Mercator
+          // tile, which is what made the radar look "boxy and out of sync"
+          // vs SA21. Re-project the bbox so the WMS returns a Mercator image
+          // that lines up exactly with the underlying tile pixels.
+          const lng2m = (lng: number): number => (lng * 20037508.34) / 180;
+          const lat2m = (lat: number): number => {
+            const sin = Math.sin((lat * Math.PI) / 180);
+            return (Math.log((1 + sin) / (1 - sin)) / 2) * 6378137;
+          };
+          const xMin = lng2m(tileBounds.west);
+          const xMax = lng2m(tileBounds.east);
+          const yMin = lat2m(tileBounds.south);
+          const yMax = lat2m(tileBounds.north);
+          const bbox = `${xMin},${yMin},${xMax},${yMax}`;
 
+          // n0q-t: high-res (256-level, 0.25° dBZ) NEXRAD reflectivity.
+          // n0r-t was the legacy 16-level product that looked coarse on
+          // modern displays. Same WMS-T time interface, drop-in replacement.
           return (
-            'https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0r-t.cgi?' +
+            'https://mesonet.agron.iastate.edu/cgi-bin/wms/nexrad/n0q-t.cgi?' +
             'SERVICE=WMS&VERSION=1.1.1&REQUEST=GetMap&' +
             'FORMAT=image/png&TRANSPARENT=true&' +
-            'LAYERS=nexrad-n0r-wmst&' +
-            'SRS=EPSG:4326&' +
+            'LAYERS=nexrad-n0q-wmst&' +
+            'SRS=EPSG:3857&' +
             `TIME=${encodeURIComponent(effectiveTime)}&` +
             `WIDTH=${tileSize}&HEIGHT=${tileSize}&` +
             `BBOX=${bbox}`
@@ -150,7 +168,11 @@ export default function NexradOverlay({
         tileSize: new google.maps.Size(256, 256),
         opacity: perFrameOpacity,
         name: 'NEXRAD',
-        maxZoom: 19,
+        // Cap at zoom 13 — NEXRAD native resolution is ~0.25° (n0q),
+        // pushing further yields visible pixel "boxes" that read as
+        // jank rather than data. Google Maps continues to upscale below
+        // that, but we stop fetching new tiles.
+        maxZoom: 13,
         minZoom: 3,
       });
 

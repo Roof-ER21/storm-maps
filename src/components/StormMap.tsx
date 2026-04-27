@@ -542,7 +542,13 @@ function StormTimelineScrubber({
           value={sliderValue}
           onChange={(e) => {
             setPlaying(false);
-            onChange(parseInt(e.target.value, 10));
+            const next = parseInt(e.target.value, 10);
+            // Don't kick out of merged mode for a stationary click on
+            // position 0 — user grazes the slider trying to read the
+            // composite and lands on Hour 1 / 24 (= midnight, empty).
+            // Only commit to hour mode when they actually move the thumb.
+            if (isMerged && next === 0) return;
+            onChange(next);
           }}
           aria-label="Storm timeline frame"
           className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-stone-200 accent-orange-500"
@@ -1006,7 +1012,7 @@ function MapContent({
   }, [selectedDate, showMrms]);
 
   const historicalMrmsParams = useMemo(() => {
-    if (!selectedDate || !stormContext.eventBounds) {
+    if (!selectedDate) {
       return null;
     }
     // When the scrubber is in MRMS mode and pinned to a specific hour,
@@ -1021,9 +1027,40 @@ function MapContent({
         ? mrmsHourlyTimestamps[scrubFrameIndex]
         : null;
 
+    // Build the swath fetch bbox. The old logic used `stormContext.eventBounds`
+    // — the bbox of LSR/NCEI report points padded 15%. For properties with
+    // tightly-clustered nearby reports the swath comes back tiny (a couple
+    // miles wide) even though the actual storm corridor crossed the entire
+    // search radius. Reps then see a sliver of color where SA21 shows the
+    // full Loudoun → DC plume.
+    //
+    // Build a bbox that covers AT LEAST the property's search radius, then
+    // merge in the event bounds in case events extend further. Falls back
+    // to event bounds alone if no property anchor is set.
+    const propertyAnchor = propertyMarker;
+    const radiusMi = searchRadiusMiles && searchRadiusMiles > 0 ? searchRadiusMiles : 25;
+    let bounds: BoundingBox | null = null;
+    if (propertyAnchor) {
+      // 1° latitude ≈ 69 mi; longitude scales by cos(lat).
+      const latPad = radiusMi / 69;
+      const lngPad = radiusMi / (69 * Math.cos((propertyAnchor.lat * Math.PI) / 180));
+      bounds = {
+        north: propertyAnchor.lat + latPad,
+        south: propertyAnchor.lat - latPad,
+        east: propertyAnchor.lng + lngPad,
+        west: propertyAnchor.lng - lngPad,
+      };
+      if (stormContext.eventBounds) {
+        bounds = mergeBounds(bounds, stormContext.eventBounds);
+      }
+    } else {
+      bounds = stormContext.eventBounds;
+    }
+    if (!bounds) return null;
+
     return {
       date: selectedDate,
-      bounds: stormContext.eventBounds,
+      bounds,
       anchorTimestamp: hourlyAnchor ?? stormContext.radarTimestamp,
       product: hourlyAnchor ? ('mesh60' as const) : ('mesh1440' as const),
     };
@@ -1034,6 +1071,8 @@ function MapContent({
     scrubMode,
     scrubFrameIndex,
     mrmsHourlyTimestamps,
+    propertyMarker,
+    searchRadiusMiles,
   ]);
   const historicalMrmsUrl = useMemo(
     () =>

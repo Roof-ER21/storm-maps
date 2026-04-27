@@ -36,20 +36,56 @@ interface UseStormDataReturn {
 }
 
 /**
- * Distance-only impact tier. Polygon containment (true MRMS swath hit) is
- * stricter and lives in `buildMrmsImpactResponse` server-side; this is the
- * fast client-side approximation that drives the rep-facing storm-dates
- * list. Generous-by-design: a storm with a hail report ≤1 mi from the
- * property is treated as a direct hit because hail cores are typically
- * 1–3 mi wide and rep tools that wait for swath-polygon containment miss
- * the events that landed slightly off the centroid.
+ * Distance-only impact tier (fallback when no swath polygon is available).
+ * Generous-by-design: a hail report ≤1 mi from the property is treated as
+ * a direct hit because hail cores are typically 1-3 mi wide and rep tools
+ * that wait for swath-polygon containment miss the events that landed
+ * slightly off the centroid.
  */
-function classifyTier(closestMiles: number | null): StormImpactTier {
+function classifyTierByDistance(closestMiles: number | null): StormImpactTier {
   if (closestMiles === null) return 'far';
   if (closestMiles <= 1.0) return 'direct_hit';
   if (closestMiles <= 3.0) return 'near_miss';
   if (closestMiles <= 10.0) return 'area';
   return 'far';
+}
+
+/**
+ * True point-in-polygon containment test against the date's swath
+ * geometry. Promotes tier to 'direct_hit' when the property falls inside
+ * an MRMS swath polygon — the polygon-truth signal that
+ * AddressImpactBadge already uses for its Direct Hit / Near Miss card.
+ *
+ * Resolves the user-visible inconsistency where the address badge said
+ * DIRECT HIT (polygon contains property) while the storm-dates row said
+ * NEAR MISS (closest point report 1.9 mi away). The two now agree
+ * because both consult polygon containment when geometry is available.
+ */
+function ringContainsPoint(ring: number[][], lat: number, lng: number): boolean {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i];
+    const [xj, yj] = ring[j];
+    const intersect =
+      yi > lat !== yj > lat &&
+      lng < ((xj - xi) * (lat - yi)) / (yj - yi + 1e-12) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+function swathContainsPoint(swath: MeshSwath, lat: number, lng: number): boolean {
+  const g = swath.geometry;
+  if (!g) return false;
+  if (g.type === 'Polygon') {
+    const rings = g.coordinates as number[][][];
+    return rings.length > 0 && ringContainsPoint(rings[0], lat, lng);
+  }
+  if (g.type === 'MultiPolygon') {
+    const polys = g.coordinates as number[][][][];
+    return polys.some((rings) => rings.length > 0 && ringContainsPoint(rings[0], lat, lng));
+  }
+  return false;
 }
 
 /**
@@ -64,7 +100,14 @@ function groupEventsByDate(
   events: StormEvent[],
   propertyLat: number | null,
   propertyLng: number | null,
+  swaths: MeshSwath[] = [],
 ): StormDate[] {
+  const swathsByDate = new Map<string, MeshSwath[]>();
+  for (const s of swaths) {
+    const arr = swathsByDate.get(s.date) ?? [];
+    arr.push(s);
+    swathsByDate.set(s.date, arr);
+  }
   const dateMap = new Map<string, { events: StormEvent[]; states: Set<string> }>();
 
   for (const event of events) {
@@ -101,6 +144,21 @@ function groupEventsByDate(
           if (closest === null || d < closest) closest = d;
         }
       }
+      // Polygon-truth check: if any swath polygon for this date contains
+      // the property, that's a direct hit regardless of how far the
+      // nearest report point happens to be (point reports are sparse;
+      // polygons are the algorithmically-derived hail field).
+      let tier = classifyTierByDistance(closest);
+      if (
+        propertyLat !== null &&
+        propertyLng !== null &&
+        tier !== 'direct_hit'
+      ) {
+        const dateSwaths = swathsByDate.get(date) ?? [];
+        if (dateSwaths.some((s) => swathContainsPoint(s, propertyLat, propertyLng))) {
+          tier = 'direct_hit';
+        }
+      }
       return {
         date,
         label: formatDateLabel(date),
@@ -109,7 +167,7 @@ function groupEventsByDate(
         maxWindMph: maxWind,
         statesAffected: [...states],
         closestMiles: closest,
-        tier: classifyTier(closest),
+        tier,
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -198,9 +256,8 @@ export function useStormData({
           : [];
 
       // Also generate StormDate entries from swaths that may not have matching events.
-      // Swath-only dates can't compute a closest-event distance (no point reports),
-      // so we tier them as 'area' by default — reps still see them but without
-      // a "DIRECT HIT" claim that we can't verify from the row data alone.
+      // Swath-only dates do polygon containment for tier — when the property
+      // is inside the swath we still emit DIRECT HIT even without point reports.
       const swathDates: StormDate[] = resolvedSwaths.map((s) => ({
         date: s.date,
         label: formatDateLabel(s.date),
@@ -209,11 +266,14 @@ export function useStormData({
         maxWindMph: 0,
         statesAffected: s.statesAffected,
         closestMiles: null,
-        tier: 'area',
+        tier:
+          lat !== null && lng !== null && swathContainsPoint(s, lat, lng)
+            ? 'direct_hit'
+            : 'area',
       }));
 
       // Merge event dates and swath dates
-      const eventDates = groupEventsByDate(dedupedEvents, lat, lng);
+      const eventDates = groupEventsByDate(dedupedEvents, lat, lng, resolvedSwaths);
       const mergedDates = mergeDateLists(eventDates, swathDates);
 
       setEvents(dedupedEvents);
