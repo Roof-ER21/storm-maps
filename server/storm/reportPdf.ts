@@ -824,14 +824,18 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // claim that follows. We only show DIRECT HIT (≤1 mi at-property),
   // NEAR MISS (1–3 mi), and AREA IMPACT (within 10 mi). Wider events
   // are still in the per-band detail table at the bottom.
+  // Drop rows where every band is below the 0.25" trace floor and the
+  // closest event is >10 mi away. A row with all dashes is just visual
+  // noise; the rep-facing list should only show storms that produced
+  // claim-relevant hail somewhere in the search area.
   const finalSortedHistRows = Array.from(histGroups.values())
     .filter(
       (r) =>
-        r.atProperty > 0 ||
-        r.mi1to3 > 0 ||
-        r.mi3to5 > 0 ||
-        r.mi5to10 > 0 ||
-        (r.biggestNearby > 0 && r.biggestNearbyMi <= 10),
+        r.atProperty >= 0.25 ||
+        r.mi1to3 >= 0.25 ||
+        r.mi3to5 >= 0.25 ||
+        r.mi5to10 >= 0.25 ||
+        (r.biggestNearby >= 0.25 && r.biggestNearbyMi <= 10),
     )
     .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
     .slice(0, 14);
@@ -849,12 +853,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   sortedHistRows.push(...finalSortedHistRows);
 
   /** Tier from per-band maxes filled by NCEI events + swath containment
-   *  scan. Reverted from the bulk MRMS-impact-per-row path (too slow). */
+   *  scan. Respects the 0.25" trace floor so sub-trace MRMS readings
+   *  don't get badged as DIRECT HIT (the cap algorithm renders them as
+   *  "—" — a DIRECT HIT row with no value is misleading). */
+  const TRACE_FLOOR = 0.25;
   const rowTier = (
     r: HistRow,
   ): 'direct_hit' | 'near_miss' | 'area_impact' => {
-    if (r.atProperty > 0) return 'direct_hit';
-    if (r.mi1to3 > 0) return 'near_miss';
+    if (r.atProperty >= TRACE_FLOOR) return 'direct_hit';
+    if (r.mi1to3 >= TRACE_FLOOR) return 'near_miss';
     return 'area_impact';
   };
 
