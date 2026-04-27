@@ -884,16 +884,29 @@ function MapContent({
     }
     if (!bounds) return null;
 
+    // The mesh1440 product is named per-timestamp on IEM:
+    //   MESH_Max_1440min_00.50_20240415-2100.grib2 = running 24h max
+    //   ending at 21:00 UTC on 4/15.
+    // If we anchored to stormContext.radarTimestamp (the storm peak
+    // hour, e.g. 21:00 UTC) we'd be loading a window that ends BEFORE
+    // any storm cells that fired after the peak — which is exactly why
+    // the live map looked nearly empty while the PDF (which doesn't
+    // anchor mesh1440 → defaults to 23:30 UTC = full day) showed the
+    // whole storm corridor.
+    //
+    // Rule: only pass anchor when we actually want hourly slicing
+    // (mesh60 in scrubber mode). For the daily 24h composite, omit
+    // anchorTimestamp so the server defaults to 23:30 UTC and captures
+    // every storm cell that fired during the day.
     return {
       date: selectedDate,
       bounds,
-      anchorTimestamp: hourlyAnchor ?? stormContext.radarTimestamp,
+      anchorTimestamp: hourlyAnchor ?? null,
       product: hourlyAnchor ? ('mesh60' as const) : ('mesh1440' as const),
     };
   }, [
     selectedDate,
     stormContext.eventBounds,
-    stormContext.radarTimestamp,
     scrubMode,
     scrubFrameIndex,
     mrmsHourlyTimestamps,
