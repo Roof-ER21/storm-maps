@@ -781,6 +781,60 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
+  // ── Polygon-edge band promotion ────────────────────────────────────
+  // The hit-history rows above are filled from NCEI event distance only.
+  // That misses the case where the MRMS swath polygon's EDGE passes
+  // close to the property even though no NCEI observer reported hail
+  // there — exactly the SA21 polygon-edge-distance signal that the
+  // /api/hail/per-date-impact endpoint and AddressImpactBadge use.
+  //
+  // Without this step, the PDF hit-history can show AREA IMPACT for a
+  // date that the storm-dates row badge labels NEAR MISS (because the
+  // polygon edge is 0.6 mi from the property but no NCEI report exists
+  // within 1 mi). Calling buildMrmsImpactResponse per date populates
+  // ImpactBands using the same edge-distance scan, so the row tier
+  // matches the row badge.
+  //
+  // Cost: ~50ms per cached date, ~3-5s per cold-cache date. Parallel
+  // across dates so the wall-clock cost is roughly the slowest fetch.
+  const candidateDateIsos = Array.from(histGroups.keys());
+  if (candidateDateIsos.length > 0) {
+    const radiusMi = 25;
+    const latPad = radiusMi / 69;
+    const lngPad = radiusMi / (69 * Math.cos((req.lat * Math.PI) / 180));
+    const bandBounds: BoundingBox = {
+      north: req.lat + latPad,
+      south: req.lat - latPad,
+      east: req.lng + lngPad,
+      west: req.lng - lngPad,
+    };
+    const bandResults = await Promise.all(
+      candidateDateIsos.map(async (dateIso) => {
+        try {
+          const resp = await buildMrmsImpactResponse({
+            date: dateIso,
+            bounds: bandBounds,
+            points: [{ id: 'p', lat: req.lat, lng: req.lng }],
+          });
+          return { dateIso, bands: resp?.results[0]?.bands ?? null };
+        } catch {
+          return { dateIso, bands: null };
+        }
+      }),
+    );
+    for (const { dateIso, bands } of bandResults) {
+      if (!bands) continue;
+      const row = histGroups.get(dateIso);
+      if (!row) continue;
+      // Promote any band where polygon-edge has a higher max than the
+      // event-distance value already populated.
+      if ((bands.atProperty ?? 0) > row.atProperty) row.atProperty = bands.atProperty!;
+      if ((bands.mi1to3 ?? 0) > row.mi1to3) row.mi1to3 = bands.mi1to3!;
+      if ((bands.mi3to5 ?? 0) > row.mi3to5) row.mi3to5 = bands.mi3to5!;
+      if ((bands.mi5to10 ?? 0) > row.mi5to10) row.mi5to10 = bands.mi5to10!;
+    }
+  }
+
   // sortedHistRows might need re-sorting now that the swath scan added new
   // dates. Recompute below after this block (the original sort happens on
   // line ~689). Move sort here to capture the swath-injected rows too.
