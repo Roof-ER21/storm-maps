@@ -90,6 +90,13 @@ export async function buildVerificationBulk(opts: {
     });
   }
 
+  // Coerce dates to plain strings — postgres.js's array binder choked on
+  // mixed/Date inputs in prod ("Received an instance of Array"). Comparing
+  // event_date::text against a text[] also sidesteps the date[] typecode
+  // path entirely, which is where the original ANY(${dates}::date[]) form
+  // was failing.
+  const dateStrs = opts.dates.map((d) => String(d).slice(0, 10));
+
   try {
     // Two queries from the same predicate window: one aggregated for
     // counts (verified flag), one row-per-report for consensus sizing.
@@ -113,7 +120,7 @@ export async function buildVerificationBulk(opts: {
             AND (source_ncei_storm_events OR source_iem_lsr)
           )::int AS gov_reports_within_half_mi
           FROM verified_hail_events
-         WHERE event_date = ANY(${opts.dates}::date[])
+         WHERE event_date::text = ANY(${dateStrs})
            AND lat BETWEEN ${opts.lat - AT_LOCATION_LAT_PAD}
                        AND ${opts.lat + AT_LOCATION_LAT_PAD}
            AND lng BETWEEN ${opts.lng - AT_LOCATION_LNG_PAD}
@@ -144,7 +151,7 @@ export async function buildVerificationBulk(opts: {
            END) AS source,
           COALESCE(hail_size_inches, magnitude, 0)::float AS size_inches
           FROM verified_hail_events
-         WHERE event_date = ANY(${opts.dates}::date[])
+         WHERE event_date::text = ANY(${dateStrs})
            AND lat BETWEEN ${opts.lat - AT_LOCATION_LAT_PAD}
                        AND ${opts.lat + AT_LOCATION_LAT_PAD}
            AND lng BETWEEN ${opts.lng - AT_LOCATION_LNG_PAD}
