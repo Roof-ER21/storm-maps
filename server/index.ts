@@ -306,6 +306,18 @@ app.post('/api/sync/leads', async (req, res) => {
           try { safeItem.tags = JSON.parse(safeItem.tags as string); }
           catch { safeItem.tags = []; }
         }
+        // Coerce ISO-string timestamps back to Date objects. JSON over the
+        // wire serializes Dates as strings; Drizzle's PgTimestamp expects
+        // a real Date and calls .toISOString() on whatever it gets — which
+        // throws "value.toISOString is not a function" for strings. This
+        // was firing per-lead per state change in idle, flooding logs.
+        for (const k of ['createdAt', 'updatedAt', 'visitedAt', 'completedAt']) {
+          const v = safeItem[k];
+          if (typeof v === 'string') {
+            const d = new Date(v);
+            safeItem[k] = Number.isNaN(d.getTime()) ? null : d;
+          }
+        }
 
         // Remove unknown AI columns that may not yet exist in the schema
         const knownAiCols = ['aiAnalysisId', 'aiProspectScore', 'aiPropertyCondition', 'aiRecommendedAction', 'aiLastAnalyzedAt'];
