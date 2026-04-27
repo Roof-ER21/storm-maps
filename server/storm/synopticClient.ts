@@ -184,12 +184,19 @@ async function fetchAndParse(
     }
     return (env.STATION ?? []).map(toGroundStation);
   } catch (err) {
-    console.warn('[synoptic] fetch failed:', (err as Error).message);
+    if (!fetchFailWarned) {
+      fetchFailWarned = true;
+      console.warn(
+        '[synoptic] fetch failed (suppressing further):',
+        (err as Error).message,
+      );
+    }
     return [];
   }
 }
 
 let historyLimitWarned = false;
+let fetchFailWarned = false;
 
 function toSynopticUtc(d: Date): string {
   const yyyy = d.getUTCFullYear().toString().padStart(4, '0');
