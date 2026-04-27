@@ -20,11 +20,7 @@ import {
   buildMrmsImpactResponse,
   type MrmsImpactResult,
 } from './mrmsService.js';
-import {
-  composeStormNarrative,
-  biggestHailCallout,
-  closestHailCallout,
-} from './narrativeComposer.js';
+import { composeStormNarrative } from './narrativeComposer.js';
 import { haversineMiles, pointInRing } from './geometry.js';
 import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
@@ -46,6 +42,11 @@ import {
   primarySourceLabel,
   type SourceFlags,
 } from './sourceTier.js';
+import {
+  computeHailDuration,
+  computeStormDirectionAndSpeed,
+  computeStormPeakTime,
+} from './stormMetrics.js';
 
 interface NceiAppendixRow {
   event_date: string;
@@ -762,6 +763,22 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const BOTTOM = 752;
   const COLOR = PDF_LAYOUT.colors;
 
+  // Compat alias for the legacy color tokens still referenced by sections
+  // that haven't been re-themed yet (Phases 5-7 still tag along with the
+  // old palette). Mapped to the closest equivalents in the new palette so
+  // the legacy bits look as cohesive as possible during the phased rollout.
+  const C = {
+    text: COLOR.bodyText,
+    lightText: COLOR.labelGray,
+    mutedText: COLOR.mutedGray,
+    sectionBg: COLOR.bannerBg,
+    sectionText: COLOR.bannerText,
+    accent: COLOR.brandRed,
+    link: COLOR.linkRed,
+    border: COLOR.borderGray,
+    tableBorder: COLOR.borderGray,
+  };
+
   // Universal section banner — gray fill, centered title, NOT bold (target
   // PDF uses Helvetica regular at 13 pt). Replaces the legacy navy/italic
   // banner. Auto-paginates if banner + 24pt content tail won't fit.
@@ -930,27 +947,34 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   {
     const vs = PDF_LAYOUT.header.verifyStrip;
     doc.rect(0, vs.y, PW, vs.height).fill(COLOR.stripBg);
-    // Build the line as continued text so the code can be styled inline.
     const prefix = `You can verify the authenticity of this report using report number ${reportId} and the following Verification Code: `;
-    // Center horizontally — measure widths to compute starting x.
+    // Center horizontally — measure widths first so we know where to anchor.
     doc.fillColor(COLOR.bodyText).font('Helvetica').fontSize(vs.fontSize);
     const prefixW = doc.widthOfString(prefix);
     doc.font('Helvetica-Bold');
     const codeW = doc.widthOfString(verificationCode);
     const totalW = prefixW + codeW;
     const startX = Math.max(M, (PW - totalW) / 2);
+    // Use explicit `width` (with lineBreak:false the text never wraps but
+    // PDFKit's `continued:true` machinery still expects a width so the
+    // underline lineTo() doesn't get NaN).
     doc
       .fillColor(COLOR.bodyText)
       .font('Helvetica')
       .fontSize(vs.fontSize)
       .text(prefix, startX, vs.y + 5, {
         lineBreak: false,
-        continued: true,
+        width: prefixW + 1,
       });
     doc
       .fillColor(COLOR.linkRed)
       .font('Helvetica-Bold')
-      .text(verificationCode, { lineBreak: false, underline: true });
+      .fontSize(vs.fontSize)
+      .text(verificationCode, startX + prefixW, vs.y + 5, {
+        lineBreak: false,
+        width: codeW + 4,
+        underline: true,
+      });
   }
 
   // Reset doc.y to the bottom of the verification strip + spacing.
@@ -1337,11 +1361,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     return 'area_impact';
   };
 
-  // ── Storm Coverage at Property (three-tier + per-band table) ──────────
-  // Mirrors Gemini Field Assistant's PDF layout. The tier label headlines
-  // the entire report — adjusters reading our PDF and HailTrace's PDF see
-  // the same "DIRECT HIT" / "NEAR MISS" / "AREA IMPACT" vocabulary.
-  drawSectionBanner('Storm Coverage at Property');
+  // ── Property impact + verification (data plumb for downstream sections) ─
+  // The tier card visual got removed in the 2026-04-27 redesign, but
+  // propertyImpact still feeds the Hail Impact Details "Size of Hail
+  // Detected" cell + the narrative "max at property" line. Keep the
+  // fetch + verification bulk lookup intact.
   let propertyImpact: MrmsImpactResult | null = null;
   if (collection) {
     try {
@@ -1357,19 +1381,13 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
-  // Sync the date-of-loss histRow with the tier card's band data so the
-  // hit-history table row and the tier card agree (they're the same date,
-  // they should not show different values). Without this, the tier card
-  // surfaces MRMS swath edge-distance bands while the hit-history row
-  // only shows ground-report bands — same date, different numbers, which
-  // is what was confusing on the 2025-05-16 PDF.
+  // Sync the date-of-loss histRow with propertyImpact's band data so the
+  // hit-history table row and the Hail Impact Details cell agree.
   if (propertyImpact?.bands) {
     const dolRow = histGroups.get(req.dateOfLoss) ?? newRow(req.dateOfLoss);
     const b = propertyImpact.bands;
     if (typeof b.atProperty === 'number' && b.atProperty > 0) {
       if (b.atProperty > dolRow.atProperty) dolRow.atProperty = b.atProperty;
-      // Only push synthetic MRMS report if no primary report already exists
-      // for this band — avoids duplicates when ground reports also covered.
       if (dolRow.primaryAtProperty.length === 0) {
         dolRow.primaryAtProperty.push({ source: 'mrms', sizeIn: b.atProperty });
       }
@@ -1398,7 +1416,8 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
   // 2026-04-27 cap algorithm — pull verification context for the date of
   // loss + every hit-history date in one bulk SQL round-trip. Drives the
-  // tier card hail value AND every hit-history row's banded display.
+  // Hail Impact Details cell, narrative, AND every Section 7 row's
+  // banded display.
   const allCapDates = Array.from(
     new Set([req.dateOfLoss, ...histGroups.keys()].filter(Boolean)),
   );
@@ -1410,167 +1429,89 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const propertyVerification: VerificationContext =
     verificationByDate.get(req.dateOfLoss) ?? UNVERIFIED_CTX;
 
-  // Street View thumbnail (left side), tier card (right side).
-  const streetViewPromise = fetchStreetViewImage(req.lat, req.lng, 200, 130);
-  const streetViewImg = await Promise.race([
-    streetViewPromise,
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 9_000)),
-  ]);
+  // Per-band verification context for the date of loss — feeds the
+  // Hail Impact Details "Size of Hail Detected" + Max nearby cells, and
+  // the narrative composer's cappedHeadline. Computed once here so the
+  // legacy hit-history table (still rendered until Phase 6 retires it)
+  // can keep using it without recomputing.
+  const dolRow = histGroups.get(req.dateOfLoss);
+  const dolAtPropCtx = dolRow
+    ? bandVerification(dolRow.primaryAtProperty, req.dateOfLoss, req.lat, req.lng)
+    : propertyVerification;
+  const dolFarBandCtx = farBandCtx(propertyVerification);
 
-  if (propertyImpact) {
-    const TIER_STYLE: Record<
-      'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact',
-      { label: string; bg: string; border: string; text: string }
-    > = {
-      direct_hit: {
-        label: 'DIRECT HIT',
-        bg: '#fef2f2',
-        border: '#dc2626',
-        text: '#991b1b',
-      },
-      near_miss: {
-        label: 'NEAR MISS',
-        bg: '#fff7ed',
-        border: '#ea580c',
-        text: '#9a3412',
-      },
-      area_impact: {
-        label: 'AREA IMPACT',
-        bg: '#fefce8',
-        border: '#ca8a04',
-        text: '#854d0e',
-      },
-      no_impact: {
-        label: 'NO IMPACT',
-        bg: '#f8fafc',
-        border: '#94a3b8',
-        text: '#475569',
-      },
-    };
-    const tier = propertyImpact.tier;
-    const tStyle = TIER_STYLE[tier];
+  // ── Section 2 — Hail Impact Details (4×2 label/value table) ───────────
+  drawSectionBanner('Hail Impact Details');
+  {
+    const tableY = doc.y;
+    const RH = PDF_LAYOUT.hailImpact.rowHeight;
+    const C1L = PDF_LAYOUT.hailImpact.col.label1;
+    const C1V = PDF_LAYOUT.hailImpact.col.value1;
+    const C2L = PDF_LAYOUT.hailImpact.col.label2;
+    const C2V = PDF_LAYOUT.hailImpact.col.value2;
 
-    const cardX = 54;
-    const cardY = doc.y;
-    const cardW = 504;
-    const cardH = 152;
-    doc.roundedRect(cardX, cardY, cardW, cardH, 6).fill(tStyle.bg);
-    doc.roundedRect(cardX, cardY, cardW, cardH, 6).strokeColor(tStyle.border).lineWidth(1.5).stroke();
+    const dolDate = new Date(`${req.dateOfLoss}T12:00:00`);
+    const dolMdy = `${dolDate.getMonth() + 1}/${dolDate.getDate()}/${dolDate.getFullYear()}`;
+    const peakTimeStr = computeStormPeakTime(events, req.dateOfLoss) ?? '—';
+    const dirSpeed = computeStormDirectionAndSpeed(events, req.dateOfLoss);
+    const headingStr = dirSpeed.heading;
+    const speedStr = dirSpeed.speedMph !== null
+      ? `${dirSpeed.speedMph.toFixed(1)} mph`
+      : '—';
+    const durationMin = computeHailDuration(events, req.dateOfLoss);
+    const durationStr = durationMin !== null ? `${durationMin.toFixed(1)} minutes` : '—';
 
-    // Street View thumbnail
-    let textX = cardX + 14;
-    let textW = cardW - 28;
-    if (streetViewImg) {
-      const svW = 130;
-      const svH = 100;
-      try {
-        doc.save();
-        doc.roundedRect(cardX + 14, cardY + 14, svW, svH, 4).clip();
-        doc.image(streetViewImg, cardX + 14, cardY + 14, {
-          width: svW,
-          height: svH,
-          fit: [svW, svH],
-        });
-        doc.restore();
-        doc.roundedRect(cardX + 14, cardY + 14, svW, svH, 4)
-          .strokeColor('#cbd5e1')
-          .lineWidth(0.5)
-          .stroke();
-      } catch (err) {
-        console.warn('[reportPdf] street view embed failed:', (err as Error).message);
-      }
-      textX = cardX + 14 + svW + 14;
-      textW = cardW - (svW + 14 + 28);
-    }
+    // At-property hail size — uses the same cap call that previously fed
+    // the tier card. dolAtPropCtx is the per-band verification ctx.
+    const atPropertyVal = propertyImpact?.bands.atProperty ?? null;
+    const atPropertyStr = atPropertyVal !== null && atPropertyVal > 0
+      ? displayHailIn(atPropertyVal, dolAtPropCtx)
+      : '—';
 
-    // Tier label + at-property hail
-    doc
-      .fillColor(tStyle.text)
-      .font('Helvetica-Bold')
-      .fontSize(10)
-      .text(tStyle.label, textX, cardY + 14, { width: textW });
-    // Headline pulls from the atProperty band so it agrees with the
-    // table column. The point-band-label (propertyImpact.label) reflects
-    // exactly which band the lat/lng sits inside, but reps quote the
-    // max-in-1mi value to adjusters because that's the strongest hit
-    // their property actually saw.
-    const headlineHail = displayHailIn(
-      propertyImpact.bands.atProperty ?? propertyImpact.maxHailInches,
-      propertyVerification,
-    );
-    const headline =
-      tier === 'direct_hit'
-        ? `${headlineHail} hail at property`
-        : tier === 'near_miss'
-          ? `${displayHailIn(propertyImpact.bands.atProperty, propertyVerification)} hail within 1 mi of property`
-          : tier === 'area_impact'
-            ? `Storm cell within 10 mi`
-            : 'No verified hail within 10 mi';
-    doc
-      .fillColor(tStyle.text)
-      .font('Helvetica-Bold')
-      .fontSize(15)
-      .text(headline, textX, cardY + 28, { width: textW });
+    // Nearby hail count = number of distinct hail events on the date.
+    const datedHail = datedEvents.filter((e) => e.eventType === 'Hail');
+    const nearbyCount = datedHail.length;
 
-    // Per-band 3-column table (At Property / 1-3mi / 3-5mi). 5–10mi was
-    // dropped per the 2026-04-27 meeting — Reese: "anything beyond 5 mi is
-    // ammunition for the adjuster, not for us."
-    const bandY = cardY + 70;
-    const bandH = 60;
-    const bandW = textW / 3;
-    const bandLabels: Array<[string, string, number | null]> = [
-      ['At Property', '0–1 mi', propertyImpact.bands.atProperty],
-      ['1–3 mi', '', propertyImpact.bands.mi1to3],
-      ['3–5 mi', '', propertyImpact.bands.mi3to5],
+    // Max nearby hail — biggest event magnitude on the date, capped via
+    // far-band ctx (no consensus override at distance).
+    const biggestNearbyRaw = datedHail.reduce((m, e) => Math.max(m, e.magnitude), 0);
+    const maxNearbyStr = biggestNearbyRaw > 0
+      ? displayHailIn(biggestNearbyRaw, dolFarBandCtx)
+      : '—';
+
+    const rows: Array<[string, string, string, string]> = [
+      ['Date of Hail Impact:', dolMdy, 'Hail Duration:', durationStr],
+      ['Time of Hail Impact:', peakTimeStr, 'Size of Hail Detected:', atPropertyStr],
+      ['Storm Direction:', headingStr, 'Nearby Hail Reported:', `${nearbyCount} report${nearbyCount === 1 ? '' : 's'}`],
+      ['Storm Speed:', speedStr, 'Max Hail Size Reported:', maxNearbyStr],
     ];
-    // Per-band verification for the tier card — pulled from the
-    // dateOfLoss histRow's primary-source reports so each column is
-    // gated on its OWN band's evidence (afternoon addendum). When the
-    // dateOfLoss isn't in histGroups (rare — pure swath hits without
-    // any corroborating ground reports), the contexts default to
-    // unverified, which forces the cap into the 2.0" / 2.5" branches.
-    const dolRow = histGroups.get(req.dateOfLoss);
-    const tierAtPropCtx = dolRow
-      ? bandVerification(dolRow.primaryAtProperty, req.dateOfLoss, req.lat, req.lng)
-      : UNVERIFIED_CTX;
-    const tier1to3Ctx = dolRow
-      ? bandVerification(dolRow.primaryMi1to3, req.dateOfLoss, req.lat, req.lng)
-      : UNVERIFIED_CTX;
-    const tier3to5Ctx = dolRow
-      ? bandVerification(dolRow.primaryMi3to5, req.dateOfLoss, req.lat, req.lng)
-      : UNVERIFIED_CTX;
-    const bandCtxByIdx = [tierAtPropCtx, tier1to3Ctx, tier3to5Ctx];
-    bandLabels.forEach(([label, sub, value], i) => {
-      const x = textX + i * bandW;
-      doc.roundedRect(x + 2, bandY, bandW - 4, bandH, 4).fill('#ffffff');
+
+    rows.forEach((r, i) => {
+      const ry = tableY + i * RH;
+      const baseY = ry + 5;
       doc
-        .fillColor('#64748b')
-        .font('Helvetica-Bold')
-        .fontSize(8)
-        .text(label.toUpperCase(), x + 2, bandY + 6, {
-          width: bandW - 4,
-          align: 'center',
-        });
-      if (sub) {
-        doc
-          .fillColor('#94a3b8')
-          .font('Helvetica')
-          .fontSize(7)
-          .text(sub, x + 2, bandY + 16, { width: bandW - 4, align: 'center' });
-      }
-      const filled = value !== null && value > 0;
-      const bandCtx = bandCtxByIdx[i] ?? UNVERIFIED_CTX;
+        .fillColor(COLOR.labelGray)
+        .font('Helvetica')
+        .fontSize(9)
+        .text(r[0], C1L.x, baseY, { width: C1L.w, lineBreak: false });
       doc
-        .fillColor(filled ? '#0f172a' : '#cbd5e1')
+        .fillColor(COLOR.bodyText)
         .font('Helvetica-Bold')
-        .fontSize(14)
-        .text(filled ? displayHailIn(value, bandCtx) : '—', x + 2, bandY + 30, {
-          width: bandW - 4,
-          align: 'center',
-        });
+        .fontSize(9)
+        .text(r[1], C1V.x, baseY, { width: C1V.w, lineBreak: false });
+      doc
+        .fillColor(COLOR.labelGray)
+        .font('Helvetica')
+        .fontSize(9)
+        .text(r[2], C2L.x, baseY, { width: C2L.w, lineBreak: false });
+      doc
+        .fillColor(COLOR.bodyText)
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text(r[3], C2V.x, baseY, { width: C2V.w, lineBreak: false });
     });
 
-    doc.y = cardY + cardH + 12;
+    doc.y = tableY + rows.length * RH + 6;
   }
 
   // ── Property Hail Hit History (rep-facing summary) ────────────────────
@@ -1836,32 +1777,20 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
 
     if (narrative.length > 0) {
-      // Anchor explicitly to left margin — previous tier-card cells leave
-      // doc.x in the right column. Without an explicit X the narrative
-      // wraps at half width and runs off the right edge.
-      const NARR_X = 54;
-      const NARR_W = 504;
-      drawSectionBanner('Storm Impact Narrative');
-      doc.fillColor('#1e293b').font('Helvetica').fontSize(10);
-      doc.text(narrative, NARR_X, doc.y, {
-        width: NARR_W,
-        align: 'left',
-        lineGap: 1.5,
-      });
-      doc.moveDown(0.5);
-
-      // BIGGEST/CLOSEST callouts in the same compact band the table uses
-      const bigCall = biggestHailCallout(biggestHailIn > 0 ? biggestHailIn : undefined, biggestHailMi);
-      const closeCall = closestHailCallout(
-        closestHailIn > 0 ? closestHailIn : undefined,
-        closestHailMi,
-      );
-      if (bigCall || closeCall) {
-        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8.5);
-        const callouts = [bigCall, closeCall].filter(Boolean).join('   ·   ');
-        doc.text(callouts, NARR_X, doc.y, { width: NARR_W });
-        doc.moveDown(0.7);
-      }
+      drawSectionBanner('Hail Impact Narrative');
+      // Indent paragraph 20 pt past the page margin per layout spec — gives
+      // the prose visual breathing room from the banner edges. Width 472,
+      // 9 pt Helvetica, 14 pt line height, justified.
+      doc
+        .fillColor(COLOR.bodyText)
+        .font('Helvetica')
+        .fontSize(9)
+        .text(narrative, 70, doc.y + 4, {
+          width: 472,
+          align: 'justify',
+          lineGap: 5,
+        });
+      doc.moveDown(0.6);
     }
   }
 
