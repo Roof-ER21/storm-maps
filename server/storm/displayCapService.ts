@@ -13,27 +13,31 @@
  * display value is capped.
  *
  * Decision authority: 2026-04-27 storm-app meeting (Ahmed, Reese, Russell,
- * Louie). See HANDOFF-DISPLAY-CAP-2026-04-27.md for context.
+ * Louie) + post-meeting clarifications via Ahmed (consensus override,
+ * polygon-containment-as-at-property, Sterling-class radius).
  *
- * Algorithm rules (locked):
+ * Algorithm rules (locked, post-clarification):
  *
- *   raw < 0.4              → suppress (treat as no hail)
- *   raw < 0.75             → 0.75 floor
- *   raw 0.75–2.00          → pass through, snap to 0.25
- *   raw 2.01–2.50, NOT verified+at-location → 2.0
- *   raw 2.01–2.50, verified+at-location     → pass through, snap to 0.25
- *   raw 2.51+, verified+at-location, Sterling-class → snap to 0.25, hard cap 3.0
- *   raw 2.51+, verified, NOT Sterling-class → 2.5
- *   raw 2.51+, NOT verified → 2.0
+ *   raw < 0.25                       → null (no event detected)
+ *   raw 0.25–0.74                    → 0.75 floor (every positive reading
+ *                                      rounds up to the rep-acceptable
+ *                                      minimum the meeting agreed on)
+ *   consensus path overrides:
+ *     when ≥2 distinct sources agree on a quarter-snap size S where
+ *     0.75 ≤ S < 2.6, return S directly — bypasses raw-based cap entirely
+ *   else apply raw cap:
+ *     raw 0.75–2.00                  → snap to 0.25
+ *     raw 2.01–2.50, verified+atLoc  → snap to 0.25
+ *     raw 2.01–2.50, otherwise       → 2.0
+ *     raw 2.51+, Sterling+ver+atLoc  → snap to 0.25, hard cap 3.0
+ *     raw 2.51+, verified            → 2.5
+ *     raw 2.51+, otherwise           → 2.0
  *
- * Two known-meeting-typo discrepancies in the handoff doc that this
- * implementation resolves in favor of the rule-table (NOT the test
- * snippets):
- *   1. 0.33 → suppress (handoff test expected 0.75, but rule says <0.4
- *      suppress; rule wins).
- *   2. >3.0 + Sterling-class → 3.0 hard cap (handoff TS only handled
- *      2.51–3.0 Sterling; this implementation extends to all >2.5
- *      Sterling values, capped at 3.0).
+ * Why consensus overrides cap: when 3 different ground sources independently
+ * report the same 1.5" reading, that's stronger evidence than a single MRMS
+ * pixel claiming 4". The capped value (e.g. 2.5) would actually OVER-state
+ * what hit the roof. Source agreement at moderate sizes is the most
+ * adjuster-credible signal we have.
  */
 
 export interface VerificationContext {
@@ -56,6 +60,15 @@ export interface VerificationContext {
    * where the team has agreed it's OK to display 2.5"–3.0" hail).
    */
   isSterlingClass: boolean;
+  /**
+   * Consensus size in inches when ≥2 distinct ground-report sources agree
+   * on a quarter-snap size in [0.75, 2.6). When set, displayHailInches
+   * returns this verbatim — overriding the raw-based cap. null when no
+   * consensus exists. Source agreement at moderate sizes is the strongest
+   * adjuster-credible signal we have, so it wins over both the raw max
+   * (which can be a single hot MRMS pixel) and the standard cap path.
+   */
+  consensusSize?: number | null;
 }
 
 /**
@@ -69,21 +82,41 @@ export function displayHailInches(
   rawMaxInches: number,
   v: VerificationContext,
 ): number | null {
-  if (!Number.isFinite(rawMaxInches) || rawMaxInches < 0.4) return null;
+  // Sub-trace radar noise: nothing real hit the roof. Don't fabricate a
+  // 0.75 reading from a 0.001 MRMS pixel.
+  if (!Number.isFinite(rawMaxInches) || rawMaxInches < 0.25) return null;
+
+  // Consensus override: when ≥2 distinct sources agree on a quarter-snap
+  // size in [0.75, 2.6), trust source agreement over the raw max. This
+  // catches the "raw 4" but everyone actually saw 1.5"" case where the
+  // cap path would still over-state to 2.5.
+  if (
+    v.consensusSize !== null &&
+    v.consensusSize !== undefined &&
+    v.consensusSize >= 0.75 &&
+    v.consensusSize < 2.6
+  ) {
+    return roundToQuarter(v.consensusSize);
+  }
+
+  // Floor — every positive reading rounds up to 0.75. The meeting was
+  // unambiguous: "anything under 0.75 isn't worth showing to a rep."
   if (rawMaxInches < 0.75) return 0.75;
+
+  // Pass-through band: 0.75–2.00 displays the raw value (snapped).
   if (rawMaxInches <= 2.0) return roundToQuarter(rawMaxInches);
 
   const verifiedAtLoc = v.isVerified && v.isAtLocation;
 
-  // 2.01 – 2.50: verified+at-location passes through (with quarter snap),
-  // anything else gets clamped to 2.0.
+  // 2.01–2.50: verified+at-location passes through (with quarter snap);
+  // anything else clamps to 2.0.
   if (rawMaxInches <= 2.5) {
     return verifiedAtLoc ? roundToQuarter(rawMaxInches) : 2.0;
   }
 
-  // > 2.50: only Sterling-class verified-at-location may exceed 2.5,
-  // and even then it's hard-capped at 3.0. Everything else gets the
-  // verified/unverified ceiling.
+  // > 2.50: only Sterling-class verified-at-location may exceed 2.5, and
+  // even then we hard-cap at 3.0. Everything else gets the
+  // verified/unverified ceiling (2.5 or 2.0).
   if (verifiedAtLoc && v.isSterlingClass) {
     return Math.min(roundToQuarter(rawMaxInches), 3.0);
   }
@@ -93,6 +126,50 @@ export function displayHailInches(
 
 function roundToQuarter(x: number): number {
   return Math.round(x * 4) / 4;
+}
+
+/**
+ * Compute the consensus size from a list of (sourceLabel, sizeInches)
+ * tuples. Returns the highest quarter-snap size in [0.75, 2.6) where ≥2
+ * distinct sources reported that size. null when no consensus exists.
+ *
+ * "Distinct sources" = different source labels (e.g., "ncei-storm-events"
+ * vs "iem-lsr"). Two events from the same source aren't a consensus —
+ * that's just the same observer pipeline duplicated. Cross-source
+ * agreement is what we want.
+ */
+export function computeConsensusSize(
+  reports: Array<{ source: string; sizeInches: number }>,
+): number | null {
+  // source -> set of quarter-snapped sizes that source reported in [0.75, 2.6)
+  const sizesBySource = new Map<string, Set<number>>();
+  for (const r of reports) {
+    if (!Number.isFinite(r.sizeInches)) continue;
+    if (r.sizeInches < 0.75 || r.sizeInches >= 2.6) continue;
+    const snapped = roundToQuarter(r.sizeInches);
+    if (snapped < 0.75 || snapped >= 2.6) continue;
+    if (!sizesBySource.has(r.source)) {
+      sizesBySource.set(r.source, new Set());
+    }
+    sizesBySource.get(r.source)!.add(snapped);
+  }
+
+  // Count how many distinct sources reported each size
+  const sourceCountForSize = new Map<number, number>();
+  for (const sizes of sizesBySource.values()) {
+    for (const s of sizes) {
+      sourceCountForSize.set(s, (sourceCountForSize.get(s) ?? 0) + 1);
+    }
+  }
+
+  // Pick the highest size with ≥2 source agreement. Higher consensus is
+  // more rep-favorable — among sizes adjusters will accept (under 2.6),
+  // we want to show the worst observed.
+  let best: number | null = null;
+  for (const [size, count] of sourceCountForSize) {
+    if (count >= 2 && (best === null || size > best)) best = size;
+  }
+  return best;
 }
 
 /**
@@ -119,7 +196,14 @@ export const STERLING_CLASS_STORMS: SterlingClassStorm[] = [
     label: 'Sterling VA hail outbreak',
     centerLat: 39.0067,
     centerLng: -77.4291,
-    radiusMi: 15,
+    // 20 mi covers the actual swath extent that day (Sterling →
+    // Vienna/Tysons → Reston → Ashburn → Leesburg → industrial Loudoun).
+    // Per-date-impact data shows polygon edges 1.45 mi from Vienna and
+    // 1.68 mi from Leesburg's Barksdale Dr. The meeting kept testing
+    // 17032 Silver Charm Place in Leesburg (~16 mi from this center) —
+    // 15 mi would have cut it off. Doesn't bleed into Frederick MD or
+    // Baltimore.
+    radiusMi: 20,
   },
 ];
 

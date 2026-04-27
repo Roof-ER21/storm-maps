@@ -11,6 +11,7 @@
  */
 
 import {
+  computeConsensusSize,
   displayHailInches,
   isSterlingClassStorm,
   type VerificationContext,
@@ -20,21 +21,43 @@ const verified: VerificationContext = {
   isVerified: true,
   isAtLocation: true,
   isSterlingClass: false,
+  consensusSize: null,
 };
 const verifiedNotAtLoc: VerificationContext = {
   isVerified: true,
   isAtLocation: false,
   isSterlingClass: false,
+  consensusSize: null,
 };
 const unverified: VerificationContext = {
   isVerified: false,
   isAtLocation: true,
   isSterlingClass: false,
+  consensusSize: null,
 };
 const sterling: VerificationContext = {
   isVerified: true,
   isAtLocation: true,
   isSterlingClass: true,
+  consensusSize: null,
+};
+const consensusOneFive: VerificationContext = {
+  isVerified: false,
+  isAtLocation: true,
+  isSterlingClass: false,
+  consensusSize: 1.5,
+};
+const consensusTwoFive: VerificationContext = {
+  isVerified: false,
+  isAtLocation: true,
+  isSterlingClass: false,
+  consensusSize: 2.5,
+};
+const consensusOutOfRange: VerificationContext = {
+  isVerified: false,
+  isAtLocation: true,
+  isSterlingClass: false,
+  consensusSize: 2.75, // ≥2.6 → ignored, falls through to cap
 };
 
 interface Case {
@@ -48,21 +71,19 @@ interface Case {
 }
 
 const cases: Case[] = [
-  // Suppress floor
-  { name: '0.2 → null (suppress)', raw: 0.2, ctx: verified, expect: null },
-  { name: '0.39 → null (just under floor)', raw: 0.39, ctx: verified, expect: null },
-  {
-    name: '0.33 → null (rule-table says <0.4 suppress)',
-    raw: 0.33,
-    ctx: verified,
-    expect: null,
-    spec_correction:
-      'Handoff test expected 0.75 but the rule table says <0.4 suppress; rule wins.',
-  },
+  // Suppress threshold = <0.25 (post-clarification: meeting said
+  // "minimum 0.75" with no explicit suppress, but we keep a sub-trace
+  // floor at 0.25 — Ahmed confirmed Option C)
+  { name: '0.1 → null (sub-trace, no event)', raw: 0.1, ctx: verified, expect: null },
+  { name: '0.2 → null (under 0.25 suppress)', raw: 0.2, ctx: verified, expect: null },
+  { name: '0.24 → null (just under suppress)', raw: 0.24, ctx: verified, expect: null },
 
-  // 0.4 floor
-  { name: '0.4 → 0.75 (floor)', raw: 0.4, ctx: verified, expect: 0.75 },
+  // Floor 0.25–0.74 → 0.75
+  { name: '0.25 → 0.75 (just at suppress edge)', raw: 0.25, ctx: verified, expect: 0.75 },
+  { name: '0.33 → 0.75 (the meeting example)', raw: 0.33, ctx: verified, expect: 0.75 },
+  { name: '0.38 → 0.75 (Russ said this rounds up)', raw: 0.38, ctx: verified, expect: 0.75 },
   { name: '0.5 → 0.75 (floor)', raw: 0.5, ctx: verified, expect: 0.75 },
+  { name: '0.63 → 0.75 (Russ\'s example)', raw: 0.63, ctx: verified, expect: 0.75 },
   { name: '0.74 → 0.75 (floor)', raw: 0.74, ctx: verified, expect: 0.75 },
 
   // Pass-through 0.75–2.0
@@ -103,6 +124,44 @@ const cases: Case[] = [
   { name: 'NaN → null', raw: NaN, ctx: verified, expect: null },
   { name: '0 → null', raw: 0, ctx: verified, expect: null },
   { name: 'negative → null', raw: -1, ctx: verified, expect: null },
+
+  // Consensus override (post-clarification): when ≥2 distinct sources
+  // agree on a quarter-snap size in [0.75, 2.6), that size becomes the
+  // displayed value and overrides the raw cap entirely.
+  {
+    name: 'consensus 1.5 with raw 4 → 1.5 (consensus wins over cap)',
+    raw: 4.0,
+    ctx: consensusOneFive,
+    expect: 1.5,
+  },
+  {
+    name: 'consensus 1.5 with raw 0.5 → 1.5 (consensus wins over floor)',
+    raw: 0.5,
+    ctx: consensusOneFive,
+    expect: 1.5,
+  },
+  {
+    name: 'consensus 1.5 with raw 0.1 → null (still respects suppress)',
+    raw: 0.1,
+    ctx: consensusOneFive,
+    expect: null,
+    spec_correction:
+      'Sub-trace radar (raw < 0.25) suppresses even with consensus — no event detected on this property.',
+  },
+  {
+    name: 'consensus 2.5 with raw 4 → 2.5 (top of consensus range)',
+    raw: 4.0,
+    ctx: consensusTwoFive,
+    expect: 2.5,
+  },
+  {
+    name: 'consensus 2.75 with raw 4 → 2.0 (out of range, falls through)',
+    raw: 4.0,
+    ctx: consensusOutOfRange,
+    expect: 2.0,
+    spec_correction:
+      'Consensus only applies in [0.75, 2.6). 2.75 is out of range so we fall through to the unverified cap (2.0).',
+  },
 ];
 
 let pass = 0;
@@ -131,8 +190,95 @@ const memberCases: Array<[string, number, number, string, boolean]> = [
   ['Sterling 8/29/2024 — Sterling VA itself', 39.0067, -77.4291, '2024-08-29', true],
   ['Sterling 8/29/2024 — Boone Blvd Vienna (≈12 mi)', 38.9209, -77.2369, '2024-08-29', true],
   ['Sterling 8/29/2024 — Barksdale Leesburg (≈10 mi)', 39.1286, -77.5425, '2024-08-29', true],
+  // 17032 Silver Charm Place ~16 mi from center — was the meeting's actual
+  // test address. 15-mi radius cut it off; 20-mi includes it.
+  [
+    'Sterling 8/29/2024 — 17032 Silver Charm Pl Leesburg (≈16 mi, the meeting\'s test address)',
+    39.18,
+    -77.59,
+    '2024-08-29',
+    true,
+  ],
   ['Wrong date — same place', 39.0067, -77.4291, '2024-08-30', false],
   ['Outside radius — Frederick MD (≈30 mi)', 39.4143, -77.4105, '2024-08-29', false],
+];
+
+// computeConsensusSize tests
+interface ConsensusCase {
+  name: string;
+  reports: Array<{ source: string; sizeInches: number }>;
+  expect: number | null;
+}
+const consensusCases: ConsensusCase[] = [
+  {
+    name: '2 sources at 1.5 → 1.5',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 1.5 },
+      { source: 'iem-lsr', sizeInches: 1.5 },
+    ],
+    expect: 1.5,
+  },
+  {
+    name: '3 sources at different sizes → null (no agreement)',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 1.0 },
+      { source: 'iem-lsr', sizeInches: 1.5 },
+      { source: 'mping', sizeInches: 1.75 },
+    ],
+    expect: null,
+  },
+  {
+    name: '2 sources both at 2.5, 1 at 4.0 → 2.5 (max consensus)',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 2.5 },
+      { source: 'iem-lsr', sizeInches: 2.5 },
+      { source: 'mping', sizeInches: 4.0 },
+    ],
+    expect: 2.5,
+  },
+  {
+    name: 'same-source duplicates → null (need DISTINCT sources)',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 1.5 },
+      { source: 'ncei-storm-events', sizeInches: 1.5 },
+      { source: 'ncei-storm-events', sizeInches: 1.5 },
+    ],
+    expect: null,
+  },
+  {
+    name: 'consensus at 2.75 → null (out of [0.75, 2.6) range)',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 2.75 },
+      { source: 'iem-lsr', sizeInches: 2.75 },
+    ],
+    expect: null,
+  },
+  {
+    name: 'consensus at 0.5 → null (out of range, below floor)',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 0.5 },
+      { source: 'iem-lsr', sizeInches: 0.5 },
+    ],
+    expect: null,
+  },
+  {
+    name: 'quarter-snap matching: 1.51 + 1.49 → 1.5 (both snap to 1.5)',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 1.51 },
+      { source: 'iem-lsr', sizeInches: 1.49 },
+    ],
+    expect: 1.5,
+  },
+  {
+    name: 'highest consensus picked: agreement at both 1.0 and 1.5 → 1.5',
+    reports: [
+      { source: 'ncei-storm-events', sizeInches: 1.0 },
+      { source: 'iem-lsr', sizeInches: 1.0 },
+      { source: 'mping', sizeInches: 1.5 },
+      { source: 'spc', sizeInches: 1.5 },
+    ],
+    expect: 1.5,
+  },
 ];
 
 console.log('\nSterling-class membership:');
@@ -149,7 +295,22 @@ for (const [name, lat, lng, date, expected] of memberCases) {
   }
 }
 
-console.log(`\n${pass} passed, ${fail} failed (${cases.length + memberCases.length} total)`);
+console.log('\nConsensus-size detection:');
+for (const c of consensusCases) {
+  const got = computeConsensusSize(c.reports);
+  if (got === c.expect) {
+    pass += 1;
+    console.log(`  ✓  ${c.name}`);
+  } else {
+    fail += 1;
+    const msg = `  ✗  ${c.name} — expected ${c.expect}, got ${got}`;
+    console.log(msg);
+    failures.push(msg);
+  }
+}
+
+const total = cases.length + memberCases.length + consensusCases.length;
+console.log(`\n${pass} passed, ${fail} failed (${total} total)`);
 if (fail > 0) {
   console.log('\nFailures:');
   for (const f of failures) console.log(f);
