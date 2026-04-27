@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { StormEvent, MeshSwath, StormDate } from '../types/storm';
+import type { StormEvent, MeshSwath, StormDate, StormImpactTier } from '../types/storm';
 import { searchByCoordinates, fetchLocalStormReports, fetchSpcStormReports } from '../services/stormApi';
 import { fetchMeshSwathsByLocation } from '../services/nhpApi';
 import { getHailSizeClass } from '../types/storm';
@@ -36,9 +36,35 @@ interface UseStormDataReturn {
 }
 
 /**
- * Group storm events by date and compute summary stats for the sidebar.
+ * Distance-only impact tier. Polygon containment (true MRMS swath hit) is
+ * stricter and lives in `buildMrmsImpactResponse` server-side; this is the
+ * fast client-side approximation that drives the rep-facing storm-dates
+ * list. Generous-by-design: a storm with a hail report ≤1 mi from the
+ * property is treated as a direct hit because hail cores are typically
+ * 1–3 mi wide and rep tools that wait for swath-polygon containment miss
+ * the events that landed slightly off the centroid.
  */
-function groupEventsByDate(events: StormEvent[]): StormDate[] {
+function classifyTier(closestMiles: number | null): StormImpactTier {
+  if (closestMiles === null) return 'far';
+  if (closestMiles <= 1.0) return 'direct_hit';
+  if (closestMiles <= 3.0) return 'near_miss';
+  if (closestMiles <= 10.0) return 'area';
+  return 'far';
+}
+
+/**
+ * Group storm events by date and compute summary stats for the sidebar.
+ *
+ * `propertyLat`/`propertyLng` are the search center — events' distance
+ * from that point determines the per-date tier badge ("DIRECT HIT" /
+ * "NEAR MISS" / "AREA"). When unset (null), tier defaults to 'area' so
+ * the row still renders without claiming a hit.
+ */
+function groupEventsByDate(
+  events: StormEvent[],
+  propertyLat: number | null,
+  propertyLng: number | null,
+): StormDate[] {
   const dateMap = new Map<string, { events: StormEvent[]; states: Set<string> }>();
 
   for (const event of events) {
@@ -68,6 +94,13 @@ function groupEventsByDate(events: StormEvent[]): StormDate[] {
           .filter((event) => event.eventType === 'Thunderstorm Wind')
           .map((event) => event.magnitude),
       );
+      let closest: number | null = null;
+      if (propertyLat !== null && propertyLng !== null) {
+        for (const ev of evts) {
+          const d = haversineDistanceMiles(propertyLat, propertyLng, ev.beginLat, ev.beginLon);
+          if (closest === null || d < closest) closest = d;
+        }
+      }
       return {
         date,
         label: formatDateLabel(date),
@@ -75,6 +108,8 @@ function groupEventsByDate(events: StormEvent[]): StormDate[] {
         maxHailInches: maxHail,
         maxWindMph: maxWind,
         statesAffected: [...states],
+        closestMiles: closest,
+        tier: classifyTier(closest),
       };
     })
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -162,18 +197,23 @@ export function useStormData({
           ? nhpSwaths.value.filter((swath) => isDateInRange(swath.date, sinceDate))
           : [];
 
-      // Also generate StormDate entries from swaths that may not have matching events
-      const swathDates = resolvedSwaths.map((s) => ({
+      // Also generate StormDate entries from swaths that may not have matching events.
+      // Swath-only dates can't compute a closest-event distance (no point reports),
+      // so we tier them as 'area' by default — reps still see them but without
+      // a "DIRECT HIT" claim that we can't verify from the row data alone.
+      const swathDates: StormDate[] = resolvedSwaths.map((s) => ({
         date: s.date,
         label: formatDateLabel(s.date),
         eventCount: 0,
         maxHailInches: s.maxMeshInches,
         maxWindMph: 0,
         statesAffected: s.statesAffected,
+        closestMiles: null,
+        tier: 'area',
       }));
 
       // Merge event dates and swath dates
-      const eventDates = groupEventsByDate(dedupedEvents);
+      const eventDates = groupEventsByDate(dedupedEvents, lat, lng);
       const mergedDates = mergeDateLists(eventDates, swathDates);
 
       setEvents(dedupedEvents);
@@ -371,7 +411,9 @@ function mergeDateLists(
     const normalizedSwathDate = { ...sd, date: dateKey, label: formatDateLabel(dateKey) };
     const existing = map.get(dateKey);
     if (existing) {
-      // Merge: take the higher hail size and combine states
+      // Merge: take the higher hail size and combine states. Keep the
+      // event-derived `closestMiles` + tier — it's stricter than the
+      // swath-only fallback.
       existing.maxHailInches = Math.max(
         existing.maxHailInches,
         normalizedSwathDate.maxHailInches,

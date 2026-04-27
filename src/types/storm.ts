@@ -235,6 +235,19 @@ export interface MapLayerConfig {
 // Date Selection
 // ============================================================
 
+/**
+ * Per-storm-date impact tier relative to the searched property.
+ * - direct_hit: at least one event within 1.0 mi of the property
+ * - near_miss : closest event 1.0–3.0 mi
+ * - area      : closest event 3.0–10 mi (storm hit the area but not close)
+ * - far       : closest event >10 mi (rare; only when search radius >10)
+ *
+ * The tier drives the rep-facing "Did this hit MY property?" badge in the
+ * storm-dates list. Computed in `useStormData` once the events are
+ * radius-filtered against the search center.
+ */
+export type StormImpactTier = 'direct_hit' | 'near_miss' | 'area' | 'far';
+
 export interface StormDate {
   date: string;
   label: string;
@@ -242,6 +255,10 @@ export interface StormDate {
   maxHailInches: number;
   maxWindMph: number;
   statesAffected: string[];
+  /** Closest event distance from search center (miles). null = unknown. */
+  closestMiles: number | null;
+  /** Property-relative impact tier. Drives the row badge. */
+  tier: StormImpactTier;
 }
 
 export type CanvassPriority = 'Knock now' | 'Monitor' | 'Low';

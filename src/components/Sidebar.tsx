@@ -75,7 +75,7 @@ interface SidebarProps {
 }
 
 type TabId = 'recent' | 'impact';
-type DateListFilter = 'all' | 'major' | 'proof' | 'knock';
+type DateListFilter = 'all' | 'hit';
 
 function CollapsibleSection({
   title,
@@ -260,24 +260,14 @@ export default function Sidebar({
   }, [evidenceItems]);
   const displayedDates = useMemo(() => {
     return sortedDates.filter((stormDate) => {
-      const evidenceCount = evidenceCountsByDate.get(stormDate.date) || 0;
-      const priority = getStormCanvassPriority(stormDate, evidenceCount);
-
-      if (dateListFilter === 'major') {
-        return stormDate.maxHailInches >= 1.5;
+      // Single binary filter — reps don't read "1.5"+" or "Knock Now" as
+      // useful categories. They want one answer: "did this hit MY house?".
+      if (dateListFilter === 'hit') {
+        return stormDate.tier === 'direct_hit' || stormDate.tier === 'near_miss';
       }
-
-      if (dateListFilter === 'proof') {
-        return evidenceCount > 0;
-      }
-
-      if (dateListFilter === 'knock') {
-        return priority === 'Knock now';
-      }
-
       return true;
     });
-  }, [dateListFilter, evidenceCountsByDate, sortedDates]);
+  }, [dateListFilter, sortedDates]);
   const knockQueue = useMemo(
     () =>
       sortedDates.filter((stormDate) => {
@@ -811,19 +801,9 @@ export default function Sidebar({
               onClick={() => setDateListFilter('all')}
             />
             <ListFilterChip
-              active={dateListFilter === 'major'}
-              label={'1.5"+'}
-              onClick={() => setDateListFilter('major')}
-            />
-            <ListFilterChip
-              active={dateListFilter === 'proof'}
-              label="With Proof"
-              onClick={() => setDateListFilter('proof')}
-            />
-            <ListFilterChip
-              active={dateListFilter === 'knock'}
-              label="Knock Now"
-              onClick={() => setDateListFilter('knock')}
+              active={dateListFilter === 'hit'}
+              label="Hit my property"
+              onClick={() => setDateListFilter('hit')}
             />
           </div>
         </CollapsibleSection>
@@ -1384,13 +1364,64 @@ function formatEventTime(dateStr: string): string {
   });
 }
 
+/**
+ * Property-relative impact tier badge — the single rep-facing answer to
+ * "did this storm hit MY property?". Replaces the old PRELIM/VERIFIED +
+ * Knock now/Monitor combo that overwhelmed the storm-dates list with
+ * three independent classifications a rep had to mentally fuse.
+ */
+function TierBadge({
+  tier,
+  closestMiles,
+}: {
+  tier: StormDate['tier'];
+  closestMiles: number | null;
+}) {
+  const dist = closestMiles !== null ? `${closestMiles.toFixed(1)} mi` : null;
+  if (tier === 'direct_hit') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+        title={dist ? `Closest event ${dist} from property` : 'Direct hit on property'}
+      >
+        Direct hit{dist && ` · ${dist}`}
+      </span>
+    );
+  }
+  if (tier === 'near_miss') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+        title={dist ? `Closest event ${dist} from property` : 'Near miss'}
+      >
+        Near miss{dist && ` · ${dist}`}
+      </span>
+    );
+  }
+  if (tier === 'area') {
+    return (
+      <span
+        className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800"
+        title={dist ? `Closest event ${dist} from property` : 'Storm in the search area'}
+      >
+        In area{dist && ` · ${dist}`}
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
+      Far{dist && ` · ${dist}`}
+    </span>
+  );
+}
+
 function StormDateCard({
   stormDate,
   isSelected,
   isExpanded,
   compact,
   events: dateEvents,
-  evidenceCount,
+  evidenceCount: _evidenceCount,
   generatingReport,
   onGenerateReport,
   onOpenEvidence,
@@ -1415,29 +1446,11 @@ function StormDateCard({
 }) {
   const sizeClass = getHailSizeClass(stormDate.maxHailInches);
   const severityColor = sizeClass?.color || HAIL_SIZE_CLASSES[0].color;
-  const canvassPriority = getStormCanvassPriority(stormDate, evidenceCount);
-  // NOAA Storm Events publishes archive data on a 30–90 day lag; anything
-  // newer is "preliminary" (sourced from SPC same-day reports or LSRs which
-  // can be revised). Use the date age + source mix to pick the pill.
-  const isPreliminary = useMemo(() => {
-    // Date.now is unavoidable here — preliminary status is a function of
-    // wall-clock age, not derivable from props alone. The pill re-renders
-    // when StormDateCard does, which is fine for an at-a-glance freshness
-    // hint that doesn't need sub-second precision.
-    // eslint-disable-next-line react-hooks/purity
-    const ageMs = Date.now() - new Date(`${stormDate.date}T00:00:00Z`).getTime();
-    const ageDays = ageMs / (1000 * 60 * 60 * 24);
-    if (ageDays < 90) return true;
-    return dateEvents.some((e) => {
-      const s = e.source ?? '';
-      return (
-        /^SPC$/i.test(s) ||
-        /^LSR/i.test(s) ||
-        /^NEXRAD/i.test(s) ||
-        /preliminary/i.test(s)
-      );
-    });
-  }, [stormDate.date, dateEvents]);
+  // PRELIM/VERIFIED + canvass-priority logic was here; both replaced by
+  // the simpler property-relative TierBadge in the row header. The
+  // underlying signals (date age × source mix, hail size × evidence count)
+  // are still available via getStormCanvassPriority() if a future
+  // power-rep panel needs them.
 
   return (
     <div
@@ -1461,38 +1474,19 @@ function StormDateCard({
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span
-                className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                style={{ backgroundColor: severityColor }}
-                title={sizeClass?.label || 'Unknown size'}
-              />
               <span className="text-sm font-medium text-stone-900 truncate">
                 {stormDate.label}
               </span>
-              <span
-                className={`flex-shrink-0 rounded px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                  isPreliminary
-                    ? 'bg-amber-100 text-amber-700'
-                    : 'bg-emerald-100 text-emerald-700'
-                }`}
-                title={
-                  isPreliminary
-                    ? 'Preliminary — SPC/LSR same-day or recent radar; subject to revision when NOAA Storm Events publishes the official archive (typically 30–90 days).'
-                    : 'Verified — sourced from NOAA Storm Events archive.'
-                }
-              >
-                {isPreliminary ? 'PRELIM' : 'VERIFIED'}
-              </span>
             </div>
-            <div className={`mt-1 ml-4.5 flex flex-wrap items-center ${compact ? 'gap-2' : 'gap-3'}`}>
-              <span className="text-xs text-stone-500">
-                {stormDate.eventCount > 0
-                  ? `${stormDate.eventCount} report${stormDate.eventCount !== 1 ? 's' : ''}`
-                  : 'Swath data'}
-              </span>
-              {evidenceCount > 0 && (
-                <span className="text-xs text-violet-600">
-                  {evidenceCount} proof
+            <div className={`mt-1 flex flex-wrap items-center ${compact ? 'gap-2' : 'gap-3'}`}>
+              {/* Rep-facing answer to "did this hit MY property?" — single
+                  badge that replaces the old PRELIM/VERIFIED + Knock now /
+                  Monitor combo. PRELIM/VERIFIED + Knock now still rendered
+                  in the expanded view for power users. */}
+              <TierBadge tier={stormDate.tier} closestMiles={stormDate.closestMiles} />
+              {stormDate.maxWindMph > 0 && (
+                <span className="text-xs text-sky-600">
+                  {stormDate.maxWindMph.toFixed(0)} mph
                 </span>
               )}
               {stormDate.statesAffected.length > 0 && (
@@ -1500,26 +1494,10 @@ function StormDateCard({
                   {stormDate.statesAffected.slice(0, 3).join(', ')}
                 </span>
               )}
-              {stormDate.maxWindMph > 0 && (
-                <span className="text-xs text-sky-600">
-                  {stormDate.maxWindMph.toFixed(0)} mph
-                </span>
-              )}
             </div>
           </div>
 
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            <span
-              className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                canvassPriority === 'Knock now'
-                  ? 'bg-orange-100 text-orange-700'
-                  : canvassPriority === 'Monitor'
-                    ? 'bg-violet-100 text-violet-700'
-                    : 'bg-stone-100 text-stone-500'
-              }`}
-            >
-              {canvassPriority}
-            </span>
             <span
               className="px-1.5 py-0.5 rounded text-xs font-bold"
               style={{
