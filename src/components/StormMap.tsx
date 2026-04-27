@@ -848,33 +848,37 @@ function MapContent({
         ? mrmsHourlyTimestamps[scrubFrameIndex]
         : null;
 
-    // Build the swath fetch bbox. The old logic used `stormContext.eventBounds`
-    // — the bbox of LSR/NCEI report points padded 15%. For properties with
-    // tightly-clustered nearby reports the swath comes back tiny (a couple
-    // miles wide) even though the actual storm corridor crossed the entire
-    // search radius. Reps then see a sliver of color where SA21 shows the
-    // full Loudoun → DC plume.
+    // Build the swath fetch bbox. Per 4/27/26 rep feedback the old
+    // search-radius bbox was way too tight — reps saw "2 little yellow
+    // polygons near the property" while competitors showed full storm
+    // corridors stretching 200+ mi across the mid-Atlantic.
     //
-    // Build a bbox that covers AT LEAST the property's search radius, then
-    // merge in the event bounds in case events extend further. Falls back
-    // to event bounds alone if no property anchor is set.
+    // New rule: fetch MRMS swaths for the full visible MAP VIEWPORT
+    // (plus a small pad) so polygons load in as reps pan/zoom. Falls
+    // back to a generous 100 mi property bbox if the viewport isn't
+    // known yet, then merges in the event bounds.
+    //
+    // The `searchRadiusMiles` config still controls the property-history
+    // distance bands and the storm-date filter — but it's the wrong
+    // unit for the swath polygon fetch.
     const propertyAnchor = propertyMarker;
-    const radiusMi = searchRadiusMiles && searchRadiusMiles > 0 ? searchRadiusMiles : 25;
+    const SWATH_FETCH_RADIUS_MI = 100;
     let bounds: BoundingBox | null = null;
-    if (propertyAnchor) {
-      // 1° latitude ≈ 69 mi; longitude scales by cos(lat).
-      const latPad = radiusMi / 69;
-      const lngPad = radiusMi / (69 * Math.cos((propertyAnchor.lat * Math.PI) / 180));
+    if (mapBounds) {
+      bounds = mapBounds;
+    } else if (propertyAnchor) {
+      const latPad = SWATH_FETCH_RADIUS_MI / 69;
+      const lngPad = SWATH_FETCH_RADIUS_MI / (69 * Math.cos((propertyAnchor.lat * Math.PI) / 180));
       bounds = {
         north: propertyAnchor.lat + latPad,
         south: propertyAnchor.lat - latPad,
         east: propertyAnchor.lng + lngPad,
         west: propertyAnchor.lng - lngPad,
       };
-      if (stormContext.eventBounds) {
-        bounds = mergeBounds(bounds, stormContext.eventBounds);
-      }
-    } else {
+    }
+    if (bounds && stormContext.eventBounds) {
+      bounds = mergeBounds(bounds, stormContext.eventBounds);
+    } else if (!bounds) {
       bounds = stormContext.eventBounds;
     }
     if (!bounds) return null;
@@ -893,7 +897,7 @@ function MapContent({
     scrubFrameIndex,
     mrmsHourlyTimestamps,
     propertyMarker,
-    searchRadiusMiles,
+    mapBounds,
   ]);
   const historicalMrmsUrl = useMemo(
     () =>

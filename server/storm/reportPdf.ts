@@ -1687,93 +1687,17 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // Property Hail Hit History combined table at the top of page 1. Single
   // source of truth for the rep-facing storm-date list.)
 
-  // ── Storm Corroboration (multi-source consilience) ────────────────────
-  // Auto-curate rule: render only confirmed sources. If no source confirms
-  // the storm AND peak hail < 0.5", render an explicit "no verified storm"
-  // notice rather than letting the section quietly disappear (adjusters
-  // need to see we *checked*, not just an empty page).
-  // Certified Report mode: when ≥3 independent sources confirm, render a
-  // green "Forensic Verification" stamp suitable for adjuster-facing claims.
-  const consilience = await consiliencePromise;
-  const hasCorroboration = consilience && consilience.curated.confirmedSources.length > 0;
-  const noVerifiedStorm =
-    !hasCorroboration && stormMax < 0.5 && peakHail < 0.5 && peakWind < 50;
-
-  if (noVerifiedStorm) {
-    drawSectionBanner('Storm Corroboration');
-    const badgeY = doc.y;
-    const badgeX = 54;
-    const badgeW = 504;
-    const badgeH = 56;
-    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).fill('#fef2f2');
-    doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).strokeColor('#fca5a5').lineWidth(1).stroke();
-    doc.fillColor('#991b1b').font('Helvetica-Bold').fontSize(10);
-    doc.text(
-      `No verified storm activity on ${req.dateOfLoss} within ${req.radiusMiles}mi`,
-      badgeX + 12,
-      badgeY + 8,
-      { width: badgeW - 24 },
-    );
-    doc.fillColor('#7f1d1d').font('Helvetica').fontSize(8.5);
-    const denomNo = consilience?.totalSources ?? 12;
-    doc.text(
-      `Checked ${denomNo} independent sources (MRMS · SPC · IEM LSR · Wind · Synoptic · ` +
-        `mPING · NCEI SWDI · NWS · NCEI Storm Events archive · NEXRAD nx3mda · CoCoRaHS` +
-        `${denomNo === 12 ? ' · HailTrace' : ''}). None confirmed verified hail or damaging ` +
-        `wind at this property on this date.`,
-      badgeX + 12,
-      badgeY + 24,
-      { width: badgeW - 24 },
-    );
-    doc.y = badgeY + badgeH + 14;
-  }
-
-  if (hasCorroboration) {
-    const isCertified = consilience.confirmedCount >= 3;
-
-    drawSectionBanner('Multi-Source Storm Corroboration');
-    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
-    const tierLabel = consilience.confidenceTier
-      .replace(/-/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase());
-    const denom = consilience.totalSources ?? 12;
-    doc.text(
-      `${consilience.confirmedCount}/${denom} independent sources · ${tierLabel}`,
-    );
-    doc.moveDown(0.4);
-
-    if (isCertified) {
-      // Forensic-verification stamp — green badge with the tier + sources.
-      const badgeY = doc.y;
-      const badgeX = 54;
-      const badgeW = 504;
-      const badgeH = 38;
-      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).fill('#ecfdf5');
-      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 6).strokeColor('#10b981').lineWidth(1).stroke();
-      doc.fillColor('#065f46').font('Helvetica-Bold').fontSize(10);
-      doc.text(
-        `✓  Forensic Verification — ${tierLabel}`,
-        badgeX + 12,
-        badgeY + 8,
-        { width: badgeW - 24 },
-      );
-      doc.fillColor('#047857').font('Helvetica').fontSize(8.5);
-      doc.text(
-        `Confirmed by: ${consilience.curated.confirmedSources.join(' · ')}`,
-        badgeX + 12,
-        badgeY + 22,
-        { width: badgeW - 24 },
-      );
-      doc.y = badgeY + badgeH + 8;
-    }
-
-    doc.fontSize(9.5).font('Helvetica').fillColor('#0f172a');
-    for (const line of consilience.curated.evidenceLines) {
-      doc.text(`• ${line}`, { width: 504 });
-      doc.moveDown(0.15);
-    }
-    doc.moveDown(0.5);
-  }
+  // Multi-Source Storm Corroboration block REMOVED per Ahmed (4/27/26).
+  // Surfacing "X/Y independent sources" + "Confirmed by: SPC · NWS · NCEI"
+  // + a "Quadruple Verified" stamp framed Hail Yes as one tool among
+  // many — exactly the Hail-Trace-vs-Hail-Recon-vs-us comparison the
+  // morning handoff already vetoed ("alternative numbers are ammunition
+  // for the adjuster"). Consilience data still flows backend-side and
+  // drives the cap algorithm; it just doesn't surface as a section in
+  // the adjuster-facing PDF anymore. The consiliencePromise is still
+  // awaited so the prewarm cache stays warm but the result is unused
+  // here.
+  await consiliencePromise;
 
   // ── Vector swath map ──────────────────────────────────────────────────
   // Force a fresh page if the map (header + 280pt body + legend) won't
