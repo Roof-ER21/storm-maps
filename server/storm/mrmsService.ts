@@ -287,9 +287,20 @@ export async function buildMrmsImpactResponse(
   const results: MrmsImpactResult[] = [];
   let directHits = 0;
 
+  // ¼" trace floor — polygons below this don't qualify for tier
+  // classification or at-property display. Per the 2026-04-27 meeting
+  // we don't claim sub-trace radar signatures as "hail at property"
+  // even when the polygon technically contains the lat/lng. Otherwise
+  // every property in the DMV would be a "direct hit" on every storm
+  // because the ⅛" outer band covers most of the region.
+  const TRACE_FLOOR = 0.25;
+
   for (const pt of input.points) {
-    // ── Pass 1: strict point-in-polygon for all bands.
-    //   Find the highest-band swath the point is INSIDE.
+    // ── Pass 1: strict point-in-polygon for ≥¼" bands only.
+    //   Find the highest-band swath the point is INSIDE that's also
+    //   above the trace floor. Polygons below the floor are skipped —
+    //   tier and atProperty stay null when the only containing polygon
+    //   is the trace ⅛" outer ring.
     let bestLevel = -1;
     let bestBand: {
       sizeInches: number;
@@ -301,6 +312,7 @@ export async function buildMrmsImpactResponse(
     for (const feature of collection.features) {
       const idx = feature.properties.level;
       if (idx <= bestLevel) continue;
+      if (feature.properties.sizeInches < TRACE_FLOOR) continue;
       let inside = false;
       for (const polygon of feature.geometry.coordinates) {
         if (polygon.length === 0) continue;
@@ -344,6 +356,10 @@ export async function buildMrmsImpactResponse(
 
     for (const feature of collection.features) {
       const sizeIn = feature.properties.sizeInches;
+      // Skip sub-trace polygons in band classification too — they'd
+      // pollute the 1–3 / 3–5 columns the same way they would the
+      // at-property column.
+      if (sizeIn < TRACE_FLOOR) continue;
       let minDist = Infinity;
       for (const polygon of feature.geometry.coordinates) {
         if (polygon.length === 0) continue;
@@ -356,11 +372,12 @@ export async function buildMrmsImpactResponse(
       if (minDist < edgeAny) edgeAny = minDist;
       if (sizeIn >= HALF_INCH && minDist < edgeHalf) edgeHalf = minDist;
 
-      // Bucket into the band whose UPPER bound this feature first crosses.
-      // bestBand ↑ already covers the inside-swath case (distance 0); the
-      // band assignment here uses the polygon-edge distance, which goes
-      // to 0 when the point is inside. So inside-swath features land in
-      // atProperty automatically.
+      // Bucket into the band whose UPPER bound this feature first
+      // crosses. Pass 1's bestBand already covers the inside-swath case
+      // — Pass 2's atPropertyMax is for the 0.5-mi-but-not-containing
+      // edge case (polygon next door). Used in tier classification
+      // (near_miss) but NOT in the band display (atProperty column
+      // shows polygon-containment only, per the meeting clarification).
       if (minDist <= AT_PROPERTY_MILES) {
         if (atPropertyMax === null || sizeIn > atPropertyMax) atPropertyMax = sizeIn;
       } else if (minDist <= MI_3) {
@@ -372,18 +389,16 @@ export async function buildMrmsImpactResponse(
       }
     }
 
-    // Per the 2026-04-27 meeting clarification, "At Property" is the band
-    // the house is INSIDE (Pass 1 polygon-containment), not the closest
-    // edge. Pass 2's atPropertyMax (≤0.5 mi edge proximity) is folded
-    // into the 1-3 mi bucket when there's no containment — that's a
-    // visibility signal that the polygon is right next door even though
-    // the house technically isn't inside.
+    // Per the 2026-04-27 meeting clarification, "At Property" is the
+    // band the house is INSIDE (Pass 1 polygon-containment), not the
+    // closest edge. Pass 2's atPropertyMax (≤0.5 mi but not containing)
+    // is intentionally NOT folded back in — that would overclaim hail
+    // sizes from polygons that didn't actually cover the property.
+    // Pass 2's atPropertyMax still drives tier classification below
+    // (near_miss when edge is close even without containment).
     const bands: ImpactBands = {
       atProperty: bestBand ? bestBand.sizeInches : null,
-      mi1to3:
-        atPropertyMax !== null && (mi1to3Max === null || atPropertyMax > mi1to3Max)
-          ? atPropertyMax
-          : mi1to3Max,
+      mi1to3: mi1to3Max,
       mi3to5: mi3to5Max,
       mi5to10: mi5to10Max,
     };
