@@ -597,11 +597,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     mi5to10: number;
     biggestNearby: number;
     biggestNearbyMi: number;
-    /** Server-blessed tier from buildMrmsImpactResponse — fills in
-     *  during the polygon-edge promotion step. When set, rowTier
-     *  respects this verbatim instead of inferring from bands so the
-     *  PDF table matches the row badge / AddressImpactBadge card. */
-    serverTier?: 'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact';
   };
   // Widened to match SA21's storm_days_public defaults — 25mi radius, 24mo
   // window — and pulls from ALL ingest sources (NCEI + SWDI + mPING +
@@ -786,69 +781,14 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
-  // ── Polygon-edge band promotion ────────────────────────────────────
-  // The hit-history rows above are filled from NCEI event distance only.
-  // That misses the case where the MRMS swath polygon's EDGE passes
-  // close to the property even though no NCEI observer reported hail
-  // there — exactly the SA21 polygon-edge-distance signal that the
-  // /api/hail/per-date-impact endpoint and AddressImpactBadge use.
-  //
-  // Without this step, the PDF hit-history can show AREA IMPACT for a
-  // date that the storm-dates row badge labels NEAR MISS (because the
-  // polygon edge is 0.6 mi from the property but no NCEI report exists
-  // within 1 mi). Calling buildMrmsImpactResponse per date populates
-  // ImpactBands using the same edge-distance scan, so the row tier
-  // matches the row badge.
-  //
-  // Cost: ~50ms per cached date, ~3-5s per cold-cache date. Parallel
-  // across dates so the wall-clock cost is roughly the slowest fetch.
-  const candidateDateIsos = Array.from(histGroups.keys());
-  if (candidateDateIsos.length > 0) {
-    const radiusMi = 25;
-    const latPad = radiusMi / 69;
-    const lngPad = radiusMi / (69 * Math.cos((req.lat * Math.PI) / 180));
-    const bandBounds: BoundingBox = {
-      north: req.lat + latPad,
-      south: req.lat - latPad,
-      east: req.lng + lngPad,
-      west: req.lng - lngPad,
-    };
-    const bandResults = await Promise.all(
-      candidateDateIsos.map(async (dateIso) => {
-        try {
-          const resp = await buildMrmsImpactResponse({
-            date: dateIso,
-            bounds: bandBounds,
-            points: [{ id: 'p', lat: req.lat, lng: req.lng }],
-          });
-          const r = resp?.results[0] ?? null;
-          return {
-            dateIso,
-            bands: r?.bands ?? null,
-            tier: r?.tier ?? null,
-          };
-        } catch {
-          return { dateIso, bands: null, tier: null };
-        }
-      }),
-    );
-    for (const { dateIso, bands, tier } of bandResults) {
-      const row = histGroups.get(dateIso);
-      if (!row) continue;
-      if (bands) {
-        if ((bands.atProperty ?? 0) > row.atProperty) row.atProperty = bands.atProperty!;
-        if ((bands.mi1to3 ?? 0) > row.mi1to3) row.mi1to3 = bands.mi1to3!;
-        if ((bands.mi3to5 ?? 0) > row.mi3to5) row.mi3to5 = bands.mi3to5!;
-        if ((bands.mi5to10 ?? 0) > row.mi5to10) row.mi5to10 = bands.mi5to10!;
-      }
-      // Server's tier respects polygon-CONTAINMENT for direct_hit (vs my
-      // local rule that would call any "polygon edge within 1 mi" a hit).
-      // Use it verbatim so the PDF table tier matches the badge.
-      if (tier && tier !== 'no_impact') {
-        row.serverTier = tier;
-      }
-    }
-  }
+  // (Reverted: per-date polygon-edge band promotion. It made PDF gen
+  // 30-60s slower because each hit-history row triggered a fresh
+  // buildMrmsImpactResponse call, hammering the GRIB pipeline and
+  // queueing up every other MRMS request on the server. The downstream
+  // effect was reps couldn't generate PDFs at all in normal load. The
+  // existing NCEI-distance + swath-containment fill above is good
+  // enough for the rep-facing table; the top-of-PDF Storm Coverage
+  // tier card still uses the strict polygon-truth `propertyImpact`.)
 
   // sortedHistRows might need re-sorting now that the swath scan added new
   // dates. Recompute below after this block (the original sort happens on
@@ -884,13 +824,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   sortedHistRows.length = 0;
   sortedHistRows.push(...finalSortedHistRows);
 
-  /** Tier classifier — prefers the server-side polygon-truth tier when
-   *  available (set by the polygon-edge promotion step). Falls back to
-   *  per-band maxes for rows whose date didn't have any cached MRMS data. */
+  /** Tier from per-band maxes filled by NCEI events + swath containment
+   *  scan. Reverted from the bulk MRMS-impact-per-row path (too slow). */
   const rowTier = (
     r: HistRow,
   ): 'direct_hit' | 'near_miss' | 'area_impact' => {
-    if (r.serverTier && r.serverTier !== 'no_impact') return r.serverTier;
     if (r.atProperty > 0) return 'direct_hit';
     if (r.mi1to3 > 0) return 'near_miss';
     return 'area_impact';
