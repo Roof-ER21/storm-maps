@@ -16,6 +16,10 @@ import {
   isSterlingClassStorm,
   type VerificationContext,
 } from '../server/storm/displayCapService.ts';
+import {
+  classifySource,
+  isGovObserverSource,
+} from '../server/storm/sourceTier.ts';
 
 const verified: VerificationContext = {
   isVerified: true,
@@ -309,7 +313,62 @@ for (const c of consensusCases) {
   }
 }
 
-const total = cases.length + memberCases.length + consensusCases.length;
+// Source-tier classification (2026-04-27 afternoon addendum)
+console.log('\nSource tier classification:');
+const tierCases: Array<[string, 'primary' | 'supplemental']> = [
+  ['mrms', 'primary'],
+  ['nexrad-mrms', 'primary'],
+  ['iem-lsr', 'primary'], // NWS LSR via IEM mirror
+  ['nws-lsr', 'primary'],
+  ['ncei-storm-events', 'primary'],
+  ['nws-warnings', 'primary'],
+  ['mping', 'supplemental'],
+  ['cocorahs', 'supplemental'],
+  ['hailtrace', 'supplemental'],
+  ['ncei-swdi', 'supplemental'],
+  ['spc', 'supplemental'],
+  ['synoptic', 'supplemental'],
+  ['other', 'supplemental'],
+];
+for (const [src, expected] of tierCases) {
+  const got = classifySource(src);
+  if (got === expected) {
+    pass += 1;
+    console.log(`  ✓  ${src} → ${expected}`);
+  } else {
+    fail += 1;
+    const msg = `  ✗  ${src} — expected ${expected}, got ${got}`;
+    console.log(msg);
+    failures.push(msg);
+  }
+}
+
+// Government-observer subset — used for the verification gate.
+// MRMS is primary for display but NOT a gov observer (algorithmic).
+console.log('\nGovernment-observer subset:');
+const govCases: Array<[string, boolean]> = [
+  ['iem-lsr', true],
+  ['nws-lsr', true],
+  ['ncei-storm-events', true],
+  ['mrms', false], // primary but algorithmic, not an observer
+  ['nws-warnings', false], // warning polygons are not post-event observations
+  ['mping', false],
+  ['hailtrace', false],
+];
+for (const [src, expected] of govCases) {
+  const got = isGovObserverSource(src);
+  if (got === expected) {
+    pass += 1;
+    console.log(`  ✓  ${src} → gov-observer = ${expected}`);
+  } else {
+    fail += 1;
+    const msg = `  ✗  ${src} gov-observer — expected ${expected}, got ${got}`;
+    console.log(msg);
+    failures.push(msg);
+  }
+}
+
+const total = cases.length + memberCases.length + consensusCases.length + tierCases.length + govCases.length;
 console.log(`\n${pass} passed, ${fail} failed (${total} total)`);
 if (fail > 0) {
   console.log('\nFailures:');
