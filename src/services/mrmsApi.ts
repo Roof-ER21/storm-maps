@@ -143,6 +143,9 @@ function toHistoricalQuery(params: HistoricalMrmsParams): string {
  * Fetch historical MRMS metadata. Tries the in-repo `/api/hail/mrms-meta`
  * first; falls back to the Susan21 endpoint when that's unreachable.
  */
+let histMetaInRepoWarned = false;
+let histMetaSusan21Warned = false;
+
 export async function fetchHistoricalMrmsMetadata(
   params: HistoricalMrmsParams,
 ): Promise<HistoricalMrmsMetadata | null> {
@@ -156,7 +159,13 @@ export async function fetchHistoricalMrmsMetadata(
       return (await res.json()) as HistoricalMrmsMetadata;
     }
   } catch (err) {
-    console.warn('[mrmsApi] in-repo MRMS meta failed, trying Susan21', err);
+    if (!histMetaInRepoWarned) {
+      histMetaInRepoWarned = true;
+      console.warn(
+        '[mrmsApi] in-repo MRMS meta unavailable (suppressing further):',
+        (err as Error).message,
+      );
+    }
   }
 
   // 2. Susan21 legacy
@@ -170,7 +179,13 @@ export async function fetchHistoricalMrmsMetadata(
     }
     return await res.json();
   } catch (err) {
-    console.error('[mrmsApi] Failed to fetch historical MRMS metadata:', err);
+    if (!histMetaSusan21Warned) {
+      histMetaSusan21Warned = true;
+      console.warn(
+        '[mrmsApi] historical MRMS metadata unavailable (suppressing further):',
+        (err as Error).message,
+      );
+    }
     return null;
   }
 }

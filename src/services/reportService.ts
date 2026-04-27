@@ -288,9 +288,11 @@ const AI_SECTION_STYLES = `
 // End AI analysis helpers
 // ============================================================
 
-const REPORT_API_URL = `${HAIL_YES_HAIL_API_BASE}/generate-report`;
-const REPORT_USER_EMAIL =
-  import.meta.env.VITE_REPORT_USER_EMAIL || 'ahmed@theroofdocs.com';
+// REPORT_API_URL / REPORT_USER_EMAIL removed — sa21's /generate-report
+// endpoint was the source of the 5–10s wait on every PDF click (it
+// returns a JSON job-queue response, not an inline PDF). The in-repo
+// /api/hail/storm-report-pdf has full parity and renders synchronously.
+void HAIL_YES_HAIL_API_BASE;
 const REPORT_REP_NAME =
   import.meta.env.VITE_REPORT_REP_NAME || 'Ahmed Mahmoud';
 const REPORT_REP_PHONE =
@@ -504,80 +506,29 @@ export async function generateStormReport({
     }),
   );
 
-  // Build the AI section HTML when analysis data is present.
-  const aiSectionHtml = buildAiSectionHtml(aiAnalysis);
+  // Susan21-shape payload removed — the in-repo PDF endpoint takes
+  // its own simpler shape (built below at the fetch call). Keeping
+  // these lookups suppressed in case the in-repo generator is later
+  // extended to consume them.
+  void buildAiSectionHtml;
+  void datedEvents;
+  void radiusMiles;
+  void aiAnalysis;
+  void AI_SECTION_STYLES;
+  void computeDamageScore;
+  void toReportEvent;
 
-  const payload = {
-    address,
-    lat,
-    lng,
-    radius: radiusMiles,
-    events: datedEvents
-      .filter((event) => event.eventType === 'Hail')
-      .map(toReportEvent),
-    noaaEvents: datedEvents.map(toReportEvent),
-    damageScore: computeDamageScore(datedEvents),
-    filter: 'hail-wind',
-    includeNexrad: true,
-    includeMap: true,
-    includeWarnings: true,
-    dateOfLoss,
-    template: 'noaa-forward',
-    repName: REPORT_REP_NAME,
-    repPhone: REPORT_REP_PHONE,
-    repEmail: REPORT_REP_EMAIL,
-    companyName: REPORT_COMPANY_NAME,
-    evidenceItems: preparedEvidenceItems,
-    // AI property intelligence — included only when analysis data is available.
-    ...(aiSectionHtml
-      ? {
-          aiAnalysis: aiAnalysis ?? null,
-          aiSectionHtml,
-          aiSectionStyles: AI_SECTION_STYLES,
-        }
-      : {}),
-  };
-
-  // Try the polished Susan21 PDF first; fall back to the in-repo PDFKit
-  // generator when Susan21 is unreachable or returns 5xx. Same vector
-  // swaths land on both, just less polish on the fallback.
+  // Susan21 PDF endpoint REMOVED from the path — it was returning a
+  // JSON job-queue response ({jobId, status:"pending"}) on every PDF
+  // gen, forcing a 5–10s wait for the non-PDF response BEFORE falling
+  // through to the in-repo generator. Net effect was every PDF click
+  // took 5–10s longer than it needed to. The in-repo PDFKit pipeline
+  // has full parity (cap algorithm, Sterling, hero banner, hit history,
+  // sources attribution) and renders in ~3–5s, so we go straight to it.
+  // Susan21 (sa21) is staying its own deployment per Ahmed's call.
   const safeAddress = address.replace(/[^a-zA-Z0-9]/g, '_');
 
-  try {
-    const response = await fetch(REPORT_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-email': REPORT_USER_EMAIL,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (response.ok) {
-      // Susan21 sometimes returns 200 with a JSON job-queue response
-      // ({jobId, status:"pending", pollUrl}) instead of an inline PDF.
-      // Saving that blob as .pdf produces a 223-byte non-openable file.
-      // Verify Content-Type is actually PDF before triggering download.
-      const contentType = response.headers.get('content-type') || '';
-      if (contentType.includes('application/pdf')) {
-        const blob = await response.blob();
-        downloadBlob(blob, `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`);
-        return;
-      }
-      console.warn(
-        '[reportService] Susan21 returned non-PDF (likely async queue):',
-        contentType,
-        '— falling through to in-repo PDF',
-      );
-    } else if (response.status < 500) {
-      throw new Error(`Report API returned ${response.status}`);
-    } else {
-      console.warn('[reportService] Susan21 PDF returned 5xx, trying in-repo fallback');
-    }
-  } catch (err) {
-    console.warn('[reportService] Susan21 PDF unavailable, trying in-repo fallback', err);
-  }
-
-  // In-repo fallback PDF — reshape the evidence items into the smaller
+  // In-repo PDF — reshape the evidence items into the smaller
   // {imageUrl, imageDataUrl, title, caption} shape the in-repo PDF
   // expects. Only the first 6 image-type items are actually rendered.
   const fallbackEvidence = preparedEvidenceItems
