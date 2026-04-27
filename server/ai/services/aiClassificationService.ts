@@ -499,7 +499,7 @@ export async function classifyProperty(
   });
 
   const pass1Text = pass1Response.text || "";
-  let extractedFeatures: any = {};
+  let extractedFeatures: Record<string, unknown> = {};
   try {
     const jsonMatch = pass1Text.match(/\{[\s\S]*\}/);
     if (jsonMatch) extractedFeatures = JSON.parse(jsonMatch[0]);
@@ -530,7 +530,7 @@ export async function classifyProperty(
 
   const pass2Text = pass2Response.text || "";
 
-  let parsed: any;
+  let parsed: Record<string, unknown> | undefined;
   try {
     const jsonMatch = pass2Text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -643,7 +643,7 @@ export async function classifyPropertyAllModes(
   });
 
   const pass1Text = pass1Response.text || "";
-  let extractedFeatures: any = {};
+  let extractedFeatures: Record<string, unknown> = {};
   try {
     const jsonMatch = pass1Text.match(/\{[\s\S]*\}/);
     if (jsonMatch) extractedFeatures = JSON.parse(jsonMatch[0]);
@@ -693,7 +693,7 @@ export async function classifyPropertyAllModes(
 
   // Parse Pass 2 (structural classification)
   const pass2Text = pass2Response.text || "";
-  let parsedBase: any;
+  let parsedBase: Record<string, unknown> | undefined;
   try {
     const jsonMatch = pass2Text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
@@ -727,7 +727,7 @@ export async function classifyPropertyAllModes(
 
   // Parse Pass 3 (all-mode insights)
   const pass3Text = pass3Response.text || "";
-  let parsedModes: any = {};
+  let parsedModes: Record<string, unknown> = {};
   try {
     const jsonMatch = pass3Text.match(/\{[\s\S]*\}/);
     if (jsonMatch) parsedModes = JSON.parse(jsonMatch[0]);

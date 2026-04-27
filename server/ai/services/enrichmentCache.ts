@@ -64,7 +64,7 @@ async function setCache(
       .values({
         cacheKey: key,
         dataType,
-        data: data as any,
+        data,
         lat: lat || null,
         lng: lng || null,
         expiresAt,
@@ -72,7 +72,7 @@ async function setCache(
       .onConflictDoUpdate({
         target: dataCache.cacheKey,
         set: {
-          data: data as any,
+          data,
           expiresAt,
           createdAt: new Date(),
         },

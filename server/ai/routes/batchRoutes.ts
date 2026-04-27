@@ -217,7 +217,7 @@ router.get("/:id/export", async (req, res) => {
       a.prospectScore || "",
       a.isHighPriority ? "YES" : "NO",
       Array.isArray(a.damageIndicators)
-        ? (a.damageIndicators as any[]).map((d: any) => d.type).join("; ")
+        ? (a.damageIndicators as Array<{ type: string }>).map((d) => d.type).join("; ")
         : "",
       a.status || "",
     ]);

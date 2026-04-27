@@ -72,8 +72,9 @@ router.get("/", async (_req, res) => {
       sql`SELECT count(*) as count, COALESCE(sum(size_bytes), 0) as total_bytes FROM property_images`
     ).catch(() => [{ count: 0, total_bytes: 0 }]);
 
-    const imageCount = Number((imageStats as any)[0]?.count || 0);
-    const imageSizeMB = (Number((imageStats as any)[0]?.total_bytes || 0) / 1024 / 1024).toFixed(1);
+    const imgRows = imageStats as Array<{ count: number | string; total_bytes: number | string }>;
+    const imageCount = Number(imgRows[0]?.count || 0);
+    const imageSizeMB = (Number(imgRows[0]?.total_bytes || 0) / 1024 / 1024).toFixed(1);
 
     res.json({
       totals: {

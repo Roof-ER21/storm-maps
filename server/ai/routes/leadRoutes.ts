@@ -154,7 +154,7 @@ router.patch("/:id/correct", async (req, res) => {
   try {
     const { roofType, sidingType, roofCondition, sidingCondition, isAluminumSiding, roofAgeEstimate } = req.body;
 
-    const updates: Record<string, any> = {};
+    const updates: Record<string, unknown> = {};
     if (roofType && VALID_ROOF_TYPES.includes(roofType)) updates.roofType = roofType;
     if (sidingType && VALID_SIDING_TYPES.includes(sidingType)) updates.sidingType = sidingType;
     if (roofCondition && VALID_CONDITIONS.includes(roofCondition)) updates.roofCondition = roofCondition;
@@ -173,7 +173,8 @@ router.patch("/:id/correct", async (req, res) => {
     });
     if (!current) { res.status(404).json({ error: "Not found" }); return; }
 
-    const aiResponse = (current.aiRawResponse || {}) as any;
+    interface AiResponseLike { _corrections?: unknown[]; [k: string]: unknown }
+    const aiResponse = (current.aiRawResponse || {}) as AiResponseLike;
     aiResponse._corrections = aiResponse._corrections || [];
     aiResponse._corrections.push({
       timestamp: new Date().toISOString(),
@@ -207,7 +208,13 @@ router.get("/:id/report", async (req, res) => {
     });
     if (!analysis) { res.status(404).json({ error: "Not found" }); return; }
 
-    const ai = (analysis.aiRawResponse || {}) as any;
+    interface AiPdfShape {
+      solarInsights?: { roofAreaSqFt?: number; roofSquares?: number; avgPitchDegrees?: number };
+      costEstimate?: { low?: number; high?: number; mid?: number };
+      reasoning?: string;
+      [k: string]: unknown;
+    }
+    const ai = (analysis.aiRawResponse || {}) as AiPdfShape;
     const solar = ai.solarInsights;
     const cost = ai.costEstimate;
     const roofLabel: Record<string, string> = {
@@ -303,7 +310,7 @@ ${analysis.isAluminumSiding ? '<div class="aluminum">&#9888; ALUMINUM SIDING DET
   </div>` : ''}
 </div>
 
-${(analysis.damageIndicators as any[])?.length > 0 ? `<div class="card damage"><h3>Damage Indicators</h3><ul>${(analysis.damageIndicators as any[]).map((d: any) => `<li>• ${d.type.replace(/_/g, ' ')} (${d.severity}) — ${d.location}</li>`).join('')}</ul></div>` : ''}
+${(analysis.damageIndicators as Array<{ type: string; severity: string; location: string }> | null)?.length ? `<div class="card damage"><h3>Damage Indicators</h3><ul>${(analysis.damageIndicators as Array<{ type: string; severity: string; location: string }>).map((d) => `<li>• ${d.type.replace(/_/g, ' ')} (${d.severity}) — ${d.location}</li>`).join('')}</ul></div>` : ''}
 
 ${analysis.reasoning || ai.reasoning ? `<div class="reasoning"><strong>AI Reasoning:</strong> ${analysis.reasoning || ai.reasoning}</div>` : ''}
 

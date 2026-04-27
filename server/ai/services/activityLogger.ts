@@ -22,7 +22,7 @@ export type ActivityAction =
 export async function logActivity(
   db: DB,
   action: ActivityAction,
-  details?: Record<string, any>,
+  details?: Record<string, unknown>,
   analysisId?: string,
   ipAddress?: string
 ): Promise<void> {

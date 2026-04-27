@@ -1,7 +1,12 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../../db.js";
-import { propertyAnalyses } from "../schema.js";
+import {
+  propertyAnalyses,
+  roofTypeEnum,
+  sidingTypeEnum,
+  conditionEnum,
+} from "../schema.js";
 import { findNearbyBuildings } from "../services/neighborhoodService.js";
 import { classifyProperty } from "../services/aiClassificationService.js";
 import {
@@ -9,6 +14,12 @@ import {
   estimateReplacementCost,
   areaToSquares,
 } from "../services/solarApiService.js";
+
+// Drizzle enum value unions — used to cast AI classification strings to the
+// shape Drizzle expects on insert/update without resorting to `as any`.
+type RoofType = typeof roofTypeEnum.enumValues[number];
+type SidingType = typeof sidingTypeEnum.enumValues[number];
+type Condition = typeof conditionEnum.enumValues[number];
 
 const router = Router();
 
@@ -220,14 +231,14 @@ router.post("/quick-scan", async (req, res) => {
       await db
         .update(propertyAnalyses)
         .set({
-          roofType: classification.roofType as any,
-          roofCondition: classification.roofCondition as any,
+          roofType: classification.roofType as RoofType,
+          roofCondition: classification.roofCondition as Condition,
           roofAgeEstimate: classification.roofAgeEstimate,
           roofConfidence: classification.roofConfidence,
           roofColor: classification.roofColor,
           isAluminumSiding: classification.isAluminumSiding,
-          sidingType: classification.sidingType as any,
-          sidingCondition: classification.sidingCondition as any,
+          sidingType: classification.sidingType as SidingType,
+          sidingCondition: classification.sidingCondition as Condition,
           sidingConfidence: classification.sidingConfidence,
           roofFeatures: classification.roofFeatures,
           sidingFeatures: classification.sidingFeatures,
@@ -248,7 +259,7 @@ router.post("/quick-scan", async (req, res) => {
                 }
               : null,
             costEstimate,
-          } as any,
+          },
           aiModelUsed: classification.modelUsed,
           status: "completed",
           analyzedAt: new Date(),

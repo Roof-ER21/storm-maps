@@ -95,7 +95,15 @@ async function findAnyBuildingsViaOverpass(
   }
 }
 
-function parseOverpassResults(data: any): NearbyBuilding[] {
+interface OverpassElement {
+  center?: { lat: number; lon: number };
+  lat?: number;
+  lon?: number;
+  tags?: Record<string, string>;
+}
+interface OverpassResponse { elements?: OverpassElement[] }
+
+function parseOverpassResults(data: OverpassResponse): NearbyBuilding[] {
   const buildings: NearbyBuilding[] = [];
   for (const el of data.elements || []) {
     const centerLat = el.center?.lat || el.lat;

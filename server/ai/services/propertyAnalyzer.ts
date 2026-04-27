@@ -1,6 +1,15 @@
 import { eq } from "drizzle-orm";
 import type { DB } from "../../db.js";
-import { propertyAnalyses } from "../schema.js";
+import {
+  propertyAnalyses,
+  roofTypeEnum,
+  sidingTypeEnum,
+  conditionEnum,
+} from "../schema.js";
+
+type RoofType = typeof roofTypeEnum.enumValues[number];
+type SidingType = typeof sidingTypeEnum.enumValues[number];
+type Condition = typeof conditionEnum.enumValues[number];
 import { geocodeAddress } from "./geocodingService.js";
 import { fetchPropertyImages } from "./imageFetchService.js";
 import { classifyPropertyAllModes } from "./aiClassificationService.js";
@@ -333,14 +342,14 @@ export async function analyzeProperty(
     await db
       .update(propertyAnalyses)
       .set({
-        roofType: classification.roofType as any,
-        roofCondition: classification.roofCondition as any,
+        roofType: classification.roofType as RoofType,
+        roofCondition: classification.roofCondition as Condition,
         roofAgeEstimate: classification.roofAgeEstimate,
         roofConfidence: classification.roofConfidence,
         roofColor: classification.roofColor,
         isAluminumSiding: classification.isAluminumSiding,
-        sidingType: classification.sidingType as any,
-        sidingCondition: classification.sidingCondition as any,
+        sidingType: classification.sidingType as SidingType,
+        sidingCondition: classification.sidingCondition as Condition,
         sidingConfidence: classification.sidingConfidence,
         roofFeatures: classification.roofFeatures,
         sidingFeatures: classification.sidingFeatures,
@@ -415,7 +424,7 @@ export async function analyzeProperty(
               }
             : null,
           propertyIntel: sharedPropertyIntel,
-        } as any,
+        },
         aiModelUsed: classification.modelUsed,
         status: "completed",
         analyzedAt: new Date(),

@@ -1,7 +1,17 @@
 import { Router } from "express";
 import { eq, desc } from "drizzle-orm";
 import { db } from "../../db.js";
-import { batchJobs, propertyAnalyses } from "../schema.js";
+import {
+  batchJobs,
+  propertyAnalyses,
+  roofTypeEnum,
+  sidingTypeEnum,
+  conditionEnum,
+} from "../schema.js";
+
+type RoofType = typeof roofTypeEnum.enumValues[number];
+type SidingType = typeof sidingTypeEnum.enumValues[number];
+type Condition = typeof conditionEnum.enumValues[number];
 import { findAddressesInZip } from "../services/zipScanService.js";
 import { analyzeProperty } from "../services/propertyAnalyzer.js";
 import { classifyProperty } from "../services/aiClassificationService.js";
@@ -117,14 +127,14 @@ async function quickAnalyze(
     const costEstimate = estimateReplacementCost(roofAreaM2, classification.roofType);
 
     await db.update(propertyAnalyses).set({
-      roofType: classification.roofType as any,
-      roofCondition: classification.roofCondition as any,
+      roofType: classification.roofType as RoofType,
+      roofCondition: classification.roofCondition as Condition,
       roofAgeEstimate: classification.roofAgeEstimate,
       roofConfidence: classification.roofConfidence,
       roofColor: classification.roofColor,
       isAluminumSiding: classification.isAluminumSiding,
-      sidingType: classification.sidingType as any,
-      sidingCondition: classification.sidingCondition as any,
+      sidingType: classification.sidingType as SidingType,
+      sidingCondition: classification.sidingCondition as Condition,
       sidingConfidence: classification.sidingConfidence,
       roofFeatures: classification.roofFeatures,
       sidingFeatures: classification.sidingFeatures,
@@ -144,7 +154,7 @@ async function quickAnalyze(
           measuredRoofType: solarInsights.roofType,
         } : null,
         costEstimate,
-      } as any,
+      },
       aiModelUsed: classification.modelUsed,
       status: "completed",
       analyzedAt: new Date(),

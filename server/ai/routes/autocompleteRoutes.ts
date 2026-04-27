@@ -2,8 +2,30 @@ import { Router } from "express";
 
 const router = Router();
 
+interface AutocompleteSuggestion {
+  display: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+interface NominatimItem {
+  lat: string;
+  lon: string;
+  display_name: string;
+  address?: {
+    house_number?: string;
+    road?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    state?: string;
+    postcode?: string;
+  };
+}
+
 // Debounce cache to avoid hammering Nominatim
-const cache = new Map<string, { data: any; expires: number }>();
+const cache = new Map<string, { data: AutocompleteSuggestion[]; expires: number }>();
 const CACHE_TTL = 60000; // 1 minute
 
 // GET /api/autocomplete?q=123+main+st
@@ -47,16 +69,16 @@ router.get("/", async (req, res) => {
       return;
     }
 
-    const data = JSON.parse(text);
-    const suggestions = data
-      .filter((item: any) => item.address?.house_number && item.address?.road)
-      .map((item: any) => ({
+    const data = JSON.parse(text) as NominatimItem[];
+    const suggestions: AutocompleteSuggestion[] = data
+      .filter((item) => item.address?.house_number && item.address?.road)
+      .map((item) => ({
         display: item.display_name,
         address: [
-          `${item.address.house_number} ${item.address.road}`,
-          item.address.city || item.address.town || item.address.village || "",
-          item.address.state || "",
-          item.address.postcode || "",
+          `${item.address!.house_number} ${item.address!.road}`,
+          item.address!.city || item.address!.town || item.address!.village || "",
+          item.address!.state || "",
+          item.address!.postcode || "",
         ]
           .filter(Boolean)
           .join(", "),

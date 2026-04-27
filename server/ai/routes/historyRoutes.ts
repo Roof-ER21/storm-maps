@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { desc, eq, sql } from "drizzle-orm";
 import { db } from "../../db.js";
-import { propertyAnalyses } from "../schema.js";
+import { propertyAnalyses, roofTypeEnum } from "../schema.js";
+
+type RoofType = typeof roofTypeEnum.enumValues[number];
 
 const router = Router();
 
@@ -20,7 +22,7 @@ router.get("/", async (req, res) => {
       conditions.push(eq(propertyAnalyses.isHighPriority, true));
     }
     if (roofType) {
-      conditions.push(eq(propertyAnalyses.roofType, roofType as any));
+      conditions.push(eq(propertyAnalyses.roofType, roofType as RoofType));
     }
     if (aluminumOnly) {
       conditions.push(eq(propertyAnalyses.isAluminumSiding, true));

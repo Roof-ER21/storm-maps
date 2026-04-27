@@ -109,11 +109,12 @@ async function queryOSMBuildingData(
   if (!elements || elements.length === 0) return null;
 
   // Pick the closest/most-tagged building
-  const building = elements.reduce((best: any, el: any) => {
-    const tagCount = Object.keys(el.tags || {}).length;
-    const bestCount = Object.keys(best?.tags || {}).length;
+  type OsmElement = { tags?: Record<string, string> };
+  const building = (elements as OsmElement[]).reduce((best: OsmElement, el: OsmElement) => {
+    const tagCount = Object.keys(el.tags ?? {}).length;
+    const bestCount = Object.keys(best?.tags ?? {}).length;
     return tagCount > bestCount ? el : best;
-  }, elements[0]);
+  }, elements[0] as OsmElement);
 
   const tags = building.tags || {};
 
@@ -218,7 +219,7 @@ async function queryCountyGIS(
 interface CountyGISEndpoint {
   url: string;
   fields: string[];
-  parse: (attrs: any) => PropertyData;
+  parse: (attrs: Record<string, unknown>) => PropertyData;
 }
 
 /**
@@ -226,8 +227,8 @@ interface CountyGISEndpoint {
  * URL: https://mdgeodata.md.gov/imap/rest/services/PlanningCadastre/MD_ParcelBoundaries/MapServer/0/query
  * 117 fields including owner, assessment, year built, sqft, sale data, construction details.
  */
-function parseMDStatewide(dataSourceLabel: string): (attrs: any) => PropertyData {
-  return (a: any) => ({
+function parseMDStatewide(dataSourceLabel: string): (attrs: Record<string, unknown>) => PropertyData {
+  return (a: Record<string, unknown>) => ({
     ownerName: cleanString(a.OWNADD1),  // MD uses OWNADD1 for owner info
     mailingAddress: [cleanString(a.ADDRESS), cleanString(a.CITY), cleanString(a.ZIPCODE)].filter(Boolean).join(", ") || null,
     assessedValue: parseNum(a.NFMTTLVL),
@@ -262,7 +263,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51059": {
     url: "https://gis.fairfaxcounty.gov/server/rest/services/FXCO_OPEN/FXCO_OpenData_Parcels/FeatureServer/0/query",
     fields: ["OWNER_NAME1", "YEAR_BUILT", "LIVING_AREA", "LOT_SIZE", "ASSESSED_VALUE", "LAND_VALUE", "PROPERTY_USE"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWNER_NAME1),
       mailingAddress: null,
       assessedValue: parseNum(a.ASSESSED_VALUE),
@@ -298,7 +299,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51153": {
     url: "https://gisweb.pwcva.gov/arcgis/rest/services/CountyMapper/LandRecords/MapServer/4/query",
     fields: ["CAMA_OWNER_CUR", "CAMA_SQFTABV", "CAMA_TaxAcreage1", "CAMA_USECODE", "StreetNumber", "StreetName", "StreetType", "ZipCode", "City", "SubdivisionName", "Acreage", "GPIN"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.CAMA_OWNER_CUR),
       mailingAddress: null,
       assessedValue: null,
@@ -327,7 +328,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51107": {
     url: "https://services.arcgis.com/f4rR7WnIfGBdVYFd/arcgis/rest/services/Tax_Parcels/FeatureServer/0/query",
     fields: ["Owner1", "Mailing_Address", "CityStateZip", "Tax_Year", "Land_Value", "Improvements", "Total_Value", "Assessing_Neighborhood", "Tax_Status", "Assessing_Primary_Use", "MillRate", "PAN"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.Owner1),
       mailingAddress: cleanString(a.Mailing_Address),
       assessedValue: parseNum(a.Total_Value),
@@ -357,7 +358,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51177": {
     url: "https://gis.spotsylvania.va.us/arcgis/rest/services/GeoHub/GeoHub/FeatureServer/45/query",
     fields: ["OwnerSearch", "MAILADDRESS", "CITY", "STATE", "ZIPCODE", "YEARBUILT", "SQFEET", "BLDGASSESSMENT", "LANDASSESSMENT", "LANDAREA", "PROPADDRESS", "TRANSFERDATE", "SALEPRICE", "ZONING"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OwnerSearch),
       mailingAddress: [cleanString(a.MAILADDRESS), cleanString(a.CITY), cleanString(a.STATE), cleanString(a.ZIPCODE)].filter(Boolean).join(", ") || null,
       assessedValue: (parseNum(a.BLDGASSESSMENT) || 0) + (parseNum(a.LANDASSESSMENT) || 0) || null,
@@ -385,7 +386,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51061": {
     url: "https://agol.gis.fauquiercounty.gov:6443/arcgis/rest/services/Authoritative/Fauquier_County_Parcels/FeatureServer/32/query",
     fields: ["OWNERNME1", "PSTLADDRESS", "PSTLCITY", "PSTLSTATE", "PSTLZIP5", "SITEADDRESS", "Building_Value_Assessed", "Land_Value_Assessed", "Final_Value_Assessed", "Year_Built", "Living_Area", "Lot_Size", "Stories", "Style_DESC", "Grade", "Primary_Use_DESC", "LASTSALEDATE", "LASTSALEPRICE"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWNERNME1),
       mailingAddress: [cleanString(a.PSTLADDRESS), cleanString(a.PSTLCITY), cleanString(a.PSTLSTATE), cleanString(a.PSTLZIP5)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.Final_Value_Assessed),
@@ -413,7 +414,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51510": {
     url: "https://geoportal.alexandriava.gov/server/rest/services/Real_Estate_Parcels/FeatureServer/0/query",
     fields: ["OWN_NAME", "OWN_ADD", "OWN_CITY", "OWN_STAT", "OWN_ZIP", "LAND_CYR", "IMP_CYR", "TOT_CYR", "LAND_SF", "LANDDESC", "ADDRESS_RE", "NEIGHBORHO", "ZONING"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWN_NAME),
       mailingAddress: [cleanString(a.OWN_ADD), cleanString(a.OWN_CITY), cleanString(a.OWN_STAT), cleanString(a.OWN_ZIP)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TOT_CYR),
@@ -442,7 +443,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51683": {
     url: "https://manassasgis.manassasva.gov/arcgis21/rest/services/Parcels_Full/FeatureServer/0/query",
     fields: ["OWNER_NAME", "OWNER_ADDRESS", "OWNER_CSZ", "BLDG_VALUE", "LAND_VALUE", "TOTAL_VALUE", "USE_CODE", "FULL_ADDRESS", "LAST_SALE_DATE", "LAST_SALE_PRICE", "LAND_SQ_FT", "GPIN_NUM"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWNER_NAME),
       mailingAddress: [cleanString(a.OWNER_ADDRESS), cleanString(a.OWNER_CSZ)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TOTAL_VALUE),
@@ -483,7 +484,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51087": {
     url: "https://services1.arcgis.com/qTQ6qYkHpxlu0G82/arcgis/rest/services/Tax_Parcels_and_CAMA_Data/FeatureServer/0/query",
     fields: ["CAMA_GPIN", "FULL_ADDRE", "CITY", "ZIP_CODE", "LAND_VALUE", "IMPROVEMEN", "USE_DESCRI", "RESIDENTIA", "NUMBER_STO", "NUMBER_BED", "NUMBER_FUL", "NUMBER_HAL", "SQFT_BUILD", "YEAR_BUILT", "LAST_SALE_", "LAST_SAL_1", "PARCEL_ACR", "LEGAL_DESC", "TAX_YEAR"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: null,  // Not in public CAMA layer
       mailingAddress: null,
       assessedValue: (parseNum(a.LAND_VALUE) || 0) + (parseNum(a.IMPROVEMEN) || 0) || null,
@@ -511,7 +512,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51041": {
     url: "https://services3.arcgis.com/TsynfzBSE6sXfoLq/arcgis/rest/services/Cadastral_ProdA/FeatureServer/3/query",
     fields: ["OwnerName", "OwnerAddress", "OwnerCity", "OwnerState", "OwnerZip", "FairMarketValue", "LandUseValue", "ImprovementValue", "TotalAssessment", "YearBuilt", "Stories", "FinishedArea", "UnfinishedArea", "Bedrooms", "FullBath", "HalfBath", "UseCode", "SaleDate", "SalePrice", "DeededAcres", "Address"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OwnerName),
       mailingAddress: [cleanString(a.OwnerAddress), cleanString(a.OwnerCity), cleanString(a.OwnerState), cleanString(a.OwnerZip)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TotalAssessment),
@@ -539,7 +540,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51085": {
     url: "https://parcelviewer.geodecisions.com/arcgis/rest/services/Hanover/Public/MapServer/0/query",
     fields: ["OWN_NAME1", "PROPERTYADDRESS", "GPIN", "MAGISTERIAL_DISTRICT", "ZONING_LIST"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWN_NAME1),
       mailingAddress: null,
       assessedValue: null,
@@ -568,7 +569,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "51760": {
     url: "https://services1.arcgis.com/k3vhq11XkBNeeOfM/arcgis/rest/services/Parcels/FeatureServer/0/query",
     fields: ["OwnerName", "MailAddress", "MailCity", "MailState", "MailZip", "LandValue", "DwellingValue", "TotalValue", "LandSqFt", "PropertyClass", "LandUse", "PIN"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OwnerName),
       mailingAddress: [cleanString(a.MailAddress), cleanString(a.MailCity), cleanString(a.MailState), cleanString(a.MailZip)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TotalValue),
@@ -647,7 +648,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42101": {
     url: "https://services.arcgis.com/fLeGjb7u4uXqeF9q/arcgis/rest/services/OPA_Properties_Public/FeatureServer/0/query",
     fields: ["owner_1", "location", "market_value", "sale_price", "sale_date", "total_area", "total_livable_area", "year_built", "number_of_bedrooms", "number_of_bathrooms", "category_code_description", "building_code_description", "depth", "frontage"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.owner_1),
       mailingAddress: null,
       assessedValue: parseNum(a.market_value),
@@ -675,7 +676,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42045": {
     url: "https://gis.delcopa.gov/arcgis/rest/services/Parcels/Parcels_Public_Access/FeatureServer/0/query",
     fields: ["PIN", "ADRCAT", "OWNCAT", "TAXYR", "CALCULATED", "CLICKTHROU", "PARID"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWNCAT),
       mailingAddress: null,
       assessedValue: null,
@@ -703,7 +704,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42029": {
     url: "https://services.arcgis.com/G4S1dGvn7PIgYd6Y/arcgis/rest/services/Parcels_owners/FeatureServer/0/query",
     fields: ["OWN1", "OWN2", "LOC_ADDRESS", "LOT_ASSESS", "PROP_ASSESS", "TOT_ASSESS", "LAST_SALE_PRICE", "TAXYR", "CLASS", "LAND_ACRES", "LUC", "PIN"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWN1),
       mailingAddress: null,
       assessedValue: parseNum(a.TOT_ASSESS),
@@ -731,7 +732,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42091": {
     url: "https://mapservices.pasda.psu.edu/server/rest/services/pasda/MontgomeryCounty/MapServer/14/query",
     fields: ["OWN1", "ADDR1", "ADDR3", "TOTAL_ASSE", "ASSESSMENT", "YEAR_BUILT", "SFLA", "LAND_SF", "LAND_ACRES", "SALE_DATE", "CONSIDERAT", "STYLE", "CONDITION", "EXTWALL", "BASEMENT", "LIV_UNITS", "LOCATION1", "MUNI_CODE", "Muni_Name", "LOC_NO", "LOC_STR", "LOC_SUF", "FRONTFT"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWN1),
       mailingAddress: [cleanString(a.ADDR1), cleanString(a.ADDR3)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TOTAL_ASSE),
@@ -759,7 +760,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42017": {
     url: "https://services3.arcgis.com/SP47Tddf7RK32lBU/arcgis/rest/services/Bucks_County_Parcels/FeatureServer/0/query",
     fields: ["PARCEL_NUM", "ADDRESS", "MUNICIPALITY", "OWNER1", "LAND_VALUE", "BUILDING_VALUE", "TOTAL_VALUE", "LAND_USE_CODE"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWNER1),
       mailingAddress: null,
       assessedValue: parseNum(a.TOTAL_VALUE),
@@ -792,7 +793,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42133": {
     url: "https://services1.arcgis.com/2AGLxyiJoNiVHKwq/arcgis/rest/services/Parcels/FeatureServer/0/query",
     fields: ["Owner1", "Owner2", "PropertyAddress", "LandUseDesc", "AprLandVal", "AprBldgVal", "AprTotVal", "TaxTotVal", "FinishedSQFT", "YearBuilt", "GISSizeAC", "DateSold", "SalePrice", "NeighborhoodDesc", "BldgTypeDesc", "ParcelID"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.Owner1),
       mailingAddress: null,
       assessedValue: parseNum(a.AprTotVal),
@@ -821,7 +822,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42011": {
     url: "https://gis.co.berks.pa.us/arcgis/rest/services/Assess/ParcelSearchTable/MapServer/0/query",
     fields: ["NAME1", "FULLSITEADDRESS", "FULLMAILADDRESS", "VALULNDMKT", "VALUBLDG", "VALUTOTAL", "ACREAGE", "LANDUSE", "DEEDAMOUNT", "DEED_DATE", "MUNICIPALNAME", "CLASS", "PIN", "PROPID"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.NAME1),
       mailingAddress: cleanString(a.FULLMAILADDRESS),
       assessedValue: parseNum(a.VALUTOTAL),
@@ -853,7 +854,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42043": {
     url: "https://gis.dauphincounty.org/arcgis/rest/services/Parcels/MapServer/1/query",
     fields: ["PID", "MUNICIPALITY", "property_id", "land", "building", "house_number", "prefix_directional", "street_name", "street_suffix", "acres"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: null,
       mailingAddress: null,
       assessedValue: (parseNum(a.land) || 0) + (parseNum(a.building) || 0) || null,
@@ -881,7 +882,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42077": {
     url: "https://services1.arcgis.com/XWDNR4PQlDQwrRCL/ArcGIS/rest/services/ATestParcel/FeatureServer/0/query",
     fields: ["NAMOWN", "AD1OWN", "AD2OWN", "ZIPOWN", "TOTASMT", "TAXASMT", "TOTAPR", "ADDRES", "USELAND", "ACREAGE", "SMON", "SYEAR", "SPRICE", "CLASS", "PIN", "DIST"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.NAMOWN),
       mailingAddress: [cleanString(a.AD1OWN), cleanString(a.AD2OWN)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TOTASMT),
@@ -909,7 +910,7 @@ const COUNTY_GIS_REGISTRY: Record<string, CountyGISEndpoint> = {
   "42095": {
     url: "https://services2.arcgis.com/NlbUAihbvA50xxJw/arcgis/rest/services/Northampton_Parcels/FeatureServer/0/query",
     fields: ["OWNER_LN1", "MAIL_ADDR1", "MAIL_ADDR3", "TOT_VALUE", "BLDG_VALUE", "LAND_VALUE", "TOT_ASSMNT", "BLDG_ASSMT", "LAND_ASSMT", "SALE_PRICE", "SALE_DATE", "GLA_SQFT", "YEAR_BUILT", "STORIES", "BDRM_COUNT", "FULL_BATH", "HALF_BATH", "TOT_ROOMS", "LOCATION", "LUC", "ASSMNT_AC"],
-    parse: (a: any) => ({
+    parse: (a: GisAttrs) => ({
       ownerName: cleanString(a.OWNER_LN1),
       mailingAddress: [cleanString(a.MAIL_ADDR1), cleanString(a.MAIL_ADDR3)].filter(Boolean).join(", ") || null,
       assessedValue: parseNum(a.TOT_VALUE),

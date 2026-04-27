@@ -63,10 +63,11 @@ async function geocodeGoogle(
   if (data.status !== "OK" || !data.results?.length) return null;
 
   const result = data.results[0];
-  const components = result.address_components || [];
+  interface GoogleAddressComponent { long_name: string; short_name: string; types: string[] }
+  const components = (result.address_components || []) as GoogleAddressComponent[];
 
   const getComponent = (type: string) =>
-    components.find((c: any) => c.types.includes(type))?.long_name || "";
+    components.find((c) => c.types.includes(type))?.long_name || "";
 
   return {
     lat: result.geometry.location.lat,

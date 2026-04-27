@@ -191,16 +191,22 @@ async function searchNominatim(
       signal: AbortSignal.timeout(15000),
     });
     if (!res.ok) return [];
-    const data = await res.json();
+    interface NominatimItem {
+      lat: string;
+      lon: string;
+      display_name: string;
+      address?: { house_number?: string; road?: string };
+    }
+    const data = (await res.json()) as NominatimItem[];
 
     return data
-      .filter((item: any) => item.address?.house_number && item.address?.road)
-      .map((item: any) => ({
+      .filter((item) => item.address?.house_number && item.address?.road)
+      .map((item) => ({
         lat: parseFloat(item.lat),
         lng: parseFloat(item.lon),
         address: item.display_name,
-        houseNumber: item.address.house_number,
-        street: item.address.road,
+        houseNumber: item.address!.house_number!,
+        street: item.address!.road!,
       }));
   } catch {
     return [];

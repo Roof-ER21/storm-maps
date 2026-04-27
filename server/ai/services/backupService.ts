@@ -28,7 +28,7 @@ export async function createBackup(db: DB): Promise<{ json: string; result: Back
     db.query.batchJobs.findMany(),
     db.query.activityLog.findMany(),
     db.execute(sql`SELECT count(*) as count FROM property_images`).then(
-      (r: any) => Number(r[0]?.count || 0)
+      (r) => Number((r as Array<{ count: number | string }>)[0]?.count || 0)
     ).catch(() => 0),
   ]);
 
