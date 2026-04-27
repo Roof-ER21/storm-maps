@@ -1479,7 +1479,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       .fillColor('#94a3b8')
       .font('Helvetica-Oblique')
       .text(
-        'At Property = 0–1 mi. Distance bands are mutually exclusive — each observation is assigned to one band, showing max hail in that band. ¼" display floor; sub-trace radar signatures rounded up to the nearest standard adjuster size (¼", ½", ¾", 1", 1¼"...).',
+        'At Property = within 0.5 mi of the subject point. 1–3 mi = 0.5–3 mi. 3–5 mi = 3–5 mi. Distance bands are mutually exclusive; each observation is assigned to exactly one band, showing the max hail in that band. ¼" display floor; sub-trace radar signatures rounded up to the nearest standard adjuster size (¼", ½", ¾", 1", 1¼"...).',
         HX,
         doc.y,
         { width: HW },
@@ -1641,7 +1641,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       value: peakWind > 0 ? `${Math.round(peakWind)} mph` : '—',
       sub:
         peakWind >= 58
-          ? `within ${req.radiusMiles} mi · NWS severe (≥58 mph)`
+          ? `within ${req.radiusMiles} mi · NWS severe (>=58 mph)`
           : peakWind > 0
             ? `within ${req.radiusMiles} mi · ${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}`
             : 'no gusts reported',
