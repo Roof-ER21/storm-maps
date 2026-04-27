@@ -2,12 +2,16 @@
  * IEM VTEC archive — historical NWS warnings (Severe Thunderstorm + Tornado).
  *
  * Endpoint:
- *   https://mesonet.agron.iastate.edu/cgi-bin/request/gis/watchwarn.py
- *     ?sts=YYYYMMDDHHMM&ets=YYYYMMDDHHMM&ph=SV,TO&fmt=geojson
+ *   https://mesonet.agron.iastate.edu/geojson/sbw.geojson
+ *     ?sts=ISO8601&ets=ISO8601&[wfo=XXX]
  *
- * Public — no key required. Returns GeoJSON FeatureCollection of warning
- * polygons with `phenomena`, `issue`, `expire`, plus a `wfo` (forecast
- * office) tag.
+ * Public — no key required. Returns GeoJSON FeatureCollection of "Storm
+ * Based Warning" polygons with `phenomena`, `significance`, `issue`,
+ * `expire`, plus a `wfo` (forecast office) tag. Goes back ~2003 to present.
+ *
+ * (Old `cgi-bin/request/gis/watchwarn.py?fmt=geojson` returns 422 since
+ * IEM upgraded the param validator; the SBW GeoJSON endpoint is the live
+ * replacement with parity coverage.)
  *
  * For consilience we use this to answer "did the NWS issue an SVR or
  * tornado warning over this property on this date?" — strong corroboration
@@ -18,8 +22,8 @@
 import type { BoundingBox } from './types.js';
 import { etDayUtcWindow } from './timeUtils.js';
 
-const IEM_VTEC_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/watchwarn.py';
-const FETCH_TIMEOUT_MS = 15_000;
+const IEM_VTEC_BASE = 'https://mesonet.agron.iastate.edu/geojson/sbw.geojson';
+const FETCH_TIMEOUT_MS = 20_000;
 
 export type WarningPhenomenon = 'SV' | 'TO' | 'FF' | 'EW';
 
@@ -41,11 +45,19 @@ export interface IemVtecWarning {
 interface VtecApiFeature {
   properties: {
     issue?: string;
+    /** SBW endpoint uses `polygon_begin` / `polygon_end` for the actual
+     *  effective window. `expire` exists too but for some products it's
+     *  the long-tail expiration (multi-day flood warnings etc.). */
+    polygon_begin?: string;
+    polygon_end?: string;
     expire?: string;
     phenomena?: string;
     significance?: string;
     wfo?: string;
     eventid?: number;
+    /** SBW lookup link to the rendered product page. */
+    product_id?: string;
+    /** Legacy field kept for back-compat with older callers. */
     product?: string;
     productlink?: string;
   };
@@ -61,11 +73,7 @@ interface VtecApiResponse {
 }
 
 function fmtIemTimestamp(iso: string): string {
-  // IEM upgraded the watchwarn endpoint to Pydantic-validated query
-  // params expecting ISO 8601 (e.g. 2025-05-03T04:00:00Z). Sending the
-  // legacy YYYYMMDDHHMM format returns HTTP 422 with no warnings —
-  // which is what was silently breaking the consilience NWS-warnings
-  // source AND the new PDF Active NWS Warnings panel.
+  // SBW endpoint accepts ISO 8601 with second precision and a Z suffix.
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
   return d.toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -83,12 +91,13 @@ export interface IemVtecQuery {
 export async function fetchIemVtecWarnings(
   q: IemVtecQuery,
 ): Promise<IemVtecWarning[]> {
-  const phen = (q.phenomena ?? ['SV', 'TO']).join(',');
+  const allowed = new Set<WarningPhenomenon>(q.phenomena ?? ['SV', 'TO']);
+  // SBW endpoint doesn't filter server-side by phenomena; we filter client-
+  // side. Significance=W only (warnings, not watches/advisories) is enforced
+  // in parseFeatures because some old archive features omit `significance`.
   const params = new URLSearchParams({
     sts: fmtIemTimestamp(q.startIso),
     ets: fmtIemTimestamp(q.endIso),
-    ph: phen,
-    fmt: 'geojson',
   });
   const url = `${IEM_VTEC_BASE}?${params.toString()}`;
   try {
@@ -104,7 +113,7 @@ export async function fetchIemVtecWarnings(
       return [];
     }
     const data = (await res.json()) as VtecApiResponse;
-    return parseFeatures(data.features ?? [], q.bounds);
+    return parseFeatures(data.features ?? [], q.bounds, allowed);
   } catch (err) {
     console.warn('[iem-vtec] fetch failed:', (err as Error).message);
     return [];
@@ -113,14 +122,24 @@ export async function fetchIemVtecWarnings(
 
 function parseFeatures(
   features: VtecApiFeature[],
-  bounds?: BoundingBox,
+  bounds: BoundingBox | undefined,
+  allowedPhenomena: Set<WarningPhenomenon>,
 ): IemVtecWarning[] {
   const out: IemVtecWarning[] = [];
   for (const f of features) {
     if (!f.geometry || !f.properties) continue;
     const ph = f.properties.phenomena;
-    if (!ph || !['SV', 'TO', 'FF', 'EW'].includes(ph)) continue;
-    if (!f.properties.issue || !f.properties.expire) continue;
+    if (!ph || !allowedPhenomena.has(ph as WarningPhenomenon)) continue;
+    // SBW returns watches/advisories (sig A/Y) too — keep only warnings.
+    if (f.properties.significance && f.properties.significance !== 'W') continue;
+    // SBW issue/expire window: prefer polygon_begin/polygon_end (the
+    // active polygon period). Fall back to issue/expire for back-compat
+    // with the legacy watchwarn payload shape.
+    const issueIso =
+      f.properties.polygon_begin ?? f.properties.issue ?? '';
+    const expireIso =
+      f.properties.polygon_end ?? f.properties.expire ?? '';
+    if (!issueIso || !expireIso) continue;
 
     const rings = flattenPolygon(f.geometry);
     if (rings.length === 0) continue;
@@ -128,12 +147,12 @@ function parseFeatures(
     if (bounds && !ringsIntersectBounds(rings, bounds)) continue;
 
     out.push({
-      issueIso: f.properties.issue,
-      expireIso: f.properties.expire,
+      issueIso,
+      expireIso,
       phenomenon: ph as WarningPhenomenon,
       wfo: (f.properties.wfo ?? '').toUpperCase(),
       rings,
-      product: f.properties.product,
+      product: f.properties.product ?? f.properties.product_id,
     });
   }
   return out;
