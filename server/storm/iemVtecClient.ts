@@ -109,16 +109,28 @@ export async function fetchIemVtecWarnings(
     });
     clearTimeout(timer);
     if (!res.ok) {
-      console.warn(`[iem-vtec] HTTP ${res.status}`);
+      if (!iemVtecHttpWarned.has(res.status)) {
+        iemVtecHttpWarned.add(res.status);
+        console.warn(`[iem-vtec] HTTP ${res.status} (suppressing further)`);
+      }
       return [];
     }
     const data = (await res.json()) as VtecApiResponse;
     return parseFeatures(data.features ?? [], q.bounds, allowed);
   } catch (err) {
-    console.warn('[iem-vtec] fetch failed:', (err as Error).message);
+    if (!iemVtecFetchWarned) {
+      iemVtecFetchWarned = true;
+      console.warn(
+        '[iem-vtec] fetch failed (suppressing further):',
+        (err as Error).message,
+      );
+    }
     return [];
   }
 }
+
+const iemVtecHttpWarned = new Set<number>();
+let iemVtecFetchWarned = false;
 
 function parseFeatures(
   features: VtecApiFeature[],
