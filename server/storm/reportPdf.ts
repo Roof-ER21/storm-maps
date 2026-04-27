@@ -446,11 +446,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
   // 2026-04-27 meeting — Hail-Trace-style header banner. Satellite/aerial
   // of the property starts fetching now so it's ready by the time we
-  // render the header. 6s timeout, falls back to no banner if Google is
-  // unreachable (rather than blocking PDF gen indefinitely).
+  // render the header. The fetcher itself enforces an 8s abort; we wrap
+  // a slightly looser 10s race to allow for the PDF render starting up
+  // simultaneously, but never block PDF gen on a slow Google response.
   const satelliteHeroPromise: Promise<Buffer | null> = Promise.race([
-    fetchSatelliteAerial(req.lat, req.lng, 1100, 200),
-    new Promise<null>((resolve) => setTimeout(() => resolve(null), 6_000)),
+    fetchSatelliteAerial(req.lat, req.lng, 1100, 200).then((buf) => {
+      if (!buf) console.warn('[reportPdf] satellite hero fetch returned null');
+      return buf;
+    }),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
   ]);
 
   // 1. Resolve events (fall through to cached aggregator if not passed).
