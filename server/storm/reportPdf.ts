@@ -2279,71 +2279,21 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // ncdc.noaa.gov/stormevents — the methodology section already cites
   // that as the underlying source.)
 
-  // ── Data Sources & Methodology ────────────────────────────────────────
-  // Establishes federal-data provenance for adjuster-facing claims. Each
-  // bullet is one independent agency or scientific network so a single
-  // commercial vendor can't be used to discredit the report.
-  if (doc.y > 580) doc.addPage();
-  drawSectionBanner('Data Sources & Methodology');
-  doc
-    .fontSize(9)
-    .fillColor(C.lightText)
-    .font('Helvetica')
-    .text(
-      'This report aggregates storm event records from multiple independent federal and scientific-network data sources. No commercial or proprietary data is used. All sources are publicly accessible and independently verifiable.',
-      M,
-      doc.y,
-      { width: CW },
-    );
-  doc.moveDown(0.4);
-
-  const sources: Array<{ name: string; desc: string }> = [
-    {
-      name: 'NOAA NCEI Storm Events Database',
-      desc: 'Official severe-weather event record maintained by the National Oceanic and Atmospheric Administration, National Centers for Environmental Information. Events reviewed by National Weather Service meteorologists. (ncei.noaa.gov)',
-    },
-    {
-      name: 'NOAA MRMS MESH (Multi-Radar Multi-Sensor Hail)',
-      desc: 'Maximum Estimated Size of Hail product fused from the full WSR-88D NEXRAD radar mosaic. Source-of-truth for adjuster-grade hail size estimation.',
-    },
-    {
-      name: 'NOAA Storm Prediction Center (SPC) WCM Archive',
-      desc: 'Severe weather database curated by the Warning Coordination Meteorologist at the NOAA Storm Prediction Center (Norman, OK). Independent observation pipeline from NCEI; provides cross-check.',
-    },
-    {
-      name: 'NWS Local Storm Reports via Iowa Environmental Mesonet',
-      desc: 'Real-time ground-observer reports filed with NWS Forecast Offices and archived by IEM at Iowa State University. Fills the 45-day review window before NCEI Storm Events is finalized.',
-    },
-    {
-      name: 'CoCoRaHS — Community Collaborative Rain, Hail & Snow Network',
-      desc: 'Citizen-scientist precipitation observer network operated by the Colorado Climate Center at Colorado State University with support from the National Science Foundation. Observer-measured hail stone size, duration, and consistency.',
-    },
-    {
-      name: 'NEXRAD WSR-88D Doppler Radar Network',
-      desc: 'Next-Generation Radar network operated jointly by NWS, FAA, and U.S. Air Force. Radar imagery embedded in this report is sourced from the IEM NEXRAD archive.',
-    },
-  ];
-  for (const s of sources) {
-    if (doc.y + 32 > BOTTOM) doc.addPage();
-    doc
-      .fontSize(9)
-      .fillColor(C.text)
-      .font('Helvetica-Bold')
-      .text(`• ${s.name}`, M, doc.y, { width: CW });
-    doc
-      .fontSize(8.5)
-      .fillColor(C.lightText)
-      .font('Helvetica')
-      .text(s.desc, M + 12, doc.y, { width: CW - 12 });
-    doc.moveDown(0.2);
-  }
-  doc.moveDown(0.3);
+  // ── Sources consulted (compact attribution) ──────────────────────────
+  // Per 4/27/26 rep feedback, the verbose 6-agency bulleted "Data Sources
+  // & Methodology" section was removed — adjusters didn't read it and the
+  // wall-of-text dilutes the cap-result the report exists to convey.
+  // Source data still drives findings BACKEND-side (the display-cap
+  // verification gate counts NCEI Storm Events + NWS LSRs; supplemental
+  // sources never move the headline number). This single-line
+  // attribution lives just above the disclaimer for reader transparency.
+  if (doc.y + 60 > BOTTOM) doc.addPage();
   doc
     .fontSize(8.5)
-    .fillColor('#0a6640')
+    .fillColor(C.lightText)
     .font('Helvetica-Oblique')
     .text(
-      'The sources above are operated by distinct federal agencies and scientific institutions and do not share a common observation pipeline. Independent confirmation of the same event across multiple sources provides higher confidence than any single source alone. Original event identifiers are retained for independent verification by the reader.',
+      'Findings derived from primary federal sources: NOAA NCEI Storm Events Database, NWS Local Storm Reports (via Iowa Environmental Mesonet), NOAA MRMS MESH, and the NEXRAD WSR-88D Doppler radar network. Supplemental observer networks (mPING, CoCoRaHS, SPC, NCEI SWDI) are cross-referenced internally for verification but do not drive the displayed at-property values.',
       M,
       doc.y,
       { width: CW },
