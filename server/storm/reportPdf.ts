@@ -1925,89 +1925,13 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
-  // ── NCEI Archive appendix (official NOAA Storm Events DB) ────────────
-  // The same data adjusters cite. Pulled from verified_hail_events where
-  // source_ncei_storm_events=TRUE; window ±30 days of date_of_loss; radius
-  // matches the property search radius. Each row carries an NCEI EVENT_ID
-  // for direct cross-reference against ncdc.noaa.gov/stormevents.
-  const nceiRows = await fetchNceiArchiveForReport({
-    lat: req.lat,
-    lng: req.lng,
-    dateOfLoss: req.dateOfLoss,
-    radiusMiles: req.radiusMiles,
-    windowDays: 30,
-    nceiOnly: true, // bottom appendix labels itself "NCEI Storm Events Archive" so it must filter to that source
-  });
-  if (nceiRows.length > 0) {
-    doc.addPage();
-    drawSectionBanner('NCEI Storm Events Archive (Appendix)');
-    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
-    doc.text(
-      `${nceiRows.length} official NOAA Storm Events Database record${nceiRows.length === 1 ? '' : 's'} within ${req.radiusMiles} mi of the property and ±30 days of ${req.dateOfLoss}. Each row is independently citable via its NCEI EVENT_ID at ncdc.noaa.gov/stormevents/.`,
-      { width: 504 },
-    );
-    doc.moveDown(0.5);
-
-    const drawNceiHeader = (yStart: number): number => {
-      doc.font('Helvetica-Bold').fontSize(8).fillColor('#475569');
-      doc.text('Date (ET)', 54, yStart);
-      doc.text('County', 130, yStart);
-      doc.text('Type', 220, yStart);
-      doc.text('Magnitude', 290, yStart);
-      doc.text('NCEI ID', 360, yStart);
-      doc.text('Notes', 420, yStart);
-      doc
-        .strokeColor('#e2e8f0')
-        .lineWidth(0.5)
-        .moveTo(54, yStart + 12)
-        .lineTo(558, yStart + 12)
-        .stroke();
-      return yStart + 16;
-    };
-
-    let nceiRowY = drawNceiHeader(doc.y);
-    const tableBottom = 720;
-    for (const r of nceiRows) {
-      if (nceiRowY > tableBottom) {
-        doc.addPage();
-        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('NCEI Archive (continued)');
-        doc.moveDown(0.3);
-        nceiRowY = drawNceiHeader(doc.y);
-      }
-      doc.font('Helvetica').fontSize(8).fillColor('#0f172a');
-      doc.text(r.event_date, 54, nceiRowY, { width: 70 });
-      doc.text((r.county ?? '').slice(0, 18), 130, nceiRowY, { width: 84 });
-      const typeLabel =
-        r.event_type === 'Hail'
-          ? 'Hail'
-          : r.event_type === 'Thunderstorm Wind'
-            ? 'T-Wind'
-            : (r.event_type ?? '');
-      doc.text(typeLabel, 220, nceiRowY, { width: 64 });
-      // Tornado rows carry no `magnitude` (ingest stores 0) — surface the
-      // F/EF scale instead so the appendix doesn't show "0"" for an EF2.
-      let magStr: string;
-      if (r.event_type === 'Tornado') {
-        magStr = r.tor_f_scale ? r.tor_f_scale.toUpperCase() : '—';
-      } else if (r.magnitude === null) {
-        magStr = '';
-      } else if (r.event_type === 'Hail') {
-        magStr = `${r.magnitude.toFixed(2)}"`;
-      } else {
-        magStr = `${Math.round(r.magnitude)} mph`;
-      }
-      doc.text(magStr, 290, nceiRowY, { width: 64 });
-      doc.fillColor('#64748b');
-      doc.text((r.ncei_event_id ?? '').slice(0, 9), 360, nceiRowY, { width: 56 });
-      doc.fillColor('#475569');
-      doc.text((r.narrative ?? '').slice(0, 120), 420, nceiRowY, {
-        width: 138,
-        ellipsis: true,
-        height: 24,
-      });
-      nceiRowY += 16;
-    }
-  }
+  // (NCEI Storm Events Archive appendix removed. The wall-of-text raw
+  // ±30-day NCEI rows were bloating the PDF to 5 pages with content reps
+  // and adjusters don't actually read; the rep-facing summary lives in
+  // the merged Property Hail Hit History table at the top of page 1.
+  // Adjusters who want raw NCEI rows can pull them from
+  // ncdc.noaa.gov/stormevents — the methodology section already cites
+  // that as the underlying source.)
 
   // ── Data Sources & Methodology ────────────────────────────────────────
   // Establishes federal-data provenance for adjuster-facing claims. Each
