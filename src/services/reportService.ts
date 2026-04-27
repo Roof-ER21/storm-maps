@@ -553,14 +553,26 @@ export async function generateStormReport({
       body: JSON.stringify(payload),
     });
     if (response.ok) {
-      const blob = await response.blob();
-      downloadBlob(blob, `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`);
-      return;
-    }
-    if (response.status < 500) {
+      // Susan21 sometimes returns 200 with a JSON job-queue response
+      // ({jobId, status:"pending", pollUrl}) instead of an inline PDF.
+      // Saving that blob as .pdf produces a 223-byte non-openable file.
+      // Verify Content-Type is actually PDF before triggering download.
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('application/pdf')) {
+        const blob = await response.blob();
+        downloadBlob(blob, `Hail_Yes_Report_${safeAddress}_${dateOfLoss}.pdf`);
+        return;
+      }
+      console.warn(
+        '[reportService] Susan21 returned non-PDF (likely async queue):',
+        contentType,
+        '— falling through to in-repo PDF',
+      );
+    } else if (response.status < 500) {
       throw new Error(`Report API returned ${response.status}`);
+    } else {
+      console.warn('[reportService] Susan21 PDF returned 5xx, trying in-repo fallback');
     }
-    console.warn('[reportService] Susan21 PDF returned 5xx, trying in-repo fallback');
   } catch (err) {
     console.warn('[reportService] Susan21 PDF unavailable, trying in-repo fallback', err);
   }
