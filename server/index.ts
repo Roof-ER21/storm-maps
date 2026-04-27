@@ -81,11 +81,16 @@ const PORT = parseInt(process.env.PORT || '3100', 10);
 
 app.use(express.json({ limit: '10mb' }));
 
-// Rate limiting — global apiLimiter is generous (300 req / 15 min). The
-// push-subscribe and admin endpoints get their own tighter buckets.
+// Rate limiting — bumped from 300/15min after reps hit the ceiling on
+// normal storm-page browsing (each storm-date click fires per-date-impact +
+// mrms-meta + mrms-vector + mrms-impact + wind/impact = 5 requests; with
+// 5–10 dates per session the old limit was ~5 minutes of work). 2000 over
+// 15 minutes is ~133/min sustained — still abuse-protective but never
+// trips for actual use. The push-subscribe and admin endpoints keep
+// their own tighter buckets.
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // 300 requests per window per IP
+  windowMs: 15 * 60 * 1000,
+  max: 2000,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, try again later' },
