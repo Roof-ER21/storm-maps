@@ -597,6 +597,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     mi5to10: number;
     biggestNearby: number;
     biggestNearbyMi: number;
+    /** Server-blessed tier from buildMrmsImpactResponse — fills in
+     *  during the polygon-edge promotion step. When set, rowTier
+     *  respects this verbatim instead of inferring from bands so the
+     *  PDF table matches the row badge / AddressImpactBadge card. */
+    serverTier?: 'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact';
   };
   // Widened to match SA21's storm_days_public defaults — 25mi radius, 24mo
   // window — and pulls from ALL ingest sources (NCEI + SWDI + mPING +
@@ -816,22 +821,32 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
             bounds: bandBounds,
             points: [{ id: 'p', lat: req.lat, lng: req.lng }],
           });
-          return { dateIso, bands: resp?.results[0]?.bands ?? null };
+          const r = resp?.results[0] ?? null;
+          return {
+            dateIso,
+            bands: r?.bands ?? null,
+            tier: r?.tier ?? null,
+          };
         } catch {
-          return { dateIso, bands: null };
+          return { dateIso, bands: null, tier: null };
         }
       }),
     );
-    for (const { dateIso, bands } of bandResults) {
-      if (!bands) continue;
+    for (const { dateIso, bands, tier } of bandResults) {
       const row = histGroups.get(dateIso);
       if (!row) continue;
-      // Promote any band where polygon-edge has a higher max than the
-      // event-distance value already populated.
-      if ((bands.atProperty ?? 0) > row.atProperty) row.atProperty = bands.atProperty!;
-      if ((bands.mi1to3 ?? 0) > row.mi1to3) row.mi1to3 = bands.mi1to3!;
-      if ((bands.mi3to5 ?? 0) > row.mi3to5) row.mi3to5 = bands.mi3to5!;
-      if ((bands.mi5to10 ?? 0) > row.mi5to10) row.mi5to10 = bands.mi5to10!;
+      if (bands) {
+        if ((bands.atProperty ?? 0) > row.atProperty) row.atProperty = bands.atProperty!;
+        if ((bands.mi1to3 ?? 0) > row.mi1to3) row.mi1to3 = bands.mi1to3!;
+        if ((bands.mi3to5 ?? 0) > row.mi3to5) row.mi3to5 = bands.mi3to5!;
+        if ((bands.mi5to10 ?? 0) > row.mi5to10) row.mi5to10 = bands.mi5to10!;
+      }
+      // Server's tier respects polygon-CONTAINMENT for direct_hit (vs my
+      // local rule that would call any "polygon edge within 1 mi" a hit).
+      // Use it verbatim so the PDF table tier matches the badge.
+      if (tier && tier !== 'no_impact') {
+        row.serverTier = tier;
+      }
     }
   }
 
@@ -869,10 +884,13 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   sortedHistRows.length = 0;
   sortedHistRows.push(...finalSortedHistRows);
 
-  /** Tier from per-band maxes — matches the live UI classifier. */
+  /** Tier classifier — prefers the server-side polygon-truth tier when
+   *  available (set by the polygon-edge promotion step). Falls back to
+   *  per-band maxes for rows whose date didn't have any cached MRMS data. */
   const rowTier = (
     r: HistRow,
   ): 'direct_hit' | 'near_miss' | 'area_impact' => {
+    if (r.serverTier && r.serverTier !== 'no_impact') return r.serverTier;
     if (r.atProperty > 0) return 'direct_hit';
     if (r.mi1to3 > 0) return 'near_miss';
     return 'area_impact';
