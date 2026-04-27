@@ -939,6 +939,9 @@ interface ReportPdfBody {
   anchorTimestamp?: string;
   rep?: { name?: string; phone?: string; email?: string };
   company?: { name?: string };
+  /** Optional homeowner name — surfaces in the new PDF's Property
+   *  Information "Customer Info:" subsection. Omitted when blank. */
+  customerName?: string;
   evidence?: Array<{
     imageUrl?: string;
     imageDataUrl?: string;
@@ -975,6 +978,7 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
         email: body.rep?.email,
       },
       company: { name: body.company?.name ?? 'Roof-ER21' },
+      customerName: body.customerName?.trim() || undefined,
       evidence: body.evidence,
     });
     res.set('Content-Type', 'application/pdf');

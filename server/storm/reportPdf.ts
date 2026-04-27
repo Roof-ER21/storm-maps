@@ -186,6 +186,9 @@ export interface ReportRequest {
   anchorTimestamp?: string | null;
   rep: { name: string; phone?: string; email?: string };
   company: { name: string };
+  /** Optional homeowner name — surfaces in the Property Information
+   *  "Customer Info:" subsection. Omitted entirely when undefined/empty. */
+  customerName?: string;
   /** Override events; if omitted we pull from the in-repo /api/storm/events cache. */
   events?: StormEventDto[];
   /** Override bounds; if omitted we derive from event extent + 25 mi pad. */
@@ -193,6 +196,119 @@ export interface ReportRequest {
   /** Evidence images to embed at the end of the report. Up to 6 are rendered. */
   evidence?: ReportEvidenceItem[];
 }
+
+/**
+ * 2026-04-27 PDF redesign — concrete layout constants from
+ * PDF-REDESIGN-LAYOUT.md. Sourced from the target reference at
+ * ~/Downloads/E2E_Fresh_Test.pdf via pdfminer measurement.
+ */
+export const PDF_LAYOUT = {
+  page: { width: 612, height: 792 },
+  margin: { top: 8, bottom: 40, left: 50, right: 50 },
+  contentWidth: 512,
+
+  colors: {
+    bannerBg: '#D9D9D9',
+    bannerText: '#4A4A4A',
+    bodyText: '#1A1A1A',
+    labelGray: '#666666',
+    mutedGray: '#8C8C8C',
+    borderGray: '#BFBFBF',
+    stripBg: '#E8E8E8',
+    brandRed: '#C8102E',
+    linkRed: '#C8102E',
+    rowStripe: '#F7F7F7',
+    white: '#FFFFFF',
+  },
+
+  banner: { height: 22, fontSize: 13, padTop: 14, padBottom: 8 },
+
+  header: {
+    topStrip: { y: 0, height: 22, fontSize: 9.5 },
+    logo: { x: 50, y: 35, w: 140, h: 60 },
+    repContact: { x: 220, y: 47, w: 100 },
+    reportMeta: { x: 331.6, y: 42, w: 130 },
+    seal: { x: 510, y: 38, w: 52, h: 52, radius: 6 },
+    verifyStrip: { y: 102, height: 18, fontSize: 8.5 },
+  },
+
+  property: {
+    map: { x: 70, w: 160, h: 120, zoom: 16, type: 'roadmap' },
+    text: { x: 245, w: 317 },
+  },
+
+  hailImpact: {
+    rowHeight: 18,
+    rows: 4,
+    col: {
+      label1: { x: 58, w: 140 },
+      value1: { x: 200, w: 110 },
+      label2: { x: 314, w: 140 },
+      value2: { x: 456, w: 100 },
+    },
+  },
+
+  groundObs: {
+    headerHeight: 18,
+    bodyRowHeight: 24,
+    headerFontSize: 8.5,
+    bodyFontSize: 8.5,
+    cellPad: { top: 4, left: 4 },
+    cols: {
+      hail: [
+        { key: 'datetime', label: 'Date / Time', x: 54, w: 80 },
+        { key: 'source', label: 'Source', x: 134, w: 50 },
+        { key: 'size', label: 'Hail Size', x: 184, w: 55 },
+        { key: 'distance', label: 'Distance from Property', x: 239, w: 130 },
+        { key: 'comments', label: 'Comments', x: 369, w: 193 },
+      ] as const,
+      wind: [
+        { key: 'datetime', label: 'Date / Time', x: 54, w: 80 },
+        { key: 'source', label: 'Source', x: 134, w: 50 },
+        { key: 'speed', label: 'Wind Speed', x: 184, w: 55 },
+        { key: 'distance', label: 'Distance from Property', x: 239, w: 130 },
+        { key: 'comments', label: 'Comments', x: 369, w: 193 },
+      ] as const,
+    },
+  },
+
+  warning: {
+    image: { x: 50, w: 200, h: 130 },
+    rightCol: { x: 265, w: 297 },
+    titleFontSize: 10,
+    titleLineHeight: 11.5,
+    grid: {
+      rowPitch: 18,
+      rows: 3,
+      col: { labelL: 265, valueL: 340, labelR: 413.5, valueR: 488.5 },
+    },
+    captionFontSize: 8,
+    narrativeFontSize: 8.5,
+    blockHeight: 210,
+  },
+
+  historical: {
+    headerHeight: 22,
+    bodyRowHeight: 30,
+    headerFontSize: 8,
+    bodyFontSize: 8,
+    cellPad: { top: 6, left: 4 },
+    cols: [
+      { key: 'mapDate', label: 'Map Date*', x: 54, w: 62 },
+      { key: 'impactTime', label: 'Impact Time', x: 116, w: 70 },
+      { key: 'direction', label: 'Direction', x: 186, w: 48 },
+      { key: 'speed', label: 'Speed', x: 234, w: 38 },
+      { key: 'duration', label: 'Duration', x: 272, w: 44 },
+      { key: 'atLocation', label: 'At Location', x: 316, w: 58 },
+      { key: 'within1mi', label: 'Within 1mi', x: 374, w: 54 },
+      { key: 'within3mi', label: 'Within 3mi', x: 428, w: 54 },
+      { key: 'within10mi', label: 'Within 10mi', x: 482, w: 80 },
+    ] as const,
+    footnoteFontSize: 8,
+  },
+
+  copyright: { height: 24, fontSize: 9.5 },
+} as const;
 
 interface RenderedPolygon {
   bandIndex: number;
@@ -266,6 +382,47 @@ async function fetchStaticBasemap(
     key: GOOGLE_STATIC_MAPS_API_KEY,
   });
 
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8_000);
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fetch a Google Static Maps roadmap centered on the property point at a
+ * fixed zoom. Used by the Section 1 Property Information layout (160×120
+ * pt slot, zoom 16). 8s timeout, returns null on any failure — the PDF
+ * still renders the address column without it.
+ */
+async function fetchPropertyRoadmap(
+  lat: number,
+  lng: number,
+  width: number,
+  height: number,
+  zoom = 16,
+): Promise<Buffer | null> {
+  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
+  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
+  const sizeH = Math.min(640, Math.max(120, Math.round(height)));
+  const params = new URLSearchParams({
+    center: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    zoom: String(zoom),
+    size: `${sizeW}x${sizeH}`,
+    scale: '2',
+    maptype: 'roadmap',
+    markers: `color:red|${lat.toFixed(6)},${lng.toFixed(6)}`,
+    key: GOOGLE_STATIC_MAPS_API_KEY,
+  });
   try {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), 8_000);
@@ -496,16 +653,12 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     new Promise<null>((resolve) => setTimeout(() => resolve(null), 25_000)),
   ]);
 
-  // 2026-04-27 meeting — Hail-Trace-style header banner. Satellite/aerial
-  // of the property starts fetching now so it's ready by the time we
-  // render the header. The fetcher itself enforces an 8s abort; we wrap
-  // a slightly looser 10s race to allow for the PDF render starting up
-  // simultaneously, but never block PDF gen on a slow Google response.
-  const satelliteHeroPromise: Promise<Buffer | null> = Promise.race([
-    fetchSatelliteAerial(req.lat, req.lng, 1100, 200).then((buf) => {
-      if (!buf) console.warn('[reportPdf] satellite hero fetch returned null');
-      return buf;
-    }),
+  // 2026-04-27 redesign — Property Information map (Section 1) is a
+  // tighter zoom 16 roadmap centered on the property pin. Start the
+  // fetch now so it's ready by the time we render Section 1.
+  // fetchPropertyRoadmap enforces its own 8s abort.
+  const propertyMapPromise: Promise<Buffer | null> = Promise.race([
+    fetchPropertyRoadmap(req.lat, req.lng, 320, 240, PDF_LAYOUT.property.map.zoom),
     new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
   ]);
 
@@ -579,11 +732,16 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // 3. Render PDF.
   const doc = new PDFDocument({
     size: 'LETTER',
-    margin: 54,
+    margins: {
+      top: PDF_LAYOUT.margin.top,
+      bottom: PDF_LAYOUT.margin.bottom,
+      left: PDF_LAYOUT.margin.left,
+      right: PDF_LAYOUT.margin.right,
+    },
     info: {
-      Title: `Storm Impact Analysis - ${req.address}`,
-      Author: 'NOAA/NWS Data Analysis',
-      Subject: `Severe Weather Impact Analysis for ${req.address}`,
+      Title: `Hail Impact Report - ${req.address}`,
+      Author: 'Roof-ER Storm Intelligence',
+      Subject: `Hail Impact Report for ${req.address}`,
       Creator: 'Hail Yes! · Roof-ER Weather Intelligence Platform',
     },
   });
@@ -594,40 +752,31 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.on('error', reject);
   });
 
-  // Page geometry shared by every section helper
-  const M = 54;
-  const PW = 612;
-  const CW = 504; // PW - 2*M
-  const BOTTOM = 745;
+  // Page geometry shared by every section helper. Margins are 50/50 left
+  // and right per the 2026-04-27 redesign (was 54/54). Anything 50→562
+  // is content; banner fills span exactly that range. Top strip and
+  // verification strip are full-bleed (0→612).
+  const M = PDF_LAYOUT.margin.left;
+  const PW = PDF_LAYOUT.page.width;
+  const CW = PDF_LAYOUT.contentWidth;
+  const BOTTOM = 752;
+  const COLOR = PDF_LAYOUT.colors;
 
-  // SA21-aligned color palette — federal/forensic feel
-  const C = {
-    text: '#1a1a2e',
-    lightText: '#475569',
-    mutedText: '#94a3b8',
-    sectionBg: '#e8eaf0',
-    sectionText: '#3d5a80',
-    accent: '#1b4965',
-    link: '#2563eb',
-    border: '#e2e8f0',
-    tableBorder: '#cbd5e1',
-  };
-
-  // Section banner — gray-bg horizontal bar with center-aligned italic blue title.
-  // Used as the connective tissue between every major section so the document
-  // reads as one polished forensic report rather than stacked panels.
+  // Universal section banner — gray fill, centered title, NOT bold (target
+  // PDF uses Helvetica regular at 13 pt). Replaces the legacy navy/italic
+  // banner. Auto-paginates if banner + 24pt content tail won't fit.
   const drawSectionBanner = (title: string): void => {
-    const bannerH = 26;
-    if (doc.y + bannerH + 24 > BOTTOM) doc.addPage();
-    doc.moveDown(0.4);
+    const h = PDF_LAYOUT.banner.height;
+    if (doc.y + h + 24 > BOTTOM) doc.addPage();
+    doc.y = Math.max(doc.y, PDF_LAYOUT.margin.top + 8);
     const y = doc.y;
-    doc.rect(M - 6, y, CW + 12, bannerH).fill(C.sectionBg);
+    doc.rect(M, y, CW, h).fill(COLOR.bannerBg);
     doc
-      .fontSize(12)
-      .fillColor(C.sectionText)
-      .font('Helvetica-Oblique')
-      .text(title, M, y + 7, { width: CW, align: 'center' });
-    doc.y = y + bannerH + 8;
+      .fillColor(COLOR.bannerText)
+      .font('Helvetica')
+      .fontSize(PDF_LAYOUT.banner.fontSize)
+      .text(title, M, y + 5, { width: CW, align: 'center' });
+    doc.y = y + h + PDF_LAYOUT.banner.padBottom;
   };
 
   // Auto-generated identifiers — adjuster trust signals.
@@ -636,68 +785,103 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .padStart(7, '0')}`;
   const verificationCode = Math.random().toString(16).substring(2, 8);
 
-  // ── Federal-authority header ──────────────────────────────────────────
-  // Top navy banner stretches edge-to-edge (no margin) so the document
-  // reads with the gravity of a NOAA/NWS-authored brief instead of an
-  // internal CRM print-out.
-  const headerBannerH = 34;
-  doc.rect(0, 0, PW, headerBannerH).fill(C.accent);
-  doc
-    .fontSize(13)
-    .fillColor('#ffffff')
-    .font('Helvetica-Bold')
-    .text('Storm Impact Analysis', M, 11, { width: CW, align: 'center' });
-  doc.y = headerBannerH + 12;
+  // ── Header (top strip + 3-col + verification strip) ────────────────────
 
-  // ── Property aerial hero banner (2026-04-27 meeting) ──────────────────
-  // Satellite tile of the property with the address overlaid at the
-  // bottom — gives the report the "Hail Trace look" Ahmed asked for and
-  // collapses the redundant property-summary line below into the hero.
-  // Falls through cleanly when the Google Static Maps fetch times out.
-  const satelliteHero = await satelliteHeroPromise;
-  if (satelliteHero) {
-    const heroH = 110;
-    const heroY = headerBannerH;
-    try {
-      doc.image(satelliteHero, 0, heroY, { width: PW, height: heroH });
-    } catch {
-      // Defensive — bad image bytes shouldn't kill the PDF
-    }
-    // Translucent dark scrim across the bottom strip so the address text
-    // stays legible against bright satellite imagery.
-    const scrimH = 32;
-    doc.save();
-    doc.rect(0, heroY + heroH - scrimH, PW, scrimH).fillOpacity(0.55).fill('#000000');
-    doc.restore();
-    doc.fillOpacity(1);
+  // 2a. Top thin gray strip — full-bleed "Hail Impact Report #: <id>"
+  {
+    const ts = PDF_LAYOUT.header.topStrip;
+    doc.rect(0, ts.y, PW, ts.height).fill(COLOR.stripBg);
     doc
-      .fontSize(11)
-      .fillColor('#ffffff')
-      .font('Helvetica-Bold')
-      .text(req.address, M, heroY + heroH - scrimH + 6, {
-        width: CW,
-        ellipsis: true,
-        lineBreak: false,
-      });
-    doc
-      .fontSize(8)
-      .fillColor('#cbd5e1')
+      .fillColor(COLOR.labelGray)
       .font('Helvetica')
-      .text(
-        `Date of Loss: ${req.dateOfLoss}  ·  Search radius: ${req.radiusMiles} mi`,
-        M,
-        heroY + heroH - scrimH + 19,
-        { width: CW, lineBreak: false },
-      );
-    doc.y = heroY + heroH + 10;
+      .fontSize(ts.fontSize)
+      .text(`Hail Impact Report #: ${reportId}`, 0, ts.y + 6, {
+        width: PW,
+        align: 'center',
+      });
   }
 
-  // Sub-header: report metadata (left) + prepared by (right).
-  const subY = doc.y;
-  doc.fontSize(8.5).fillColor(C.lightText).font('Helvetica');
-  doc.text(`Report #: ${reportId}`, M, subY);
-  doc.text(
-    `Date: ${new Date().toLocaleString('en-US', {
+  // 2b. Three-column header row + logos (y = 35..95)
+  // ── Left logo box (vector "ROOFER / THE ROOF DOCS" wordmark) ──
+  {
+    const lg = PDF_LAYOUT.header.logo;
+    // Outer red border (rounded rectangle, 1.5pt stroke)
+    doc.lineWidth(1.5)
+      .roundedRect(lg.x, lg.y, lg.w, lg.h, 2)
+      .strokeColor(COLOR.brandRed)
+      .stroke();
+    // Top "ROOFER" text — bold, brand red, 22pt, baseline ~58
+    doc
+      .fillColor(COLOR.brandRed)
+      .font('Helvetica-Bold')
+      .fontSize(22)
+      .text('ROOFER', lg.x, lg.y + 14, { width: lg.w, align: 'center' });
+    // Tiny roof glyph above text — vector path, fits ~12×8 pt centered.
+    doc.save();
+    doc.translate(lg.x + lg.w / 2 - 6, lg.y + 5);
+    doc.path('M 0 8 L 6 0 L 12 8 L 10 8 L 10 5 L 2 5 L 2 8 Z').fill(COLOR.brandRed);
+    doc.restore();
+    // Hairline divider
+    doc
+      .moveTo(lg.x + 8, lg.y + 38)
+      .lineTo(lg.x + lg.w - 8, lg.y + 38)
+      .strokeColor(COLOR.brandRed)
+      .lineWidth(0.5)
+      .stroke();
+    // Bottom "THE ROOF DOCS" — bold, brand red, 8pt, letter-spacing
+    doc
+      .fillColor(COLOR.brandRed)
+      .font('Helvetica-Bold')
+      .fontSize(8)
+      .text('THE ROOF DOCS', lg.x, lg.y + 44, {
+        width: lg.w,
+        align: 'center',
+        characterSpacing: 1,
+      });
+  }
+
+  // ── Center-left rep contact ──
+  {
+    const rc = PDF_LAYOUT.header.repContact;
+    let yc = rc.y;
+    if (req.rep?.name) {
+      doc
+        .fillColor(COLOR.bodyText)
+        .font('Helvetica-Bold')
+        .fontSize(9)
+        .text(req.rep.name, rc.x, yc, { width: rc.w, lineBreak: false });
+      yc += 10;
+    }
+    if (req.rep?.phone) {
+      doc
+        .fillColor(COLOR.bodyText)
+        .font('Helvetica')
+        .fontSize(8.5)
+        .text(req.rep.phone, rc.x, yc, { width: rc.w, lineBreak: false });
+      yc += 10;
+    }
+    if (req.rep?.email) {
+      doc
+        .fillColor(COLOR.linkRed)
+        .font('Helvetica')
+        .fontSize(8.5)
+        .text(req.rep.email, rc.x, yc, {
+          width: rc.w,
+          lineBreak: false,
+          underline: true,
+        });
+    }
+  }
+
+  // ── Center-right report metadata ──
+  {
+    const rm = PDF_LAYOUT.header.reportMeta;
+    doc
+      .fillColor(COLOR.bodyText)
+      .font('Helvetica-Bold')
+      .fontSize(11)
+      .text('Hail Impact Report', rm.x, rm.y, { width: rm.w, lineBreak: false });
+    const dateStr = new Date().toLocaleString('en-US', {
       timeZone: 'America/New_York',
       month: 'numeric',
       day: 'numeric',
@@ -706,66 +890,152 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       minute: '2-digit',
       hour12: true,
       timeZoneName: 'short',
-    })}`,
-    M,
-    doc.y,
-  );
-
-  const rightX = M + CW * 0.55;
-  const rightW = CW * 0.45;
-  doc.fontSize(8.5).fillColor(C.lightText).font('Helvetica');
-  doc.text('Prepared by:', rightX, subY, { width: rightW });
-  if (req.rep?.name) {
-    doc.font('Helvetica-Bold').fillColor(C.text).text(req.rep.name, rightX, doc.y, { width: rightW });
-  }
-  doc.font('Helvetica').fillColor(C.lightText);
-  if (req.rep?.phone) doc.text(req.rep.phone, rightX, doc.y, { width: rightW });
-  if (req.rep?.email) {
-    doc.fillColor(C.link).text(req.rep.email, rightX, doc.y, { width: rightW });
-  }
-
-  doc.y = Math.max(doc.y, subY + 38);
-
-  // Verification code line — adjuster cross-check anchor.
-  doc
-    .fontSize(8)
-    .fillColor(C.mutedText)
-    .font('Helvetica')
-    .text('Verification Code: ', M, doc.y, { continued: true });
-  doc.font('Helvetica-Bold').fillColor(C.accent).text(verificationCode);
-  doc.moveDown(0.25);
-
-  // Thin divider
-  doc
-    .moveTo(M, doc.y)
-    .lineTo(M + CW, doc.y)
-    .strokeColor(C.border)
-    .lineWidth(0.5)
-    .stroke();
-  doc.moveDown(0.4);
-
-  // Property summary — when the satellite hero banner rendered, the
-  // address + date-of-loss already live in the banner, so we only
-  // surface the "Prepared for" attribution here. Hero-failed fallback:
-  // print the full property summary line as before.
-  if (satelliteHero) {
+    });
     doc
-      .fontSize(9)
-      .fillColor(C.lightText)
+      .fillColor(COLOR.bodyText)
       .font('Helvetica')
-      .text(`Prepared for ${req.company.name}`, M, doc.y, { width: CW });
-  } else {
-    doc.fontSize(10).fillColor(C.text).font('Helvetica-Bold');
-    doc.text(`Property: ${req.address}`, M, doc.y, { width: CW });
-    doc.font('Helvetica').fillColor(C.lightText).fontSize(9);
-    doc.text(
-      `Date of Loss: ${req.dateOfLoss}  ·  Search radius: ${req.radiusMiles} mi  ·  Prepared for ${req.company.name}`,
-      M,
-      doc.y,
-      { width: CW },
-    );
+      .fontSize(8.5)
+      .text(`Report #: ${reportId}`, rm.x, rm.y + 13, {
+        width: rm.w,
+        lineBreak: false,
+      });
+    doc.text(`Date: ${dateStr}`, rm.x, rm.y + 23, {
+      width: rm.w,
+      lineBreak: false,
+    });
+    doc.text('Roof-ER Storm Intelligence', rm.x, rm.y + 33, {
+      width: rm.w,
+      lineBreak: false,
+    });
   }
-  doc.moveDown(0.6);
+
+  // ── Right seal/badge — solid red rounded square with white roof glyph ──
+  {
+    const sl = PDF_LAYOUT.header.seal;
+    doc
+      .roundedRect(sl.x, sl.y, sl.w, sl.h, sl.radius)
+      .fill(COLOR.brandRed);
+    // White vector roof icon centered in the seal
+    doc.save();
+    doc.translate(sl.x + sl.w / 2, sl.y + sl.h / 2);
+    doc
+      .path(
+        'M -10 4 L 0 -8 L 10 4 L 7 4 L 7 9 L 3 9 L 3 5 L -3 5 L -3 9 L -7 9 L -7 4 Z',
+      )
+      .fill(COLOR.white);
+    doc.restore();
+  }
+
+  // 2c. Verification line strip — full-bleed gray, code in red+bold+underline
+  {
+    const vs = PDF_LAYOUT.header.verifyStrip;
+    doc.rect(0, vs.y, PW, vs.height).fill(COLOR.stripBg);
+    // Build the line as continued text so the code can be styled inline.
+    const prefix = `You can verify the authenticity of this report using report number ${reportId} and the following Verification Code: `;
+    // Center horizontally — measure widths to compute starting x.
+    doc.fillColor(COLOR.bodyText).font('Helvetica').fontSize(vs.fontSize);
+    const prefixW = doc.widthOfString(prefix);
+    doc.font('Helvetica-Bold');
+    const codeW = doc.widthOfString(verificationCode);
+    const totalW = prefixW + codeW;
+    const startX = Math.max(M, (PW - totalW) / 2);
+    doc
+      .fillColor(COLOR.bodyText)
+      .font('Helvetica')
+      .fontSize(vs.fontSize)
+      .text(prefix, startX, vs.y + 5, {
+        lineBreak: false,
+        continued: true,
+      });
+    doc
+      .fillColor(COLOR.linkRed)
+      .font('Helvetica-Bold')
+      .text(verificationCode, { lineBreak: false, underline: true });
+  }
+
+  // Reset doc.y to the bottom of the verification strip + spacing.
+  doc.y = PDF_LAYOUT.header.verifyStrip.y + PDF_LAYOUT.header.verifyStrip.height + 8;
+
+  // ── Section 1 — Property Information ──────────────────────────────────
+  drawSectionBanner('Property Information');
+  {
+    const sectionY = doc.y;
+    const map = PDF_LAYOUT.property.map;
+    const text = PDF_LAYOUT.property.text;
+
+    // Left: roadmap of the property
+    const propertyMap = await propertyMapPromise;
+    if (propertyMap) {
+      try {
+        doc.image(propertyMap, map.x, sectionY, {
+          width: map.w,
+          height: map.h,
+        });
+        doc
+          .rect(map.x, sectionY, map.w, map.h)
+          .strokeColor(COLOR.borderGray)
+          .lineWidth(0.5)
+          .stroke();
+      } catch (err) {
+        console.warn('[reportPdf] property map embed failed:', (err as Error).message);
+        doc.rect(map.x, sectionY, map.w, map.h).fill(COLOR.stripBg);
+      }
+    } else {
+      // Map fetch failed — leave a light gray placeholder so the layout
+      // stays balanced; address column carries the property identity.
+      doc.rect(map.x, sectionY, map.w, map.h).fill(COLOR.stripBg);
+    }
+
+    // Right: Property Address + Customer Info
+    let yt = sectionY;
+    doc
+      .fillColor(COLOR.bodyText)
+      .font('Helvetica-Bold')
+      .fontSize(9.5)
+      .text('Property Address:', text.x, yt, { width: text.w });
+    yt += 13;
+
+    // Parse "112 Levenbury Pl, Hamilton, VA 20158" → line1 + line2.
+    const addressParts = req.address
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const line1 = addressParts[0] ?? req.address;
+    const line2 =
+      addressParts.length >= 2
+        ? addressParts.slice(1).join(', ')
+        : '';
+    doc
+      .fillColor(COLOR.bodyText)
+      .font('Helvetica')
+      .fontSize(9.5)
+      .text(line1, text.x, yt, { width: text.w });
+    yt += 12;
+    if (line2) {
+      doc.text(line2, text.x, yt, { width: text.w });
+      yt += 12;
+    }
+
+    // Customer Info subsection — only when customerName is provided.
+    if (req.customerName && req.customerName.trim().length > 0) {
+      yt += 8; // spacer
+      doc
+        .fillColor(COLOR.linkRed)
+        .font('Helvetica-Bold')
+        .fontSize(9.5)
+        .text('Customer Info:', text.x, yt, { width: text.w });
+      yt += 13;
+      doc
+        .fillColor(COLOR.bodyText)
+        .font('Helvetica')
+        .fontSize(9.5)
+        .text(req.customerName.trim(), text.x, yt, { width: text.w });
+      yt += 12;
+    }
+
+    // Push doc.y past whichever side ended lower.
+    doc.y = Math.max(yt + 6, sectionY + map.h + 6);
+  }
 
   // ── Build the Property Hail Hit History dataset early ─────────────────
   // This data drives both the Top "Hail Hit History" section (tier-
