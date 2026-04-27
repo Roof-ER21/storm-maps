@@ -878,6 +878,11 @@ function MapContent({
   const [liveNexradTick, setLiveNexradTick] = useState(0);
   const [showMrms, setShowMrms] = useState(false);
   const [mapTypeId, setMapTypeId] = useState<'roadmap' | 'satellite'>('roadmap');
+  // Collapse the map-control rail to the 3 buttons reps actually use
+  // (Satellite/MRMS/Radar). Power-rep toggles (mPING, CoCoRaHS, Meso,
+  // Stations, Live Cells, Sketch, LIVE, Heat Map) live behind a "More"
+  // expander so the default rail matches IHM-style simplicity.
+  const [showAdvancedLayers, setShowAdvancedLayers] = useState(false);
   const [mrmsProduct, setMrmsProduct] =
     useState<MrmsOverlayProduct>('mesh1440');
   const [mrmsMeta, setMrmsMeta] = useState<MrmsStatus | null>(null);
@@ -2044,6 +2049,27 @@ function MapContent({
               {showNexrad && !selectedDate ? 'LIVE' : 'Radar'}
             </div>
           </button>
+          {/* "More layers" expander — gates the power-rep toggles behind
+              one click so the default rail stays IHM-clean. */}
+          <button
+            onClick={() => setShowAdvancedLayers((v) => !v)}
+            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
+              showAdvancedLayers
+                ? 'bg-stone-700 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+            title={
+              showAdvancedLayers
+                ? 'Hide advanced layers'
+                : 'Show advanced layers (mPING, CoCoRaHS, Meso, Stations, Live Cells, Sketch, LIVE, Heat Map)'
+            }
+            aria-label="Toggle advanced layers"
+            aria-expanded={showAdvancedLayers}
+          >
+            {showAdvancedLayers ? 'Less' : 'More'}
+          </button>
+
+          {showAdvancedLayers && (<>
           {/*
             mPING toggle — crowd-sourced hail/wind/tornado reports from
             NSSL's mPING phone app. Hail=red, wind=blue, tornado=purple.
@@ -2206,6 +2232,7 @@ function MapContent({
               Heat Map
             </button>
           )}
+          </>)}
         </div>
       </MapControl>
     </>
