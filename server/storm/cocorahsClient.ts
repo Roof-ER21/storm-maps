@@ -21,6 +21,14 @@ const COCORAHS_BASE =
   'https://data.cocorahs.org/cocorahs/export/exporthailreports.aspx';
 const FETCH_TIMEOUT_MS = 20_000;
 
+// CoCoRaHS endpoint started returning HTTP 404 site-wide around April 2026
+// (the export path is gone). Until we find the replacement we short-circuit
+// the requests so the prewarm scheduler doesn't fire 7 dead requests per
+// candidate date — both for log hygiene and to save the round trips. One
+// "endpoint offline" log per process boot replaces the per-call spam.
+let endpointOffline = false;
+let offlineLogged = false;
+
 export interface CocorahsHailReport {
   /** ISO 8601 timestamp. */
   time: string;
@@ -51,6 +59,7 @@ function formatDateMmDdYyyy(isoDate: string): string {
 export async function fetchCocorahsHailReports(
   q: CocorahsQuery,
 ): Promise<CocorahsHailReport[]> {
+  if (endpointOffline) return [];
   const params = new URLSearchParams({
     ReportDateType: 'ReportDate',
     Format: 'CSV',
@@ -66,16 +75,23 @@ export async function fetchCocorahsHailReports(
       headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
     });
     clearTimeout(timer);
-    if (!res.ok) {
-      // CoCoRaHS occasionally returns 500 or HTML error pages — log + empty.
-      console.warn(`[cocorahs] HTTP ${res.status} for ${q.state} ${q.date}`);
+    if (res.status === 404) {
+      // Endpoint is dead — flip the kill switch so subsequent calls in
+      // this process skip the network entirely. Log once.
+      endpointOffline = true;
+      if (!offlineLogged) {
+        offlineLogged = true;
+        console.warn(
+          '[cocorahs] endpoint returns 404 — disabling source for this process',
+        );
+      }
       return [];
     }
+    if (!res.ok) return [];
     const text = await res.text();
     if (!text || text.trim().length < 50) return [];
     return parseCocorahsCsv(text, q.bbox);
-  } catch (err) {
-    console.warn('[cocorahs] fetch failed:', (err as Error).message);
+  } catch {
     return [];
   }
 }

@@ -19,6 +19,13 @@
  */
 
 const MPING_BASE = 'https://mping.ou.edu/mping/api/v2/reports/';
+
+// mPING endpoint started returning HTTP 404 around April 2026 — same
+// pattern as the CoCoRaHS export-aspx removal. Until upstream comes back
+// (or we find the new URL) we short-circuit further requests in-process
+// to keep the prewarm scheduler quiet and save round trips.
+let endpointOffline = false;
+let offlineLogged = false;
 const FETCH_TIMEOUT_MS = 15_000;
 
 export interface MpingReport {
@@ -109,6 +116,7 @@ export interface MpingQuery {
 
 export async function fetchMpingReports(q: MpingQuery): Promise<MpingReport[]> {
   if (!isMpingConfigured()) return [];
+  if (endpointOffline) return [];
   const token = getToken();
   const params = new URLSearchParams({
     obtime_gte: q.startUtc.toISOString(),
@@ -140,8 +148,15 @@ export async function fetchMpingReports(q: MpingQuery): Promise<MpingReport[]> {
         },
       });
       clearTimeout(timer);
+      if (res.status === 404) {
+        endpointOffline = true;
+        if (!offlineLogged) {
+          offlineLogged = true;
+          console.warn('[mping] endpoint returns 404 — disabling source for this process');
+        }
+        return all;
+      }
       if (!res.ok) {
-        console.warn(`[mping] HTTP ${res.status} on page ${pages}`);
         return all;
       }
       const data = (await res.json()) as MpingApiResponse;
