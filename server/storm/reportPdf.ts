@@ -251,6 +251,48 @@ async function fetchStaticBasemap(
  * extra metadata round-trip (the precheck added a race window that
  * sometimes failed under concurrent load).
  */
+/**
+ * Fetch a Google Static Maps satellite/aerial tile centered on the
+ * property. Used as the page-1 hero banner per the 2026-04-27 meeting —
+ * "Hail Trace–style" header. Smaller geographic span than the
+ * fetchStaticBasemap that backs the swath panel (this is meant to look
+ * like an aerial of the property itself, not the surrounding storm
+ * region), so we hard-code zoom 19 — close enough to see the roof and
+ * still resolves cleanly across rural and dense urban addresses.
+ */
+async function fetchSatelliteAerial(
+  lat: number,
+  lng: number,
+  width: number,
+  height: number,
+): Promise<Buffer | null> {
+  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
+  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
+  const sizeH = Math.min(640, Math.max(80, Math.round(height)));
+  const params = new URLSearchParams({
+    center: `${lat.toFixed(6)},${lng.toFixed(6)}`,
+    zoom: '19',
+    size: `${sizeW}x${sizeH}`,
+    scale: '2',
+    maptype: 'satellite',
+    key: GOOGLE_STATIC_MAPS_API_KEY,
+  });
+  try {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8_000);
+    const res = await fetch(
+      `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
+      { signal: ac.signal },
+    );
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const ab = await res.arrayBuffer();
+    return Buffer.from(ab);
+  } catch {
+    return null;
+  }
+}
+
 async function fetchStreetViewImage(
   lat: number,
   lng: number,
@@ -402,6 +444,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     new Promise<null>((resolve) => setTimeout(() => resolve(null), 25_000)),
   ]);
 
+  // 2026-04-27 meeting — Hail-Trace-style header banner. Satellite/aerial
+  // of the property starts fetching now so it's ready by the time we
+  // render the header. 6s timeout, falls back to no banner if Google is
+  // unreachable (rather than blocking PDF gen indefinitely).
+  const satelliteHeroPromise: Promise<Buffer | null> = Promise.race([
+    fetchSatelliteAerial(req.lat, req.lng, 1100, 200),
+    new Promise<null>((resolve) => setTimeout(() => resolve(null), 6_000)),
+  ]);
+
   // 1. Resolve events (fall through to cached aggregator if not passed).
   let events = req.events;
   if (!events) {
@@ -542,6 +593,49 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .text('Storm Impact Analysis', M, 11, { width: CW, align: 'center' });
   doc.y = headerBannerH + 12;
 
+  // ── Property aerial hero banner (2026-04-27 meeting) ──────────────────
+  // Satellite tile of the property with the address overlaid at the
+  // bottom — gives the report the "Hail Trace look" Ahmed asked for and
+  // collapses the redundant property-summary line below into the hero.
+  // Falls through cleanly when the Google Static Maps fetch times out.
+  const satelliteHero = await satelliteHeroPromise;
+  if (satelliteHero) {
+    const heroH = 110;
+    const heroY = headerBannerH;
+    try {
+      doc.image(satelliteHero, 0, heroY, { width: PW, height: heroH });
+    } catch {
+      // Defensive — bad image bytes shouldn't kill the PDF
+    }
+    // Translucent dark scrim across the bottom strip so the address text
+    // stays legible against bright satellite imagery.
+    const scrimH = 32;
+    doc.save();
+    doc.rect(0, heroY + heroH - scrimH, PW, scrimH).fillOpacity(0.55).fill('#000000');
+    doc.restore();
+    doc.fillOpacity(1);
+    doc
+      .fontSize(11)
+      .fillColor('#ffffff')
+      .font('Helvetica-Bold')
+      .text(req.address, M, heroY + heroH - scrimH + 6, {
+        width: CW,
+        ellipsis: true,
+        lineBreak: false,
+      });
+    doc
+      .fontSize(8)
+      .fillColor('#cbd5e1')
+      .font('Helvetica')
+      .text(
+        `Date of Loss: ${req.dateOfLoss}  ·  Search radius: ${req.radiusMiles} mi`,
+        M,
+        heroY + heroH - scrimH + 19,
+        { width: CW, lineBreak: false },
+      );
+    doc.y = heroY + heroH + 10;
+  }
+
   // Sub-header: report metadata (left) + prepared by (right).
   const subY = doc.y;
   doc.fontSize(8.5).fillColor(C.lightText).font('Helvetica');
@@ -594,16 +688,27 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .stroke();
   doc.moveDown(0.4);
 
-  // Property summary line — what the report is about.
-  doc.fontSize(10).fillColor(C.text).font('Helvetica-Bold');
-  doc.text(`Property: ${req.address}`, M, doc.y, { width: CW });
-  doc.font('Helvetica').fillColor(C.lightText).fontSize(9);
-  doc.text(
-    `Date of Loss: ${req.dateOfLoss}  ·  Search radius: ${req.radiusMiles} mi  ·  Prepared for ${req.company.name}`,
-    M,
-    doc.y,
-    { width: CW },
-  );
+  // Property summary — when the satellite hero banner rendered, the
+  // address + date-of-loss already live in the banner, so we only
+  // surface the "Prepared for" attribution here. Hero-failed fallback:
+  // print the full property summary line as before.
+  if (satelliteHero) {
+    doc
+      .fontSize(9)
+      .fillColor(C.lightText)
+      .font('Helvetica')
+      .text(`Prepared for ${req.company.name}`, M, doc.y, { width: CW });
+  } else {
+    doc.fontSize(10).fillColor(C.text).font('Helvetica-Bold');
+    doc.text(`Property: ${req.address}`, M, doc.y, { width: CW });
+    doc.font('Helvetica').fillColor(C.lightText).fontSize(9);
+    doc.text(
+      `Date of Loss: ${req.dateOfLoss}  ·  Search radius: ${req.radiusMiles} mi  ·  Prepared for ${req.company.name}`,
+      M,
+      doc.y,
+      { width: CW },
+    );
+  }
   doc.moveDown(0.6);
 
   // ── Build the Property Hail Hit History dataset early ─────────────────
