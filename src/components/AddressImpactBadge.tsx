@@ -164,13 +164,16 @@ export default function AddressImpactBadge({
         )}
       </div>
 
-      {/* Per-tier distance bands — matches the PDF table 1:1. */}
+      {/* Per-tier distance bands — matches the PDF table 1:1. 5–10 mi was
+          dropped from the lineup per the 2026-04-27 meeting (Reese:
+          "anything beyond 5 mi is ammunition for the adjuster, not for
+          us"). At-property sub-label shows the strict-bucket boundary
+          (≤0.5 mi) so reps don't expect a 0.6 mi reading to land here. */}
       {bands && tier !== 'no_impact' && (
-        <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl bg-white/70 p-2">
-          <BandCell label="At Property" sub="0–1 mi" value={bands.atProperty} />
+        <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-white/70 p-2">
+          <BandCell label="At Property" sub="≤0.5 mi" value={bands.atProperty} />
           <BandCell label="1–3 mi" value={bands.mi1to3} />
           <BandCell label="3–5 mi" value={bands.mi3to5} />
-          <BandCell label="5–10 mi" value={bands.mi5to10} />
         </div>
       )}
     </div>
