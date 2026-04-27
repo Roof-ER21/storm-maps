@@ -196,7 +196,7 @@ async function readCandidateDates(
        )
      GROUP BY event_date
      ORDER BY event_date DESC
-     LIMIT ${args.limit}
+     LIMIT ${Number.isFinite(args.limit) ? args.limit : 100000}
   `;
 
   return rows.map((row) => ({

@@ -1246,6 +1246,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const stormMax = collection?.metadata.maxHailInches ?? peakHail;
   const headlineHailDay = Math.max(stormMax, peakHail);
 
+  // Banner (26) + card (70) + bottom spacing (16) = 112pt block. If the page
+  // can't hold all of it, force a page break first; otherwise PDFKit auto-
+  // paginates each individual text() call inside the card and we end up with
+  // single-fragment orphan pages.
+  if (doc.y + 26 + 70 + 16 > BOTTOM) doc.addPage();
   drawSectionBanner(`Storm Summary — ${req.dateOfLoss}`);
   const sumX = 54;
   const sumY = doc.y;
