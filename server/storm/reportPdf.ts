@@ -1794,6 +1794,247 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
+  // ── Section 4 — Ground Observations - Hail ────────────────────────────
+  // ── Section 5 — Ground Observations - Wind ────────────────────────────
+  //
+  // Both pull from histNceiRows (already fetched at line ~810), filtered
+  // to date-of-loss + within radiusMiles + PRIMARY source rows. Source
+  // labels are mapped to display names per spec:
+  //   iem-lsr / nws-lsr / ncei-storm-events  → "NOAA"
+  //   mrms / nexrad-mrms                      → "NEXRAD"
+  // Hail size renders via displayHailIn with a per-row VerificationContext
+  // computed against THAT row's primary reports — never inherits the
+  // property-level ctx so a single mPING-only sighting still caps at 2.0".
+  {
+    type GroundRow = {
+      iso: string;
+      sourceLabel: 'NOAA' | 'NEXRAD';
+      magnitudeRaw: number; // hail in inches; wind in mph or kts (numeric)
+      magnitudeUnit?: 'kts' | 'mph'; // wind only
+      distanceMi: number;
+      narrative: string;
+      eventType: 'Hail' | 'Thunderstorm Wind';
+      sourceFlags: SourceFlags;
+    };
+
+    /** Map a primary-source label to the rep-facing display name. */
+    const displaySourceFor = (r: SourceFlags): 'NOAA' | 'NEXRAD' | null => {
+      // mrms / nexrad-mrms — NEXRAD branding
+      if (r.source_ncei_storm_events) return 'NOAA';
+      if (r.source_iem_lsr) return 'NOAA';
+      if (r.source_nws_warnings) return 'NOAA';
+      // No explicit MRMS source flag in this row shape; primary radar
+      // source is the swath_cache injection, which is presented as
+      // 'mrms' string in primaryAtProperty/Mi1to3/Mi3to5 arrays — not
+      // present here. So if no NOAA flag is set, fall through to null.
+      return null;
+    };
+
+    /** Build per-row verification context. The "row" here is one ground
+     *  observation; we treat its source as a single-source primary
+     *  report at its own raw size so bandVerification can still gate
+     *  the cap (≥3 distinct primary sources or Sterling allow-list). */
+    const rowVerificationCtx = (
+      r: GroundRow,
+      label: 'NOAA' | 'NEXRAD',
+    ): VerificationContext => {
+      const reports = [
+        { source: label === 'NEXRAD' ? 'mrms' : 'iem-lsr', sizeIn: r.magnitudeRaw },
+      ];
+      return bandVerification(reports, r.iso.slice(0, 10), req.lat, req.lng);
+    };
+
+    const datedHailRows: GroundRow[] = [];
+    const datedWindRows: GroundRow[] = [];
+
+    for (const r of histNceiRows) {
+      const dateIso = typeof r.event_date === 'string'
+        ? r.event_date.slice(0, 10)
+        : String(r.event_date).slice(0, 10);
+      if (dateIso !== req.dateOfLoss) continue;
+      if (r.event_type !== 'Hail' && r.event_type !== 'Thunderstorm Wind') continue;
+      const lat = typeof r.lat === 'number' ? r.lat : Number(r.lat);
+      const lng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const dist = haversineMiles(req.lat, req.lng, lat, lng);
+      if (dist > req.radiusMiles) continue;
+      const label = displaySourceFor(r);
+      if (label === null) continue; // primary-only filter
+      const mag = r.magnitude;
+      if (mag === null || !Number.isFinite(mag) || mag <= 0) continue;
+      const narrative = (r.narrative ?? '').trim();
+      const iso = r.begin_time_utc ?? `${dateIso}T12:00:00Z`;
+      const row: GroundRow = {
+        iso,
+        sourceLabel: label,
+        magnitudeRaw: mag,
+        distanceMi: dist,
+        narrative,
+        eventType: r.event_type,
+        sourceFlags: r,
+      };
+      if (r.event_type === 'Hail') datedHailRows.push(row);
+      else datedWindRows.push(row);
+    }
+
+    // Sort newest-first by event time.
+    datedHailRows.sort((a, b) => new Date(b.iso).getTime() - new Date(a.iso).getTime());
+    datedWindRows.sort((a, b) => new Date(b.iso).getTime() - new Date(a.iso).getTime());
+
+    /** Format the row's date+time as two stacked lines: "M/D/YYYY" and
+     *  "h:mm A z" — fits the 80pt-wide "Date / Time" column. */
+    const fmtDateTwoLines = (iso: string): { d1: string; d2: string } => {
+      const t = new Date(iso);
+      if (Number.isNaN(t.getTime())) return { d1: '—', d2: '' };
+      const d1 = t.toLocaleDateString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      const d2 = t.toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short',
+      });
+      return { d1, d2 };
+    };
+
+    /** Render one ground-observations table. Returns the y-coord below
+     *  the last row. Auto-paginates with a header redraw if needed. */
+    const drawGroundTable = (
+      banner: string,
+      caption: string,
+      rows: GroundRow[],
+      kind: 'hail' | 'wind',
+    ): void => {
+      if (rows.length === 0) return; // omit empty section per spec
+      drawSectionBanner(banner);
+      // Sub-caption
+      doc
+        .fillColor(COLOR.labelGray)
+        .font('Helvetica')
+        .fontSize(8)
+        .text(caption, M, doc.y + 2, { width: CW });
+      doc.moveDown(0.5);
+
+      const cols = kind === 'hail'
+        ? PDF_LAYOUT.groundObs.cols.hail
+        : PDF_LAYOUT.groundObs.cols.wind;
+      const HEADER_H = PDF_LAYOUT.groundObs.headerHeight;
+      const BODY_H = PDF_LAYOUT.groundObs.bodyRowHeight;
+      const PAD = PDF_LAYOUT.groundObs.cellPad;
+
+      let yt = doc.y;
+      // Outer table top border + header background
+      doc.rect(M, yt, CW, HEADER_H).fill(COLOR.bannerBg);
+      doc.fillColor(COLOR.labelGray).font('Helvetica-Bold').fontSize(PDF_LAYOUT.groundObs.headerFontSize);
+      for (const col of cols) {
+        doc.text(col.label, col.x + PAD.left, yt + PAD.top + 1, {
+          width: col.w - PAD.left * 2,
+          lineBreak: false,
+        });
+      }
+      yt += HEADER_H;
+
+      // Body rows — slice to a sensible cap (10 hail / 5 wind) per spec.
+      const maxRows = kind === 'hail' ? 10 : 5;
+      const rendered = rows.slice(0, maxRows);
+
+      for (const r of rendered) {
+        // Auto-paginate before drawing the row if it won't fit.
+        if (yt + BODY_H > BOTTOM - 8) {
+          doc.addPage();
+          // Re-render banner on continuation page so the table identifies itself.
+          drawSectionBanner(`${banner} (continued)`);
+          yt = doc.y;
+          doc.rect(M, yt, CW, HEADER_H).fill(COLOR.bannerBg);
+          doc.fillColor(COLOR.labelGray).font('Helvetica-Bold').fontSize(PDF_LAYOUT.groundObs.headerFontSize);
+          for (const col of cols) {
+            doc.text(col.label, col.x + PAD.left, yt + PAD.top + 1, {
+              width: col.w - PAD.left * 2,
+              lineBreak: false,
+            });
+          }
+          yt += HEADER_H;
+        }
+
+        // Cell text. Date column gets two lines; size/wind/distance get
+        // one line each; comments wraps with ellipsis to fit body row.
+        const dt = fmtDateTwoLines(r.iso);
+        doc.fillColor(COLOR.bodyText).font('Helvetica').fontSize(PDF_LAYOUT.groundObs.bodyFontSize);
+        for (const col of cols) {
+          const cellX = col.x + PAD.left;
+          const cellW = col.w - PAD.left * 2;
+          const cellY = yt + PAD.top;
+          if (col.key === 'datetime') {
+            doc.text(dt.d1, cellX, cellY, { width: cellW, lineBreak: false });
+            doc.text(dt.d2, cellX, cellY + 11, { width: cellW, lineBreak: false });
+          } else if (col.key === 'source') {
+            doc.text(r.sourceLabel, cellX, cellY, { width: cellW, lineBreak: false });
+          } else if (col.key === 'size') {
+            const ctx = rowVerificationCtx(r, r.sourceLabel);
+            doc.text(displayHailIn(r.magnitudeRaw, ctx), cellX, cellY, {
+              width: cellW,
+              lineBreak: false,
+            });
+          } else if (col.key === 'speed') {
+            // Wind: report kts when source is NEXRAD/ASOS-style; mph
+            // for LSR. We don't carry that distinction in the row shape
+            // here, so default to mph (matches the existing legacy
+            // column). Reps can spot-check the comments column for
+            // unit ambiguity. Spec line 130 calls for unit-preservation
+            // — future improvement when we ingest unit metadata.
+            doc.text(`${Math.round(r.magnitudeRaw)} mph`, cellX, cellY, {
+              width: cellW,
+              lineBreak: false,
+            });
+          } else if (col.key === 'distance') {
+            doc.text(`${r.distanceMi.toFixed(1)} miles`, cellX, cellY, {
+              width: cellW,
+              lineBreak: false,
+            });
+          } else if (col.key === 'comments') {
+            doc.text(r.narrative || '', cellX, cellY, {
+              width: cellW,
+              height: BODY_H - PAD.top - 2,
+              ellipsis: true,
+            });
+          }
+        }
+        // Row bottom hairline divider
+        doc
+          .moveTo(M, yt + BODY_H)
+          .lineTo(M + CW, yt + BODY_H)
+          .strokeColor(COLOR.borderGray)
+          .lineWidth(0.5)
+          .stroke();
+        yt += BODY_H;
+      }
+
+      // Outer table border (top is implicit via header fill; sides + bottom)
+      doc
+        .rect(M, doc.y - HEADER_H * 0, CW, 0)
+        .strokeColor(COLOR.borderGray);
+      doc.y = yt + 8;
+    };
+
+    drawGroundTable(
+      'Ground Observations - Hail',
+      `On-the-ground hail observations reported near the property located at ${req.address} (Property)`,
+      datedHailRows,
+      'hail',
+    );
+    drawGroundTable(
+      'Ground Observations - Wind',
+      `On-the-ground damaging wind observations reported near the property located at ${req.address} (Property)`,
+      datedWindRows,
+      'wind',
+    );
+  }
+
   // ── Storm summary (SA21 layout: 2 large cards, orange numbers) ───────
   // Damage Score card removed per user feedback — a "0/100 Low" headline
   // killed credibility on properties where the date-of-loss had no
@@ -2071,72 +2312,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }
   doc.y = legendStripY + 18;
 
-  // ── Event detail table ────────────────────────────────────────────────
-  // Sort all reports up front; render until we're out of page space, then
-  // continue on a new page with a re-drawn header. No truncation — every
-  // documented gust/hail report ends up in the PDF.
-  const sortedEvents = [...datedEvents].sort(
-    (a, b) =>
-      b.magnitude - a.magnitude ||
-      Date.parse(b.beginDate) - Date.parse(a.beginDate),
-  );
-
-  const tableBottom = 720; // leave space above the footer
-  const drawTableHeader = (yStart: number): number => {
-    doc.font('Helvetica-Bold').fontSize(8).fillColor('#475569');
-    doc.text('Time (ET)', 54, yStart);
-    doc.text('Type', 130, yStart);
-    doc.text('Magnitude', 200, yStart);
-    doc.text('Location', 280, yStart);
-    doc.text('Source', 470, yStart);
-    doc
-      .strokeColor('#e2e8f0')
-      .lineWidth(0.5)
-      .moveTo(54, yStart + 12)
-      .lineTo(558, yStart + 12)
-      .stroke();
-    return yStart + 16;
-  };
-
-  if (sortedEvents.length > 0) {
-    drawSectionBanner('Documented Storm Reports');
-    doc.fontSize(9).font('Helvetica').fillColor('#64748b');
-    doc.text(
-      `${sortedEvents.length} report${sortedEvents.length === 1 ? '' : 's'} on ${req.dateOfLoss}, sorted by magnitude.`,
-    );
-    doc.moveDown(0.3);
-    let rowY = drawTableHeader(doc.y);
-
-    for (const e of sortedEvents) {
-      if (rowY > tableBottom) {
-        doc.addPage();
-        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold').text('Reports (continued)');
-        doc.moveDown(0.3);
-        rowY = drawTableHeader(doc.y);
-      }
-      const time = new Date(e.beginDate).toLocaleTimeString('en-US', {
-        timeZone: 'America/New_York',
-        hour: 'numeric',
-        minute: '2-digit',
-      });
-      doc.font('Helvetica').fontSize(8).fillColor('#0f172a');
-      doc.text(time, 54, rowY);
-      doc.text(e.eventType === 'Hail' ? 'Hail' : 'Wind', 130, rowY);
-      const mag =
-        e.eventType === 'Hail'
-          ? `${e.magnitude.toFixed(2)}"`
-          : `${Math.round(e.magnitude)} mph`;
-      doc.text(mag, 200, rowY);
-      const loc =
-        `${e.county || ''}${e.state ? ', ' + e.state : ''}` ||
-        `${e.beginLat.toFixed(2)}, ${e.beginLon.toFixed(2)}`;
-      doc.text(loc.slice(0, 40), 280, rowY, { width: 180 });
-      doc
-        .fillColor('#64748b')
-        .text(e.source || '', 470, rowY, { width: 88, lineBreak: false });
-      rowY += 14;
-    }
-  }
+  // (Legacy "Documented Storm Reports" wall-of-events table removed in
+  // Phase 4 of the 2026-04-27 redesign — replaced by the focused Ground
+  // Observations - Hail / - Wind tables earlier in the document. Reps
+  // and adjusters get the same primary-source rows in the new layout
+  // with cleaner styling + capped sizes via the per-row VerificationContext.)
 
   // ── Active NWS Warnings (SA21 layout) ────────────────────────────────
   // Per-warning panel: NEXRAD reflectivity image (left) + warning details
