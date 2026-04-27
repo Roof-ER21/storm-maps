@@ -1275,7 +1275,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const sumCards: SumCard[] = [
     {
       label: 'LARGEST HAIL (DAY)',
-      value: headlineHailDay > 0 ? `${headlineHailDay.toFixed(2)}"` : '—',
+      value: headlineHailDay > 0 ? displayHailIn(headlineHailDay) : '—',
       sub: stormMax >= peakHail ? 'MRMS MESH radar' : 'SPC + IEM LSR ground reports',
     },
     {
