@@ -75,16 +75,28 @@ export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport
     });
     clearTimeout(timer);
     if (!res.ok) {
-      console.warn(`[swdi] HTTP ${res.status}`);
+      // SWDI is supplemental and frequently returns 500 from NCEI's side
+      // (it's notoriously flaky). Log once per process status code so we
+      // know the source dropped, but don't spam every cycle.
+      if (!swdiHttpWarned.has(res.status)) {
+        swdiHttpWarned.add(res.status);
+        console.warn(`[swdi] HTTP ${res.status} — suppressing further warnings for this status`);
+      }
       return [];
     }
     const csv = await res.text();
     return parseSwdiCsv(csv, q.minSeverePct ?? 30, q.minSizeInches ?? 0.5);
   } catch (err) {
-    console.warn('[swdi] fetch failed:', (err as Error).message);
+    if (!swdiFetchWarned) {
+      swdiFetchWarned = true;
+      console.warn('[swdi] fetch failed (suppressing further):', (err as Error).message);
+    }
     return [];
   }
 }
+
+const swdiHttpWarned = new Set<number>();
+let swdiFetchWarned = false;
 
 function parseSwdiCsv(
   csv: string,

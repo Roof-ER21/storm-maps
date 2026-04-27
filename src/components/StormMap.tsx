@@ -36,7 +36,8 @@ import SynopticLayer from './SynopticLayer';
 import ParcelLayer from './ParcelLayer';
 import SketchLayer from './SketchLayer';
 import LiveStormCellsLayer from './LiveStormCellsLayer';
-import HeatmapLayer from './HeatmapLayer';
+// HeatmapLayer import removed — Google deprecated the visualization
+// library's heatmap. See comment near former mount site below.
 import NexradOverlay from './NexradOverlay';
 import MRMSOverlay from './MRMSOverlay';
 import GpsTracker from './GpsTracker';
@@ -631,9 +632,10 @@ function MapContent({
   onLeadPinClick,
   evidencePins,
   onEvidencePinClick,
-  heatmapPoints,
-  showHeatmap,
-  onToggleHeatmap,
+  // heatmapPoints / showHeatmap / onToggleHeatmap intentionally unused —
+  // Google deprecated visualization.HeatmapLayer (May 2025, removal May
+  // 2026). Props remain in the interface so callers don't need to be
+  // edited in lockstep, but no UI consumes them.
   windEnabled,
   windStates,
   propertyMarker,
@@ -1477,11 +1479,13 @@ function MapContent({
         );
       })}
 
-      {/* Heatmap overlay — real Google Maps visualization layer */}
-      <HeatmapLayer
-        points={heatmapPoints || []}
-        visible={Boolean(showHeatmap && heatmapPoints && heatmapPoints.length > 0)}
-      />
+      {/* Heatmap overlay removed — Google deprecated HeatmapLayer in May
+          2025 and it's slated for removal in May 2026 (per the runtime
+          warning in DevTools). The fuzzy heat-blob look was also visually
+          competing with the MRMS vector swath polygons that adjusters
+          actually want to see. The polygons render via HailSwathLayer
+          below. heatmapPoints / showHeatmap stay in the prop chain for
+          now to minimize blast radius — they just don't drive any UI. */}
 
       {/* Searched-property pin — always rendered above storm/lead/evidence
           markers so the rep can see exactly which house was searched. */}
@@ -1959,20 +1963,7 @@ function MapContent({
               LIVE
             </div>
           </button>
-          {onToggleHeatmap && (
-            <button
-              onClick={onToggleHeatmap}
-              className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
-                showHeatmap
-                  ? 'bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white'
-                  : 'bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-              title={showHeatmap ? 'Hide heat map' : 'Show heat map'}
-              aria-label="Toggle heat map"
-            >
-              Heat Map
-            </button>
-          )}
+          {/* Heat Map toggle removed — see top-of-file comment. */}
           </>)}
         </div>
       </MapControl>

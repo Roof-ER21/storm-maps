@@ -2961,7 +2961,9 @@ function App() {
   ) : HAS_API_KEY ? (
     <APIProvider
       apiKey={API_KEY}
-      libraries={['visualization']}
+      // visualization library dropped — only used the deprecated
+      // HeatmapLayer (Google deprecated May 2025, removal May 2026).
+      // Saves a JS payload round-trip on first load.
       authReferrerPolicy="origin"
       onLoad={() => setMapLoadError(null)}
       onError={(error) => {
