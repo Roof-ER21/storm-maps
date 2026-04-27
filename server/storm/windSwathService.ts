@@ -212,8 +212,8 @@ export async function buildWindSwathCollection(
   ]);
 
   if (spcReports.length > 0) sources.push('SPC');
-  if (iemReports.length > 0) sources.push('IEM-LSR');
-  if (livePolys.length > 0) sources.push('NWS-SVR');
+  if (iemReports.length > 0) sources.push('IEM LSR');
+  if (livePolys.length > 0) sources.push('NWS SVR');
 
   const liveCentroids = svrPolygonsAsReports(livePolys);
   const all = [...spcReports, ...iemReports, ...liveCentroids].filter(

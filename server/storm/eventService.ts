@@ -492,8 +492,8 @@ export async function fetchStormEventsCached(
       states: params.states,
     }).catch(() => []),
   ]);
-  if (iemHail.length > 0) sources.add('IEM-LSR');
-  if (iemWind.length > 0) sources.add('IEM-LSR');
+  if (iemHail.length > 0) sources.add('IEM LSR');
+  if (iemWind.length > 0) sources.add('IEM LSR');
   for (const r of iemHail) allEvents.push(hailReportToEvent(r));
   for (const r of iemWind) allEvents.push(windReportToEvent(r));
 

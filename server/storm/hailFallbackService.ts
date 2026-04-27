@@ -212,7 +212,7 @@ export async function buildHailFallbackCollection(
   ]);
 
   if (spcReports.length > 0) sources.push('SPC');
-  if (iemReports.length > 0) sources.push('IEM-LSR');
+  if (iemReports.length > 0) sources.push('IEM LSR');
 
   const all = [...spcReports, ...iemReports]
     .filter((r) => Number.isFinite(r.sizeInches) && r.sizeInches > 0)

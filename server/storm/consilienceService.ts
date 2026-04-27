@@ -561,7 +561,12 @@ function analyzeWindReports(
     },
     Number.POSITIVE_INFINITY,
   );
-  const sources = [...new Set(reports.map((r) => r.source))];
+  // Internal point-data labels use hyphenated forms (`'IEM-LSR'`, `'NWS-SVR'`)
+  // to match types.ts unions. Normalize to space-form for adjuster-facing
+  // text so the methodology vocabulary stays consistent.
+  const normalizeSource = (s: string): string =>
+    s === 'IEM-LSR' ? 'IEM LSR' : s === 'NWS-SVR' ? 'NWS SVR' : s;
+  const sources = [...new Set(reports.map((r) => normalizeSource(r.source)))];
   // Insurance-actionable wind threshold: ≥58 mph.
   const confirmed = peak >= 58;
   const evidence = confirmed
