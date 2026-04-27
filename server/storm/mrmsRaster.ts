@@ -184,6 +184,14 @@ function gridToPng(cropped: CroppedGrid): {
   const png = new PNG({ width, height, colorType: 6 }); // RGBA
   let maxMeshMm = 0;
   let hailPixels = 0;
+  // Per-pixel alpha proportional to band severity — trace bands paint
+  // semi-transparent so roads/streets show through (reps need to map
+  // hail intensity to actual streets for door-knocking decisions),
+  // and severe bands paint stronger so the worst cells stand out.
+  // Was a flat 200 alpha → made the swath look like a solid blob with
+  // no street-level granularity. Now linearly ramped 90→200 across the
+  // 13 IHM bands so the basemap stays visible under low-impact areas
+  // and the high-impact cells still pop.
   for (let i = 0; i < values.length; i += 1) {
     const mm = values[i];
     if (mm > maxMeshMm && Number.isFinite(mm)) maxMeshMm = mm;
@@ -191,10 +199,18 @@ function gridToPng(cropped: CroppedGrid): {
     const off = i * 4;
     if (band) {
       hailPixels += 1;
+      // Find the band index to derive alpha (low = transparent, high = opaque).
+      const bandIdx = BAND_RGB.findIndex((b) => b.rgb === band.rgb);
+      const alpha =
+        bandIdx >= 0
+          ? Math.round(
+              90 + (110 * Math.min(bandIdx, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
+            )
+          : 160;
       png.data[off] = band.rgb[0];
       png.data[off + 1] = band.rgb[1];
       png.data[off + 2] = band.rgb[2];
-      png.data[off + 3] = 200; // ~78% opacity — matches the existing overlay feel
+      png.data[off + 3] = alpha;
     } else {
       png.data[off] = 0;
       png.data[off + 1] = 0;
