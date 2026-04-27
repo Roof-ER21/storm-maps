@@ -709,6 +709,27 @@ function App() {
     zoom: DEFAULT_ZOOM,
     bounds: null,
   });
+
+  // Programmatic pan helper. The map is uncontrolled (uses defaultCenter
+  // /defaultZoom to stop the camera-feedback jerk loop) so we can no longer
+  // move it by setting state. Instead we drive the imperative path through
+  // MapViewportController by emitting a tiny-bbox fitBoundsRequest with
+  // maxZoom=desiredZoom — fitBounds + zoom clamp lands the camera exactly
+  // where setCamera({center, zoom}) used to.
+  const panMapTo = useCallback((lat: number, lng: number, zoom: number) => {
+    const eps = 0.0005;
+    setFitBoundsRequest({
+      id: Date.now() + Math.random(),
+      bounds: {
+        north: lat + eps,
+        south: lat - eps,
+        east: lng + eps,
+        west: lng - eps,
+      },
+      padding: 0,
+      maxZoom: zoom,
+    });
+  }, []);
   const [queryLocation, setQueryLocation] = useState<LatLng>(DEFAULT_CENTER);
   const [selectedDate, setSelectedDate] = useState<StormDate | null>(null);
   const [fitBoundsRequest, setFitBoundsRequest] =
@@ -1123,11 +1144,8 @@ function App() {
 
       setSelectedDate(null);
       setQueryLocation({ lat: result.lat, lng: result.lng });
-      setCamera((prev) => ({
-        ...prev,
-        center: { lat: result.lat, lng: result.lng },
-        zoom: getFallbackZoom(result.resultType),
-      }));
+      // Don't drive `setCamera` for the actual move — the map is uncontrolled
+      // now. The fitBoundsRequest below (or panMapTo fallback) pans the map.
       setSearchSummary({
         locationLabel: result.address,
         resultType: result.resultType,
@@ -1146,7 +1164,9 @@ function App() {
         return;
       }
 
-      setFitBoundsRequest(null);
+      // Point search (no viewport) — synthesize a tiny bbox so fitBounds
+      // still drives the camera; without this the uncontrolled map stays put.
+      panMapTo(result.lat, result.lng, getFallbackZoom(result.resultType));
     },
     [
       getFallbackZoom,
@@ -1154,6 +1174,7 @@ function App() {
       getSearchRadiusMiles,
       historyRange,
       sinceDate,
+      panMapTo,
     ],
   );
 
@@ -1817,13 +1838,8 @@ function App() {
       historyPreset: property.historyPreset,
       sinceDate: property.sinceDate,
     });
-    setFitBoundsRequest(null);
-    setCamera((prev) => ({
-      ...prev,
-      center: { lat: property.lat, lng: property.lng },
-      zoom: getFallbackZoom(property.resultType),
-    }));
-  }, [getFallbackZoom]);
+    panMapTo(property.lat, property.lng, getFallbackZoom(property.resultType));
+  }, [getFallbackZoom, panMapTo]);
 
   const focusRouteStop = useCallback((stop: CanvassRouteStop) => {
     const matchingStormDate =
@@ -1831,15 +1847,10 @@ function App() {
 
     setActiveView('map');
     setSelectedDate(matchingStormDate);
-    setFitBoundsRequest(null);
-    setCamera((current) => ({
-      ...current,
-      center: { lat: stop.lat, lng: stop.lng },
-      zoom: Math.max(current.zoom, 13),
-    }));
+    panMapTo(stop.lat, stop.lng, Math.max(camera.zoom, 13));
     setActiveRouteStopId(stop.id);
     setShowRoutePanel(true);
-  }, [filteredStormDates]);
+  }, [filteredStormDates, panMapTo, camera.zoom]);
 
   const handleToggleStormRoute = useCallback((stormDate: StormDate) => {
     const candidateStops = stormRouteCandidatesByDate.get(stormDate.date) || [];
@@ -2747,11 +2758,7 @@ function App() {
         onLeadPinClick={(stop) => {
           setActiveRouteStopId(stop.id);
           setShowRoutePanel(true);
-          setCamera((prev) => ({
-            ...prev,
-            center: { lat: stop.lat, lng: stop.lng },
-            zoom: Math.max(prev.zoom, 15),
-          }));
+          panMapTo(stop.lat, stop.lng, Math.max(camera.zoom, 15));
         }}
         evidencePins={propertyEvidenceItems
           .filter((item) => item.status === 'approved')
@@ -2831,14 +2838,9 @@ function App() {
           <button
             onClick={() => {
               setSelectedDate(null);
-              setFitBoundsRequest(null);
               setSearchSummary(null);
               setQueryLocation({ lat: gpsPosition.lat, lng: gpsPosition.lng });
-              setCamera((prev) => ({
-                ...prev,
-                center: { lat: gpsPosition.lat, lng: gpsPosition.lng },
-                zoom: 14,
-              }));
+              panMapTo(gpsPosition.lat, gpsPosition.lng, 14);
             }}
             className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-violet-600 shadow-lg transition-colors hover:bg-violet-50"
             title="Center map on your location"

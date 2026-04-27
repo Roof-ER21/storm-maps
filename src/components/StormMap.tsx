@@ -2251,8 +2251,17 @@ export default function StormMap({
   return (
     <Map
       id="storm-maps-main"
-      center={{ lat: center.lat, lng: center.lng }}
-      zoom={zoom}
+      // Uncontrolled camera — passing controlled `center`/`zoom` here creates a
+      // feedback loop: every onCameraChanged fires setCamera, which re-renders
+      // this Map with a NEW `{lat, lng}` object literal (referentially distinct
+      // even when values are identical), which @vis.gl re-applies as a fresh
+      // viewport. Result: the map jerks back to the saved value on every
+      // micro-camera update from idle browser repaints.
+      // Programmatic camera moves (search, fitBoundsRequest, route stops)
+      // still work via MapViewportController which calls map.fitBounds()
+      // imperatively — no controlled props needed.
+      defaultCenter={{ lat: center.lat, lng: center.lng }}
+      defaultZoom={zoom}
       mapId="storm-maps-main"
       gestureHandling="greedy"
       mapTypeId="roadmap"
