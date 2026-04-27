@@ -1296,6 +1296,13 @@ function MapContent({
       // logic owns the click event and we skip the API call.
       if (!mrmsHistoricalMode || !historicalMrmsParams) return;
 
+      // Mutually-exclusive popups: opening the point-impact card closes
+      // any selected-event detail card. Per Ahmed (4/27/26), reps were
+      // seeing 2+ popups at once when clicking near a marker, which is
+      // confusing for door-knock decisions.
+      setSelectedEvent(null);
+      setSelectedDistanceMiles(null);
+
       setPointImpact({
         lat,
         lng,
@@ -1331,6 +1338,9 @@ function MapContent({
 
   const handleMarkerClick = useCallback(
     (event: StormEvent) => {
+      // Mutually-exclusive popups — close any open hail-at-this-point
+      // card before opening the event-detail card.
+      setPointImpact(null);
       setSelectedEvent(event);
       setSelectedDistanceMiles(null);
       onMapClick?.(event);
@@ -1378,55 +1388,24 @@ function MapContent({
     fitMapToBounds(map, stormContext.eventBounds, 56);
   }, [map, mrmsHistoricalMode, selectedDate, stormContext.eventBounds]);
 
+  // Removed redundant "nearest event" map-click listener (4/27/26):
+  // every map click was firing BOTH this and the point-impact listener
+  // above, so reps got two InfoWindows side-by-side when clicking
+  // anywhere on the map. Direct AdvancedMarker clicks already route
+  // through handleMarkerClick for event details. Map background clicks
+  // now only show the hail-at-this-point card via the point-impact
+  // listener, which is the right surface for door-knock decisions.
   useEffect(() => {
     if (!map) {
       return;
     }
-
-    const listener = map.addListener('click', (event: google.maps.MapMouseEvent) => {
-      const clickedLat = event.latLng?.lat();
-      const clickedLng = event.latLng?.lng();
-
-      if (
-        clickedLat === undefined ||
-        clickedLng === undefined ||
-        visibleHailEvents.length === 0
-      ) {
-        return;
-      }
-
-      const nearest = [...visibleHailEvents]
-        .map((candidate) => ({
-          event: candidate,
-          distance: haversineDistanceMiles(
-            clickedLat,
-            clickedLng,
-            candidate.beginLat,
-            candidate.beginLon,
-          ),
-        }))
-        .sort((a, b) => {
-          if (Math.abs(a.distance - b.distance) > 0.001) {
-            return a.distance - b.distance;
-          }
-          return (
-            new Date(b.event.beginDate).getTime() -
-            new Date(a.event.beginDate).getTime()
-          );
-        })[0];
-
-      if (!nearest) {
-        return;
-      }
-
-      setSelectedEvent(nearest.event);
-      setSelectedDistanceMiles(Math.round(nearest.distance * 10) / 10);
-      onMapClick?.(nearest.event);
-    });
-
-    return () => {
-      listener.remove();
-    };
+    // Effect intentionally a no-op now — kept around in case we want
+    // to add a different background click behavior later.
+    void visibleHailEvents;
+    void haversineDistanceMiles;
+    void setSelectedEvent;
+    void onMapClick;
+    return () => {};
   }, [map, onMapClick, visibleHailEvents]);
 
   return (
