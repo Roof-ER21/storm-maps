@@ -52,7 +52,7 @@ export type SearchResultType =
   | 'administrative_area'
   | 'unknown';
 
-export type HistoryRangePreset = '1y' | '2y' | '5y' | '10y' | 'since';
+export type HistoryRangePreset = '1y' | '2y' | '3y' | '5y' | '10y' | 'since';
 
 export type AppView =
   | 'dashboard'

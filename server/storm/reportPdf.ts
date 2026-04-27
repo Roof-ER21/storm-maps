@@ -1001,15 +1001,16 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       .fontSize(15)
       .text(headline, textX, cardY + 28, { width: textW });
 
-    // Per-band 4-column table (At Property / 1-3mi / 3-5mi / 5-10mi)
+    // Per-band 3-column table (At Property / 1-3mi / 3-5mi). 5–10mi was
+    // dropped per the 2026-04-27 meeting — Reese: "anything beyond 5 mi is
+    // ammunition for the adjuster, not for us."
     const bandY = cardY + 70;
     const bandH = 60;
-    const bandW = textW / 4;
+    const bandW = textW / 3;
     const bandLabels: Array<[string, string, number | null]> = [
       ['At Property', '0–1 mi', propertyImpact.bands.atProperty],
       ['1–3 mi', '', propertyImpact.bands.mi1to3],
       ['3–5 mi', '', propertyImpact.bands.mi3to5],
-      ['5–10 mi', '', propertyImpact.bands.mi5to10],
     ];
     bandLabels.forEach(([label, sub, value], i) => {
       const x = textX + i * bandW;
@@ -1080,16 +1081,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     // same dates twice in different layouts.
     const colTier = 78;
     const colDate = 70;
-    const colBand = 56; // each of the 4 distance bands
+    const colBand = 75; // each of the 3 distance bands (was 56 with 4 bands)
     const colBig = 76;
-    // Header row
+    // Header row — 5–10 mi column dropped per 2026-04-27 meeting.
     const headers: Array<[string, number]> = [
       ['Tier', colTier],
       ['Date', colDate],
       ['At Property', colBand],
       ['1–3 mi', colBand],
       ['3–5 mi', colBand],
-      ['5–10 mi', colBand],
       ['Biggest Nearby', colBig],
     ];
     let hy = doc.y;
@@ -1158,11 +1158,12 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       // displayed size for storm cells 1+ mi away).
       const rowCtx = verificationByDate.get(r.dateIso) ?? UNVERIFIED_CTX;
       const farCtx = farBandCtx(rowCtx);
+      // 5–10 mi column dropped per 2026-04-27 meeting — values still feed
+      // the row filter and biggest-nearby caption, just not displayed.
       const bandValues: Array<[number, VerificationContext]> = [
         [r.atProperty, rowCtx],
         [r.mi1to3, farCtx],
         [r.mi3to5, farCtx],
-        [r.mi5to10, farCtx],
       ];
       doc.font('Helvetica').fontSize(9);
       for (const [v, ctx] of bandValues) {

@@ -95,7 +95,8 @@ const ALERT_NOTIFICATION_COOLDOWN_MS = 30 * 60 * 1000;
 /** Default center: US continental midpoint — zoomed out until user searches */
 const DEFAULT_CENTER: LatLng = { lat: 38.9, lng: -77.2 };
 const DEFAULT_ZOOM = 8;
-const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '1y';
+// Default 3y per 2026-04-27 meeting — matches VA statute of limitations.
+const DEFAULT_HISTORY_RANGE: HistoryRangePreset = '3y';
 const PINNED_PROPERTIES_STORAGE_KEY = 'storm-maps:pinned-properties';
 const CANVASS_ROUTE_STORAGE_KEY = 'hail-yes:canvass-route';
 const CANVASS_ARCHIVE_STORAGE_KEY = 'hail-yes:canvass-archive';
@@ -786,10 +787,12 @@ function App() {
   const historyMonths =
     historyRange === '10y'
       ? 120
-      : historyRange === '2y'
-        ? 24
       : historyRange === '5y'
         ? 60
+      : historyRange === '3y'
+        ? 36
+      : historyRange === '2y'
+        ? 24
         : 12;
   const activeRadiusMiles = searchSummary?.radiusMiles ?? 35;
 

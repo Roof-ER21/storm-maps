@@ -387,6 +387,9 @@ export default function Sidebar({
           <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
             History Range
           </p>
+          {/* Presets per 2026-04-27 meeting: 1Y / 2Y / 3Y / 5Y, default 3Y
+              (VA statute of limitations). 10Y dropped from the lineup —
+              kept in code paths for backward compat with stored prefs. */}
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
             <RangeButton
               active={historyRange === '1y'}
@@ -399,14 +402,14 @@ export default function Sidebar({
               onClick={() => onHistoryRangeChange('2y')}
             />
             <RangeButton
+              active={historyRange === '3y'}
+              label="3Y"
+              onClick={() => onHistoryRangeChange('3y')}
+            />
+            <RangeButton
               active={historyRange === '5y'}
               label="5Y"
               onClick={() => onHistoryRangeChange('5y')}
-            />
-            <RangeButton
-              active={historyRange === '10y'}
-              label="10Y"
-              onClick={() => onHistoryRangeChange('10y')}
             />
             <RangeButton
               active={historyRange === 'since'}
@@ -1289,6 +1292,7 @@ function formatHistoryRangeLabel(
   }
   if (historyRange === '10y') return 'the last 10 years';
   if (historyRange === '5y') return 'the last 5 years';
+  if (historyRange === '3y') return 'the last 3 years';
   if (historyRange === '2y') return 'the last 2 years';
   return 'the last year';
 }
