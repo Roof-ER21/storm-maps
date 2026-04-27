@@ -2,8 +2,11 @@
  * IEM Local Storm Reports — wind report fetcher with date-windowed query.
  *
  * Endpoint:
- *   https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py
- *     ?sts=YYYYMMDDHHMI&ets=YYYYMMDDHHMI&fmt=geojson&[wfo=...|state=...]
+ *   https://mesonet.agron.iastate.edu/geojson/lsr.geojson
+ *     ?sts=YYYYMMDDHHMI&ets=YYYYMMDDHHMI&[states=VA,MD,...]
+ *
+ * (Old `cgi-bin/request/gis/lsr.py?fmt=geojson` now returns 422; new endpoint
+ * keeps the same FeatureCollection shape and uses comma-separated `states=`.)
  *
  * This is the canonical archive for LSRs across all NWS forecast offices and
  * goes back ~20 years. Same-day reports lag ~5–15 minutes from issuance.
@@ -12,7 +15,7 @@
 import type { BoundingBox, WindReport } from './types.js';
 import { etDayUtcWindow } from './timeUtils.js';
 
-const IEM_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py';
+const IEM_BASE = 'https://mesonet.agron.iastate.edu/geojson/lsr.geojson';
 const FETCH_TIMEOUT_MS = 15_000;
 
 interface LsrFeature {
@@ -73,15 +76,10 @@ export async function fetchIemWindReports(opts: {
   const params = new URLSearchParams({
     sts: fmtIemTimestamp(start),
     ets: fmtIemTimestamp(end),
-    fmt: 'geojson',
   });
 
-  // IEM accepts state= filters; passing them narrows the response payload
-  // dramatically for VA/MD/PA queries.
   if (opts.states && opts.states.length > 0) {
-    for (const st of opts.states) {
-      params.append('state', st);
-    }
+    params.set('states', opts.states.join(','));
   }
 
   const url = `${IEM_BASE}?${params.toString()}`;

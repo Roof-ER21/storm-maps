@@ -2,8 +2,13 @@
  * IEM Local Storm Reports — hail variant. Same shape as `iemLsr.ts` (wind).
  *
  * Endpoint:
- *   https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py
- *     ?sts=YYYYMMDDHHMI&ets=YYYYMMDDHHMI&fmt=geojson&[state=...]
+ *   https://mesonet.agron.iastate.edu/geojson/lsr.geojson
+ *     ?sts=YYYYMMDDHHMI&ets=YYYYMMDDHHMI&[states=VA,MD,...]
+ *
+ * (Old `cgi-bin/request/gis/lsr.py` no longer accepts `fmt=geojson`; it
+ * returned 422 with `pattern '^(csv|kml|excel|shp)$'`. The geojson endpoint
+ * still serves the same FeatureCollection shape and accepts a comma-separated
+ * `states=` filter rather than repeating `state=`.)
  *
  * Filters server-side responses to type='H' (hail) and applies the optional
  * client bbox before returning.
@@ -13,7 +18,7 @@ import type { BoundingBox } from './types.js';
 import type { HailPointReport } from './spcHailReports.js';
 import { etDayUtcWindow } from './timeUtils.js';
 
-const IEM_BASE = 'https://mesonet.agron.iastate.edu/cgi-bin/request/gis/lsr.py';
+const IEM_BASE = 'https://mesonet.agron.iastate.edu/geojson/lsr.geojson';
 const FETCH_TIMEOUT_MS = 15_000;
 
 interface LsrFeature {
@@ -80,10 +85,9 @@ export async function fetchIemHailReports(
   const params = new URLSearchParams({
     sts: fmtIemTimestamp(start),
     ets: fmtIemTimestamp(end),
-    fmt: 'geojson',
   });
   if (opts.states && opts.states.length > 0) {
-    for (const st of opts.states) params.append('state', st);
+    params.set('states', opts.states.join(','));
   }
 
   const url = `${IEM_BASE}?${params.toString()}`;
