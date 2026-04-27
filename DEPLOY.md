@@ -79,7 +79,41 @@ Manual prewarm is also available:
 
 ```bash
 npm run cache:prewarm
+npm run prewarm:hail -- --days 180
 ```
+
+### Manual storm-data refresh
+
+After deploying a build that changes storm ingest, run the backfills from a
+trusted shell with `DATABASE_URL` loaded. This is the fastest way to make the
+map and PDF history feel complete for reps:
+
+```bash
+# Print the exact sequence without touching network or Postgres.
+npm run ops:refresh-storm-data -- --plan
+
+# Full recommended refresh.
+npm run ops:refresh-storm-data -- --years 2024-2026 --iem-days 45 --hail-days 180
+```
+
+Equivalent expanded sequence:
+
+```bash
+npm run backfill:ncei -- --years 2024-2026
+npm run backfill:iem-lsr -- --days 45
+npm run prewarm:hail -- --days 180
+```
+
+Use `--dry-run` on the orchestrator to exercise parsing/fetch paths without
+database writes where the underlying scripts support it:
+
+```bash
+npm run ops:refresh-storm-data -- --dry-run
+```
+
+Expected result: `verified_hail_events` gains official NCEI and recent IEM LSR
+rows, `/api/storm/events` returns richer historical dates, and `swath_cache`
+has live `mrms-hail` entries for evidence-backed hail days.
 
 ## Optional integrations
 

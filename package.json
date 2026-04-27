@@ -24,6 +24,7 @@
     "consilience": "node --env-file=.env.local --import tsx scripts/consilience-debug.ts",
     "backfill:ncei": "node --env-file=.env.local --import tsx scripts/ncei-backfill.ts",
     "backfill:iem-lsr": "node --env-file=.env.local --import tsx scripts/iem-lsr-backfill.ts",
+    "ops:refresh-storm-data": "node --env-file=.env.local --import tsx scripts/refresh-storm-data.ts",
     "lint": "eslint .",
     "preview": "vite preview"
   },
