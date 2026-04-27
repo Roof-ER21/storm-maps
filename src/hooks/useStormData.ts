@@ -280,24 +280,22 @@ export function useStormData({
       setSwaths(resolvedSwaths);
       setStormDates(mergedDates);
 
-      // Polygon-truth tier upgrade — call the server's per-date impact
-      // classifier to replace each row's distance heuristic with the true
-      // MRMS point-in-polygon test. Same source the AddressImpactBadge and
-      // PDF tier card already use, so all three surfaces agree.
+      // Polygon-truth tier upgrade — fire-and-forget so the storm-dates
+      // list paints immediately with the distance-fallback tier. The
+      // server endpoint can take 30-60s on cold MRMS GRIB fetches across
+      // many dates; awaiting it here would freeze the page on a loading
+      // skeleton. Instead, kick it off and patch tiers in when it lands.
       if (mergedDates.length > 0 && lat !== null && lng !== null) {
-        try {
-          const impactRes = await fetch('/api/hail/per-date-impact', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              lat,
-              lng,
-              dates: mergedDates.slice(0, 60).map((d) => d.date),
-              radiusMiles,
-            }),
-            signal: controller.signal,
-          });
-          if (impactRes.ok && !controller.signal.aborted) {
+        const dateList = mergedDates.slice(0, 60).map((d) => d.date);
+        const fetchSignal = controller.signal;
+        void fetch('/api/hail/per-date-impact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lat, lng, dates: dateList, radiusMiles }),
+          signal: fetchSignal,
+        })
+          .then(async (impactRes) => {
+            if (!impactRes.ok || fetchSignal.aborted) return;
             const json = (await impactRes.json()) as {
               results: Array<{
                 date: string;
@@ -307,7 +305,11 @@ export function useStormData({
                 atPropertyInches?: number | null;
               }>;
             };
-            const tierByDate = new Map<string, { tier: StormImpactTier; closestMiles: number | null }>();
+            if (fetchSignal.aborted) return;
+            const tierByDate = new Map<
+              string,
+              { tier: StormImpactTier; closestMiles: number | null }
+            >();
             for (const r of json.results) {
               if (r.tier === 'unknown') continue;
               tierByDate.set(r.date, {
@@ -329,13 +331,12 @@ export function useStormData({
                 };
               }),
             );
-          }
-        } catch (e) {
-          // Non-fatal — distance-tier fallback already shipped to the UI.
-          if (!controller.signal.aborted) {
-            console.warn('[useStormData] per-date impact upgrade failed:', e);
-          }
-        }
+          })
+          .catch((e) => {
+            if (!fetchSignal.aborted) {
+              console.warn('[useStormData] per-date impact upgrade failed:', e);
+            }
+          });
       }
 
       // Report partial failures as warnings
