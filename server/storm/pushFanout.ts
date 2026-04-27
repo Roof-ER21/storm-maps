@@ -68,6 +68,8 @@ function shortAlertId(raw: string): string {
   return raw.includes('/') ? raw.slice(raw.lastIndexOf('/') + 1) : raw;
 }
 
+let pushFanoutNwsWarned = false;
+
 async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
   // Pull SVR + Tornado in parallel — both are roof-claim-relevant.
   const events = ['Severe Thunderstorm Warning', 'Tornado Warning'];
@@ -90,7 +92,16 @@ async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
       const data = (await res.json()) as NwsAlertResponse;
       if (data.features) all.push(...data.features);
     } catch (err) {
-      console.warn('[push-fanout] NWS fetch failed', err);
+      // NWS api.weather.gov is rate-limited and routinely 12s-times out
+      // during pushFanout cycles. Log once per process; the worker keeps
+      // running on the next cycle.
+      if (!pushFanoutNwsWarned) {
+        pushFanoutNwsWarned = true;
+        console.warn(
+          '[push-fanout] NWS fetch failed (suppressing further):',
+          (err as Error).message,
+        );
+      }
     }
   }
   return all;

@@ -851,19 +851,18 @@ function MapContent({
     // Build the swath fetch bbox. Per 4/27/26 rep feedback the old
     // 25-mi-from-property bbox was way too tight — reps saw "2 little
     // yellow polygons" while competitors showed full storm corridors
-    // 200+ mi across the mid-Atlantic.
+    // 200+ mi across the mid-Atlantic. We now pull a generous 100-mi
+    // anchor from the property and merge in the event bounds.
     //
-    // New rule: ALWAYS pull a 100-mi-from-property minimum, then merge
-    // in the viewport AND the event bounds. The wider bbox catches the
-    // full storm so reps see the corridor without needing to pan/zoom.
-    // Tested on April 15 2025 storm: 25-mi bbox returned 1 feature /
-    // 8 polygons (trace only); 100-mi returned 8 features / 254
-    // polygons across 8 size bands. The extra payload is ~80 KB JSON
-    // and decodes in <100 ms — invisible to UX.
+    // mapBounds is INTENTIONALLY excluded — folding the viewport into
+    // the bbox causes a refetch on every zoom/pan, and during the
+    // in-flight period (cold cache + GRIB2 decode = ~30s on a 100-mi
+    // window) the swath polygons disappear from the map. The 100-mi
+    // anchor is already wider than what reps usually pan around, so
+    // the cached payload covers any zoom level inside that envelope.
     //
     // `searchRadiusMiles` still controls the property-history distance
-    // bands and the storm-date filter — but it's the wrong unit for the
-    // swath fetch.
+    // bands and the storm-date filter — different concept, kept stable.
     const propertyAnchor = propertyMarker;
     const SWATH_FETCH_RADIUS_MI = 100;
     let bounds: BoundingBox | null = null;
@@ -877,11 +876,6 @@ function MapContent({
         east: propertyAnchor.lng + lngPad,
         west: propertyAnchor.lng - lngPad,
       };
-    }
-    if (bounds && mapBounds) {
-      bounds = mergeBounds(bounds, mapBounds);
-    } else if (!bounds && mapBounds) {
-      bounds = mapBounds;
     }
     if (bounds && stormContext.eventBounds) {
       bounds = mergeBounds(bounds, stormContext.eventBounds);
@@ -904,7 +898,8 @@ function MapContent({
     scrubFrameIndex,
     mrmsHourlyTimestamps,
     propertyMarker,
-    mapBounds,
+    // mapBounds intentionally NOT here — we don't refetch on zoom/pan
+    // (see comment in the bbox-build block above).
   ]);
   const historicalMrmsUrl = useMemo(
     () =>
