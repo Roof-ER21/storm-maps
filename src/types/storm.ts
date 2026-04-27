@@ -236,17 +236,18 @@ export interface MapLayerConfig {
 // ============================================================
 
 /**
- * Per-storm-date impact tier relative to the searched property.
- * - direct_hit: at least one event within 1.0 mi of the property
- * - near_miss : closest event 1.0–3.0 mi
- * - area      : closest event 3.0–10 mi (storm hit the area but not close)
- * - far       : closest event >10 mi (rare; only when search radius >10)
+ * Per-storm-date impact tier relative to the searched property — same
+ * vocabulary as the server's `MrmsImpactResult.tier` and SA21's address-
+ * impact classifier so the row badge, the AddressImpactBadge card, and
+ * the PDF tier card all agree.
  *
- * The tier drives the rep-facing "Did this hit MY property?" badge in the
- * storm-dates list. Computed in `useStormData` once the events are
- * radius-filtered against the search center.
+ * - direct_hit  : property point falls inside a swath polygon OR has
+ *                 strong ground-report corroboration sub-mile
+ * - near_miss   : closest swath edge ≤3 mi (no polygon containment)
+ * - area_impact : closest swath edge ≤10 mi
+ * - no_impact   : nothing within 10 mi
  */
-export type StormImpactTier = 'direct_hit' | 'near_miss' | 'area' | 'far';
+export type StormImpactTier = 'direct_hit' | 'near_miss' | 'area_impact' | 'no_impact';
 
 export interface StormDate {
   date: string;

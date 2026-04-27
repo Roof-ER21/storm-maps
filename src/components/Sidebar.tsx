@@ -1382,9 +1382,9 @@ function TierBadge({
     return (
       <span
         className="inline-flex items-center gap-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-        title={dist ? `Closest event ${dist} from property` : 'Direct hit on property'}
+        title="Property is inside the MRMS hail swath polygon"
       >
-        Direct hit{dist && ` · ${dist}`}
+        Direct hit
       </span>
     );
   }
@@ -1392,25 +1392,25 @@ function TierBadge({
     return (
       <span
         className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-        title={dist ? `Closest event ${dist} from property` : 'Near miss'}
+        title={dist ? `Closest swath edge ${dist}` : 'Near miss'}
       >
         Near miss{dist && ` · ${dist}`}
       </span>
     );
   }
-  if (tier === 'area') {
+  if (tier === 'area_impact') {
     return (
       <span
         className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800"
-        title={dist ? `Closest event ${dist} from property` : 'Storm in the search area'}
+        title={dist ? `Closest swath edge ${dist}` : 'Storm in the search area'}
       >
-        In area{dist && ` · ${dist}`}
+        Area impact{dist && ` · ${dist}`}
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-stone-500">
-      Far{dist && ` · ${dist}`}
+      No hit{dist && ` · ${dist}`}
     </span>
   );
 }

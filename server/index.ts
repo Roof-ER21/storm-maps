@@ -1097,6 +1097,89 @@ interface MrmsImpactBody {
   points?: Array<{ id: string; lat: number; lng: number }>;
 }
 
+/**
+ * Per-date MRMS impact classifier — SA21 `addressImpactService` parity.
+ *
+ * Body: `{ lat, lng, dates: string[], radiusMiles? }`
+ * For each date, runs `buildMrmsImpactResponse` against a property+radius
+ * bbox and returns the polygon-truth tier (DIRECT HIT when the point falls
+ * inside any swath polygon). Falls back to distance classification for
+ * dates with no swath geometry.
+ *
+ * The storm-dates list calls this once per address load to colour each row
+ * with the same tier the AddressImpactBadge would show — eliminates the
+ * "DIRECT HIT card vs NEAR MISS row" inconsistency for the same date.
+ */
+interface PerDateImpactBody {
+  lat?: number;
+  lng?: number;
+  dates?: string[];
+  radiusMiles?: number;
+}
+
+app.post('/api/hail/per-date-impact', async (req, res) => {
+  try {
+    const body = (req.body || {}) as PerDateImpactBody;
+    if (
+      typeof body.lat !== 'number' ||
+      typeof body.lng !== 'number' ||
+      !Array.isArray(body.dates)
+    ) {
+      res.status(400).json({ error: 'lat, lng, dates[] required' });
+      return;
+    }
+    const radiusMi = Math.max(1, Math.min(60, body.radiusMiles ?? 25));
+    const latPad = radiusMi / 69;
+    const lngPad = radiusMi / (69 * Math.cos((body.lat * Math.PI) / 180));
+    const bounds = {
+      north: body.lat + latPad,
+      south: body.lat - latPad,
+      east: body.lng + lngPad,
+      west: body.lng - lngPad,
+    };
+
+    // Cap dates at 60 — a property's storm history rarely exceeds this in
+    // 5 years and the frontend only renders the visible chunk anyway. The
+    // per-date MRMS resolve is sub-50ms cached, ~3-8s on cold GRIB fetches.
+    const dates = body.dates.slice(0, 60).filter(isValidIsoDate);
+
+    const results = await Promise.all(
+      dates.map(async (date) => {
+        try {
+          const resp = await buildMrmsImpactResponse({
+            date,
+            bounds,
+            points: [{ id: 'addr', lat: body.lat!, lng: body.lng! }],
+          });
+          const r = resp?.results[0];
+          if (!r) {
+            return { date, tier: 'unknown', directHit: false, closestMiles: null };
+          }
+          // Server-side tier is already polygon-truth (direct_hit on
+          // point-in-polygon, near_miss on edge-distance, etc.). Reuse
+          // it verbatim so the UI badge matches the PDF and the impact
+          // card to the row.
+          return {
+            date,
+            tier: r.tier,
+            directHit: r.directHit,
+            closestMiles: r.edgeDistanceMiles ?? null,
+            atPropertyInches: r.bands?.atProperty ?? null,
+            stormPeakInches: resp?.metadata.stormMaxInches ?? null,
+          };
+        } catch {
+          return { date, tier: 'unknown', directHit: false, closestMiles: null };
+        }
+      }),
+    );
+
+    res.json({ results });
+  } catch (err) {
+    console.error('[per-date-impact] failed', err);
+    res.status(500).json({ error: 'Failed to classify per-date impact' });
+  }
+});
+
 app.post('/api/hail/mrms-impact', async (req, res) => {
   try {
     const body = (req.body || {}) as MrmsImpactBody;

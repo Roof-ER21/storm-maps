@@ -36,18 +36,18 @@ interface UseStormDataReturn {
 }
 
 /**
- * Distance-only impact tier (fallback when no swath polygon is available).
- * Generous-by-design: a hail report ≤1 mi from the property is treated as
- * a direct hit because hail cores are typically 1-3 mi wide and rep tools
- * that wait for swath-polygon containment miss the events that landed
- * slightly off the centroid.
+ * Distance-only fallback used while the server-side polygon-truth tier
+ * (from /api/hail/per-date-impact) is loading. Generous-by-design: a hail
+ * report ≤1 mi from the property is treated as a direct hit because hail
+ * cores are typically 1-3 mi wide. Once the per-date-impact response
+ * arrives the tier is replaced with the polygon-truth value.
  */
 function classifyTierByDistance(closestMiles: number | null): StormImpactTier {
-  if (closestMiles === null) return 'far';
+  if (closestMiles === null) return 'no_impact';
   if (closestMiles <= 1.0) return 'direct_hit';
   if (closestMiles <= 3.0) return 'near_miss';
-  if (closestMiles <= 10.0) return 'area';
-  return 'far';
+  if (closestMiles <= 10.0) return 'area_impact';
+  return 'no_impact';
 }
 
 /**
@@ -269,7 +269,7 @@ export function useStormData({
         tier:
           lat !== null && lng !== null && swathContainsPoint(s, lat, lng)
             ? 'direct_hit'
-            : 'area',
+            : 'area_impact',
       }));
 
       // Merge event dates and swath dates
@@ -279,6 +279,64 @@ export function useStormData({
       setEvents(dedupedEvents);
       setSwaths(resolvedSwaths);
       setStormDates(mergedDates);
+
+      // Polygon-truth tier upgrade — call the server's per-date impact
+      // classifier to replace each row's distance heuristic with the true
+      // MRMS point-in-polygon test. Same source the AddressImpactBadge and
+      // PDF tier card already use, so all three surfaces agree.
+      if (mergedDates.length > 0 && lat !== null && lng !== null) {
+        try {
+          const impactRes = await fetch('/api/hail/per-date-impact', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lat,
+              lng,
+              dates: mergedDates.slice(0, 60).map((d) => d.date),
+              radiusMiles,
+            }),
+            signal: controller.signal,
+          });
+          if (impactRes.ok && !controller.signal.aborted) {
+            const json = (await impactRes.json()) as {
+              results: Array<{
+                date: string;
+                tier: StormImpactTier | 'unknown';
+                directHit: boolean;
+                closestMiles: number | null;
+                atPropertyInches?: number | null;
+              }>;
+            };
+            const tierByDate = new Map<string, { tier: StormImpactTier; closestMiles: number | null }>();
+            for (const r of json.results) {
+              if (r.tier === 'unknown') continue;
+              tierByDate.set(r.date, {
+                tier: r.tier,
+                closestMiles:
+                  r.closestMiles !== null && Number.isFinite(r.closestMiles)
+                    ? r.closestMiles
+                    : null,
+              });
+            }
+            setStormDates((prev) =>
+              prev.map((sd) => {
+                const upgrade = tierByDate.get(sd.date);
+                if (!upgrade) return sd;
+                return {
+                  ...sd,
+                  tier: upgrade.tier,
+                  closestMiles: upgrade.closestMiles ?? sd.closestMiles,
+                };
+              }),
+            );
+          }
+        } catch (e) {
+          // Non-fatal — distance-tier fallback already shipped to the UI.
+          if (!controller.signal.aborted) {
+            console.warn('[useStormData] per-date impact upgrade failed:', e);
+          }
+        }
+      }
 
       // Report partial failures as warnings
       const failures: string[] = [];
