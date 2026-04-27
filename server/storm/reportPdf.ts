@@ -1017,17 +1017,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
           } else {
             // New row — swath-only direct hit (no NCEI/SWDI/etc record
             // for this date in our DB, but the property was clearly
-            // inside the swath).
-            histGroups.set(dateIso, {
-              dateIso,
-              label: '',
-              atProperty: bestSize,
-              mi1to3: 0,
-              mi3to5: 0,
-              mi5to10: 0,
-              biggestNearby: bestSize,
-              biggestNearbyMi: 0,
-            });
+            // inside the swath). MRMS swath is primary, so log a primary
+            // report at distance 0 (containment) into the atProperty
+            // band — that way bandVerification has something to chew on
+            // when computing the per-column context.
+            const swathRow = newRow(dateIso);
+            swathRow.atProperty = bestSize;
+            swathRow.biggestNearby = bestSize;
+            swathRow.primaryAtProperty.push({ source: 'mrms', sizeIn: bestSize });
+            histGroups.set(dateIso, swathRow);
           }
         }
       }
