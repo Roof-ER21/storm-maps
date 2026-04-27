@@ -33,6 +33,11 @@ import { fetchNexradSnapshot } from './nexradImageService.js';
 import { fetchIemVtecForDate, pointInWarning } from './iemVtecClient.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
+import {
+  displayHailInches,
+  type VerificationContext,
+} from './displayCapService.js';
+import { buildVerificationBulk } from './verificationService.js';
 
 interface NceiAppendixRow {
   event_date: string;
@@ -343,22 +348,41 @@ function deriveBounds(events: StormEventDto[], lat: number, lng: number): Boundi
  * dismiss "0.13"" trace radar signatures. Matches Verisk/ISO + Gemini
  * Field's display convention.
  */
-function displayHailIn(inches: number | null): string {
+/** Pure formatter — takes a (capped) hail size and renders it. */
+function formatHailIn(inches: number | null): string {
   if (inches === null || inches <= 0) return '—';
-  // Round UP to the nearest adjuster-recognized "coin" size (¼, ½, ¾, 1,
-  // 1¼, 1½, 1¾, 2, 2¼, 2½, 2¾, 3, 3¼, 3½, 3¾, 4...).
-  // Adjusters and reps don't speak in 0.37" or 0.42" — they speak in
-  // marble, penny, quarter, half-dollar, ping-pong, golf-ball. A 0.38"
-  // sub-trace value rounds UP to 0.50" so the report uses the size the
-  // adjuster actually filed under.
-  const STANDARD_STEPS = [
-    0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0,
-    3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0,
-  ];
-  for (const step of STANDARD_STEPS) {
-    if (inches <= step + 0.001) return `${step.toFixed(2)}"`;
-  }
   return `${inches.toFixed(2)}"`;
+}
+
+/**
+ * Apply the 2026-04-27 display-cap algorithm and return formatted string.
+ *
+ * Use this for ANY at-property or distance-band hail display in the PDF.
+ * The raw input might be 4" (a single hot MRMS pixel); the cap returns
+ * 2.5"/2.0"/etc. per the verified-vs-unverified rules + Sterling-class +
+ * cross-source consensus override.
+ */
+function displayHailIn(
+  inches: number | null,
+  ctx: VerificationContext,
+): string {
+  return formatHailIn(displayHailInches(inches ?? 0, ctx));
+}
+
+/** Default ctx for places where we don't (yet) have a verification — falls
+ *  through to the unverified-cap branches in displayHailInches. */
+const UNVERIFIED_CTX: VerificationContext = {
+  isVerified: false,
+  isAtLocation: false,
+  isSterlingClass: false,
+  consensusSize: null,
+};
+
+/** "Far band" ctx — strips the consensus override since cross-source
+ *  agreement at ≤0.5 mi shouldn't dictate the size shown for the 1–3 mi
+ *  or 3–5 mi columns. The verified/Sterling flags still apply. */
+function farBandCtx(ctx: VerificationContext): VerificationContext {
+  return { ...ctx, consensusSize: null };
 }
 
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
@@ -854,6 +878,20 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   }
 
+  // 2026-04-27 cap algorithm — pull verification context for the date of
+  // loss + every hit-history date in one bulk SQL round-trip. Drives the
+  // tier card hail value AND every hit-history row's banded display.
+  const allCapDates = Array.from(
+    new Set([req.dateOfLoss, ...histGroups.keys()].filter(Boolean)),
+  );
+  const verificationByDate = await buildVerificationBulk({
+    lat: req.lat,
+    lng: req.lng,
+    dates: allCapDates,
+  });
+  const propertyVerification: VerificationContext =
+    verificationByDate.get(req.dateOfLoss) ?? UNVERIFIED_CTX;
+
   // Street View thumbnail (left side), tier card (right side).
   const streetViewPromise = fetchStreetViewImage(req.lat, req.lng, 200, 130);
   const streetViewImg = await Promise.race([
@@ -940,12 +978,13 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     // their property actually saw.
     const headlineHail = displayHailIn(
       propertyImpact.bands.atProperty ?? propertyImpact.maxHailInches,
+      propertyVerification,
     );
     const headline =
       tier === 'direct_hit'
         ? `${headlineHail} hail at property`
         : tier === 'near_miss'
-          ? `${displayHailIn(propertyImpact.bands.atProperty)} hail within 1 mi of property`
+          ? `${displayHailIn(propertyImpact.bands.atProperty, propertyVerification)} hail within 1 mi of property`
           : tier === 'area_impact'
             ? `Storm cell within 10 mi`
             : 'No verified hail within 10 mi';
@@ -984,11 +1023,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
           .text(sub, x + 2, bandY + 16, { width: bandW - 4, align: 'center' });
       }
       const filled = value !== null && value > 0;
+      // At Property column = property's own verification context.
+      // Other columns (1-3 / 3-5 / 5-10) strip consensus per the
+      // post-meeting clarification — consensus is an at-property signal.
+      const bandCtx = i === 0 ? propertyVerification : farBandCtx(propertyVerification);
       doc
         .fillColor(filled ? '#0f172a' : '#cbd5e1')
         .font('Helvetica-Bold')
         .fontSize(14)
-        .text(filled ? displayHailIn(value) : '—', x + 2, bandY + 30, {
+        .text(filled ? displayHailIn(value, bandCtx) : '—', x + 2, bandY + 30, {
           width: bandW - 4,
           align: 'center',
         });
@@ -1101,29 +1144,43 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         .text(r.label, cx, hy + 6, { width: colDate - 4, lineBreak: false });
       cx += colDate;
 
-      // Per-band columns
-      const bandValues = [r.atProperty, r.mi1to3, r.mi3to5, r.mi5to10];
+      // Per-band columns — every cell runs through the cap with the
+      // appropriate context. At-property uses this row's verification
+      // (consensus override applies); the other 3 bands strip consensus
+      // (cross-source agreement at ≤0.5 mi shouldn't dictate the
+      // displayed size for storm cells 1+ mi away).
+      const rowCtx = verificationByDate.get(r.dateIso) ?? UNVERIFIED_CTX;
+      const farCtx = farBandCtx(rowCtx);
+      const bandValues: Array<[number, VerificationContext]> = [
+        [r.atProperty, rowCtx],
+        [r.mi1to3, farCtx],
+        [r.mi3to5, farCtx],
+        [r.mi5to10, farCtx],
+      ];
       doc.font('Helvetica').fontSize(9);
-      for (const v of bandValues) {
+      for (const [v, ctx] of bandValues) {
         const filled = v > 0;
         doc
           .fillColor(filled ? '#0f172a' : '#cbd5e1')
           .font(filled ? 'Helvetica-Bold' : 'Helvetica')
-          .text(filled ? displayHailIn(v) : '—', cx, hy + 6, {
+          .text(filled ? displayHailIn(v, ctx) : '—', cx, hy + 6, {
             width: colBand - 4,
             lineBreak: false,
           });
         cx += colBand;
       }
 
-      // Biggest nearby
+      // Biggest nearby — descriptive (not a claim) but still cap so we
+      // never print "4.00\" @ 11mi" which would tank credibility on
+      // adjuster scan even from a distance band. Far-band ctx (no
+      // consensus override since this is by definition >property).
       doc
         .fillColor('#475569')
         .font('Helvetica')
         .fontSize(8.5)
         .text(
           r.biggestNearby > 0
-            ? `${displayHailIn(r.biggestNearby)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
+            ? `${displayHailIn(r.biggestNearby, farCtx)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
             : '—',
           cx,
           hy + 6,
@@ -1200,15 +1257,28 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       return req.address;
     })();
 
+    // Cap the hail values headed into narrative prose. Narrative says
+    // things like "ping-pong-sized hail measuring up to 4.00" in
+    // diameter" — feeding raw 4" through would re-introduce the exact
+    // adjuster-credibility problem this whole feature exists to solve.
+    // Use property verification for the at-property max, far-band ctx
+    // (no consensus override) for the biggest-nearby callout since
+    // that's deliberately a >property descriptor.
+    const cappedHeadline =
+      displayHailInches(headlineHailIn, propertyVerification) ?? 0;
+    const cappedBiggest =
+      biggestHailIn > 0
+        ? displayHailInches(biggestHailIn, farBandCtx(propertyVerification))
+        : null;
     const narrative = composeStormNarrative({
       formattedDate,
       location: locationFallback,
-      maxHailInches: headlineHailIn,
+      maxHailInches: cappedHeadline,
       maxWindMph: peakWindEvents,
       totalEvents: datedEvents.length,
       radiusMiles: req.radiusMiles,
       closestHailMiles: closestHailMi,
-      biggestHailInches: biggestHailIn > 0 ? biggestHailIn : undefined,
+      biggestHailInches: cappedBiggest && cappedBiggest > 0 ? cappedBiggest : undefined,
       biggestHailMiles: biggestHailMi,
       severeHailCount: severeCount,
     });
@@ -1272,7 +1342,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const sumCards: SumCard[] = [
     {
       label: 'LARGEST HAIL (DAY)',
-      value: headlineHailDay > 0 ? displayHailIn(headlineHailDay) : '—',
+      // Storm Summary card "LARGEST HAIL (DAY)" — this is the day's
+      // peak across the search radius, not at-property. Use the
+      // property's verification context (it's the same property and
+      // date) but without consensus override (consensus is at-property
+      // only). The cap still applies so we don't print "4.00\"" here.
+      value:
+        headlineHailDay > 0
+          ? displayHailIn(headlineHailDay, farBandCtx(propertyVerification))
+          : '—',
       sub: stormMax >= peakHail ? 'MRMS MESH radar' : 'SPC + IEM LSR ground reports',
     },
     {
