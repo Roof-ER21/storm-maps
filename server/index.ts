@@ -1151,6 +1151,10 @@ async function fetchGroundReportUpgrades(
   dates: string[],
 ): Promise<Map<string, { closestMi: number; maxHail: number }>> {
   if (!pgSql || dates.length === 0) return new Map();
+  // Coerce to plain ISO strings + compare event_date::text against text[] —
+  // postgres.js's ${arr}::date[] path was throwing "Received an instance of
+  // Array" in prod, silently disabling Path B ground-report upgrades.
+  const dateStrs = dates.map((d) => String(d).slice(0, 10));
   try {
     const rows = await pgSql<GroundUpgradeRow[]>`
       SELECT
@@ -1173,7 +1177,7 @@ async function fetchGroundReportUpgrades(
           (BOOL_OR(source_spc_hail))::int
         ) AS source_count
         FROM verified_hail_events
-       WHERE event_date = ANY(${dates}::date[])
+       WHERE event_date::text = ANY(${dateStrs})
          AND lat BETWEEN ${lat - 0.02} AND ${lat + 0.02}
          AND lng BETWEEN ${lng - 0.025} AND ${lng + 0.025}
          AND COALESCE(hail_size_inches, magnitude, 0) >= 0.5
