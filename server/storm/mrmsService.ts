@@ -28,6 +28,12 @@ interface BuildMrmsParams {
   date: string;
   bounds: BoundingBox;
   anchorIso?: string;
+  /**
+   * Standalone prewarm scripts exit after completion, so they need the DB
+   * write to finish before sql.end(). Runtime requests keep the faster
+   * fire-and-forget behavior.
+   */
+  awaitCacheWrite?: boolean;
 }
 
 export async function buildMrmsVectorPolygons(
@@ -70,8 +76,7 @@ export async function buildMrmsVectorPolygons(
       sourceFile: file.url,
     });
 
-    // Fire-and-forget cache write.
-    void setCachedSwath({
+    const cacheWrite = setCachedSwath({
       source: 'mrms-hail',
       date: params.date,
       bounds: params.bounds,
@@ -85,6 +90,11 @@ export async function buildMrmsVectorPolygons(
       featureCount: collection.features.length,
       maxValue: collection.metadata.maxHailInches,
     });
+    if (params.awaitCacheWrite) {
+      await cacheWrite;
+    } else {
+      void cacheWrite;
+    }
     return collection;
   } catch (err) {
     console.warn('[mrms] decode pipeline failed:', err);

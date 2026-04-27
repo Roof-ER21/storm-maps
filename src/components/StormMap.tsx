@@ -847,8 +847,7 @@ function MapContent({
     };
   }, [
     map,
-    propertyMarker?.lat,
-    propertyMarker?.lng,
+    propertyMarker,
     searchRadiusMiles,
   ]);
 
@@ -939,6 +938,7 @@ function MapContent({
   // URLs pick up the freshest 5-min NEXRAD scan instead of staying frozen.
   const radarTimestamp = useMemo(() => {
     if (showNexrad && !selectedDate) {
+      void liveNexradTick;
       return new Date().toISOString();
     }
     return stormContext.radarTimestamp;

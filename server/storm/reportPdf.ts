@@ -361,24 +361,6 @@ function displayHailIn(inches: number | null): string {
   return `${inches.toFixed(2)}"`;
 }
 
-function severityScore(events: StormEventDto[]): {
-  score: number;
-  label: string;
-  color: string;
-} {
-  const hail = events.filter((e) => e.eventType === 'Hail');
-  const wind = events.filter((e) => e.eventType === 'Thunderstorm Wind');
-  const maxHail = hail.reduce((m, e) => Math.max(m, e.magnitude), 0);
-  const maxWind = wind.reduce((m, e) => Math.max(m, e.magnitude), 0);
-  const raw =
-    hail.length * 8 + wind.length * 5 + maxHail * 18 + (maxWind >= 60 ? 15 : 0);
-  const score = Math.max(0, Math.min(100, Math.round(raw)));
-  if (score >= 76) return { score, label: 'Critical', color: '#b91c1c' };
-  if (score >= 51) return { score, label: 'High', color: '#ea580c' };
-  if (score >= 26) return { score, label: 'Moderate', color: '#ca8a04' };
-  return { score, label: 'Low', color: '#16a34a' };
-}
-
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // Fire consilience (5-source corroboration) early so it overlaps with the
   // event/swath fetch work below. 25s soft cap — PDF still renders without
@@ -1829,7 +1811,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
       // 2-column key/value table inside the right pane
       const labelY = py + 26;
-      const labelGap = 14;
       const labelCol1X = detailX;
       const labelCol2X = detailX + detailW / 2;
 

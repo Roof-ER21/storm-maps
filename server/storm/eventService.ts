@@ -5,6 +5,7 @@
  * so the result can be cached in `event_cache` and shared across reps.
  *
  * Sources:
+ *   - verified_hail_events warm table (NOAA/NWS/NEXRAD-backed archive rows)
  *   - SPC same-day / yesterday / archive hail + wind CSVs
  *   - IEM Local Storm Reports (hail + wind)
  *
@@ -169,6 +170,7 @@ function buildCacheKey(p: FetchEventsParams): string {
   const lngQ = Math.round(p.lng * 100) / 100;
   const radiusQ = Math.round(p.radiusMiles);
   const raw = [
+    'v2-verified-archive',
     latQ.toFixed(2),
     lngQ.toFixed(2),
     radiusQ,
@@ -191,6 +193,32 @@ interface EventCacheRow {
   payload: { events: StormEventDto[]; sources: string[] };
   generated_at: string | Date;
   expires_at: string | Date;
+}
+
+interface VerifiedHailEventRow {
+  id: number;
+  event_date: string | Date;
+  lat: number;
+  lng: number;
+  hail_size_inches: number | null;
+  source_mrms: boolean | null;
+  source_spc_hail: boolean | null;
+  source_iem_lsr: boolean | null;
+  source_wind_context: boolean | null;
+  source_synoptic: boolean | null;
+  source_ncei_storm_events: boolean | null;
+  source_ncei_swdi: boolean | null;
+  source_mping: boolean | null;
+  source_nws_warnings: boolean | null;
+  event_type: string | null;
+  magnitude: number | null;
+  magnitude_type: string | null;
+  state_code: string | null;
+  county: string | null;
+  narrative: string | null;
+  begin_time_utc: string | Date | null;
+  end_time_utc: string | Date | null;
+  ncei_event_id: string | number | null;
 }
 
 async function readEventCache(
@@ -256,6 +284,127 @@ async function writeEventCache(
   }
 }
 
+function toDateKey(value: string | Date): string {
+  return value instanceof Date
+    ? value.toISOString().slice(0, 10)
+    : String(value).slice(0, 10);
+}
+
+function toIsoOrDate(value: string | Date | null, fallbackDate: string): string {
+  if (!value) return `${fallbackDate}T12:00:00.000Z`;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+function normalizeVerifiedEventType(
+  eventType: string | null,
+): StormEventDto['eventType'] {
+  const normalized = (eventType ?? 'Hail').toLowerCase();
+  if (normalized.includes('wind')) return 'Thunderstorm Wind';
+  if (normalized.includes('tornado')) return 'Tornado';
+  if (normalized.includes('flood')) return 'Flash Flood';
+  return 'Hail';
+}
+
+function sourceLabelsForVerifiedRow(row: VerifiedHailEventRow): string[] {
+  const labels: string[] = [];
+  if (row.source_ncei_storm_events) labels.push('NCEI Storm Events');
+  if (row.source_ncei_swdi) labels.push('NCEI SWDI');
+  if (row.source_mrms) labels.push('NOAA MRMS');
+  if (row.source_spc_hail) labels.push('SPC');
+  if (row.source_iem_lsr) labels.push('IEM LSR');
+  if (row.source_nws_warnings) labels.push('NWS Warnings');
+  if (row.source_mping) labels.push('NOAA mPING');
+  if (row.source_wind_context) labels.push('Wind Context');
+  if (row.source_synoptic) labels.push('Synoptic');
+  return labels;
+}
+
+function verifiedRowToEvent(row: VerifiedHailEventRow): StormEventDto {
+  const dateKey = toDateKey(row.event_date);
+  const eventType = normalizeVerifiedEventType(row.event_type);
+  const beginDate = toIsoOrDate(row.begin_time_utc, dateKey);
+  const endDate = toIsoOrDate(row.end_time_utc, dateKey);
+  const sourceLabels = sourceLabelsForVerifiedRow(row);
+  const magnitude =
+    row.magnitude ??
+    row.hail_size_inches ??
+    0;
+
+  return {
+    id: row.ncei_event_id
+      ? `verified-ncei-${row.ncei_event_id}`
+      : `verified-${row.id}`,
+    eventType,
+    state: row.state_code ?? '',
+    county: row.county ?? '',
+    beginDate,
+    endDate,
+    beginLat: row.lat,
+    beginLon: row.lng,
+    endLat: row.lat,
+    endLon: row.lng,
+    magnitude,
+    magnitudeType:
+      row.magnitude_type ??
+      (eventType === 'Hail' ? 'inches' : eventType === 'Thunderstorm Wind' ? 'mph' : ''),
+    damageProperty: 0,
+    source: sourceLabels.length > 0 ? sourceLabels.join(' + ') : 'Verified Archive',
+    narrative: row.narrative ?? '',
+  };
+}
+
+async function fetchVerifiedArchiveEvents(
+  params: FetchEventsParams,
+  sinceMs: number,
+): Promise<StormEventDto[]> {
+  if (!pgSql) return [];
+
+  const latPad = (params.radiusMiles + 5) / 69;
+  const cosLat = Math.cos((params.lat * Math.PI) / 180);
+  const lngPad = (params.radiusMiles + 5) / (69 * Math.max(0.2, Math.abs(cosLat)));
+  const north = params.lat + latPad;
+  const south = params.lat - latPad;
+  const east = params.lng + lngPad;
+  const west = params.lng - lngPad;
+  const sinceDate = new Date(sinceMs).toISOString().slice(0, 10);
+
+  try {
+    const rows = await pgSql<VerifiedHailEventRow[]>`
+      SELECT
+        id, event_date, lat, lng, hail_size_inches,
+        source_mrms, source_spc_hail, source_iem_lsr,
+        source_wind_context, source_synoptic,
+        source_ncei_storm_events, source_ncei_swdi,
+        source_mping, source_nws_warnings,
+        event_type, magnitude, magnitude_type,
+        state_code, county, narrative,
+        begin_time_utc, end_time_utc, ncei_event_id
+        FROM verified_hail_events
+       WHERE event_date >= ${sinceDate}::date
+         AND lat BETWEEN ${south} AND ${north}
+         AND lng BETWEEN ${west} AND ${east}
+         AND (
+           source_mrms = TRUE
+           OR source_spc_hail = TRUE
+           OR source_iem_lsr = TRUE
+           OR source_wind_context = TRUE
+           OR source_synoptic = TRUE
+           OR source_ncei_storm_events = TRUE
+           OR source_ncei_swdi = TRUE
+           OR source_mping = TRUE
+           OR source_nws_warnings = TRUE
+         )
+       ORDER BY event_date DESC, COALESCE(magnitude, hail_size_inches, 0) DESC
+       LIMIT 2500
+    `;
+
+    return rows.map(verifiedRowToEvent);
+  } catch (err) {
+    console.warn('[verified-events] archive read failed', err);
+    return [];
+  }
+}
+
 /**
  * Fetch storm events with cache. Returns within <50ms when the cache is warm,
  * otherwise ~3–8s while the upstream sources respond.
@@ -302,6 +451,14 @@ export async function fetchStormEventsCached(
 
   const sources = new Set<string>();
   const allEvents: StormEventDto[] = [];
+
+  const verifiedEvents = await fetchVerifiedArchiveEvents(params, sinceMs);
+  if (verifiedEvents.length > 0) {
+    for (const event of verifiedEvents) {
+      for (const source of event.source.split(' + ')) sources.add(source);
+      allEvents.push(event);
+    }
+  }
 
   // SPC same-day/yesterday/archive — both hail and wind in parallel.
   const spcResults = await Promise.allSettled(

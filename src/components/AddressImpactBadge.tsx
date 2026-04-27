@@ -72,17 +72,26 @@ export default function AddressImpactBadge({
   addressLabel,
   bounds,
 }: AddressImpactBadgeProps) {
-  const [data, setData] = useState<StormImpactResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const requestKey =
+    selectedDate && searchLat !== null && searchLng !== null
+      ? [
+          selectedDate,
+          anchorTimestamp ?? '',
+          searchLat.toFixed(5),
+          searchLng.toFixed(5),
+          bounds
+            ? `${bounds.north.toFixed(3)},${bounds.south.toFixed(3)},${bounds.east.toFixed(3)},${bounds.west.toFixed(3)}`
+            : '',
+        ].join('|')
+      : null;
+  const [data, setData] = useState<{ key: string; response: StormImpactResponse } | null>(null);
 
   useEffect(() => {
-    if (!selectedDate || searchLat === null || searchLng === null) {
-      setData((prev) => (prev === null ? prev : null));
+    if (!requestKey || !selectedDate || searchLat === null || searchLng === null) {
       return;
     }
 
     let cancelled = false;
-    setLoading(true);
     fetchStormImpact({
       date: selectedDate,
       anchorTimestamp: anchorTimestamp || null,
@@ -90,22 +99,19 @@ export default function AddressImpactBadge({
       points: [{ id: 'searched-address', lat: searchLat, lng: searchLng }],
     })
       .then((res) => {
-        if (!cancelled) setData(res);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
+        if (!cancelled && res) setData({ key: requestKey, response: res });
       });
 
     return () => {
       cancelled = true;
     };
-  }, [selectedDate, anchorTimestamp, searchLat, searchLng, bounds]);
+  }, [requestKey, selectedDate, anchorTimestamp, searchLat, searchLng, bounds]);
 
   if (!selectedDate || searchLat === null || searchLng === null) {
     return null;
   }
 
-  if (loading) {
+  if (!requestKey || data?.key !== requestKey) {
     return (
       <div className="mt-3 rounded-2xl border border-stone-200 bg-stone-50 p-3 text-xs text-stone-500">
         Checking radar for this address…
@@ -113,16 +119,14 @@ export default function AddressImpactBadge({
     );
   }
 
-  if (!data) return null;
-
-  const impact = data.results[0];
+  const impact = data.response.results[0];
   // Pre-tier-classifier fallback: synthesize tier from the legacy fields.
   const tier: ImpactTier =
     impact.tier ??
     (impact.directHit ? 'direct_hit' : impact.nearMiss ? 'near_miss' : 'no_impact');
   const style = TIER_STYLES[tier];
   const bands = impact.bands;
-  const stormPeak = data.metadata.stormMaxInches;
+  const stormPeak = data.response.metadata.stormMaxInches;
 
   return (
     <div

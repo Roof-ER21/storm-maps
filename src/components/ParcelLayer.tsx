@@ -34,7 +34,6 @@ export default function ParcelLayer({ lat, lng }: ParcelLayerProps): null {
 
   useEffect(() => {
     if (lat === null || lng === null) {
-      setParcel((prev) => (prev === null ? prev : null));
       return;
     }
     let cancelled = false;

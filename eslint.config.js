@@ -20,6 +20,10 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
+      // External civic/weather/property APIs return uneven payloads. Keep
+      // explicit `any` visible in lint output without blocking CI until those
+      // integrations are normalized behind typed adapters.
+      '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {

@@ -56,16 +56,15 @@ import {
 import { generateStormReport } from './services/reportService';
 import { generateEvidencePack } from './services/evidencePackService';
 import ErrorBoundary from './components/ErrorBoundary';
-import OnboardingTour from './components/OnboardingTour';
 import { useOnboarding } from './hooks/useOnboarding';
-import HomeownerImport, { type ImportedHomeowner } from './components/HomeownerImport';
+import type { ImportedHomeowner } from './components/HomeownerImport';
 import PageSkeleton from './components/PageSkeleton';
-import Sidebar from './components/Sidebar';
-import StormMap from './components/StormMap';
-import SearchBar from './components/SearchBar';
-import Legend from './components/Legend';
 import AppHeader from './components/AppHeader';
 
+const Sidebar = lazy(() => import('./components/Sidebar'));
+const StormMap = lazy(() => import('./components/StormMap'));
+const SearchBar = lazy(() => import('./components/SearchBar'));
+const Legend = lazy(() => import('./components/Legend'));
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const PipelinePage = lazy(() => import('./components/PipelinePage'));
 const AdminPage = lazy(() => import('./components/AdminPage'));
@@ -73,6 +72,8 @@ const ReportsPage = lazy(() => import('./components/ReportsPage'));
 const EvidencePage = lazy(() => import('./components/EvidencePage'));
 const TeamPage = lazy(() => import('./components/TeamPage'));
 const AiSlideOver = lazy(() => import('./components/AiSlideOver'));
+const HomeownerImport = lazy(() => import('./components/HomeownerImport'));
+const OnboardingTour = lazy(() => import('./components/OnboardingTour'));
 import { syncLeadsToServer, seedDemoData, createShareableReport, fetchLeadsFromServer, uploadEvidenceBlob } from './services/api';
 import { extractGpsFromBlob } from './services/exifGps';
 import { lookupProperty, type PropertyInfo } from './services/propertyLookup';
@@ -3167,14 +3168,16 @@ function App() {
         </ErrorBoundary>
       </div>
 
-      {showHomeownerImport && (
-        <HomeownerImport
-          onImport={handleImportHomeowners}
-          onClose={() => setShowHomeownerImport(false)}
-        />
-      )}
+      <Suspense fallback={null}>
+        {showHomeownerImport && (
+          <HomeownerImport
+            onImport={handleImportHomeowners}
+            onClose={() => setShowHomeownerImport(false)}
+          />
+        )}
 
-      {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+        {showOnboarding && <OnboardingTour onComplete={completeOnboarding} />}
+      </Suspense>
 
       <Suspense fallback={null}>
         {aiSlideOpen && (

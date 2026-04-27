@@ -22,6 +22,7 @@ export type SwathCacheSource =
   | 'wind-live'
   | 'mrms-hail'
   | 'mrms-now'
+  | 'mrms-now-60min'
   | 'nhp-hail';
 
 export interface CachedSwathRow<T> {
@@ -64,7 +65,11 @@ export function ttlForStormDate(opts: {
   const ageDays =
     (Date.now() - target.getTime()) / (1000 * 60 * 60 * 24);
 
-  if (opts.source === 'wind-live' || opts.source === 'mrms-now') {
+  if (
+    opts.source === 'wind-live' ||
+    opts.source === 'mrms-now' ||
+    opts.source === 'mrms-now-60min'
+  ) {
     return 5 * 60 * 1000; // 5 min
   }
   if (ageDays < 1) return 15 * 60 * 1000; // today: 15 min
