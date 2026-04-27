@@ -345,7 +345,20 @@ function deriveBounds(events: StormEventDto[], lat: number, lng: number): Boundi
  */
 function displayHailIn(inches: number | null): string {
   if (inches === null || inches <= 0) return '—';
-  return `${Math.max(0.25, inches).toFixed(2)}"`;
+  // Round UP to the nearest adjuster-recognized "coin" size (¼, ½, ¾, 1,
+  // 1¼, 1½, 1¾, 2, 2¼, 2½, 2¾, 3, 3¼, 3½, 3¾, 4...).
+  // Adjusters and reps don't speak in 0.37" or 0.42" — they speak in
+  // marble, penny, quarter, half-dollar, ping-pong, golf-ball. A 0.38"
+  // sub-trace value rounds UP to 0.50" so the report uses the size the
+  // adjuster actually filed under.
+  const STANDARD_STEPS = [
+    0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0,
+    3.25, 3.5, 3.75, 4.0, 4.25, 4.5, 4.75, 5.0,
+  ];
+  for (const step of STANDARD_STEPS) {
+    if (inches <= step + 0.001) return `${step.toFixed(2)}"`;
+  }
+  return `${inches.toFixed(2)}"`;
 }
 
 function severityScore(events: StormEventDto[]): {
@@ -1019,108 +1032,128 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       area_impact: { label: 'AREA IMPACT', bg: '#fefce8', fg: '#854d0e' },
     };
 
-    const ROW_H = 22;
+    // Combined table — tier badge + date + per-band columns + biggest
+    // nearby. Replaces the previous TWO sections (Property Hail Hit History
+    // panel + Per-Band Storm History detail table) which were showing the
+    // same dates twice in different layouts.
+    const colTier = 78;
+    const colDate = 70;
+    const colBand = 56; // each of the 4 distance bands
+    const colBig = 76;
+    // Header row
+    const headers: Array<[string, number]> = [
+      ['Tier', colTier],
+      ['Date', colDate],
+      ['At Property', colBand],
+      ['1–3 mi', colBand],
+      ['3–5 mi', colBand],
+      ['5–10 mi', colBand],
+      ['Biggest Nearby', colBig],
+    ];
     let hy = doc.y;
-    for (const r of sortedHistRows) {
+    // Header strip
+    doc.rect(HX, hy, HW, 16).fill('#f1f5f9');
+    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8);
+    let hx = HX + 6;
+    for (const [label, w] of headers) {
+      doc.text(label, hx, hy + 4, { width: w - 4, lineBreak: false });
+      hx += w;
+    }
+    hy += 16;
+
+    const ROW_H = 22;
+    for (let i = 0; i < sortedHistRows.length; i += 1) {
+      const r = sortedHistRows[i];
       // Auto-paginate if next row would overflow the safe footer band.
       if (hy + ROW_H > 720) {
         doc.addPage();
-        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold');
-        doc.text('Property Hail Hit History (continued)', HX, doc.y, {
-          width: HW,
-        });
-        doc.moveDown(0.3);
+        drawSectionBanner('Property Hail Hit History (continued)');
+        // Redraw header
         hy = doc.y;
+        doc.rect(HX, hy, HW, 16).fill('#f1f5f9');
+        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8);
+        let hx2 = HX + 6;
+        for (const [label, w] of headers) {
+          doc.text(label, hx2, hy + 4, { width: w - 4, lineBreak: false });
+          hx2 += w;
+        }
+        hy += 16;
       }
       const tier = rowTier(r);
       const style = HIT_TIER_STYLE[tier];
 
       // Row background tint (alternating)
-      doc
-        .rect(HX, hy, HW, ROW_H)
-        .fill(sortedHistRows.indexOf(r) % 2 === 1 ? '#fafafa' : '#ffffff');
+      doc.rect(HX, hy, HW, ROW_H).fill(i % 2 === 1 ? '#fafafa' : '#ffffff');
 
-      // Tier badge — 92pt-wide pill on the left
-      const badgeX = HX + 4;
+      let cx = HX + 6;
+      // Tier badge pill
       const badgeY = hy + 4;
-      const badgeW = 88;
-      const badgeH = 14;
-      doc.roundedRect(badgeX, badgeY, badgeW, badgeH, 3).fill(style.bg);
+      const badgeW = colTier - 12;
+      doc.roundedRect(cx, badgeY, badgeW, 14, 3).fill(style.bg);
       doc
         .fillColor(style.fg)
         .font('Helvetica-Bold')
-        .fontSize(8)
-        .text(style.label, badgeX, badgeY + 4, {
+        .fontSize(7.5)
+        .text(style.label, cx, badgeY + 4, {
           width: badgeW,
           align: 'center',
           lineBreak: false,
         });
+      cx += colTier;
 
-      // Date — next column
+      // Date
       doc
         .fillColor('#0f172a')
         .font('Helvetica-Bold')
-        .fontSize(10)
-        .text(r.label, HX + 100, hy + 5, {
-          width: 90,
-          lineBreak: false,
-        });
-
-      // Hail summary — what reps quote to adjusters. AREA IMPACT must
-      // headline the WITHIN-10mi event (mi5to10 → mi3to5 → mi1to3), not
-      // biggestNearby, because biggestNearby tracks the LARGEST hail
-      // anywhere in the 25mi window which can read "11.0 mi away" while
-      // the row claims AREA IMPACT (within 10 mi). Mid-range distances
-      // (~7mi for 5-10 band) are honest stand-ins; precise event-level
-      // distance isn't tracked once we collapse into bands.
-      const headlineSize =
-        tier === 'direct_hit'
-          ? r.atProperty
-          : tier === 'near_miss'
-            ? r.mi1to3
-            : r.mi5to10 > 0
-              ? r.mi5to10
-              : r.mi3to5 > 0
-                ? r.mi3to5
-                : r.biggestNearby;
-      const distance =
-        tier === 'direct_hit'
-          ? 'at property'
-          : tier === 'near_miss'
-            ? 'within 1–3 mi'
-            : r.mi5to10 > 0
-              ? 'within 5–10 mi'
-              : r.mi3to5 > 0
-                ? 'within 3–5 mi'
-                : `${Math.min(r.biggestNearbyMi, 10).toFixed(1)} mi away`;
-      doc
-        .fillColor('#1e293b')
-        .font('Helvetica')
-        .fontSize(10)
-        .text(
-          `${displayHailIn(headlineSize)} hail · ${distance}`,
-          HX + 200,
-          hy + 5,
-          { width: 200, lineBreak: false },
-        );
-
-      // Biggest-nearby cross-ref — gives rep narrative ammo
-      doc
-        .fillColor('#64748b')
-        .font('Helvetica')
         .fontSize(9)
+        .text(r.label, cx, hy + 6, { width: colDate - 4, lineBreak: false });
+      cx += colDate;
+
+      // Per-band columns
+      const bandValues = [r.atProperty, r.mi1to3, r.mi3to5, r.mi5to10];
+      doc.font('Helvetica').fontSize(9);
+      for (const v of bandValues) {
+        const filled = v > 0;
+        doc
+          .fillColor(filled ? '#0f172a' : '#cbd5e1')
+          .font(filled ? 'Helvetica-Bold' : 'Helvetica')
+          .text(filled ? displayHailIn(v) : '—', cx, hy + 6, {
+            width: colBand - 4,
+            lineBreak: false,
+          });
+        cx += colBand;
+      }
+
+      // Biggest nearby
+      doc
+        .fillColor('#475569')
+        .font('Helvetica')
+        .fontSize(8.5)
         .text(
-          tier === 'direct_hit' && r.biggestNearby > r.atProperty
-            ? `Biggest nearby: ${displayHailIn(r.biggestNearby)} @ ${r.biggestNearbyMi.toFixed(1)} mi`
-            : '',
-          HX + 380,
+          r.biggestNearby > 0
+            ? `${displayHailIn(r.biggestNearby)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
+            : '—',
+          cx,
           hy + 6,
-          { width: 124, lineBreak: false, ellipsis: true },
+          { width: colBig - 4, lineBreak: false },
         );
 
       hy += ROW_H;
     }
     doc.y = hy + 14;
+
+    // Methodology footnote — what the band columns mean
+    doc
+      .fontSize(7.5)
+      .fillColor('#94a3b8')
+      .font('Helvetica-Oblique')
+      .text(
+        'At Property = 0–1 mi. Distance bands are mutually exclusive — each observation is assigned to one band, showing max hail in that band. ¼" display floor; sub-trace radar signatures rounded up to the nearest standard adjuster size (¼", ½", ¾", 1", 1¼"...).',
+        HX,
+        doc.y,
+        { width: HW },
+      );
+    doc.moveDown(0.4);
   }
 
   // ── Storm Narrative (adjuster prose) ──────────────────────────────────
@@ -1287,83 +1320,9 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // the Storm Coverage tier card. Its dataset, sortedHistRows, also
   // drives the per-band detail block below.)
 
-  // ── Per-Band Detail (adjuster reference) ──────────────────────────────
-  // Same dataset as the top Hit History but rendered with the per-distance
-  // columns adjusters cross-reference to confirm where hail did/didn't
-  // fall. Rendered lower because reps quote the tier badge on top; this
-  // is the supporting detail.
-  if (sortedHistRows.length > 0) {
-    const TBL_X = 54;
-    const colWidths = [88, 96, 90, 90, 90, 90];
-    const headers = ['Date', 'At Property (0–1 mi)', '1–3 mi', '3–5 mi', '5–10 mi', 'Biggest Nearby'];
-
-    if (doc.y > 600) doc.addPage();
-    drawSectionBanner('Per-Band Storm History (Distance Bands)');
-    doc.fillColor('#64748b').font('Helvetica').fontSize(8.5);
-    doc.text(
-      `MAX hail size by distance band on each storm date — ¼" display floor; sub-trace radar signatures rounded for adjuster use.`,
-      TBL_X,
-      doc.y,
-      { width: 504 },
-    );
-    doc.moveDown(0.3);
-
-    let tblY = doc.y;
-    const drawRow = (
-      yStart: number,
-      cells: string[],
-      isHeader = false,
-      tint = false,
-    ): number => {
-      const rowH = 18;
-      if (tint) {
-        doc.rect(TBL_X, yStart, colWidths.reduce((a, b) => a + b, 0), rowH).fill('#f8fafc');
-      }
-      doc.fillColor(isHeader ? '#475569' : '#0f172a');
-      doc.font(isHeader ? 'Helvetica-Bold' : 'Helvetica').fontSize(isHeader ? 8.5 : 9);
-      let cursor = TBL_X;
-      for (let i = 0; i < cells.length; i += 1) {
-        doc.text(cells[i], cursor + 4, yStart + 5, {
-          width: colWidths[i] - 8,
-          height: rowH - 4,
-          ellipsis: true,
-          lineBreak: false,
-        });
-        cursor += colWidths[i];
-      }
-      doc
-        .strokeColor('#e2e8f0')
-        .lineWidth(0.5)
-        .moveTo(TBL_X, yStart + rowH)
-        .lineTo(TBL_X + colWidths.reduce((a, b) => a + b, 0), yStart + rowH)
-        .stroke();
-      return yStart + rowH;
-    };
-
-    tblY = drawRow(tblY, headers, true);
-    sortedHistRows.forEach((r, i) => {
-      const cells = [
-        r.label,
-        displayHailIn(r.atProperty || null),
-        displayHailIn(r.mi1to3 || null),
-        displayHailIn(r.mi3to5 || null),
-        displayHailIn(r.mi5to10 || null),
-        r.biggestNearby > 0
-          ? `${displayHailIn(r.biggestNearby)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
-          : '—',
-      ];
-      tblY = drawRow(tblY, cells, false, i % 2 === 1);
-      if (tblY > 720) {
-        doc.addPage();
-        doc.fillColor('#0f172a').fontSize(11).font('Helvetica-Bold');
-        doc.text('Per-Band Detail (continued)', TBL_X, doc.y, { width: 504 });
-        doc.moveDown(0.3);
-        tblY = doc.y;
-        tblY = drawRow(tblY, headers, true);
-      }
-    });
-    doc.y = tblY + 14;
-  }
+  // (Per-Band Storm History table removed — its data is now part of the
+  // Property Hail Hit History combined table at the top of page 1. Single
+  // source of truth for the rep-facing storm-date list.)
 
   // ── Storm Corroboration (multi-source consilience) ────────────────────
   // Auto-curate rule: render only confirmed sources. If no source confirms
@@ -1460,17 +1419,50 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   if (doc.y > 460) {
     doc.addPage();
   }
-  drawSectionBanner('Hail Footprint Map');
+  drawSectionBanner('NEXRAD Radar + Hail Footprint Map');
+  doc
+    .fontSize(8.5)
+    .fillColor('#475569')
+    .font('Helvetica-Oblique')
+    .text(
+      'NEXRAD WSR-88D base reflectivity at storm peak overlaid on basemap; MRMS hail swaths + property pin on top.',
+      54,
+      doc.y,
+      { width: 504 },
+    );
+  doc.moveDown(0.4);
   const mapX = 54;
   const mapY = doc.y;
   const mapW = 504;
   const mapH = 280;
 
-  // Try Google Static Maps as a basemap when an API key is present. Falls
-  // back to a flat dark rectangle on any failure (no key, network, quota).
-  // Web Mercator math used for both image fetch and polygon projection so
-  // the swaths line up with the basemap exactly.
+  // Basemap layering order (top renders over bottom):
+  //   3. swath polygons (mutually-exclusive 0.25"+ MRMS hail bands)
+  //   2. NEXRAD WSR-88D base reflectivity at storm peak time (optional)
+  //   1. Google Static Maps roads/labels (fallback or context layer)
+  //
+  // The NEXRAD reflectivity image is what gives SA21's radar panels their
+  // visual punch — full-color Doppler showing the actual storm cell over
+  // a state outline. We composite it on top of a dimmed Google basemap so
+  // the rep still gets road/city context, then overlay the swath polygons
+  // and property pin on top of that.
   const project = makeMercatorProjector(bounds, mapX, mapY, mapW, mapH);
+
+  // Determine peak NEXRAD time. Use highest-magnitude event time on the
+  // date of loss; fall back to the date's mid-afternoon UTC when no
+  // events exist (still surfaces ambient radar).
+  const nexradAnchor = (() => {
+    if (datedEvents.length > 0) {
+      const peak = [...datedEvents]
+        .sort((a, b) => b.magnitude - a.magnitude)[0];
+      return peak.beginDate;
+    }
+    // Fallback: 21:00 UTC on the date of loss (~5pm ET / 4pm CT — peak
+    // convective hour for east-coast storms).
+    return `${req.dateOfLoss}T21:00:00Z`;
+  })();
+
+  // Google basemap (roads + labels) — always rendered first as a base
   const basemap = await fetchStaticBasemap(bounds, mapW, mapH);
   if (basemap) {
     try {
@@ -1481,6 +1473,30 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     }
   } else {
     doc.roundedRect(mapX, mapY, mapW, mapH, 5).fill('#0b1220');
+  }
+
+  // NEXRAD reflectivity at storm peak — full-color Doppler image overlaid
+  // on the basemap. fetchNexradSnapshot pulls from IEM's WMS-T endpoint
+  // which serves the N0R reflectivity mosaic for any historical timestamp.
+  // Soft enhancement: if the fetch fails, the section just shows the
+  // Google basemap with swath polygons (still better than the previous
+  // empty-radar look).
+  try {
+    const nexradImg = await fetchNexradSnapshot({
+      timeIso: nexradAnchor,
+      bbox: bounds,
+      width: Math.round(mapW),
+      height: Math.round(mapH),
+    });
+    if (nexradImg) {
+      // Render at slight opacity so the Google road labels still show
+      // through (PDFKit's image() doesn't support opacity directly so we
+      // rely on the NEXRAD PNG having transparency baked into the
+      // no-echo background; the IEM endpoint returns transparent PNG).
+      doc.image(nexradImg, mapX, mapY, { width: mapW, height: mapH });
+    }
+  } catch (err) {
+    console.warn('[reportPdf] nexrad overlay failed:', (err as Error).message);
   }
 
   // Render the swath polygons sorted by band so larger bands render on top.
