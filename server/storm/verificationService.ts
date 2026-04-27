@@ -126,12 +126,13 @@ export async function buildVerificationBulk(opts: {
            AND lng BETWEEN ${opts.lng - AT_LOCATION_LNG_PAD}
                        AND ${opts.lng + AT_LOCATION_LNG_PAD}
            AND COALESCE(hail_size_inches, magnitude, 0) >= 0.25
+           -- 2026-04-27 afternoon addendum: count PRIMARY-only sources
+           -- toward the verification gate. SWDI / mPING / SPC spotters
+           -- are supplemental and shouldn't push a property into
+           -- "verified" status on their own.
            AND (
              source_ncei_storm_events
              OR source_iem_lsr
-             OR source_ncei_swdi
-             OR source_mping
-             OR source_spc_hail
            )
          GROUP BY event_date
       `,
@@ -144,9 +145,6 @@ export async function buildVerificationBulk(opts: {
           (CASE
              WHEN source_ncei_storm_events THEN 'ncei-storm-events'
              WHEN source_iem_lsr THEN 'iem-lsr'
-             WHEN source_ncei_swdi THEN 'ncei-swdi'
-             WHEN source_mping THEN 'mping'
-             WHEN source_spc_hail THEN 'spc'
              ELSE 'other'
            END) AS source,
           COALESCE(hail_size_inches, magnitude, 0)::float AS size_inches
@@ -160,9 +158,6 @@ export async function buildVerificationBulk(opts: {
            AND (
              source_ncei_storm_events
              OR source_iem_lsr
-             OR source_ncei_swdi
-             OR source_mping
-             OR source_spc_hail
            )
            AND 3959 * acos(LEAST(1.0,
              cos(radians(${opts.lat})) * cos(radians(lat)) *
