@@ -45,9 +45,11 @@ import {
   type SourceFlags,
 } from './sourceTier.js';
 import {
+  computeDirectionAndSpeedFromPoints,
   computeHailDuration,
   computeStormDirectionAndSpeed,
   computeStormPeakTime,
+  filterEventsByEtDate,
 } from './stormMetrics.js';
 
 interface NceiAppendixRow {
@@ -1516,189 +1518,11 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.y = tableY + rows.length * RH + 6;
   }
 
-  // ── Property Hail Hit History (rep-facing summary) ────────────────────
-  // What the rep is looking for FIRST when they search an address: a
-  // chronological list of every storm in the last 18 months that hit
-  // this property, classified by tier so they can decide which date to
-  // claim. Matches the live UI's Selected Storm panel vocabulary.
-  if (sortedHistRows.length > 0) {
-    drawSectionBanner('Property Hail Hit History');
-    const HX = 54;
-    const HW = 504;
-    doc.fillColor('#64748b').font('Helvetica').fontSize(8.5);
-    doc.text(
-      `${sortedHistRows.length} storm date${sortedHistRows.length === 1 ? '' : 's'} with hail near this property over the last 24 months (within 25 mi). Most recent first.`,
-      HX,
-      doc.y,
-      { width: HW },
-    );
-    doc.moveDown(0.4);
-
-    const HIT_TIER_STYLE: Record<
-      'direct_hit' | 'near_miss' | 'area_impact',
-      { label: string; bg: string; fg: string }
-    > = {
-      direct_hit: { label: 'DIRECT HIT', bg: '#fef2f2', fg: '#991b1b' },
-      near_miss: { label: 'NEAR MISS', bg: '#fff7ed', fg: '#9a3412' },
-      area_impact: { label: 'AREA IMPACT', bg: '#fefce8', fg: '#854d0e' },
-    };
-
-    // Combined table — tier badge + date + per-band columns + biggest
-    // nearby. Replaces the previous TWO sections (Property Hail Hit History
-    // panel + Per-Band Storm History detail table) which were showing the
-    // same dates twice in different layouts.
-    const colTier = 78;
-    const colDate = 70;
-    const colBand = 75; // each of the 3 distance bands (was 56 with 4 bands)
-    const colBig = 76;
-    // Header row — 5–10 mi column dropped per 2026-04-27 meeting.
-    const headers: Array<[string, number]> = [
-      ['Tier', colTier],
-      ['Date', colDate],
-      ['At Property', colBand],
-      ['1–3 mi', colBand],
-      ['3–5 mi', colBand],
-      ['Biggest Nearby', colBig],
-    ];
-    let hy = doc.y;
-    // Header strip
-    doc.rect(HX, hy, HW, 16).fill('#f1f5f9');
-    doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8);
-    let hx = HX + 6;
-    for (const [label, w] of headers) {
-      doc.text(label, hx, hy + 4, { width: w - 4, lineBreak: false });
-      hx += w;
-    }
-    hy += 16;
-
-    const ROW_H = 22;
-    for (let i = 0; i < sortedHistRows.length; i += 1) {
-      const r = sortedHistRows[i];
-      // Auto-paginate if next row would overflow the safe footer band.
-      if (hy + ROW_H > 720) {
-        doc.addPage();
-        drawSectionBanner('Property Hail Hit History (continued)');
-        // Redraw header
-        hy = doc.y;
-        doc.rect(HX, hy, HW, 16).fill('#f1f5f9');
-        doc.fillColor('#475569').font('Helvetica-Bold').fontSize(8);
-        let hx2 = HX + 6;
-        for (const [label, w] of headers) {
-          doc.text(label, hx2, hy + 4, { width: w - 4, lineBreak: false });
-          hx2 += w;
-        }
-        hy += 16;
-      }
-      const tier = rowTier(r);
-      const style = HIT_TIER_STYLE[tier];
-
-      // Row background tint (alternating)
-      doc.rect(HX, hy, HW, ROW_H).fill(i % 2 === 1 ? '#fafafa' : '#ffffff');
-
-      let cx = HX + 6;
-      // Tier badge pill
-      const badgeY = hy + 4;
-      const badgeW = colTier - 12;
-      doc.roundedRect(cx, badgeY, badgeW, 14, 3).fill(style.bg);
-      doc
-        .fillColor(style.fg)
-        .font('Helvetica-Bold')
-        .fontSize(7.5)
-        .text(style.label, cx, badgeY + 4, {
-          width: badgeW,
-          align: 'center',
-          lineBreak: false,
-        });
-      cx += colTier;
-
-      // Date
-      doc
-        .fillColor('#0f172a')
-        .font('Helvetica-Bold')
-        .fontSize(9)
-        .text(r.label, cx, hy + 6, { width: colDate - 4, lineBreak: false });
-      cx += colDate;
-
-      // Per-band columns — strict bucketing per the 2026-04-27 afternoon
-      // addendum. Each column runs the cap with its OWN VerificationContext
-      // computed from primary-source reports IN THAT BAND only. A column
-      // with zero primary reports or a single-source mPING-only reading
-      // is correctly marked unverified and capped at 2.0", regardless of
-      // what the property-level context says.
-      const atPropCtx = bandVerification(
-        r.primaryAtProperty,
-        r.dateIso,
-        req.lat,
-        req.lng,
-      );
-      const mi1to3Ctx = bandVerification(
-        r.primaryMi1to3,
-        r.dateIso,
-        req.lat,
-        req.lng,
-      );
-      const mi3to5Ctx = bandVerification(
-        r.primaryMi3to5,
-        r.dateIso,
-        req.lat,
-        req.lng,
-      );
-      // 5–10 mi column dropped per 2026-04-27 meeting — values still feed
-      // the row filter and biggest-nearby caption, just not displayed.
-      const bandValues: Array<[number, VerificationContext]> = [
-        [r.atProperty, atPropCtx],
-        [r.mi1to3, mi1to3Ctx],
-        [r.mi3to5, mi3to5Ctx],
-      ];
-      doc.font('Helvetica').fontSize(9);
-      for (const [v, ctx] of bandValues) {
-        const filled = v > 0;
-        doc
-          .fillColor(filled ? '#0f172a' : '#cbd5e1')
-          .font(filled ? 'Helvetica-Bold' : 'Helvetica')
-          .text(filled ? displayHailIn(v, ctx) : '—', cx, hy + 6, {
-            width: colBand - 4,
-            lineBreak: false,
-          });
-        cx += colBand;
-      }
-
-      // Biggest nearby — descriptive (not a claim) but still capped so we
-      // never print "4.00\" @ 11mi" which would tank credibility even in
-      // the context column. Uses the 3–5 mi band's verification context
-      // as a reasonable proxy (similar far-band semantics) — biggestNearby
-      // can be anywhere out to 25 mi, but consensus / sterling at that
-      // distance shouldn't drive the displayed size.
-      doc
-        .fillColor('#475569')
-        .font('Helvetica')
-        .fontSize(8.5)
-        .text(
-          r.biggestNearby > 0
-            ? `${displayHailIn(r.biggestNearby, mi3to5Ctx)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
-            : '—',
-          cx,
-          hy + 6,
-          { width: colBig - 4, lineBreak: false },
-        );
-
-      hy += ROW_H;
-    }
-    doc.y = hy + 14;
-
-    // Methodology footnote — what the band columns mean
-    doc
-      .fontSize(7.5)
-      .fillColor('#94a3b8')
-      .font('Helvetica-Oblique')
-      .text(
-        'At Property = within 0.5 mi of the subject point. 1–3 mi = 0.5–3 mi. 3–5 mi = 3–5 mi. Distance bands are mutually exclusive; each observation is assigned to exactly one band, showing the max hail in that band. ¼" display floor; sub-trace radar signatures rounded up to the nearest standard adjuster size (¼", ½", ¾", 1", 1¼"...).',
-        HX,
-        doc.y,
-        { width: HW },
-      );
-    doc.moveDown(0.4);
-  }
+  // (Legacy "Property Hail Hit History" combined table removed in
+  // Phase 6 of the 2026-04-27 redesign — replaced by the new 9-column
+  // "Historical Storm Activity" table that fires AFTER Severe Weather
+  // Warnings per the spec render order. The dataset (sortedHistRows
+  // + histGroups) is still populated here and consumed downstream.)
 
   // ── Storm Narrative (adjuster prose) ──────────────────────────────────
   // Composes Gemini-Field-style language: "On April 1, 2026, a severe
@@ -2379,6 +2203,251 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
       doc.y = py + W.blockHeight;
     }
+  }
+
+  // ── Section 7 — Historical Storm Activity (9-col table) ──────────────
+  // One row per historical storm date within ~10 mi of the property,
+  // sorted newest-first. Pulls from sortedHistRows (built earlier from
+  // verified_hail_events + swath_cache injection). Per-band cap values
+  // run through displayHailIn with the SAME bandVerification context the
+  // legacy hit-history table used — preserves the cap algorithm wiring.
+  if (sortedHistRows.length > 0) {
+    drawSectionBanner('Historical Storm Activity');
+    const H = PDF_LAYOUT.historical;
+    const PAD = H.cellPad;
+
+    let yt = doc.y;
+
+    // Header row — gray fill, bold 8pt label gray text
+    doc.rect(M, yt, CW, H.headerHeight).fill(COLOR.bannerBg);
+    doc
+      .fillColor(COLOR.labelGray)
+      .font('Helvetica-Bold')
+      .fontSize(H.headerFontSize);
+    for (const col of H.cols) {
+      // Multi-line headers ("Within 10mi") wrap — give them height room.
+      doc.text(col.label, col.x + PAD.left, yt + PAD.top, {
+        width: col.w - PAD.left * 2,
+        height: H.headerHeight - PAD.top - 2,
+      });
+    }
+    // Header thin verticals between columns
+    for (let i = 1; i < H.cols.length; i += 1) {
+      const x = H.cols[i].x;
+      doc
+        .moveTo(x, yt)
+        .lineTo(x, yt + H.headerHeight)
+        .strokeColor(COLOR.borderGray)
+        .lineWidth(0.4)
+        .stroke();
+    }
+    yt += H.headerHeight;
+
+    // Index histNceiRows by date so we can derive per-row direction /
+    // speed / duration from the actual events on that date.
+    const eventsByDate = new Map<
+      string,
+      Array<{ lat: number; lng: number; timeIso: string; eventType: string }>
+    >();
+    for (const r of histNceiRows) {
+      const dateIso = typeof r.event_date === 'string'
+        ? r.event_date.slice(0, 10)
+        : String(r.event_date).slice(0, 10);
+      const lat = typeof r.lat === 'number' ? r.lat : Number(r.lat);
+      const lng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      if (!r.begin_time_utc) continue;
+      if (r.event_type !== 'Hail') continue;
+      const list = eventsByDate.get(dateIso) ?? [];
+      list.push({
+        lat,
+        lng,
+        timeIso: r.begin_time_utc,
+        eventType: r.event_type,
+      });
+      eventsByDate.set(dateIso, list);
+    }
+
+    // For the date of loss, also fold in any live `events` cache that
+    // didn't get into verified_hail_events yet — gives Direction/Speed/
+    // Duration the same data the Hail Impact Details cell used.
+    {
+      const dolEvents = filterEventsByEtDate(events, req.dateOfLoss).filter(
+        (e) => e.eventType === 'Hail',
+      );
+      if (dolEvents.length > 0) {
+        const list = eventsByDate.get(req.dateOfLoss) ?? [];
+        for (const e of dolEvents) {
+          list.push({
+            lat: e.beginLat,
+            lng: e.beginLon,
+            timeIso: e.beginDate,
+            eventType: e.eventType,
+          });
+        }
+        eventsByDate.set(req.dateOfLoss, list);
+      }
+    }
+
+    const fmtMdy = (iso: string): string => {
+      const d = new Date(`${iso}T12:00:00`);
+      if (Number.isNaN(d.getTime())) return iso;
+      return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
+    };
+
+    const fmtImpactTime = (iso: string, dateIso: string): string => {
+      const list = eventsByDate.get(dateIso) ?? [];
+      if (list.length === 0) return fmtMdy(dateIso);
+      // Earliest event = peak time per spec line 175.
+      const sorted = [...list].sort(
+        (a, b) => new Date(a.timeIso).getTime() - new Date(b.timeIso).getTime(),
+      );
+      const t = new Date(sorted[0].timeIso);
+      if (Number.isNaN(t.getTime())) return fmtMdy(dateIso);
+      const datePart = t.toLocaleDateString('en-US', {
+        timeZone: 'America/New_York',
+        month: 'numeric',
+        day: 'numeric',
+        year: 'numeric',
+      });
+      const timePart = t.toLocaleTimeString('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short',
+      });
+      return `${datePart}, ${timePart}`;
+    };
+
+    for (let i = 0; i < sortedHistRows.length; i += 1) {
+      const r = sortedHistRows[i];
+
+      // Auto-paginate before drawing the row if it won't fit.
+      if (yt + H.bodyRowHeight > BOTTOM - 8) {
+        doc.addPage();
+        drawSectionBanner('Historical Storm Activity (continued)');
+        yt = doc.y;
+        doc.rect(M, yt, CW, H.headerHeight).fill(COLOR.bannerBg);
+        doc.fillColor(COLOR.labelGray).font('Helvetica-Bold').fontSize(H.headerFontSize);
+        for (const col of H.cols) {
+          doc.text(col.label, col.x + PAD.left, yt + PAD.top, {
+            width: col.w - PAD.left * 2,
+            height: H.headerHeight - PAD.top - 2,
+          });
+        }
+        for (let j = 1; j < H.cols.length; j += 1) {
+          const x = H.cols[j].x;
+          doc
+            .moveTo(x, yt)
+            .lineTo(x, yt + H.headerHeight)
+            .strokeColor(COLOR.borderGray)
+            .lineWidth(0.4)
+            .stroke();
+        }
+        yt += H.headerHeight;
+      }
+
+      // Per-band verification contexts — same calls the legacy hit-
+      // history table used. Preserves the cap algorithm wiring.
+      const atPropCtx = bandVerification(
+        r.primaryAtProperty,
+        r.dateIso,
+        req.lat,
+        req.lng,
+      );
+      const mi1to3Ctx = bandVerification(
+        r.primaryMi1to3,
+        r.dateIso,
+        req.lat,
+        req.lng,
+      );
+      const mi3to5Ctx = bandVerification(
+        r.primaryMi3to5,
+        r.dateIso,
+        req.lat,
+        req.lng,
+      );
+      const mi5to10Ctx = farBandCtx(
+        verificationByDate.get(r.dateIso) ?? UNVERIFIED_CTX,
+      );
+
+      // Direction / Speed / Duration from per-date events.
+      const dateEvents = eventsByDate.get(r.dateIso) ?? [];
+      const dirSpeed = computeDirectionAndSpeedFromPoints(dateEvents);
+      let durationMin: number | null = null;
+      if (dateEvents.length >= 2) {
+        const sorted = [...dateEvents].sort(
+          (a, b) => new Date(a.timeIso).getTime() - new Date(b.timeIso).getTime(),
+        );
+        const minMs = new Date(sorted[0].timeIso).getTime();
+        const maxMs = new Date(sorted[sorted.length - 1].timeIso).getTime();
+        if (Number.isFinite(minMs) && Number.isFinite(maxMs) && maxMs > minMs) {
+          durationMin = Math.round((maxMs - minMs) / 60_000 * 10) / 10;
+        }
+      }
+
+      // Cell values
+      const cellValues: Record<string, string> = {
+        mapDate: fmtMdy(r.dateIso),
+        impactTime: fmtImpactTime(r.dateIso, r.dateIso),
+        direction: dirSpeed.heading,
+        speed: dirSpeed.speedMph !== null ? dirSpeed.speedMph.toFixed(1) : '—',
+        duration: durationMin !== null ? durationMin.toFixed(1) : '—',
+        atLocation: r.atProperty > 0 ? displayHailIn(r.atProperty, atPropCtx) : '—',
+        within1mi: r.mi1to3 > 0 ? displayHailIn(r.mi1to3, mi1to3Ctx) : '—',
+        within3mi: r.mi3to5 > 0 ? displayHailIn(r.mi3to5, mi3to5Ctx) : '—',
+        within10mi: r.mi5to10 > 0 ? displayHailIn(r.mi5to10, mi5to10Ctx) : '—',
+      };
+
+      doc.fillColor(COLOR.bodyText).font('Helvetica').fontSize(H.bodyFontSize);
+      for (const col of H.cols) {
+        const value = cellValues[col.key] ?? '—';
+        // Impact Time wraps to 2 lines (date, time); other columns single-line.
+        if (col.key === 'impactTime' && value.includes(',')) {
+          const [datePart, timePart] = value.split(', ');
+          doc.text(datePart, col.x + PAD.left, yt + PAD.top, {
+            width: col.w - PAD.left * 2,
+            lineBreak: false,
+          });
+          doc.text(timePart || '', col.x + PAD.left, yt + PAD.top + 11, {
+            width: col.w - PAD.left * 2,
+            lineBreak: false,
+          });
+        } else {
+          doc.text(value, col.x + PAD.left, yt + PAD.top, {
+            width: col.w - PAD.left * 2,
+            lineBreak: false,
+          });
+        }
+      }
+
+      // Row bottom hairline
+      doc
+        .moveTo(M, yt + H.bodyRowHeight)
+        .lineTo(M + CW, yt + H.bodyRowHeight)
+        .strokeColor(COLOR.borderGray)
+        .lineWidth(0.5)
+        .stroke();
+      yt += H.bodyRowHeight;
+    }
+
+    // Outer table left/right border (top/bottom drawn implicitly via
+    // header fill + last-row hairline).
+    doc.y = yt + 8;
+
+    // Footnote — italic 8pt muted gray
+    doc
+      .fillColor(COLOR.mutedGray)
+      .font('Helvetica-Oblique')
+      .fontSize(H.footnoteFontSize)
+      .text(
+        '* Map dates begin at 6:00 a.m. CST on the indicated day and end at 6:00 a.m. CST the following day.',
+        M,
+        doc.y,
+        { width: CW },
+      );
+    doc.moveDown(0.6);
   }
 
   // ── Evidence images ───────────────────────────────────────────────────
