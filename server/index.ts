@@ -1117,6 +1117,92 @@ interface PerDateImpactBody {
   radiusMiles?: number;
 }
 
+/**
+ * Path B (ground-report upgrade) — bulk lookup for the per-date-impact path.
+ *
+ * Catches the case SA21 documents at `8482 Stonewall Rd, 4/1/2026`: the MRMS
+ * polygon's vertices didn't quite enclose the property lat/lng, so the
+ * polygon-containment check (Path A) returned false, yet three federal
+ * ground reports of 1.0–1.25" hail sat within 0.7 mi of the address.
+ *
+ * Threshold: any verified_hail_events row from a federal ground source
+ * (NCEI Storm Events, NCEI SWDI, IEM LSR, mPING, SPC) with hail_size_inches
+ * ≥ 0.5" within ≤1.0 mi of the property. One match is enough — multiple
+ * federal sources independently observing claim-grade hail next door is the
+ * strongest non-radar evidence we have.
+ */
+interface GroundUpgradeRow {
+  event_date: string | Date;
+  closest_mi: number;
+  max_hail: number;
+  source_count: number;
+}
+
+async function fetchGroundReportUpgrades(
+  lat: number,
+  lng: number,
+  dates: string[],
+): Promise<Map<string, { closestMi: number; maxHail: number }>> {
+  if (!pgSql || dates.length === 0) return new Map();
+  try {
+    const rows = await pgSql<GroundUpgradeRow[]>`
+      SELECT
+        event_date,
+        MIN(
+          3959 * acos(
+            LEAST(1.0,
+              cos(radians(${lat})) * cos(radians(lat)) *
+              cos(radians(lng) - radians(${lng})) +
+              sin(radians(${lat})) * sin(radians(lat))
+            )
+          )
+        )::float AS closest_mi,
+        MAX(COALESCE(hail_size_inches, magnitude, 0))::float AS max_hail,
+        (
+          (BOOL_OR(source_ncei_storm_events))::int +
+          (BOOL_OR(source_ncei_swdi))::int +
+          (BOOL_OR(source_iem_lsr))::int +
+          (BOOL_OR(source_mping))::int +
+          (BOOL_OR(source_spc_hail))::int
+        ) AS source_count
+        FROM verified_hail_events
+       WHERE event_date = ANY(${dates}::date[])
+         AND lat BETWEEN ${lat - 0.02} AND ${lat + 0.02}
+         AND lng BETWEEN ${lng - 0.025} AND ${lng + 0.025}
+         AND COALESCE(hail_size_inches, magnitude, 0) >= 0.5
+         AND (
+           source_ncei_storm_events
+           OR source_ncei_swdi
+           OR source_iem_lsr
+           OR source_mping
+           OR source_spc_hail
+         )
+       GROUP BY event_date
+       HAVING MIN(
+         3959 * acos(
+           LEAST(1.0,
+             cos(radians(${lat})) * cos(radians(lat)) *
+             cos(radians(lng) - radians(${lng})) +
+             sin(radians(${lat})) * sin(radians(lat))
+           )
+         )
+       ) <= 1.0
+    `;
+    const out = new Map<string, { closestMi: number; maxHail: number }>();
+    for (const r of rows) {
+      const dateStr =
+        r.event_date instanceof Date
+          ? r.event_date.toISOString().slice(0, 10)
+          : String(r.event_date).slice(0, 10);
+      out.set(dateStr, { closestMi: r.closest_mi, maxHail: r.max_hail });
+    }
+    return out;
+  } catch (err) {
+    console.warn('[per-date-impact] ground upgrade query failed:', (err as Error).message);
+    return new Map();
+  }
+}
+
 app.post('/api/hail/per-date-impact', async (req, res) => {
   try {
     const body = (req.body || {}) as PerDateImpactBody;
@@ -1138,10 +1224,14 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
       west: body.lng - lngPad,
     };
 
-    // Cap dates at 60 — a property's storm history rarely exceeds this in
-    // 5 years and the frontend only renders the visible chunk anyway. The
-    // per-date MRMS resolve is sub-50ms cached, ~3-8s on cold GRIB fetches.
     const dates = body.dates.slice(0, 60).filter(isValidIsoDate);
+
+    // Path B candidates — one round-trip for the whole date set.
+    const groundUpgradeByDate = await fetchGroundReportUpgrades(
+      body.lat,
+      body.lng,
+      dates,
+    );
 
     const results = await Promise.all(
       dates.map(async (date) => {
@@ -1153,12 +1243,56 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
           });
           const r = resp?.results[0];
           if (!r) {
+            // Path A returned no MRMS data at all. Path B can still fire
+            // when ground-report criteria are met for this date.
+            const ground = groundUpgradeByDate.get(date);
+            if (ground) {
+              return {
+                date,
+                tier: 'direct_hit',
+                directHit: true,
+                upgradedVia: 'ground_report',
+                closestMiles: ground.closestMi,
+                atPropertyInches: ground.maxHail,
+                stormPeakInches: ground.maxHail,
+              };
+            }
             return { date, tier: 'unknown', directHit: false, closestMiles: null };
           }
-          // Server-side tier is already polygon-truth (direct_hit on
-          // point-in-polygon, near_miss on edge-distance, etc.). Reuse
-          // it verbatim so the UI badge matches the PDF and the impact
-          // card to the row.
+          // Path A was direct_hit — no upgrade needed.
+          if (r.tier === 'direct_hit') {
+            return {
+              date,
+              tier: r.tier,
+              directHit: true,
+              upgradedVia: 'polygon',
+              closestMiles: r.edgeDistanceMiles ?? null,
+              atPropertyInches: r.bands?.atProperty ?? null,
+              stormPeakInches: resp?.metadata.stormMaxInches ?? null,
+            };
+          }
+          // Path A missed — try Path B (ground-report upgrade).
+          const ground = groundUpgradeByDate.get(date);
+          if (ground) {
+            return {
+              date,
+              tier: 'direct_hit',
+              directHit: true,
+              upgradedVia: 'ground_report',
+              closestMiles: Math.min(
+                ground.closestMi,
+                r.edgeDistanceMiles ?? Number.POSITIVE_INFINITY,
+              ),
+              atPropertyInches: Math.max(
+                ground.maxHail,
+                r.bands?.atProperty ?? 0,
+              ),
+              stormPeakInches: Math.max(
+                ground.maxHail,
+                resp?.metadata.stormMaxInches ?? 0,
+              ),
+            };
+          }
           return {
             date,
             tier: r.tier,
