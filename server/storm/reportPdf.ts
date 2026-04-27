@@ -1438,17 +1438,19 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         cx += colBand;
       }
 
-      // Biggest nearby — descriptive (not a claim) but still cap so we
-      // never print "4.00\" @ 11mi" which would tank credibility on
-      // adjuster scan even from a distance band. Far-band ctx (no
-      // consensus override since this is by definition >property).
+      // Biggest nearby — descriptive (not a claim) but still capped so we
+      // never print "4.00\" @ 11mi" which would tank credibility even in
+      // the context column. Uses the 3–5 mi band's verification context
+      // as a reasonable proxy (similar far-band semantics) — biggestNearby
+      // can be anywhere out to 25 mi, but consensus / sterling at that
+      // distance shouldn't drive the displayed size.
       doc
         .fillColor('#475569')
         .font('Helvetica')
         .fontSize(8.5)
         .text(
           r.biggestNearby > 0
-            ? `${displayHailIn(r.biggestNearby, farCtx)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
+            ? `${displayHailIn(r.biggestNearby, mi3to5Ctx)} @ ${r.biggestNearbyMi.toFixed(1)}mi`
             : '—',
           cx,
           hy + 6,
