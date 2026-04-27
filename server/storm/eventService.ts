@@ -93,7 +93,7 @@ function hailReportToEvent(r: HailPointReport): StormEventDto {
     magnitude: r.sizeInches,
     magnitudeType: 'inches',
     damageProperty: 0,
-    source: r.source,
+    source: r.source === 'IEM-LSR' ? 'IEM LSR' : r.source,
     narrative: r.description ?? '',
   };
 }
