@@ -1268,7 +1268,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     {
       label: 'PEAK WIND (DAY)',
       value: peakWind > 0 ? `${Math.round(peakWind)} mph` : '—',
-      sub: peakWind >= 58 ? 'NWS severe (≥58 mph)' : peakWind > 0 ? `${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}` : 'no gusts reported',
+      sub: peakWind >= 58 ? 'NWS severe (>=58 mph)' : peakWind > 0 ? `${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}` : 'no gusts reported',
     },
   ];
   sumCards.forEach((c, idx) => {
@@ -1632,7 +1632,9 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         `${e.county || ''}${e.state ? ', ' + e.state : ''}` ||
         `${e.beginLat.toFixed(2)}, ${e.beginLon.toFixed(2)}`;
       doc.text(loc.slice(0, 40), 280, rowY, { width: 180 });
-      doc.fillColor('#64748b').text((e.source || '').slice(0, 12), 470, rowY);
+      doc
+        .fillColor('#64748b')
+        .text(e.source || '', 470, rowY, { width: 88, lineBreak: false });
       rowY += 14;
     }
   }
