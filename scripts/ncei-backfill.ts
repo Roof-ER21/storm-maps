@@ -28,12 +28,18 @@
  */
 
 import { createGunzip } from 'node:zlib';
-import { Readable } from 'node:stream';
+import { createReadStream } from 'node:fs';
+import { mkdir, stat, unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { sql } from '../server/db.js';
 import { parseCsvStream } from '../server/storm/csvStream.js';
 
 const NCEI_BASE = 'https://www.ncei.noaa.gov/pub/data/swdi/stormevents/csvfiles/';
 const FETCH_TIMEOUT_MS = 60_000;
+const DOWNLOAD_TIMEOUT_MS = 600_000; // 10 min — full file, not just headers
+const DOWNLOAD_RETRIES = 3;
+const DOWNLOAD_CACHE_DIR = join(tmpdir(), 'hailyes-ncei');
 
 const FOCUS_STATES = new Set([
   'VIRGINIA',
@@ -153,24 +159,83 @@ async function findLatestDetailsUrl(year: number): Promise<string | null> {
   }
 }
 
-function streamFromResponse(res: Response): AsyncIterable<Uint8Array> {
-  if (!res.body) throw new Error('NCEI response has no body');
-  const fetchStream = Readable.fromWeb(
-    res.body as unknown as import('node:stream/web').ReadableStream<Uint8Array>,
-  );
+function streamFromFile(path: string): AsyncIterable<Uint8Array> {
+  const fileStream = createReadStream(path);
   const gunzip = createGunzip();
-  // Attach an error listener BEFORE pipe so a mid-stream undici socket drop
-  // (UND_ERR_SOCKET) propagates as a rejection on the for-await consumer
-  // rather than as an unhandled error on the gunzip stream — which Node 22
-  // treats as a process-killing exception.
-  fetchStream.on('error', (err) => {
-    console.warn('[ncei] fetch stream error:', (err as Error).message);
+  fileStream.on('error', (err) => {
+    console.warn('[ncei] file stream error:', (err as Error).message);
     gunzip.destroy(err);
   });
   gunzip.on('error', (err) => {
     console.warn('[ncei] gunzip stream error:', (err as Error).message);
   });
-  return fetchStream.pipe(gunzip) as unknown as AsyncIterable<Uint8Array>;
+  return fileStream.pipe(gunzip) as unknown as AsyncIterable<Uint8Array>;
+}
+
+/**
+ * Fetch the .csv.gz to a local file with retries. Streaming-and-decoding
+ * directly off undici was repeatedly losing the connection mid-transfer
+ * (`fetch stream error: terminated`), silently truncating the year. Pulling
+ * the bytes to disk first lets us retry the network leg in isolation, and
+ * makes the parse phase a pure local read.
+ *
+ * Filename includes the c-suffix so re-running with the same publish date
+ * reuses the cache; a new publish forces a fresh download.
+ */
+async function downloadGzWithRetry(url: string, year: number): Promise<string> {
+  await mkdir(DOWNLOAD_CACHE_DIR, { recursive: true });
+  const filename = url.split('/').pop() ?? `ncei-${year}.csv.gz`;
+  const filepath = join(DOWNLOAD_CACHE_DIR, filename);
+
+  try {
+    const s = await stat(filepath);
+    // Treat anything < 100KB as suspect (NCEI year files are 20–80MB) and
+    // re-download. Full files are sealed by the c-suffix in the filename,
+    // so any healthy cached copy is byte-identical to the remote.
+    if (s.size > 100_000) {
+      console.log(`[ncei] year=${year} using cached download (${(s.size / 1_048_576).toFixed(1)} MB)`);
+      return filepath;
+    }
+    await unlink(filepath).catch(() => {});
+  } catch {
+    // file doesn't exist — fall through to download
+  }
+
+  let lastErr: Error | null = null;
+  for (let attempt = 1; attempt <= DOWNLOAD_RETRIES; attempt += 1) {
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), DOWNLOAD_TIMEOUT_MS);
+    try {
+      console.log(`[ncei] year=${year} downloading attempt ${attempt}/${DOWNLOAD_RETRIES}…`);
+      const res = await fetch(url, {
+        signal: ac.signal,
+        headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
+      });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length < 100_000) {
+        throw new Error(`download too small (${buf.length} bytes)`);
+      }
+      await writeFile(filepath, buf);
+      clearTimeout(timer);
+      console.log(`[ncei] year=${year} downloaded ${(buf.length / 1_048_576).toFixed(1)} MB`);
+      return filepath;
+    } catch (err) {
+      clearTimeout(timer);
+      lastErr = err as Error;
+      console.warn(
+        `[ncei] year=${year} download attempt ${attempt} failed:`,
+        (err as Error).message,
+      );
+      if (attempt < DOWNLOAD_RETRIES) {
+        const backoffMs = 2_000 * 2 ** (attempt - 1);
+        await new Promise((resolve) => setTimeout(resolve, backoffMs));
+      }
+    }
+  }
+  throw lastErr ?? new Error('download failed for unknown reason');
 }
 
 function ymdToIso(yearmonth: string, day: string, time: string): string {
@@ -385,26 +450,15 @@ async function backfillYear(
   }
   console.log(`[ncei] year=${year} url=${url.split('/').pop()}`);
 
-  const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS * 5);
-  let res: Response;
+  let filepath: string;
   try {
-    res = await fetch(url, {
-      signal: ac.signal,
-      headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
-    });
-    if (!res.ok) {
-      clearTimeout(timer);
-      console.warn(`[ncei] HTTP ${res.status} fetching ${url}`);
-      return stats;
-    }
+    filepath = await downloadGzWithRetry(url, year);
   } catch (err) {
-    clearTimeout(timer);
-    console.warn(`[ncei] fetch failed:`, (err as Error).message);
+    console.warn(`[ncei] year=${year} download failed after retries:`, (err as Error).message);
     return stats;
   }
 
-  const stream = streamFromResponse(res);
+  const stream = streamFromFile(filepath);
   let header: string[] | null = null;
   let idx: Record<string, number> | null = null;
   const batch: NceiRow[] = [];
@@ -445,15 +499,13 @@ async function backfillYear(
       await upsertBatch(batch);
     }
   } catch (err) {
-    // Mid-stream errors (undici socket drops, gzip corruption, network
-    // resets) shouldn't kill the whole backfill. Log + return whatever
-    // partial stats we accumulated; the year-level loop continues.
+    // With download-to-disk + retries, this branch should rarely fire — if
+    // it does, the .gz was likely corrupt mid-file. Log + carry on; the
+    // year-level loop continues to the next year.
     console.warn(
-      `[ncei] year=${year} aborted mid-stream after rowsKept=${stats.rowsKept}:`,
+      `[ncei] year=${year} aborted after rowsKept=${stats.rowsKept}:`,
       (err as Error).message,
     );
-  } finally {
-    clearTimeout(timer);
   }
 
   return stats;
