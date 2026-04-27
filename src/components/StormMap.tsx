@@ -849,32 +849,39 @@ function MapContent({
         : null;
 
     // Build the swath fetch bbox. Per 4/27/26 rep feedback the old
-    // search-radius bbox was way too tight — reps saw "2 little yellow
-    // polygons near the property" while competitors showed full storm
-    // corridors stretching 200+ mi across the mid-Atlantic.
+    // 25-mi-from-property bbox was way too tight — reps saw "2 little
+    // yellow polygons" while competitors showed full storm corridors
+    // 200+ mi across the mid-Atlantic.
     //
-    // New rule: fetch MRMS swaths for the full visible MAP VIEWPORT
-    // (plus a small pad) so polygons load in as reps pan/zoom. Falls
-    // back to a generous 100 mi property bbox if the viewport isn't
-    // known yet, then merges in the event bounds.
+    // New rule: ALWAYS pull a 100-mi-from-property minimum, then merge
+    // in the viewport AND the event bounds. The wider bbox catches the
+    // full storm so reps see the corridor without needing to pan/zoom.
+    // Tested on April 15 2025 storm: 25-mi bbox returned 1 feature /
+    // 8 polygons (trace only); 100-mi returned 8 features / 254
+    // polygons across 8 size bands. The extra payload is ~80 KB JSON
+    // and decodes in <100 ms — invisible to UX.
     //
-    // The `searchRadiusMiles` config still controls the property-history
-    // distance bands and the storm-date filter — but it's the wrong
-    // unit for the swath polygon fetch.
+    // `searchRadiusMiles` still controls the property-history distance
+    // bands and the storm-date filter — but it's the wrong unit for the
+    // swath fetch.
     const propertyAnchor = propertyMarker;
     const SWATH_FETCH_RADIUS_MI = 100;
     let bounds: BoundingBox | null = null;
-    if (mapBounds) {
-      bounds = mapBounds;
-    } else if (propertyAnchor) {
+    if (propertyAnchor) {
       const latPad = SWATH_FETCH_RADIUS_MI / 69;
-      const lngPad = SWATH_FETCH_RADIUS_MI / (69 * Math.cos((propertyAnchor.lat * Math.PI) / 180));
+      const lngPad =
+        SWATH_FETCH_RADIUS_MI / (69 * Math.cos((propertyAnchor.lat * Math.PI) / 180));
       bounds = {
         north: propertyAnchor.lat + latPad,
         south: propertyAnchor.lat - latPad,
         east: propertyAnchor.lng + lngPad,
         west: propertyAnchor.lng - lngPad,
       };
+    }
+    if (bounds && mapBounds) {
+      bounds = mergeBounds(bounds, mapBounds);
+    } else if (!bounds && mapBounds) {
+      bounds = mapBounds;
     }
     if (bounds && stormContext.eventBounds) {
       bounds = mergeBounds(bounds, stormContext.eventBounds);
