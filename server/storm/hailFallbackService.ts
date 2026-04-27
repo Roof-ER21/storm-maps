@@ -236,21 +236,24 @@ export async function buildHailFallbackCollection(
     },
   };
 
-  // Fire-and-forget cache write.
-  void setCachedSwath({
-    source: 'mrms-hail',
-    date: req.date,
-    bounds: req.bounds,
-    payload: collection,
-    metadata: {
-      sources,
-      reportCount: deduped.length,
-      maxHailInches,
-      origin: 'in-repo-fallback',
-    },
-    featureCount: features.length,
-    maxValue: maxHailInches,
-  });
+  // Fire-and-forget cache write. Skip empty results — same rationale as
+  // windSwathService: caching negative results just bloats the table.
+  if (features.length > 0) {
+    void setCachedSwath({
+      source: 'mrms-hail',
+      date: req.date,
+      bounds: req.bounds,
+      payload: collection,
+      metadata: {
+        sources,
+        reportCount: deduped.length,
+        maxHailInches,
+        origin: 'in-repo-fallback',
+      },
+      featureCount: features.length,
+      maxValue: maxHailInches,
+    });
+  }
 
   return collection;
 }

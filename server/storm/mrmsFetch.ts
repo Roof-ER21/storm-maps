@@ -62,7 +62,16 @@ function roundToCadence(d: Date, stepMinutes: number): Date {
 /**
  * Build candidate URLs for a given (product, date, anchor). Tries the anchor
  * first, walks back to fill earlier-than-anchor cadences, then forward.
+ *
+ * Filename prefix history: NOAA renamed the product file prefix from `MRMS_*`
+ * to `MESH_*` around Sept 2022. Pre-2022-09 dates on the IEM mirror still use
+ * the legacy `MRMS_*` filenames; post that, only `MESH_*`. So for older dates
+ * we emit BOTH variants per timestep — one of them is the live file. Emitting
+ * the `MESH_*` variant first keeps modern lookups fast; the `MRMS_*` fallback
+ * only runs when the modern name 404s on older archives.
  */
+const PREFIX_RENAME_DATE = '2022-09-01';
+
 function buildCandidateUrls(
   product: MrmsProduct,
   date: string,
@@ -83,22 +92,32 @@ function buildCandidateUrls(
   const dd = pad(target.getUTCDate());
   const dir = `${IEM_BASE}/${yyyy}/${mm}/${dd}/mrms/ncep/${product}`;
 
-  const buildName = (t: Date): string => {
+  // For dates before Sept 2022, also emit the legacy `MRMS_*` filename. We
+  // emit `MESH_*` first so modern dates short-circuit on the first hit.
+  const tryLegacyPrefix = date < PREFIX_RENAME_DATE;
+
+  const buildName = (t: Date, prefix: 'MESH' | 'MRMS'): string => {
     const yh = pad(t.getUTCHours());
     const ym = pad(t.getUTCMinutes());
-    return `${product}_00.50_${pad(t.getUTCFullYear(), 4)}${pad(t.getUTCMonth() + 1)}${pad(t.getUTCDate())}-${yh}${ym}00.grib2.gz`;
+    // The legacy prefix only swaps the leading "MESH" → "MRMS"; the rest of
+    // the product name (e.g. "_Max_1440min") stays the same.
+    const productName = product.replace(/^MESH/, prefix);
+    return `${productName}_00.50_${pad(t.getUTCFullYear(), 4)}${pad(t.getUTCMonth() + 1)}${pad(t.getUTCDate())}-${yh}${ym}00.grib2.gz`;
   };
 
-  const urls: string[] = [`${dir}/${buildName(target)}`];
+  const urls: string[] = [`${dir}/${buildName(target, 'MESH')}`];
+  if (tryLegacyPrefix) urls.push(`${dir}/${buildName(target, 'MRMS')}`);
 
   for (let step = 1; step <= Math.max(cad.walkBack, cad.walkForward); step += 1) {
     if (step <= cad.walkBack) {
       const back = new Date(target.getTime() - step * cad.stepMinutes * 60 * 1000);
-      urls.push(`${dir}/${buildName(back)}`);
+      urls.push(`${dir}/${buildName(back, 'MESH')}`);
+      if (tryLegacyPrefix) urls.push(`${dir}/${buildName(back, 'MRMS')}`);
     }
     if (step <= cad.walkForward) {
       const fwd = new Date(target.getTime() + step * cad.stepMinutes * 60 * 1000);
-      urls.push(`${dir}/${buildName(fwd)}`);
+      urls.push(`${dir}/${buildName(fwd, 'MESH')}`);
+      if (tryLegacyPrefix) urls.push(`${dir}/${buildName(fwd, 'MRMS')}`);
     }
   }
 

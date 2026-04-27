@@ -265,19 +265,24 @@ export async function buildWindSwathCollection(
 
   // Fire-and-forget DB write. We don't await it — the response goes back to
   // the client first and the cache populates in the background.
-  void setCachedSwath({
-    source: req.includeLive ? 'wind-live' : 'wind-archive',
-    date: req.date,
-    bounds: req.bounds,
-    payload: collection,
-    metadata: {
-      sources,
-      reportCount: deduped.length,
-      states: req.states ?? [],
-    },
-    featureCount: features.length,
-    maxValue: maxGustMph,
-  });
+  // Skip caching empty negative-results — they bloated swath_cache 96% rows
+  // (145/151 had feature_count=0) without saving any meaningful work on the
+  // next request, since live-loop calls re-issue the network fetches anyway.
+  if (features.length > 0) {
+    void setCachedSwath({
+      source: req.includeLive ? 'wind-live' : 'wind-archive',
+      date: req.date,
+      bounds: req.bounds,
+      payload: collection,
+      metadata: {
+        sources,
+        reportCount: deduped.length,
+        states: req.states ?? [],
+      },
+      featureCount: features.length,
+      maxValue: maxGustMph,
+    });
+  }
 
   return collection;
 }
