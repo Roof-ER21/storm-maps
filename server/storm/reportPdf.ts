@@ -34,10 +34,17 @@ import { fetchIemVtecForDate, pointInWarning } from './iemVtecClient.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 import {
+  computeConsensusSize,
   displayHailInches,
+  isSterlingClassStorm,
   type VerificationContext,
 } from './displayCapService.js';
 import { buildVerificationBulk } from './verificationService.js';
+import {
+  isGovObserverSource,
+  primarySourceLabel,
+  type SourceFlags,
+} from './sourceTier.js';
 
 interface NceiAppendixRow {
   event_date: string;
@@ -56,6 +63,19 @@ interface NceiAppendixRow {
    *  read "1.00\" hail · 5.0 mi away"). */
   lat: number | null;
   lng: number | null;
+  /** Source flags — driven by sourceTier.classifySource for the
+   *  primary-vs-supplemental gating per the 2026-04-27 afternoon
+   *  addendum. Only primary sources move the headline display cells;
+   *  supplemental sources are still surfaced in the Sources detail
+   *  section. */
+  source_ncei_storm_events: boolean | null;
+  source_iem_lsr: boolean | null;
+  source_nws_warnings: boolean | null;
+  source_ncei_swdi: boolean | null;
+  source_mping: boolean | null;
+  source_hailtrace: boolean | null;
+  source_spc_hail: boolean | null;
+  source_synoptic: boolean | null;
 }
 
 async function fetchNceiArchiveForReport(opts: {
@@ -84,7 +104,15 @@ async function fetchNceiArchiveForReport(opts: {
           SELECT event_date::text, state_code, county, event_type,
                  magnitude, tor_f_scale, ncei_event_id::text,
                  begin_time_utc::text, narrative,
-                 lat::float AS lat, lng::float AS lng
+                 lat::float AS lat, lng::float AS lng,
+                 source_ncei_storm_events,
+                 source_iem_lsr,
+                 source_nws_warnings,
+                 source_ncei_swdi,
+                 source_mping,
+                 source_hailtrace,
+                 source_spc_hail,
+                 source_synoptic
             FROM verified_hail_events
            WHERE source_ncei_storm_events = TRUE
              AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
@@ -99,14 +127,24 @@ async function fetchNceiArchiveForReport(opts: {
           SELECT event_date::text, state_code, county, event_type,
                  magnitude, tor_f_scale, ncei_event_id::text,
                  begin_time_utc::text, narrative,
-                 lat::float AS lat, lng::float AS lng
+                 lat::float AS lat, lng::float AS lng,
+                 source_ncei_storm_events,
+                 source_iem_lsr,
+                 source_nws_warnings,
+                 source_ncei_swdi,
+                 source_mping,
+                 source_hailtrace,
+                 source_spc_hail,
+                 source_synoptic
             FROM verified_hail_events
            WHERE (
                   source_ncei_storm_events = TRUE
+               OR source_iem_lsr = TRUE
                OR source_ncei_swdi = TRUE
                OR source_mping = TRUE
                OR source_hailtrace = TRUE
                OR source_nws_warnings = TRUE
+               OR source_spc_hail = TRUE
              )
              AND lat BETWEEN ${opts.lat - latPad} AND ${opts.lat + latPad}
              AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
@@ -427,6 +465,47 @@ function farBandCtx(ctx: VerificationContext): VerificationContext {
   return { ...ctx, consensusSize: null };
 }
 
+/**
+ * Build a VerificationContext from a band's primary-source reports.
+ *
+ * Per the 2026-04-27 afternoon addendum: each column gets its OWN
+ * verification context, computed from the reports that fell IN that band.
+ *   isVerified  = ≥3 primary reports in band AND ≥1 government-observer
+ *                 source (NWS LSR via IEM or NCEI Storm Events). MRMS
+ *                 alone never satisfies the gate even though it's
+ *                 primary — it's algorithmic, not an observer.
+ *   isAtLocation = ≥1 primary report in band (true for any verified band).
+ *   isSterlingClass = date+lat/lng allow-list (unchanged).
+ *   consensusSize = cross-source agreement on a quarter-snap size in
+ *                   [0.75, 2.6) — same rule as morning's displayCapService.
+ */
+function bandVerification(
+  reports: Array<{ source: string; sizeIn: number }>,
+  date: string,
+  lat: number,
+  lng: number,
+): VerificationContext {
+  if (reports.length === 0) {
+    return {
+      isVerified: false,
+      isAtLocation: false,
+      isSterlingClass: isSterlingClassStorm(date, lat, lng),
+      consensusSize: null,
+    };
+  }
+  const primaryCount = reports.length;
+  const hasGovObserver = reports.some((r) => isGovObserverSource(r.source));
+  const consensusSize = computeConsensusSize(
+    reports.map((r) => ({ source: r.source, sizeInches: r.sizeIn })),
+  );
+  return {
+    isVerified: primaryCount >= 3 && hasGovObserver,
+    isAtLocation: primaryCount >= 1,
+    isSterlingClass: isSterlingClassStorm(date, lat, lng),
+    consensusSize,
+  };
+}
+
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // Fire consilience (5-source corroboration) early so it overlaps with the
   // event/swath fetch work below. 25s soft cap — PDF still renders without
@@ -721,6 +800,19 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // table. Pulled from NCEI Storm Events archive (18mo window centered
   // on date of loss) + augmented with the 12mo events array for any
   // SPC LSR rows not yet ingested into NCEI.
+  //
+  // Strict bucketing per the 2026-04-27 afternoon addendum:
+  //   atProperty:  dist ≤ 0.5 mi  (ONLY)
+  //   mi1to3:      0.5 < dist ≤ 3 mi
+  //   mi3to5:      3   < dist ≤ 5 mi
+  //   mi5to10:     5   < dist ≤ 10 mi  (filter only — column not displayed)
+  // No spillage. A 4" reading at 0.6 mi lands in mi1to3, NEVER in atProperty.
+  //
+  // bandReports captures every primary-source report in the band so the
+  // cap algorithm can compute a per-band VerificationContext (≥3 primary +
+  // ≥1 gov-observer for that band's reports) instead of inheriting the
+  // property-level context across all columns.
+  type BandReport = { source: string; sizeIn: number };
   type HistRow = {
     dateIso: string;
     label: string;
@@ -730,6 +822,13 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     mi5to10: number;
     biggestNearby: number;
     biggestNearbyMi: number;
+    /** Primary-source reports per band, used to compute the per-band
+     *  VerificationContext at render time. Supplemental sources still
+     *  contribute to biggestNearby (transparency / debug visibility) but
+     *  never enter these arrays — they're invisible to the cap path. */
+    primaryAtProperty: BandReport[];
+    primaryMi1to3: BandReport[];
+    primaryMi3to5: BandReport[];
   };
   // Widened to match SA21's storm_days_public defaults — 25mi radius, 24mo
   // window — and pulls from ALL ingest sources (NCEI + SWDI + mPING +
@@ -745,36 +844,55 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }).catch(() => [] as Awaited<ReturnType<typeof fetchNceiArchiveForReport>>);
 
   const histGroups = new Map<string, HistRow>();
+  const newRow = (dateIso: string): HistRow => ({
+    dateIso,
+    label: '',
+    atProperty: 0,
+    mi1to3: 0,
+    mi3to5: 0,
+    mi5to10: 0,
+    biggestNearby: 0,
+    biggestNearbyMi: 0,
+    primaryAtProperty: [],
+    primaryMi1to3: [],
+    primaryMi3to5: [],
+  });
+  /** Strict-bucketed ingestion. `source` carries the canonical primary
+   *  label (or null for supplemental sources). Only primary readings
+   *  feed the band-driving max + the per-band reports list; supplemental
+   *  rows still set biggestNearby for transparency. */
   const ingestRow = (
     dateIso: string,
     sizeIn: number,
     dist: number,
+    source: string | null,
   ): void => {
-    // 25mi gate matches the histNceiRows fetch radius and SA21 storm-days
-    // default. Events 10–25mi land in `biggestNearby` only — the per-band
-    // table columns top out at 5–10mi, so 10–25mi rows show as AREA IMPACT
-    // with all dashes in the 4 band columns plus a "Biggest nearby" caption.
     if (sizeIn < 0.25 || dist > 25) return;
-    const row =
-      histGroups.get(dateIso) ??
-      ({
-        dateIso,
-        label: '',
-        atProperty: 0,
-        mi1to3: 0,
-        mi3to5: 0,
-        mi5to10: 0,
-        biggestNearby: 0,
-        biggestNearbyMi: 0,
-      } as HistRow);
+    const row = histGroups.get(dateIso) ?? newRow(dateIso);
+    // biggestNearby always tracks the loudest signal we saw, regardless of
+    // tier — it's a "debug / context" cell, not an adjuster claim, and
+    // it gets capped at render time anyway.
     if (sizeIn > row.biggestNearby) {
       row.biggestNearby = sizeIn;
       row.biggestNearbyMi = dist;
     }
-    if (dist <= 1.0 && sizeIn > row.atProperty) row.atProperty = sizeIn;
-    else if (dist > 1.0 && dist <= 3.0 && sizeIn > row.mi1to3) row.mi1to3 = sizeIn;
-    else if (dist > 3.0 && dist <= 5.0 && sizeIn > row.mi3to5) row.mi3to5 = sizeIn;
-    else if (dist > 5.0 && dist <= 10.0 && sizeIn > row.mi5to10) row.mi5to10 = sizeIn;
+    if (source !== null) {
+      // Primary source — feeds the band-driving max + per-band reports.
+      // Strict bucketing: each report lands in exactly one band based on
+      // distance. No spillage.
+      if (dist <= 0.5) {
+        if (sizeIn > row.atProperty) row.atProperty = sizeIn;
+        row.primaryAtProperty.push({ source, sizeIn });
+      } else if (dist <= 3.0) {
+        if (sizeIn > row.mi1to3) row.mi1to3 = sizeIn;
+        row.primaryMi1to3.push({ source, sizeIn });
+      } else if (dist <= 5.0) {
+        if (sizeIn > row.mi3to5) row.mi3to5 = sizeIn;
+        row.primaryMi3to5.push({ source, sizeIn });
+      } else if (dist <= 10.0) {
+        if (sizeIn > row.mi5to10) row.mi5to10 = sizeIn;
+      }
+    }
     histGroups.set(dateIso, row);
   };
 
@@ -794,7 +912,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     const eLng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
     if (!Number.isFinite(eLat) || !Number.isFinite(eLng)) continue;
     const dist = haversineMiles(req.lat, req.lng, eLat, eLng);
-    ingestRow(dateIso, r.magnitude ?? 0, dist);
+    ingestRow(dateIso, r.magnitude ?? 0, dist, primarySourceLabel(r));
   }
   for (const e of events) {
     if (e.eventType !== 'Hail') continue;
@@ -808,10 +926,14 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       month: '2-digit',
       day: '2-digit',
     }).format(t);
+    // Live `events` cache rows are SPC/IEM-sourced — treat as iem-lsr
+    // primary so they keep contributing to verification. Anything that
+    // lacks lat/lng was already filtered above.
     ingestRow(
       dateIso,
       e.magnitude,
       haversineMiles(req.lat, req.lng, e.beginLat, e.beginLon),
+      'iem-lsr',
     );
   }
 
@@ -1121,6 +1243,23 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       ['1–3 mi', '', propertyImpact.bands.mi1to3],
       ['3–5 mi', '', propertyImpact.bands.mi3to5],
     ];
+    // Per-band verification for the tier card — pulled from the
+    // dateOfLoss histRow's primary-source reports so each column is
+    // gated on its OWN band's evidence (afternoon addendum). When the
+    // dateOfLoss isn't in histGroups (rare — pure swath hits without
+    // any corroborating ground reports), the contexts default to
+    // unverified, which forces the cap into the 2.0" / 2.5" branches.
+    const dolRow = histGroups.get(req.dateOfLoss);
+    const tierAtPropCtx = dolRow
+      ? bandVerification(dolRow.primaryAtProperty, req.dateOfLoss, req.lat, req.lng)
+      : UNVERIFIED_CTX;
+    const tier1to3Ctx = dolRow
+      ? bandVerification(dolRow.primaryMi1to3, req.dateOfLoss, req.lat, req.lng)
+      : UNVERIFIED_CTX;
+    const tier3to5Ctx = dolRow
+      ? bandVerification(dolRow.primaryMi3to5, req.dateOfLoss, req.lat, req.lng)
+      : UNVERIFIED_CTX;
+    const bandCtxByIdx = [tierAtPropCtx, tier1to3Ctx, tier3to5Ctx];
     bandLabels.forEach(([label, sub, value], i) => {
       const x = textX + i * bandW;
       doc.roundedRect(x + 2, bandY, bandW - 4, bandH, 4).fill('#ffffff');
@@ -1140,10 +1279,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
           .text(sub, x + 2, bandY + 16, { width: bandW - 4, align: 'center' });
       }
       const filled = value !== null && value > 0;
-      // At Property column = property's own verification context.
-      // Other columns (1-3 / 3-5 / 5-10) strip consensus per the
-      // post-meeting clarification — consensus is an at-property signal.
-      const bandCtx = i === 0 ? propertyVerification : farBandCtx(propertyVerification);
+      const bandCtx = bandCtxByIdx[i] ?? UNVERIFIED_CTX;
       doc
         .fillColor(filled ? '#0f172a' : '#cbd5e1')
         .font('Helvetica-Bold')
@@ -1260,19 +1396,36 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         .text(r.label, cx, hy + 6, { width: colDate - 4, lineBreak: false });
       cx += colDate;
 
-      // Per-band columns — every cell runs through the cap with the
-      // appropriate context. At-property uses this row's verification
-      // (consensus override applies); the other 3 bands strip consensus
-      // (cross-source agreement at ≤0.5 mi shouldn't dictate the
-      // displayed size for storm cells 1+ mi away).
-      const rowCtx = verificationByDate.get(r.dateIso) ?? UNVERIFIED_CTX;
-      const farCtx = farBandCtx(rowCtx);
+      // Per-band columns — strict bucketing per the 2026-04-27 afternoon
+      // addendum. Each column runs the cap with its OWN VerificationContext
+      // computed from primary-source reports IN THAT BAND only. A column
+      // with zero primary reports or a single-source mPING-only reading
+      // is correctly marked unverified and capped at 2.0", regardless of
+      // what the property-level context says.
+      const atPropCtx = bandVerification(
+        r.primaryAtProperty,
+        r.dateIso,
+        req.lat,
+        req.lng,
+      );
+      const mi1to3Ctx = bandVerification(
+        r.primaryMi1to3,
+        r.dateIso,
+        req.lat,
+        req.lng,
+      );
+      const mi3to5Ctx = bandVerification(
+        r.primaryMi3to5,
+        r.dateIso,
+        req.lat,
+        req.lng,
+      );
       // 5–10 mi column dropped per 2026-04-27 meeting — values still feed
       // the row filter and biggest-nearby caption, just not displayed.
       const bandValues: Array<[number, VerificationContext]> = [
-        [r.atProperty, rowCtx],
-        [r.mi1to3, farCtx],
-        [r.mi3to5, farCtx],
+        [r.atProperty, atPropCtx],
+        [r.mi1to3, mi1to3Ctx],
+        [r.mi3to5, mi3to5Ctx],
       ];
       doc.font('Helvetica').fontSize(9);
       for (const [v, ctx] of bandValues) {

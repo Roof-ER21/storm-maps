@@ -202,19 +202,22 @@ export async function buildHailFallbackCollection(
   const padded = expandBounds(req.bounds, 30);
   const sources: string[] = [];
 
-  const [spcReports, iemReports] = await Promise.all([
-    fetchSpcHailReportsForDate(req.date).catch(() => []),
-    fetchIemHailReports({
-      date: req.date,
-      bounds: padded,
-      states: req.states,
-    }).catch(() => []),
-  ]);
+  // Per the 2026-04-27 afternoon addendum, swath rendering uses
+  // PRIMARY sources only — adjusters don't recognize SPC spotter
+  // reports, and per-report buffer circles from many SPC points were
+  // creating the "polygon-y / finicky" fragmented look Ahmed flagged.
+  // IEM LSR is kept (it's the NWS LSR mirror = primary). SPC is
+  // dropped from the fallback collection. The SPC fetch is also
+  // skipped to save the network round-trip.
+  const iemReports = await fetchIemHailReports({
+    date: req.date,
+    bounds: padded,
+    states: req.states,
+  }).catch(() => []);
 
-  if (spcReports.length > 0) sources.push('SPC');
   if (iemReports.length > 0) sources.push('IEM LSR');
 
-  const all = [...spcReports, ...iemReports]
+  const all = iemReports
     .filter((r) => Number.isFinite(r.sizeInches) && r.sizeInches > 0)
     .filter((r) => inBounds(r, padded));
   const deduped = dedupeReports(all);
