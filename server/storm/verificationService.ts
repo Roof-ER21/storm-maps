@@ -19,10 +19,12 @@
 
 import { sql as pgSql } from '../db.js';
 import {
+  bandVerification,
   computeConsensusSize,
   isSterlingClassStorm,
   type VerificationContext,
 } from './displayCapService.js';
+import { isGovObserverSource } from './sourceTier.js';
 
 interface VerificationRow {
   event_date: string | Date;
@@ -197,6 +199,140 @@ export async function buildVerificationBulk(opts: {
   } catch (err) {
     console.warn(
       '[verificationService] bulk query failed:',
+      (err as Error).message,
+    );
+  }
+  return out;
+}
+
+/**
+ * Banded variant — returns per-band VerificationContext (atProperty /
+ * mi1to3 / mi3to5) per date so callers can apply the cap algorithm
+ * INDEPENDENTLY per column. Per the 2026-04-27 afternoon addendum, every
+ * adjuster-facing column should run its own verification gate against
+ * reports IN that band.
+ *
+ * Strict bucketing: a 4" reading at 0.6 mi lands in mi1to3 only — never
+ * in atProperty.
+ *
+ * Single SQL round-trip pulls primary-source reports out to ~5.5 mi
+ * (5 mi + a small lat/lng pad to be safe), then JS-side bucketing splits
+ * by haversine distance. The cost is one SELECT per call regardless of
+ * how many dates were requested.
+ */
+const FAR_BAND_MI = 5.0;
+const BAND_LAT_PAD = 0.085; // ~5.9 mi
+const BAND_LNG_PAD = 0.105; // ~5.9 mi at this latitude
+
+interface BandedSizedReport {
+  event_date: string;
+  source: string;
+  size_inches: number;
+  dist_mi: number;
+}
+
+export interface BandedVerification {
+  atProperty: VerificationContext;
+  mi1to3: VerificationContext;
+  mi3to5: VerificationContext;
+}
+
+export async function buildBandedVerificationBulk(opts: {
+  lat: number;
+  lng: number;
+  dates: string[];
+}): Promise<Map<string, BandedVerification>> {
+  const out = new Map<string, BandedVerification>();
+  if (!pgSql || opts.dates.length === 0) return out;
+
+  const dateStrs = opts.dates.map((d) => String(d).slice(0, 10));
+
+  // Seed empty contexts so callers always get something for every date.
+  for (const d of dateStrs) {
+    const empty = {
+      isVerified: false,
+      isAtLocation: false,
+      isSterlingClass: isSterlingClassStorm(d, opts.lat, opts.lng),
+      consensusSize: null,
+    };
+    out.set(d, { atProperty: empty, mi1to3: empty, mi3to5: empty });
+  }
+
+  try {
+    const rows = await pgSql<BandedSizedReport[]>`
+      SELECT
+        event_date::text AS event_date,
+        (CASE
+           WHEN source_ncei_storm_events THEN 'ncei-storm-events'
+           WHEN source_iem_lsr THEN 'iem-lsr'
+           ELSE 'other'
+         END) AS source,
+        COALESCE(hail_size_inches, magnitude, 0)::float AS size_inches,
+        (3959 * acos(LEAST(1.0,
+          cos(radians(${opts.lat})) * cos(radians(lat)) *
+          cos(radians(lng) - radians(${opts.lng})) +
+          sin(radians(${opts.lat})) * sin(radians(lat))
+        )))::float AS dist_mi
+        FROM verified_hail_events
+       WHERE event_date::text = ANY(${dateStrs})
+         AND lat BETWEEN ${opts.lat - BAND_LAT_PAD} AND ${opts.lat + BAND_LAT_PAD}
+         AND lng BETWEEN ${opts.lng - BAND_LNG_PAD} AND ${opts.lng + BAND_LNG_PAD}
+         AND COALESCE(hail_size_inches, magnitude, 0) >= 0.25
+         AND (
+           source_ncei_storm_events
+           OR source_iem_lsr
+         )
+    `;
+
+    type BandReports = {
+      atProperty: Array<{ source: string; sizeIn: number }>;
+      mi1to3: Array<{ source: string; sizeIn: number }>;
+      mi3to5: Array<{ source: string; sizeIn: number }>;
+    };
+    const byDate = new Map<string, BandReports>();
+    for (const r of rows) {
+      const d = String(r.event_date).slice(0, 10);
+      const dist = Number(r.dist_mi);
+      if (!Number.isFinite(dist) || dist > FAR_BAND_MI) continue;
+      const bucket =
+        byDate.get(d) ??
+        ({ atProperty: [], mi1to3: [], mi3to5: [] } as BandReports);
+      const entry = { source: r.source, sizeIn: Number(r.size_inches) };
+      // Strict bucketing — same boundaries as reportPdf.ts histRow.
+      if (dist <= 0.5) bucket.atProperty.push(entry);
+      else if (dist <= 3.0) bucket.mi1to3.push(entry);
+      else bucket.mi3to5.push(entry);
+      byDate.set(d, bucket);
+    }
+
+    for (const [dateStr, b] of byDate) {
+      out.set(dateStr, {
+        atProperty: bandVerification(
+          b.atProperty,
+          dateStr,
+          opts.lat,
+          opts.lng,
+          isGovObserverSource,
+        ),
+        mi1to3: bandVerification(
+          b.mi1to3,
+          dateStr,
+          opts.lat,
+          opts.lng,
+          isGovObserverSource,
+        ),
+        mi3to5: bandVerification(
+          b.mi3to5,
+          dateStr,
+          opts.lat,
+          opts.lng,
+          isGovObserverSource,
+        ),
+      });
+    }
+  } catch (err) {
+    console.warn(
+      '[verificationService] banded bulk query failed:',
       (err as Error).message,
     );
   }

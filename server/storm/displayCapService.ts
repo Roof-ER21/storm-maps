@@ -129,6 +129,55 @@ function roundToQuarter(x: number): number {
 }
 
 /**
+ * Build a VerificationContext for a single distance band from the band's
+ * primary-source reports.
+ *
+ * Per the 2026-04-27 afternoon addendum: every distance column on the
+ * adjuster-facing report runs the cap with its OWN verification context
+ * computed from primary-source reports IN that band — not inherited from
+ * a property-level context.
+ *
+ *   isVerified  = ≥3 primary reports in band AND ≥1 government-observer
+ *                 source. MRMS alone never satisfies the gate even though
+ *                 it's primary — it's algorithmic, not an observer.
+ *   isAtLocation = ≥1 primary report in band.
+ *   isSterlingClass = date+lat/lng allow-list (delegated).
+ *   consensusSize  = cross-source agreement on a quarter-snap size in
+ *                    [0.75, 2.6) — same rule as computeConsensusSize.
+ *
+ * Caller provides the gov-observer predicate (so this module stays free
+ * of source-tier import cycles). Pass isGovObserverSource from
+ * sourceTier.ts.
+ */
+export function bandVerification(
+  reports: ReadonlyArray<{ source: string; sizeIn: number }>,
+  date: string,
+  lat: number,
+  lng: number,
+  isGovObserver: (source: string) => boolean,
+): VerificationContext {
+  if (reports.length === 0) {
+    return {
+      isVerified: false,
+      isAtLocation: false,
+      isSterlingClass: isSterlingClassStorm(date, lat, lng),
+      consensusSize: null,
+    };
+  }
+  const primaryCount = reports.length;
+  const hasGovObserver = reports.some((r) => isGovObserver(r.source));
+  const consensusSize = computeConsensusSize(
+    reports.map((r) => ({ source: r.source, sizeInches: r.sizeIn })),
+  );
+  return {
+    isVerified: primaryCount >= 3 && hasGovObserver,
+    isAtLocation: primaryCount >= 1,
+    isSterlingClass: isSterlingClassStorm(date, lat, lng),
+    consensusSize,
+  };
+}
+
+/**
  * Compute the consensus size from a list of (sourceLabel, sizeInches)
  * tuples. Returns the highest quarter-snap size in [0.75, 2.6) where ≥2
  * distinct sources reported that size. null when no consensus exists.

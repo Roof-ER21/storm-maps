@@ -38,7 +38,10 @@ import { fetchMesocyclones } from './storm/nceiNx3MdaClient.js';
 import { corroborateSynopticObservations } from './storm/synopticObservationsService.js';
 import { etDayUtcWindow } from './storm/timeUtils.js';
 import { displayHailInches } from './storm/displayCapService.js';
-import { buildVerificationBulk } from './storm/verificationService.js';
+import {
+  buildBandedVerificationBulk,
+  buildVerificationBulk,
+} from './storm/verificationService.js';
 import {
   startPrewarmScheduler,
   getPrewarmStatus,
@@ -1391,28 +1394,32 @@ app.post('/api/hail/mrms-impact', async (req, res) => {
       return;
     }
 
-    // Apply display-cap algorithm per point. Each point gets its own
-    // verification context (consensus from cross-source ground reports,
-    // ≥3/≥1 verification, Sterling-class membership). Raw values are
-    // preserved in `rawBands` so the frontend / debug tools can still
-    // see truth — `bands` itself becomes the display-capped values.
+    // Apply display-cap algorithm per point with PER-BAND verification —
+    // each column (atProperty / 1-3 / 3-5) runs the cap with its own
+    // VerificationContext computed from primary-source reports IN that
+    // band, per the 2026-04-27 afternoon addendum. mi5to10 falls back to
+    // the atProperty context (the column is dropped from PDFs anyway and
+    // there's no per-band verification beyond 5 mi). Raw values are
+    // preserved in rawBands.
     const verificationByPoint = await Promise.all(
       body.points.map((p) =>
-        buildVerificationBulk({ lat: p.lat, lng: p.lng, dates: [date] }).then(
-          (m) => m.get(date) ?? null,
-        ),
+        buildBandedVerificationBulk({
+          lat: p.lat,
+          lng: p.lng,
+          dates: [date],
+        }).then((m) => m.get(date) ?? null),
       ),
     );
     for (let i = 0; i < response.results.length; i += 1) {
       const r = response.results[i];
-      const v = verificationByPoint[i];
-      if (!v || !r.bands) continue;
+      const banded = verificationByPoint[i];
+      if (!banded || !r.bands) continue;
       const rawBands = { ...r.bands };
       r.bands = {
-        atProperty: displayHailInches(r.bands.atProperty ?? 0, v),
-        mi1to3: displayHailInches(r.bands.mi1to3 ?? 0, v),
-        mi3to5: displayHailInches(r.bands.mi3to5 ?? 0, v),
-        mi5to10: displayHailInches(r.bands.mi5to10 ?? 0, v),
+        atProperty: displayHailInches(r.bands.atProperty ?? 0, banded.atProperty),
+        mi1to3: displayHailInches(r.bands.mi1to3 ?? 0, banded.mi1to3),
+        mi3to5: displayHailInches(r.bands.mi3to5 ?? 0, banded.mi3to5),
+        mi5to10: displayHailInches(r.bands.mi5to10 ?? 0, banded.mi3to5),
       };
       // Attach raw alongside for transparency / audit trail.
       (r as MrmsImpactResultWithRaw).rawBands = rawBands;

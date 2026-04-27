@@ -34,6 +34,7 @@ import { fetchIemVtecForDate, pointInWarning } from './iemVtecClient.js';
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 import {
+  bandVerification as buildBandVerification,
   computeConsensusSize,
   displayHailInches,
   isSterlingClassStorm,
@@ -465,45 +466,17 @@ function farBandCtx(ctx: VerificationContext): VerificationContext {
   return { ...ctx, consensusSize: null };
 }
 
-/**
- * Build a VerificationContext from a band's primary-source reports.
- *
- * Per the 2026-04-27 afternoon addendum: each column gets its OWN
- * verification context, computed from the reports that fell IN that band.
- *   isVerified  = ≥3 primary reports in band AND ≥1 government-observer
- *                 source (NWS LSR via IEM or NCEI Storm Events). MRMS
- *                 alone never satisfies the gate even though it's
- *                 primary — it's algorithmic, not an observer.
- *   isAtLocation = ≥1 primary report in band (true for any verified band).
- *   isSterlingClass = date+lat/lng allow-list (unchanged).
- *   consensusSize = cross-source agreement on a quarter-snap size in
- *                   [0.75, 2.6) — same rule as morning's displayCapService.
- */
+/** Local convenience wrapper — every callsite below uses this signature.
+ *  The shared implementation lives in displayCapService.ts; we close over
+ *  isGovObserverSource from sourceTier so it doesn't need to be passed at
+ *  every call. */
 function bandVerification(
   reports: Array<{ source: string; sizeIn: number }>,
   date: string,
   lat: number,
   lng: number,
 ): VerificationContext {
-  if (reports.length === 0) {
-    return {
-      isVerified: false,
-      isAtLocation: false,
-      isSterlingClass: isSterlingClassStorm(date, lat, lng),
-      consensusSize: null,
-    };
-  }
-  const primaryCount = reports.length;
-  const hasGovObserver = reports.some((r) => isGovObserverSource(r.source));
-  const consensusSize = computeConsensusSize(
-    reports.map((r) => ({ source: r.source, sizeInches: r.sizeIn })),
-  );
-  return {
-    isVerified: primaryCount >= 3 && hasGovObserver,
-    isAtLocation: primaryCount >= 1,
-    isSterlingClass: isSterlingClassStorm(date, lat, lng),
-    consensusSize,
-  };
+  return buildBandVerification(reports, date, lat, lng, isGovObserverSource);
 }
 
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
