@@ -1197,16 +1197,15 @@ function App() {
   }, [applySearchResult]);
 
   // ---- Map click handler ----
-  const handleMapClick = useCallback((event: StormEvent | null) => {
-    if (!event) {
-      return;
-    }
-
-    const clickedDate = toEasternDateKey(event.beginDate);
-    const matchingStormDate =
-      filteredStormDates.find((stormDate) => stormDate.date === clickedDate) ?? null;
-    setSelectedDate(matchingStormDate);
-  }, [filteredStormDates]);
+  // Per 4/27/26 rep feedback: clicking the map must NOT change the date the
+  // rep already picked from the sidebar. Reps were tapping the map to inspect
+  // a storm cell or hail point and getting kicked into a different date.
+  // Sidebar is the source of truth for date selection. The map click still
+  // surfaces event details via the StormMap's internal popup; we just don't
+  // mutate the global selectedDate from here.
+  const handleMapClick = useCallback(() => {
+    // Intentionally a no-op — see comment above.
+  }, []);
 
   const handleOpenStormDate = useCallback((stormDate: StormDate) => {
     setActiveView('map');
@@ -2726,7 +2725,11 @@ function App() {
   }, []);
 
   const mapArea = (
-    <main className="relative order-1 flex h-[70vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
+    {/* Mobile: 55vh map / 45vh sidebar — was 70vh, but reps couldn't scroll
+        the storm-dates list under the map because the sidebar was squeezed
+        to ~30vh. 55vh keeps the map dominant while leaving real room for
+        the dates panel below. Desktop unchanged. */}
+    <main className="relative order-1 flex h-[55vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 

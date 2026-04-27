@@ -2022,91 +2022,14 @@ function MapContent({
             </div>
           </button>
 
-          <button
-            onClick={handleMrmsToggle}
-            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
-              showMrms
-                ? 'bg-orange-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            title="Toggle MRMS hail overlay"
-            aria-label="Toggle MRMS hail overlay"
-          >
-            <div className="flex items-center gap-1.5">
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z"
-                />
-              </svg>
-              MRMS
-            </div>
-          </button>
-          {/*
-            LIVE Radar toggle — NEXRAD base reflectivity direct from IEM.
-            Shows rain + storm cells in real-time even when MRMS MESH is
-            empty (which happens for small hail < ½" that reps routinely
-            feel in the field). Auto-refreshes every 2 min in LIVE mode.
-          */}
-          <button
-            onClick={() => setShowNexrad((v) => !v)}
-            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
-              showNexrad
-                ? (!selectedDate ? 'bg-red-600 text-white animate-pulse' : 'bg-blue-600 text-white')
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            title={
-              showNexrad
-                ? (!selectedDate
-                  ? 'LIVE NEXRAD radar (refreshes every 2 min) — click to hide'
-                  : 'NEXRAD radar (historical, locked to selected storm date)')
-                : 'Show NEXRAD radar reflectivity (captures storms even when MRMS misses small hail)'
-            }
-            aria-label="Toggle NEXRAD radar"
-          >
-            <div className="flex items-center gap-1.5">
-              <svg
-                className="w-3.5 h-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M8.288 15.038a5.25 5.25 0 017.424 0M5.106 11.856c3.807-3.808 9.98-3.808 13.788 0M1.924 8.674c5.565-5.565 14.587-5.565 20.152 0M12.53 18.22l-.53.53-.53-.53a.75.75 0 011.06 0z"
-                />
-              </svg>
-              {showNexrad && !selectedDate ? 'LIVE' : 'Radar'}
-            </div>
-          </button>
-          {/* "More layers" expander — gates the power-rep toggles behind
-              one click so the default rail stays IHM-clean. */}
-          <button
-            onClick={() => setShowAdvancedLayers((v) => !v)}
-            className={`px-3 py-2 rounded-md shadow-md text-xs font-semibold transition-colors ${
-              showAdvancedLayers
-                ? 'bg-stone-700 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-            title={
-              showAdvancedLayers
-                ? 'Hide advanced layers'
-                : 'Show advanced layers (mPING, CoCoRaHS, Meso, Stations, Live Cells, Sketch, LIVE, Heat Map)'
-            }
-            aria-label="Toggle advanced layers"
-            aria-expanded={showAdvancedLayers}
-          >
-            {showAdvancedLayers ? 'Less' : 'More'}
-          </button>
+          {/* MRMS, Radar/LIVE, and More-layers buttons removed per 4/27/26
+              rep feedback: only Sat/Map should live on the right rail. MRMS
+              swath auto-enables when a storm date is picked (see useEffect
+              at "Auto-enable MRMS layer whenever a historical storm date is
+              selected"), so reps don't need a manual MRMS toggle. The
+              advanced-layers tray (mPING / CoCoRaHS / Meso / etc.) is also
+              suppressed in default mode — its handlers stay live for any
+              future re-enable but no UI surface exposes them. */}
 
           {showAdvancedLayers && (<>
           {/*
