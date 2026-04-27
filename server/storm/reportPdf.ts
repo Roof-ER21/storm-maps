@@ -22,13 +22,14 @@ import {
 } from './mrmsService.js';
 import { composeStormNarrative } from './narrativeComposer.js';
 import { haversineMiles, pointInRing } from './geometry.js';
-import { buildHailFallbackCollection, IHM_HAIL_LEVELS } from './hailFallbackService.js';
+import { buildHailFallbackCollection } from './hailFallbackService.js';
 import { fetchStormEventsCached, type StormEventDto } from './eventService.js';
 import { buildConsilience, type ConsilienceResult } from './consilienceService.js';
-import { fetchNexradSnapshot } from './nexradImageService.js';
 import { fetchNexradImageForWarning } from './nexradWarningImage.js';
 import { fetchNwsWarningsForProperty } from './nwsWarningsService.js';
-import { fetchIemVtecForDate, pointInWarning } from './iemVtecClient.js';
+// fetchIemVtecForDate / pointInWarning are now consumed via the
+// fetchNwsWarningsForProperty wrapper (nwsWarningsService.ts); no
+// direct imports needed here in the redesigned PDF.
 import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 import {
@@ -315,45 +316,10 @@ export const PDF_LAYOUT = {
   copyright: { height: 24, fontSize: 9.5 },
 } as const;
 
-interface RenderedPolygon {
-  bandIndex: number;
-  color: string;
-  rings: number[][][];
-}
-
-function hexToRgb(hex: string): [number, number, number] {
-  const t = hex.replace(/^#/, '');
-  return [
-    parseInt(t.slice(0, 2), 16) || 0,
-    parseInt(t.slice(2, 4), 16) || 0,
-    parseInt(t.slice(4, 6), 16) || 0,
-  ];
-}
-
-/**
- * Build a lng/lat → page-coords projector that uses the same Web Mercator
- * math Google Static Maps does, so vector swath polygons land exactly on
- * top of the fetched basemap.
- */
-function makeMercatorProjector(
-  bounds: BoundingBox,
-  mapX: number,
-  mapY: number,
-  mapW: number,
-  mapH: number,
-): (lng: number, lat: number) => [number, number] {
-  const mercY = (lat: number) =>
-    Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-  const yNorth = mercY(bounds.north);
-  const ySouth = mercY(bounds.south);
-  const ySpan = yNorth - ySouth || 1e-6;
-  const lngSpan = bounds.east - bounds.west || 1e-6;
-  return (lng, lat) => {
-    const tx = (lng - bounds.west) / lngSpan;
-    const ty = (yNorth - mercY(lat)) / ySpan;
-    return [mapX + tx * mapW, mapY + ty * mapH];
-  };
-}
+// (RenderedPolygon, hexToRgb, makeMercatorProjector helpers removed in
+// Phase 7 cleanup — they were only used by the deleted "NEXRAD Radar +
+// Hail Footprint Map" wide-map section. The vector swath rendering
+// machinery lives in mrmsService.ts; this PDF doesn't draw maps anymore.)
 
 async function fetchStaticBasemap(
   bounds: BoundingBox,
@@ -444,119 +410,12 @@ async function fetchPropertyRoadmap(
   }
 }
 
-/**
- * Fetch a Google Street View Static image of the searched property.
- * Returns null on API-key/network/coverage failures. `return_error_code=true`
- * makes the API send 404 instead of a gray "no imagery" PNG when SV is
- * unavailable at this lat/lng — so we can detect and skip without an
- * extra metadata round-trip (the precheck added a race window that
- * sometimes failed under concurrent load).
- */
-/**
- * Fetch a Google Static Maps satellite/aerial tile centered on the
- * property. Used as the page-1 hero banner per the 2026-04-27 meeting —
- * "Hail Trace–style" header. Smaller geographic span than the
- * fetchStaticBasemap that backs the swath panel (this is meant to look
- * like an aerial of the property itself, not the surrounding storm
- * region), so we hard-code zoom 19 — close enough to see the roof and
- * still resolves cleanly across rural and dense urban addresses.
- */
-async function fetchSatelliteAerial(
-  lat: number,
-  lng: number,
-  width: number,
-  height: number,
-): Promise<Buffer | null> {
-  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
-  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
-  const sizeH = Math.min(640, Math.max(80, Math.round(height)));
-  const params = new URLSearchParams({
-    center: `${lat.toFixed(6)},${lng.toFixed(6)}`,
-    zoom: '19',
-    size: `${sizeW}x${sizeH}`,
-    scale: '2',
-    maptype: 'satellite',
-    key: GOOGLE_STATIC_MAPS_API_KEY,
-  });
-  try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 8_000);
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
-      { signal: ac.signal },
-    );
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
-  } catch {
-    return null;
-  }
-}
-
-async function fetchStreetViewImage(
-  lat: number,
-  lng: number,
-  width: number,
-  height: number,
-): Promise<Buffer | null> {
-  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
-  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
-  const sizeH = Math.min(640, Math.max(120, Math.round(height)));
-  const params = new URLSearchParams({
-    location: `${lat.toFixed(6)},${lng.toFixed(6)}`,
-    size: `${sizeW}x${sizeH}`,
-    fov: '85',
-    pitch: '0',
-    return_error_code: 'true',
-    key: GOOGLE_STATIC_MAPS_API_KEY,
-  });
-  try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 8_000);
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/streetview?${params.toString()}`,
-      { signal: ac.signal },
-    );
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
-  } catch {
-    return null;
-  }
-}
-
-async function fetchEvidenceImageBytes(
-  item: ReportEvidenceItem,
-): Promise<Buffer | null> {
-  if (item.imageDataUrl) {
-    const m = item.imageDataUrl.match(/^data:[^;]+;base64,(.+)$/);
-    if (m) {
-      try {
-        return Buffer.from(m[1], 'base64');
-      } catch {
-        return null;
-      }
-    }
-  }
-  if (item.imageUrl) {
-    try {
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), 6_000);
-      const res = await fetch(item.imageUrl, { signal: ac.signal });
-      clearTimeout(timer);
-      if (!res.ok) return null;
-      const ab = await res.arrayBuffer();
-      // Cap at 4 MB to keep the PDF small.
-      if (ab.byteLength > 4 * 1024 * 1024) return null;
-      return Buffer.from(ab);
-    } catch {
-      return null;
-    }
-  }
-  return null;
-}
+// (fetchSatelliteAerial, fetchStreetViewImage, fetchEvidenceImageBytes
+// removed in Phase 7 cleanup — none of the new sections render
+// satellite or street-view imagery, and Field Evidence was retired.
+// fetchStaticBasemap is still used by tests/debug callers that import
+// it; fetchPropertyRoadmap above replaces it for the new Property
+// Information map slot.)
 
 function deriveBounds(events: StormEventDto[], lat: number, lng: number): BoundingBox {
   if (events.length === 0) {
@@ -1861,108 +1720,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     );
   }
 
-  // ── Storm summary (SA21 layout: 2 large cards, orange numbers) ───────
-  // Damage Score card removed per user feedback — a "0/100 Low" headline
-  // killed credibility on properties where the date-of-loss had no
-  // reports but the hit history shows real prior storms.
-  const peakHail = datedEvents
-    .filter((e) => e.eventType === 'Hail')
-    .reduce((m, e) => Math.max(m, e.magnitude), 0);
-  const peakWind = datedEvents
-    .filter((e) => e.eventType === 'Thunderstorm Wind')
-    .reduce((m, e) => Math.max(m, e.magnitude), 0);
-  const stormMax = collection?.metadata.maxHailInches ?? peakHail;
-  const headlineHailDay = Math.max(stormMax, peakHail);
+  // (Legacy "Storm Summary" cards removed in Phase 7 of the 2026-04-27
+  // redesign — STORM PEAK (AREA) and PEAK WIND (AREA) info now lives
+  // inside the Hail Impact Details 4×2 table near the top of the report.
+  // Single number per cell, no orange-card framing — keeps adjuster
+  // attention on the at-property numbers, not the area-wide context.)
 
-  // Banner (26) + card (70) + bottom spacing (16) = 112pt block. If the page
-  // can't hold all of it, force a page break first; otherwise PDFKit auto-
-  // paginates each individual text() call inside the card and we end up with
-  // single-fragment orphan pages.
-  if (doc.y + 26 + 70 + 16 > BOTTOM) doc.addPage();
-  drawSectionBanner(`Storm Summary — ${req.dateOfLoss}`);
-  const sumX = 54;
-  const sumY = doc.y;
-  const sumW = 504;
-  const sumCardW = (sumW - 12) / 2;
-  const sumCardH = 70;
-  const sumOrange = '#ea580c';
-  type SumCard = { label: string; value: string; sub: string };
-  const sumCards: SumCard[] = [
-    {
-      // Renamed from "LARGEST HAIL (DAY)" → "STORM PEAK (AREA)" because
-      // adjusters scanning the page were reading the storm-wide peak
-      // (35-mi search radius) as if it applied to the property — and
-      // the tier card 0.75 ft above showed a different number for the
-      // same property. The new label + sub-label make it explicit this
-      // is a context number for the broader area, not what hit the roof.
-      label: 'STORM PEAK (AREA)',
-      value:
-        headlineHailDay > 0
-          ? displayHailIn(headlineHailDay, farBandCtx(propertyVerification))
-          : '—',
-      sub: `within ${req.radiusMiles} mi · ${stormMax >= peakHail ? 'MRMS MESH radar' : 'SPC + IEM LSR ground reports'}`,
-    },
-    {
-      label: 'PEAK WIND (AREA)',
-      value: peakWind > 0 ? `${Math.round(peakWind)} mph` : '—',
-      sub:
-        peakWind >= 58
-          ? `within ${req.radiusMiles} mi · NWS severe (>=58 mph)`
-          : peakWind > 0
-            ? `within ${req.radiusMiles} mi · ${datedEvents.length} report${datedEvents.length === 1 ? '' : 's'}`
-            : 'no gusts reported',
-    },
-  ];
-  sumCards.forEach((c, idx) => {
-    const x = sumX + idx * (sumCardW + 12);
-    // Frame
-    doc.roundedRect(x, sumY, sumCardW, sumCardH, 5).fill('#ffffff');
-    doc
-      .roundedRect(x, sumY, sumCardW, sumCardH, 5)
-      .strokeColor('#e2e8f0')
-      .lineWidth(0.7)
-      .stroke();
-    // Top orange separator strip
-    doc.rect(x, sumY, sumCardW, 3).fill(sumOrange);
-    // Label centered
-    doc
-      .fillColor('#475569')
-      .font('Helvetica-Bold')
-      .fontSize(9)
-      .text(c.label, x, sumY + 12, { width: sumCardW, align: 'center' });
-    // Big orange value
-    doc
-      .fillColor(sumOrange)
-      .font('Helvetica-Bold')
-      .fontSize(24)
-      .text(c.value, x, sumY + 26, { width: sumCardW, align: 'center' });
-    // Sub-caption
-    doc
-      .fillColor('#94a3b8')
-      .font('Helvetica')
-      .fontSize(8)
-      .text(c.sub, x, sumY + 56, { width: sumCardW, align: 'center' });
-  });
-  doc.y = sumY + sumCardH + 16;
-
-  // (Property Hail Hit History table is rendered earlier — right after
-  // the Storm Coverage tier card. Its dataset, sortedHistRows, also
-  // drives the per-band detail block below.)
-
-  // (Per-Band Storm History table removed — its data is now part of the
-  // Property Hail Hit History combined table at the top of page 1. Single
-  // source of truth for the rep-facing storm-date list.)
-
-  // Multi-Source Storm Corroboration block REMOVED per Ahmed (4/27/26).
-  // Surfacing "X/Y independent sources" + "Confirmed by: SPC · NWS · NCEI"
-  // + a "Quadruple Verified" stamp framed Hail Yes as one tool among
-  // many — exactly the Hail-Trace-vs-Hail-Recon-vs-us comparison the
-  // morning handoff already vetoed ("alternative numbers are ammunition
-  // for the adjuster"). Consilience data still flows backend-side and
-  // drives the cap algorithm; it just doesn't surface as a section in
-  // the adjuster-facing PDF anymore. The consiliencePromise is still
-  // awaited so the prewarm cache stays warm but the result is unused
-  // here.
+  // Consilience prewarm cache still runs backend-side to keep the cap
+  // algorithm's verification pipeline warm, but doesn't surface as a
+  // section anymore.
   await consiliencePromise;
 
   // (Legacy "NEXRAD Radar + Hail Footprint Map" wide-map section
@@ -2450,117 +2216,43 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     doc.moveDown(0.6);
   }
 
-  // ── Evidence images ───────────────────────────────────────────────────
-  const evidenceBytes: Array<{ buf: Buffer; title?: string; caption?: string }> =
-    [];
-  if (req.evidence && req.evidence.length > 0) {
-    for (const item of req.evidence.slice(0, 6)) {
-      const buf = await fetchEvidenceImageBytes(item);
-      if (buf) {
-        evidenceBytes.push({ buf, title: item.title, caption: item.caption });
-      }
-    }
-  }
-  if (evidenceBytes.length > 0) {
-    doc.addPage();
-    drawSectionBanner('Field Evidence');
-    const evX = 54;
-    const evY = doc.y;
-    const cellW = (504 - 16) / 2; // 2 columns
-    const cellH = 220;
-    for (let i = 0; i < evidenceBytes.length; i += 1) {
-      const col = i % 2;
-      const row = Math.floor(i / 2);
-      const x = evX + col * (cellW + 16);
-      const y = evY + row * (cellH + 24);
-      try {
-        doc.image(evidenceBytes[i].buf, x, y, {
-          fit: [cellW, cellH - 36],
-          align: 'center',
-          valign: 'center',
-        });
-      } catch (err) {
-        console.warn('[reportPdf] evidence embed failed', err);
-        continue;
-      }
-      doc.font('Helvetica-Bold').fontSize(9).fillColor('#0f172a');
-      if (evidenceBytes[i].title) {
-        doc.text(evidenceBytes[i].title!, x, y + cellH - 30, {
-          width: cellW,
-          ellipsis: true,
-        });
-      }
-      if (evidenceBytes[i].caption) {
-        doc.font('Helvetica').fontSize(8).fillColor('#64748b');
-        doc.text(evidenceBytes[i].caption!, x, y + cellH - 16, {
-          width: cellW,
-          ellipsis: true,
-        });
-      }
-    }
-  }
+  // (Legacy "Field Evidence" section removed in Phase 7 of the
+  // 2026-04-27 redesign — out of scope per spec. The req.evidence field
+  // is still accepted on the API surface so frontends sending it don't
+  // 400; the bytes just aren't rendered. fetchEvidenceImageBytes is
+  // dead-code; cleanup pass at the end of this phase.)
 
-  // (NCEI Storm Events Archive appendix removed. The wall-of-text raw
-  // ±30-day NCEI rows were bloating the PDF to 5 pages with content reps
-  // and adjusters don't actually read; the rep-facing summary lives in
-  // the merged Property Hail Hit History table at the top of page 1.
-  // Adjusters who want raw NCEI rows can pull them from
-  // ncdc.noaa.gov/stormevents — the methodology section already cites
-  // that as the underlying source.)
-
-  // ── Sources consulted (compact attribution) ──────────────────────────
-  // Per 4/27/26 rep feedback, the verbose 6-agency bulleted "Data Sources
-  // & Methodology" section was removed — adjusters didn't read it and the
-  // wall-of-text dilutes the cap-result the report exists to convey.
-  // Source data still drives findings BACKEND-side (the display-cap
-  // verification gate counts NCEI Storm Events + NWS LSRs; supplemental
-  // sources never move the headline number). This single-line
-  // attribution lives just above the disclaimer for reader transparency.
-  if (doc.y + 60 > BOTTOM) doc.addPage();
+  // ── Section 8 — Disclaimer + Copyright ─────────────────────────────
+  if (doc.y > 620) doc.addPage();
+  drawSectionBanner('Disclaimer');
   doc
-    .fontSize(8.5)
-    .fillColor(C.lightText)
-    .font('Helvetica-Oblique')
-    .text(
-      'Findings derived from primary federal sources: NOAA NCEI Storm Events Database, NWS Local Storm Reports (via Iowa Environmental Mesonet), NOAA MRMS MESH, and the NEXRAD WSR-88D Doppler radar network. Supplemental observer networks (mPING, CoCoRaHS, SPC, NCEI SWDI) are cross-referenced internally for verification but do not drive the displayed at-property values.',
-      M,
-      doc.y,
-      { width: CW },
-    );
-  doc.moveDown(0.6);
-
-  // ── Disclaimer & Limitations ─────────────────────────────────────────
-  if (doc.y > 600) doc.addPage();
-  drawSectionBanner('Disclaimer & Limitations');
-  doc
-    .fontSize(8.5)
-    .fillColor(C.lightText)
+    .fillColor(COLOR.bodyText)
     .font('Helvetica')
+    .fontSize(8.5)
     .text(
-      'This Storm Impact Analysis is generated from publicly available federal and scientific-network data: the NOAA National Centers for Environmental Information (NCEI) Storm Events Database, NOAA MRMS MESH (Multi-Radar Multi-Sensor Hail) product, NOAA Storm Prediction Center (SPC) Warning Coordination Meteorologist archive, NWS Local Storm Reports via Iowa Environmental Mesonet (IEM), the Community Collaborative Rain, Hail & Snow Network (CoCoRaHS), and the NEXRAD WSR-88D Doppler radar network. ' +
-        'All storm event data, radar imagery, and severe weather warnings originate from these sources and are presented as reported. While every effort is made to ensure accuracy, weather data is subject to inherent limitations including radar resolution, reporting delays, and observation gaps. ' +
-        'This report is provided for informational purposes and does not constitute a professional roof inspection, engineering assessment, or meteorological certification. A licensed roofing contractor should perform a physical inspection to confirm the presence and extent of any storm damage. The preparer of this report makes no independent representations regarding the accuracy of the underlying federal data; original event identifiers (NCEI EVENT_ID, SPC OM#, CoCoRaHS station, NEXRAD WSR ID, MRMS GRIB2 file path) are retained in this report for independent verification.',
-      M,
-      doc.y,
-      { width: CW, align: 'justify' },
+      'Roof-ER Storm Intelligence uses NEXRAD weather radar data and proprietary hail detection algorithms to generate the "Hail Impact" and "Historical Storm Activity" information included in this report. And while Roof-ER attempts to be as accurate as possible, Roof-ER makes no representations or warranties of any kind, including express or implied warranties, that the information on this report is accurate, complete, and / or free from defects. Roof-ER is not responsible for any use of this report or decisions based on the information contained in this report. This report does not constitute a professional roof inspection or engineering assessment. A licensed roofing contractor should perform a physical inspection to confirm the presence and extent of any storm damage.',
+      70,
+      doc.y + 4,
+      { width: 472, align: 'justify', lineGap: 3 },
     );
+  doc.moveDown(0.8);
 
-  // ── Closing footer ────────────────────────────────────────────────────
-  // Single closing line on the last page — mirrors the SA21 approach.
-  // Per-page navy bar via bufferPages was tried first and was creating
-  // phantom blank pages because text() at y>page-margin auto-paginates
-  // even with bufferPages=true. The single-line ending is cleaner anyway.
+  // Copyright strip — full-bleed gray, centered text. Anchor immediately
+  // below the disclaimer paragraph; if there isn't room, push to a new
+  // page so the strip doesn't get clipped at the bottom margin.
   const yearStr = String(new Date().getFullYear());
-  doc.moveDown(0.6);
+  if (doc.y + PDF_LAYOUT.copyright.height + 8 > BOTTOM) doc.addPage();
+  const cpY = doc.y + 8;
+  doc.rect(0, cpY, PW, PDF_LAYOUT.copyright.height).fill(COLOR.stripBg);
   doc
-    .fontSize(8)
-    .fillColor(C.mutedText)
-    .font('Helvetica-Oblique')
+    .fillColor(COLOR.bodyText)
+    .font('Helvetica')
+    .fontSize(PDF_LAYOUT.copyright.fontSize)
     .text(
-      `Prepared by ${req.company.name}  ·  Data sourced from NOAA, NWS, and NEXRAD federal weather systems  ·  © ${yearStr}`,
-      M,
-      doc.y,
-      { width: CW, align: 'center' },
+      `Copyright © ${yearStr} by Roof-ER`,
+      0,
+      cpY + 7,
+      { width: PW, align: 'center' },
     );
 
   doc.end();
