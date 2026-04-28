@@ -1847,7 +1847,7 @@ app.get('/api/geocode/census', async (req, res) => {
     try {
       const upstream = await fetch(
         `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?${params}`,
-        { signal: ac.signal, headers: { 'User-Agent': 'hail-yes/1.0 (Roof Docs)' } },
+        { signal: ac.signal, headers: { 'User-Agent': 'hail-yes/1.0 (Hail Yes Storm Intelligence)' } },
       );
       clearTimeout(timer);
       if (!upstream.ok) {
