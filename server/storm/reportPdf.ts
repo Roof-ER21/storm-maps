@@ -1371,7 +1371,36 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
     // At-property hail size — uses the same cap call that previously fed
     // the tier card. dolAtPropCtx is the per-band verification ctx.
-    const atPropertyVal = propertyImpact?.bands.atProperty ?? null;
+    // Falls back to the closest ground report ≤1mi when MRMS bands.atProperty
+    // is null (older DoLs where the GRIB2 file rotated out of the IEM
+    // archive cache; histNceiRows still has the rows). Without this
+    // fallback, the cell reads "—" while the narrative below still says
+    // "penny-sized hail" because composeStormNarrative consults a wider
+    // signal — visibly inconsistent on the same page.
+    let atPropertyVal = propertyImpact?.bands.atProperty ?? null;
+    if (atPropertyVal === null || atPropertyVal === 0) {
+      let closestMag = 0;
+      let closestDist = Infinity;
+      for (const r of histNceiRows) {
+        const dateIso = typeof r.event_date === 'string'
+          ? r.event_date.slice(0, 10)
+          : String(r.event_date).slice(0, 10);
+        if (dateIso !== req.dateOfLoss) continue;
+        if (r.event_type !== 'Hail') continue;
+        const lat = typeof r.lat === 'number' ? r.lat : Number(r.lat);
+        const lng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const dist = haversineMiles(req.lat, req.lng, lat, lng);
+        if (dist > 1) continue;
+        const mag = r.magnitude;
+        if (!Number.isFinite(mag) || mag === null || mag <= 0) continue;
+        if (dist < closestDist) {
+          closestDist = dist;
+          closestMag = mag;
+        }
+      }
+      if (closestMag > 0) atPropertyVal = closestMag;
+    }
     const atPropertyStr = atPropertyVal !== null && atPropertyVal > 0
       ? displayHailIn(atPropertyVal, dolAtPropCtx)
       : '—';
