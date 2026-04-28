@@ -147,7 +147,7 @@ async function fetchNceiArchiveForReport(opts: {
              AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
              AND event_date BETWEEN
                  (${opts.dateOfLoss}::date - ${days}::int)
-             AND (${opts.dateOfLoss}::date + ${days}::int)
+             AND (${opts.dateOfLoss}::date)
            ORDER BY event_date DESC, magnitude DESC NULLS LAST
            LIMIT 500
         `
@@ -178,7 +178,7 @@ async function fetchNceiArchiveForReport(opts: {
              AND lng BETWEEN ${opts.lng - lngPad} AND ${opts.lng + lngPad}
              AND event_date BETWEEN
                  (${opts.dateOfLoss}::date - ${days}::int)
-             AND (${opts.dateOfLoss}::date + ${days}::int)
+             AND (${opts.dateOfLoss}::date)
            ORDER BY event_date DESC, magnitude DESC NULLS LAST
            LIMIT 500
         `;
@@ -203,6 +203,50 @@ export interface ReportEvidenceItem {
   caption?: string;
 }
 
+type ReportHistoryRange = '2y' | '3y' | '5y' | 'full';
+
+function reportHistoryWindowDays(range: ReportHistoryRange = '2y'): number {
+  switch (range) {
+    case '3y':
+      return 1_095;
+    case '5y':
+      return 1_825;
+    case 'full':
+      return 36_500;
+    case '2y':
+    default:
+      return 730;
+  }
+}
+
+function reportHistoryRowLimit(range: ReportHistoryRange = '2y'): number {
+  switch (range) {
+    case '3y':
+      return 24;
+    case '5y':
+      return 36;
+    case 'full':
+      return 60;
+    case '2y':
+    default:
+      return 14;
+  }
+}
+
+function reportHistoryLabel(range: ReportHistoryRange = '2y'): string {
+  switch (range) {
+    case '3y':
+      return '3-Year Historical Storm Activity';
+    case '5y':
+      return '5-Year Historical Storm Activity';
+    case 'full':
+      return 'Full Historical Storm Activity';
+    case '2y':
+    default:
+      return '2-Year Historical Storm Activity';
+  }
+}
+
 export interface ReportRequest {
   address: string;
   lat: number;
@@ -211,6 +255,8 @@ export interface ReportRequest {
   dateOfLoss: string;
   /** Anchor timestamp (when known) for the storm — picks the right MRMS file. */
   anchorTimestamp?: string | null;
+  /** Property history window rendered in the Historical Storm Activity table. */
+  historyRange?: ReportHistoryRange;
   rep: { name: string; phone?: string; email?: string };
   company: { name: string };
   /** Optional homeowner name — surfaces in the Property Information
@@ -473,6 +519,10 @@ function bandVerification(
 }
 
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
+  const historyRange = req.historyRange ?? '2y';
+  const historyWindowDays = reportHistoryWindowDays(historyRange);
+  const historyRowLimit = reportHistoryRowLimit(historyRange);
+
   // Fire consilience (5-source corroboration) early so it overlaps with the
   // event/swath fetch work below. 25s soft cap — PDF still renders without
   // it. Auto-curate rule applied at render time: only positives are shown.
@@ -925,8 +975,8 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     primaryMi1to3: BandReport[];
     primaryMi3to5: BandReport[];
   };
-  // Widened to match SA21's storm_days_public defaults — 25mi radius, 24mo
-  // window — and pulls from ALL ingest sources (NCEI + SWDI + mPING +
+  // Widened to match SA21's storm_days_public defaults — 25mi radius with
+  // a rep-selected history window — and pulls from ALL ingest sources (NCEI + SWDI + mPING +
   // HailTrace + NWS warnings), not just NCEI Storm Events. This is what
   // closes the "we see 4 dates / SA21 sees 15" gap on the same property.
   const histNceiRows = await fetchNceiArchiveForReport({
@@ -934,7 +984,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     lng: req.lng,
     dateOfLoss: req.dateOfLoss,
     radiusMiles: 25,
-    windowDays: 730,
+    windowDays: historyWindowDays,
     nceiOnly: false,
   }).catch(() => [] as Awaited<ReturnType<typeof fetchNceiArchiveForReport>>);
 
@@ -1034,7 +1084,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
   const sortedHistRows = Array.from(histGroups.values())
     .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
-    .slice(0, 14);
+    .slice(0, historyRowLimit);
   for (const r of sortedHistRows) {
     r.label = new Date(`${r.dateIso}T12:00:00`).toLocaleDateString('en-US', {
       month: 'short',
@@ -1046,7 +1096,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // ── MRMS swath DIRECT HIT check across ALL cached dates ──────────────
   // SA21 shows "Direct Hit (point)" by point-in-polygon against the
   // mrms_swath_cache table for every cached date. We do the same here:
-  // grab every swath_cache entry from the last 24 months whose bbox
+  // grab every swath_cache entry from the selected history window whose bbox
   // contains the property point, decode the GeoJSON payload, run
   // point-in-polygon, and emit a HistRow for any date where the
   // property is inside a polygon. This catches storms that aren't in
@@ -1063,7 +1113,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
           FROM swath_cache
          WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
            AND date::date BETWEEN
-               (${req.dateOfLoss}::date - 730)
+               (${req.dateOfLoss}::date - ${historyWindowDays}::int)
            AND (${req.dateOfLoss}::date)
            AND bbox_south <= ${req.lat}
            AND bbox_north >= ${req.lat}
@@ -1162,7 +1212,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         (r.biggestNearby >= 0.25 && r.biggestNearbyMi <= 10),
     )
     .sort((a, b) => b.dateIso.localeCompare(a.dateIso))
-    .slice(0, 14);
+    .slice(0, historyRowLimit);
   for (const r of finalSortedHistRows) {
     if (!r.label) {
       r.label = new Date(`${r.dateIso}T12:00:00`).toLocaleDateString('en-US', {
@@ -2050,7 +2100,8 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   // run through displayHailIn with the SAME bandVerification context the
   // legacy hit-history table used — preserves the cap algorithm wiring.
   if (sortedHistRows.length > 0) {
-    drawSectionBanner('Historical Storm Activity');
+    const historySectionTitle = reportHistoryLabel(historyRange);
+    drawSectionBanner(historySectionTitle);
     const H = PDF_LAYOUT.historical;
     const PAD = H.cellPad;
 
@@ -2164,7 +2215,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       // Auto-paginate before drawing the row if it won't fit.
       if (yt + H.bodyRowHeight > BOTTOM - 8) {
         doc.addPage();
-        drawSectionBanner('Historical Storm Activity (continued)');
+        drawSectionBanner(`${historySectionTitle} (continued)`);
         yt = doc.y;
         doc.rect(M, yt, CW, H.headerHeight).fill(COLOR.bannerBg);
         doc.fillColor(COLOR.labelGray).font('Helvetica-Bold').fontSize(H.headerFontSize);

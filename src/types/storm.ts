@@ -54,6 +54,8 @@ export type SearchResultType =
 
 export type HistoryRangePreset = '1y' | '2y' | '3y' | '5y' | '10y' | 'since';
 
+export type ReportHistoryRange = '2y' | '3y' | '5y' | 'full';
+
 export type AppView =
   | 'dashboard'
   | 'map'

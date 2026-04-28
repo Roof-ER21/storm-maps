@@ -937,6 +937,7 @@ interface ReportPdfBody {
   radiusMiles?: number;
   dateOfLoss?: string;
   anchorTimestamp?: string;
+  historyRange?: '2y' | '3y' | '5y' | 'full';
   rep?: { name?: string; phone?: string; email?: string };
   company?: { name?: string };
   /** Optional homeowner name — surfaces in the new PDF's Property
@@ -981,6 +982,7 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
       radiusMiles: Math.max(1, Math.min(200, body.radiusMiles ?? 35)),
       dateOfLoss: body.dateOfLoss,
       anchorTimestamp: body.anchorTimestamp ?? null,
+      historyRange: body.historyRange,
       rep: {
         name: body.rep?.name ?? 'Hail Yes Rep',
         phone: body.rep?.phone,

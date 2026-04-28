@@ -9,12 +9,12 @@ import type {
   EventFilterState,
   HistoryRangePreset,
   PropertySearchSummary,
+  ReportHistoryRange,
   StormDate,
   StormEvent,
 } from '../types/storm';
 import {
   getHailSizeClass,
-  getStormCanvassPriority,
   HAIL_SIZE_CLASSES,
 } from '../types/storm';
 import EvidenceThumbnailStrip from './EvidenceThumbnailStrip';
@@ -58,7 +58,10 @@ interface SidebarProps {
   territoryOnly?: boolean;
   onTerritoryOnlyChange?: (value: boolean) => void;
   generatingReport: boolean;
-  onGenerateReport: (dateOfLoss: string) => Promise<void>;
+  onGenerateReport: (
+    dateOfLoss: string,
+    options?: { historyRange?: ReportHistoryRange },
+  ) => Promise<void>;
   onOpenReports: () => void;
   canPinProperty: boolean;
   isPinned: boolean;
@@ -94,18 +97,18 @@ function CollapsibleSection({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex w-full items-center justify-between px-4 py-3 text-xs font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors"
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-xs font-semibold uppercase tracking-widest text-stone-500 hover:text-stone-900 transition-colors"
       >
-        <span className="flex items-center gap-2">
-          {title}
+        <span className="flex min-w-0 items-center gap-2">
+          <span className="truncate">{title}</span>
           {badge != null && (
-            <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-600 normal-case tracking-normal">
+            <span className="shrink-0 rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold text-orange-600 normal-case tracking-normal">
               {badge}
             </span>
           )}
         </span>
         <svg
-          className={`h-4 w-4 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`h-4 w-4 shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -149,9 +152,6 @@ export default function Sidebar({
   onPinProperty,
   evidenceItems,
   onOpenEvidence,
-  queuedRouteCountsByDate,
-  onToggleStormRoute,
-  onBuildKnockRoute,
   onAnalyzeProperty,
   onScanAreaWithAi,
   scanningArea = false,
@@ -163,6 +163,7 @@ export default function Sidebar({
   const [selectedDateOfLoss, setSelectedDateOfLoss] = useState('');
   const [showSelectedStormDetails, setShowSelectedStormDetails] = useState(false);
   const [dateListFilter, setDateListFilter] = useState<DateListFilter>('all');
+  const [reportHistoryRange, setReportHistoryRange] = useState<ReportHistoryRange>('2y');
   const inputRef = useRef<HTMLInputElement>(null);
 
   const sortedDates = [...stormDates].sort((a, b) => {
@@ -268,15 +269,6 @@ export default function Sidebar({
       return true;
     });
   }, [dateListFilter, sortedDates]);
-  const knockQueue = useMemo(
-    () =>
-      sortedDates.filter((stormDate) => {
-        const evidenceCount = evidenceCountsByDate.get(stormDate.date) || 0;
-        return getStormCanvassPriority(stormDate, evidenceCount) === 'Knock now';
-      }).slice(0, 3),
-    [evidenceCountsByDate, sortedDates],
-  );
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const query = inputRef.current?.value.trim() || '';
@@ -310,7 +302,7 @@ export default function Sidebar({
     }
 
     try {
-      await onGenerateReport(selectedDateOfLoss);
+      await onGenerateReport(selectedDateOfLoss, { historyRange: reportHistoryRange });
       setShowDateOfLossModal(false);
     } catch {
       // Parent already handles the user-visible error.
@@ -594,7 +586,7 @@ export default function Sidebar({
               </span>
             </div>
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <SelectedStormMetric
                 label="Reports"
                 value={String(selectedDate.eventCount)}
@@ -604,12 +596,8 @@ export default function Sidebar({
                 value={
                   selectedDate.maxWindMph > 0
                     ? `${selectedDate.maxWindMph.toFixed(0)} mph`
-                    : 'None'
+                  : 'None'
                 }
-              />
-              <SelectedStormMetric
-                label="Proof"
-                value={String(selectedStormEvidence.length)}
               />
             </div>
 
@@ -637,29 +625,23 @@ export default function Sidebar({
               addressLabel={searchSummary?.locationLabel ?? null}
             />
 
-            <div className="mt-3 grid grid-cols-2 gap-2">
+            <ReportHistoryRangePicker
+              value={reportHistoryRange}
+              onChange={setReportHistoryRange}
+            />
+
+            <div className="mt-3">
               <button
                 type="button"
                 onClick={() => {
-                  void onGenerateReport(selectedDate.date);
+                  void onGenerateReport(selectedDate.date, {
+                    historyRange: reportHistoryRange,
+                  });
                 }}
                 disabled={generatingReport}
-                className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
+                className="w-full rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
               >
                 {generatingReport ? 'Generating...' : 'Generate PDF'}
-              </button>
-              <button
-                type="button"
-                onClick={() => onToggleStormRoute(selectedDate)}
-                className={`rounded-xl border px-3 py-2 text-sm font-semibold transition-colors ${
-                  (queuedRouteCountsByDate[selectedDate.date] || 0) > 0
-                    ? 'border-orange-300 bg-orange-100 text-orange-700'
-                    : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
-                }`}
-              >
-                {(queuedRouteCountsByDate[selectedDate.date] || 0) > 0
-                  ? `Queued ${queuedRouteCountsByDate[selectedDate.date]}`
-                  : 'Add Route'}
               </button>
             </div>
           </div>
@@ -813,36 +795,6 @@ export default function Sidebar({
           </div>
         </CollapsibleSection>
 
-        {knockQueue.length > 0 && (
-          <CollapsibleSection
-            title="Canvass Queue"
-            defaultOpen={false}
-            badge={knockQueue.length}
-          >
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <button
-                type="button"
-                onClick={onBuildKnockRoute}
-                className="rounded-full border border-orange-300 bg-orange-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-orange-700 transition-colors hover:bg-orange-100"
-              >
-                Build Route
-              </button>
-            </div>
-            <div className="flex gap-1.5 overflow-x-auto pb-1">
-              {knockQueue.map((stormDate) => (
-                <button
-                  key={`queue-${stormDate.date}`}
-                  type="button"
-                  onClick={() => handleDateClick(stormDate)}
-                  className="shrink-0 rounded-full border border-orange-300 bg-orange-50 px-2.5 py-1.5 text-xs font-semibold text-orange-700"
-                >
-                  {stormDate.label}
-                </button>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
-
         <CollapsibleSection
           title="Storm Dates"
           defaultOpen={true}
@@ -883,9 +835,11 @@ export default function Sidebar({
                 events={events.filter((e) => toEasternDateKey(e.beginDate) === sd.date)}
                 evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
                 generatingReport={generatingReport}
-                onGenerateReport={onGenerateReport}
-                routeQueuedCount={queuedRouteCountsByDate[sd.date] || 0}
-                onToggleRoute={() => onToggleStormRoute(sd)}
+                onGenerateReport={(dateOfLoss) =>
+                  onGenerateReport(dateOfLoss, {
+                    historyRange: reportHistoryRange,
+                  })
+                }
                 onClick={() => handleDateClick(sd)}
                 onToggleExpand={(e) => toggleExpand(sd.date, e)}
               />
@@ -904,15 +858,6 @@ export default function Sidebar({
           <p className="mt-2 text-center text-[11px] text-stone-400">
             Choose the loss date, then download the NOAA-forward PDF.
           </p>
-        </div>
-      </div>
-
-      <div className="p-3 border-t border-stone-200 text-xs text-stone-400">
-        <div className="flex justify-between">
-          <span>
-            {stormDates.length} {getFilterSummaryLabel(eventFilters, stormDates.length)}
-          </span>
-          <span>{events.length} reports</span>
         </div>
       </div>
 
@@ -940,6 +885,10 @@ export default function Sidebar({
                 onChange={(d) => setSelectedDateOfLoss(d)}
               />
             </div>
+            <ReportHistoryRangePicker
+              value={reportHistoryRange}
+              onChange={setReportHistoryRange}
+            />
             {stormDates.length > 0 && (
               <>
                 <p className="mt-4 text-[11px] font-semibold uppercase tracking-wider text-stone-400">
@@ -1002,6 +951,50 @@ function SelectedStormMetric({
         {label}
       </p>
       <p className="mt-1 text-sm font-semibold text-stone-900">{value}</p>
+    </div>
+  );
+}
+
+const REPORT_HISTORY_OPTIONS: Array<{ value: ReportHistoryRange; label: string }> = [
+  { value: '2y', label: '2Y' },
+  { value: '3y', label: '3Y' },
+  { value: '5y', label: '5Y' },
+  { value: 'full', label: 'Full' },
+];
+
+function ReportHistoryRangePicker({
+  value,
+  onChange,
+}: {
+  value: ReportHistoryRange;
+  onChange: (value: ReportHistoryRange) => void;
+}) {
+  return (
+    <div className="mt-3 rounded-xl border border-orange-200 bg-white/80 p-2">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+          PDF History
+        </p>
+        <span className="text-[10px] text-stone-400">
+          property activity
+        </span>
+      </div>
+      <div className="grid grid-cols-4 gap-1.5">
+        {REPORT_HISTORY_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onChange(option.value)}
+            className={`rounded-lg px-2 py-1.5 text-[11px] font-bold transition-colors ${
+              value === option.value
+                ? 'bg-stone-900 text-white'
+                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1429,8 +1422,6 @@ function StormDateCard({
   evidenceCount: _evidenceCount,
   generatingReport,
   onGenerateReport,
-  routeQueuedCount,
-  onToggleRoute,
   onClick,
   onToggleExpand,
 }: {
@@ -1442,18 +1433,13 @@ function StormDateCard({
   evidenceCount: number;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
-  routeQueuedCount: number;
-  onToggleRoute: () => void;
   onClick: () => void;
   onToggleExpand: (e: React.MouseEvent) => void;
 }) {
   const sizeClass = getHailSizeClass(stormDate.maxHailInches);
   const severityColor = sizeClass?.color || HAIL_SIZE_CLASSES[0].color;
   // PRELIM/VERIFIED + canvass-priority logic was here; both replaced by
-  // the simpler property-relative TierBadge in the row header. The
-  // underlying signals (date age × source mix, hail size × evidence count)
-  // are still available via getStormCanvassPriority() if a future
-  // power-rep panel needs them.
+  // the simpler property-relative TierBadge in the row header.
 
   return (
     <div
@@ -1548,20 +1534,6 @@ function StormDateCard({
               className="rounded-lg bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
             >
               {generatingReport ? 'Generating...' : 'PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onToggleRoute();
-              }}
-              className={`rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition-colors ${
-                routeQueuedCount > 0
-                  ? 'border-orange-300 bg-orange-100 text-orange-700'
-                  : 'border-stone-300 bg-white text-stone-700 hover:bg-stone-50'
-              }`}
-            >
-              {routeQueuedCount > 0 ? `Queued ${routeQueuedCount}` : 'Route'}
             </button>
             <button
               type="button"

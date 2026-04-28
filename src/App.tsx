@@ -26,6 +26,7 @@ import type {
   BoundingBox,
   SearchResultType,
   HistoryRangePreset,
+  ReportHistoryRange,
   PropertySearchSummary,
   EventFilterState,
   PinnedProperty,
@@ -1278,7 +1279,10 @@ function App() {
     }
   }, [camera.bounds]);
 
-  const handleGenerateReport = useCallback(async (dateOfLoss: string) => {
+  const handleGenerateReport = useCallback(async (
+    dateOfLoss: string,
+    options?: { historyRange?: ReportHistoryRange },
+  ) => {
     if (!dateOfLoss) {
       return;
     }
@@ -1307,6 +1311,7 @@ function App() {
         events,
         dateOfLoss,
         evidenceItems: approvedEvidenceItems,
+        historyRange: options?.historyRange ?? '2y',
       });
     } catch (error) {
       console.error('[App] Failed to generate report:', error);

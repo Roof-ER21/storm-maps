@@ -1405,7 +1405,7 @@ function MapContent({
       <MRMSOverlay
         visible={canRenderHistoricalMrms}
         product="mesh1440"
-        opacity={0.94}
+        opacity={1}
         bounds={historicalMrmsBounds}
         url={historicalMrmsUrl}
         refreshMs={null}

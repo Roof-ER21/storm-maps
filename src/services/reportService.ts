@@ -1,4 +1,9 @@
-import type { EvidenceItem, ReportEvidenceItem, StormEvent } from '../types/storm';
+import type {
+  EvidenceItem,
+  ReportEvidenceItem,
+  ReportHistoryRange,
+  StormEvent,
+} from '../types/storm';
 import type {
   PropertyAnalysis,
   RoofType,
@@ -310,6 +315,7 @@ interface GenerateStormReportParams {
   events: StormEvent[];
   dateOfLoss: string;
   evidenceItems?: EvidenceItem[];
+  historyRange?: ReportHistoryRange;
   /** Optional AI property analysis to embed as the "Property Intelligence" section. */
   aiAnalysis?: PropertyAnalysis | null;
 }
@@ -466,6 +472,7 @@ export async function generateStormReport({
   events,
   dateOfLoss,
   evidenceItems = [],
+  historyRange = '2y',
   aiAnalysis,
 }: GenerateStormReportParams): Promise<void> {
   const datedEvents = events.filter(
@@ -512,7 +519,6 @@ export async function generateStormReport({
   // extended to consume them.
   void buildAiSectionHtml;
   void datedEvents;
-  void radiusMiles;
   void aiAnalysis;
   void AI_SECTION_STYLES;
   void computeDamageScore;
@@ -550,6 +556,7 @@ export async function generateStormReport({
       lng,
       radiusMiles,
       dateOfLoss,
+      historyRange,
       rep: {
         name: REPORT_REP_NAME,
         phone: REPORT_REP_PHONE,

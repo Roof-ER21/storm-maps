@@ -54,7 +54,7 @@ const CACHE_MAX = 32;
 const ARCHIVE_TTL_MS = 60 * 60 * 1000;
 const LIVE_TTL_MS = 5 * 60 * 1000;
 const RASTER_DISPLAY_FLOOR_MM = 6.35; // 1/4" display floor; suppresses trace-noise rectangles.
-const EDGE_FEATHER_PX = 10;
+const EDGE_FEATHER_PX = 8;
 
 function cacheKey(date: string, bounds: BoundingBox): string {
   const round = (n: number) => Math.round(n / 0.05) * 0.05;
@@ -88,10 +88,17 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
+function deepenRgb([r, g, b]: [number, number, number]): [number, number, number] {
+  const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+  const saturate = (channel: number) =>
+    Math.max(0, Math.min(255, Math.round(luma + (channel - luma) * 1.45)));
+  return [saturate(r), saturate(g), saturate(b)];
+}
+
 const BAND_RGB: Array<{ thresholdMm: number; rgb: [number, number, number] }> =
   IHM_HAIL_LEVELS.map((band) => ({
     thresholdMm: band.sizeMm,
-    rgb: hexToRgb(band.color),
+    rgb: deepenRgb(hexToRgb(band.color)),
   }));
 
 /** Pick the highest-applicable IHM band for a mm value, or null below the display floor. */
@@ -255,7 +262,7 @@ function gridToPng(cropped: CroppedGrid): {
       const edgeScale =
         featherPx > 0 ? Math.min(1, Math.max(0, edgeDistance / featherPx)) : 1;
       const baseAlpha = Math.round(
-        155 + (100 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
+        190 + (65 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
       );
       const alpha = Math.round(baseAlpha * edgeScale);
       png.data[off] = band.rgb[0];
