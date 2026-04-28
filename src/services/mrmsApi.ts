@@ -24,6 +24,27 @@ export type MrmsOverlayProduct = 'mesh60' | 'mesh1440';
 // overlay metadata need server-side handling.
 const PROXY_BASE = HAIL_YES_MRMS_API_BASE;
 
+const warnedOptionalMrmsFailures = new Set<string>();
+const OPTIONAL_MRMS_TIMEOUT_MS = 15000;
+const LEGACY_MRMS_TIMEOUT_MS = 12000;
+
+function isTimeoutError(err: unknown): boolean {
+  const maybeError = err as { name?: unknown; message?: unknown };
+  const name = typeof maybeError.name === 'string' ? maybeError.name : '';
+  const message = typeof maybeError.message === 'string' ? maybeError.message : String(err);
+  return (
+    name === 'TimeoutError' ||
+    name === 'AbortError' ||
+    message.toLowerCase().includes('timed out')
+  );
+}
+
+function warnOptionalMrmsFailure(key: string, err: unknown): void {
+  if (isTimeoutError(err) || warnedOptionalMrmsFailures.has(key)) return;
+  warnedOptionalMrmsFailures.add(key);
+  console.warn(`[mrmsApi] ${key} unavailable (suppressing further):`, err);
+}
+
 /** CONUS bounding box for the MRMS image overlays */
 export const CONUS_BOUNDS = {
   north: 55.0,
@@ -73,36 +94,25 @@ export interface HistoricalMrmsMetadata extends MrmsMetadata {
  * Fetch MRMS overlay metadata from the MRMS proxy.
  *
  * Hits sa21's `${PROXY_BASE}/${product}.json` which is an external
- * service — cold responses can take 6–10s. The old 5s timeout was
- * unrealistic and routinely fired TimeoutError to the console even
- * though the metadata was about to arrive. Bumped to 25s to match
- * the cold-cache reality.
+ * service — cold responses can take 6–10s. This is optional UI context,
+ * so keep the browser timeout bounded and silently degrade when slow.
  *
  * This metadata only drives the live-mode now-cast UI (timestamp
  * label + bounds). When a historical storm date is selected
  * (mrmsHistoricalMode=true) the caller skips this fetch entirely;
- * failing here is non-critical — the map still renders the swath
- * polygons via /api/hail/mrms-vector regardless.
+ * failing here is non-critical.
  */
-let mrmsMetaWarned = false;
-
 export async function fetchMrmsMetadata(
   product: MrmsOverlayProduct = 'mesh60',
 ): Promise<MrmsMetadata | null> {
   try {
     const res = await fetch(`${PROXY_BASE}/${product}.json`, {
-      signal: AbortSignal.timeout(25000),
+      signal: AbortSignal.timeout(OPTIONAL_MRMS_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`MRMS metadata returned ${res.status}`);
     return await res.json();
   } catch (err) {
-    if (!mrmsMetaWarned) {
-      mrmsMetaWarned = true;
-      console.warn(
-        '[mrmsApi] live-mode metadata unavailable (suppressing further):',
-        (err as Error).message,
-      );
-    }
+    warnOptionalMrmsFailure('live-mode metadata', err);
     return null;
   }
 }
@@ -143,9 +153,6 @@ function toHistoricalQuery(params: HistoricalMrmsParams): string {
  * Fetch historical MRMS metadata. Tries the in-repo `/api/hail/mrms-meta`
  * first; falls back to the Susan21 endpoint when that's unreachable.
  */
-let histMetaInRepoWarned = false;
-let histMetaSusan21Warned = false;
-
 export async function fetchHistoricalMrmsMetadata(
   params: HistoricalMrmsParams,
 ): Promise<HistoricalMrmsMetadata | null> {
@@ -153,39 +160,28 @@ export async function fetchHistoricalMrmsMetadata(
   try {
     const res = await fetch(
       `/api/hail/mrms-meta?${toHistoricalQuery(params)}`,
-      { signal: AbortSignal.timeout(45000) },
+      { signal: AbortSignal.timeout(OPTIONAL_MRMS_TIMEOUT_MS) },
     );
     if (res.ok) {
       return (await res.json()) as HistoricalMrmsMetadata;
     }
   } catch (err) {
-    if (!histMetaInRepoWarned) {
-      histMetaInRepoWarned = true;
-      console.warn(
-        '[mrmsApi] in-repo MRMS meta unavailable (suppressing further):',
-        (err as Error).message,
-      );
-    }
+    warnOptionalMrmsFailure('in-repo historical metadata', err);
+    if (isTimeoutError(err)) return null;
   }
 
   // 2. Susan21 legacy
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-historical-meta?${toHistoricalQuery(params)}`,
-      { signal: AbortSignal.timeout(45000) },
+      { signal: AbortSignal.timeout(LEGACY_MRMS_TIMEOUT_MS) },
     );
     if (!res.ok) {
       throw new Error(`Historical MRMS metadata returned ${res.status}`);
     }
     return await res.json();
   } catch (err) {
-    if (!histMetaSusan21Warned) {
-      histMetaSusan21Warned = true;
-      console.warn(
-        '[mrmsApi] historical MRMS metadata unavailable (suppressing further):',
-        (err as Error).message,
-      );
-    }
+    warnOptionalMrmsFailure('legacy historical metadata', err);
     return null;
   }
 }
@@ -329,13 +325,14 @@ export async function fetchStormImpact(params: {
           anchorTimestamp: params.anchorTimestamp || null,
           points: params.points,
         }),
-        signal: AbortSignal.timeout(60000),
+        signal: AbortSignal.timeout(OPTIONAL_MRMS_TIMEOUT_MS),
       });
       if (res.ok) {
         return (await res.json()) as StormImpactResponse;
       }
     } catch (err) {
-      console.warn('[mrmsApi] in-repo MRMS impact failed, trying Susan21', err);
+      warnOptionalMrmsFailure('in-repo MRMS impact', err);
+      if (isTimeoutError(err)) return null;
     }
   }
 
@@ -349,14 +346,14 @@ export async function fetchStormImpact(params: {
         anchorTimestamp: params.anchorTimestamp || null,
         points: params.points,
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(LEGACY_MRMS_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new Error(`Storm impact returned ${res.status}`);
     }
     return await res.json();
   } catch (err) {
-    console.error('[mrmsApi] Failed to fetch storm impact:', err);
+    warnOptionalMrmsFailure('legacy storm impact', err);
     return null;
   }
 }
@@ -379,7 +376,7 @@ export async function fetchLiveSwathPolygons(bounds: BoundingBox): Promise<
   // 1. In-repo MRMS now-cast.
   try {
     const res = await fetch(`/api/hail/mrms-now-vector?${query.toString()}`, {
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(OPTIONAL_MRMS_TIMEOUT_MS),
     });
     if (res.ok) {
       const data = (await res.json()) as SwathPolygonCollection & {
@@ -395,19 +392,20 @@ export async function fetchLiveSwathPolygons(bounds: BoundingBox): Promise<
       }
     }
   } catch (err) {
-    console.warn('[mrmsApi] in-repo MRMS now-cast failed, trying Susan21', err);
+    warnOptionalMrmsFailure('in-repo live swath polygons', err);
+    if (isTimeoutError(err)) return null;
   }
 
   // 2. Susan21 legacy.
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-now-polygons?${query}`,
-      { signal: AbortSignal.timeout(45000) },
+      { signal: AbortSignal.timeout(LEGACY_MRMS_TIMEOUT_MS) },
     );
     if (!res.ok) throw new Error(`Live swath polygons ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error('[mrmsApi] Failed to fetch live swath polygons:', err);
+    warnOptionalMrmsFailure('legacy live swath polygons', err);
     return null;
   }
 }
@@ -443,41 +441,43 @@ export async function fetchSwathPolygons(
   // 1. In-repo MRMS GRIB pipeline.
   try {
     const res = await fetch(`/api/hail/mrms-vector?${localQ.toString()}`, {
-      signal: AbortSignal.timeout(60000),
+      signal: AbortSignal.timeout(OPTIONAL_MRMS_TIMEOUT_MS),
     });
     if (res.ok) {
       const data = (await res.json()) as SwathPolygonCollection;
       if (data.features && data.features.length > 0) return data;
     }
   } catch (err) {
-    console.warn('[mrmsApi] in-repo MRMS pipeline failed, trying Susan21', err);
+    warnOptionalMrmsFailure('in-repo historical swath polygons', err);
+    if (isTimeoutError(err)) return null;
   }
 
   // 2. Susan21 backend (legacy).
   try {
     const res = await fetch(
       `${HAIL_YES_HAIL_API_BASE}/mrms-swath-polygons?${toHistoricalQuery(params)}`,
-      { signal: AbortSignal.timeout(45000) },
+      { signal: AbortSignal.timeout(LEGACY_MRMS_TIMEOUT_MS) },
     );
     if (res.ok) {
       const data = (await res.json()) as SwathPolygonCollection;
       if (data.features && data.features.length > 0) return data;
     }
   } catch (err) {
-    console.warn('[mrmsApi] Susan21 MRMS unavailable, trying fallback', err);
+    warnOptionalMrmsFailure('legacy historical swath polygons', err);
+    if (isTimeoutError(err)) return null;
   }
 
   // 3. In-repo SPC/LSR fallback.
   try {
     const res = await fetch(`/api/hail/swath-fallback?${localQ.toString()}`, {
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(LEGACY_MRMS_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new Error(`Hail fallback returned ${res.status}`);
     }
     return (await res.json()) as SwathPolygonCollection;
   } catch (err) {
-    console.error('[mrmsApi] All hail polygon paths failed:', err);
+    warnOptionalMrmsFailure('fallback historical swath polygons', err);
     return null;
   }
 }

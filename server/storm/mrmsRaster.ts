@@ -54,8 +54,7 @@ const CACHE_MAX = 32;
 const ARCHIVE_TTL_MS = 60 * 60 * 1000;
 const LIVE_TTL_MS = 5 * 60 * 1000;
 const RASTER_DISPLAY_FLOOR_MM = 6.35; // 1/4" display floor; suppresses trace-noise rectangles.
-const FOOTPRINT_TRIM_PADDING_PX = 10;
-const EDGE_FEATHER_PX = 18;
+const EDGE_FEATHER_PX = 10;
 
 function cacheKey(date: string, bounds: BoundingBox): string {
   const round = (n: number) => Math.round(n / 0.05) * 0.05;
@@ -177,60 +176,49 @@ function cropToBboxNoPad(
   };
 }
 
-function trimToDisplayFootprint(cropped: CroppedGrid): CroppedGrid {
-  const { width, height, values } = cropped;
-  if (width === 0 || height === 0) return cropped;
+function computeVisibleEdgeDistances(
+  values: Float32Array,
+  width: number,
+  height: number,
+): Float32Array {
+  const distances = new Float32Array(values.length);
+  const inf = width + height;
 
-  let minX = width;
-  let minY = height;
-  let maxX = -1;
-  let maxY = -1;
+  for (let i = 0; i < values.length; i += 1) {
+    const mm = values[i];
+    distances[i] =
+      Number.isFinite(mm) && mm >= RASTER_DISPLAY_FLOOR_MM ? inf : 0;
+  }
+
   for (let y = 0; y < height; y += 1) {
-    const row = y * width;
     for (let x = 0; x < width; x += 1) {
-      const value = values[row + x];
-      if (!Number.isFinite(value) || value < RASTER_DISPLAY_FLOOR_MM) continue;
-      minX = Math.min(minX, x);
-      minY = Math.min(minY, y);
-      maxX = Math.max(maxX, x);
-      maxY = Math.max(maxY, y);
+      const i = y * width + x;
+      let best = distances[i];
+      if (x > 0) best = Math.min(best, distances[i - 1] + 1);
+      if (y > 0) {
+        best = Math.min(best, distances[i - width] + 1);
+        if (x > 0) best = Math.min(best, distances[i - width - 1] + 1.414);
+        if (x < width - 1) best = Math.min(best, distances[i - width + 1] + 1.414);
+      }
+      distances[i] = best;
     }
   }
 
-  if (maxX < minX || maxY < minY) {
-    return { width: 0, height: 0, values: new Float32Array(), bounds: cropped.bounds };
-  }
-
-  const x0 = Math.max(0, minX - FOOTPRINT_TRIM_PADDING_PX);
-  const y0 = Math.max(0, minY - FOOTPRINT_TRIM_PADDING_PX);
-  const x1 = Math.min(width - 1, maxX + FOOTPRINT_TRIM_PADDING_PX);
-  const y1 = Math.min(height - 1, maxY + FOOTPRINT_TRIM_PADDING_PX);
-  const outW = x1 - x0 + 1;
-  const outH = y1 - y0 + 1;
-  const out = new Float32Array(outW * outH);
-
-  for (let y = 0; y < outH; y += 1) {
-    const srcRow = (y0 + y) * width + x0;
-    const dstRow = y * outW;
-    for (let x = 0; x < outW; x += 1) {
-      out[dstRow + x] = values[srcRow + x];
+  for (let y = height - 1; y >= 0; y -= 1) {
+    for (let x = width - 1; x >= 0; x -= 1) {
+      const i = y * width + x;
+      let best = distances[i];
+      if (x < width - 1) best = Math.min(best, distances[i + 1] + 1);
+      if (y < height - 1) {
+        best = Math.min(best, distances[i + width] + 1);
+        if (x > 0) best = Math.min(best, distances[i + width - 1] + 1.414);
+        if (x < width - 1) best = Math.min(best, distances[i + width + 1] + 1.414);
+      }
+      distances[i] = best;
     }
   }
 
-  const latStep = (cropped.bounds.north - cropped.bounds.south) / height;
-  const lngStep = (cropped.bounds.east - cropped.bounds.west) / width;
-
-  return {
-    width: outW,
-    height: outH,
-    values: out,
-    bounds: {
-      north: cropped.bounds.north - y0 * latStep,
-      south: cropped.bounds.north - (y1 + 1) * latStep,
-      west: cropped.bounds.west + x0 * lngStep,
-      east: cropped.bounds.west + (x1 + 1) * lngStep,
-    },
-  };
+  return distances;
 }
 
 function gridToPng(cropped: CroppedGrid): {
@@ -246,22 +234,16 @@ function gridToPng(cropped: CroppedGrid): {
   const png = new PNG({ width, height, colorType: 6 }); // RGBA
   let maxMeshMm = 0;
   let hailPixels = 0;
-  // Per-pixel alpha proportional to band severity — trace bands paint
-  // semi-transparent so roads/streets show through (reps need to map
-  // hail intensity to actual streets for door-knocking decisions),
-  // and severe bands paint stronger so the worst cells stand out.
-  // Was a flat 200 alpha → made the swath look like a solid blob with
-  // no street-level granularity. Now linearly ramped 135→240 across the
-  // 13 IHM bands so the basemap stays visible under low-impact areas
-  // and the high-impact cells still pop. The display now starts at 1/4"
-  // (not 1/8" trace) and trims to the actual visible footprint so a large
-  // fetch bbox does not read as a rectangular storm. Edge feathering softens
-  // the remaining overlay boundary so it reads like a storm corridor instead
-  // of a cropped radar tile.
+  // Ramp alpha by hail size so the basemap stays readable under lower-impact
+  // areas while high-impact cells still pop. The display starts at 1/4"
+  // (not 1/8" trace), with edge feathering applied to the visible hail mask
+  // itself so the footprint reads like a storm corridor instead of a radar tile.
   const featherPx = Math.max(
     0,
     Math.min(EDGE_FEATHER_PX, Math.floor(Math.min(width, height) / 8)),
   );
+  const edgeDistances =
+    featherPx > 0 ? computeVisibleEdgeDistances(values, width, height) : null;
   for (let i = 0; i < values.length; i += 1) {
     const mm = values[i];
     if (mm > maxMeshMm && Number.isFinite(mm)) maxMeshMm = mm;
@@ -269,13 +251,11 @@ function gridToPng(cropped: CroppedGrid): {
     const off = i * 4;
     if (band) {
       hailPixels += 1;
-      const x = i % width;
-      const y = Math.floor(i / width);
-      const edgeDistance = Math.min(x, y, width - 1 - x, height - 1 - y);
+      const edgeDistance = edgeDistances ? edgeDistances[i] : featherPx;
       const edgeScale =
         featherPx > 0 ? Math.min(1, Math.max(0, edgeDistance / featherPx)) : 1;
       const baseAlpha = Math.round(
-        135 + (105 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
+        155 + (100 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
       );
       const alpha = Math.round(baseAlpha * edgeScale);
       png.data[off] = band.rgb[0];
@@ -357,8 +337,7 @@ export async function buildMrmsRaster(
     const sections = readGrib2(file.grib2Bytes);
     const decoded = decodeGribData(sections);
     const cropped = cropToBboxNoPad(decoded, sections.grid, params.bounds);
-    const displayGrid = trimToDisplayFootprint(cropped);
-    const { pngBytes, hasHail, maxMeshMm, hailPixels } = gridToPng(displayGrid);
+    const { pngBytes, hasHail, maxMeshMm, hailPixels } = gridToPng(cropped);
     if (pngBytes.length === 0) return null;
 
     const result: MrmsRasterResult = {
@@ -367,8 +346,8 @@ export async function buildMrmsRaster(
         date: params.date,
         refTime: file.refTime,
         requestedBounds: params.bounds,
-        bounds: displayGrid.bounds,
-        imageSize: { width: displayGrid.width, height: displayGrid.height },
+        bounds: cropped.bounds,
+        imageSize: { width: cropped.width, height: cropped.height },
         hasHail,
         maxMeshInches: maxMeshMm / 25.4,
         hailPixels,

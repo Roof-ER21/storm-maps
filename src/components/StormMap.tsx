@@ -45,8 +45,6 @@ import WindSwathLayer from './WindSwathLayer';
 import WindLegend from './WindLegend';
 import {
   fetchMrmsMetadata,
-  fetchHistoricalMrmsMetadata,
-  fetchSwathPolygons,
   fetchLiveSwathPolygons,
   getHistoricalMrmsOverlayUrl,
   fetchStormImpact,
@@ -517,9 +515,8 @@ function MapContent({
   const [mrmsProduct, setMrmsProduct] =
     useState<MrmsOverlayProduct>('mesh1440');
   const [mrmsMeta, setMrmsMeta] = useState<MrmsStatus | null>(null);
-  const [mrmsLoading, setMrmsLoading] = useState(false);
+  const [, setMrmsLoading] = useState(false);
   const [, setMrmsError] = useState<string | null>(null);
-  const [vectorSwaths, setVectorSwaths] = useState<MeshSwath[]>([]);
   const [liveNowCast, setLiveNowCast] = useState(false);
   const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
   const [liveSwathMeta, setLiveSwathMeta] = useState<{ maxInches: number; refTime: string } | null>(null);
@@ -723,14 +720,11 @@ function MapContent({
       historicalMrmsParams ? getHistoricalMrmsOverlayUrl(historicalMrmsParams) : null,
     [historicalMrmsParams],
   );
-  const effectiveMrmsLoading =
-    mrmsHistoricalMode && !historicalMrmsParams ? false : mrmsLoading;
-  const historicalMrmsBounds = mrmsMeta?.bounds || historicalMrmsParams?.bounds || null;
+  const historicalMrmsBounds = historicalMrmsParams?.bounds || null;
   const canRenderHistoricalMrms =
     showMrms &&
     mrmsHistoricalMode &&
-    Boolean(historicalMrmsUrl && historicalMrmsBounds) &&
-    !effectiveMrmsLoading;
+    Boolean(historicalMrmsUrl && historicalMrmsBounds);
 
   useEffect(() => {
     if (!selectedDate) {
@@ -746,22 +740,10 @@ function MapContent({
     queueMicrotask(() => {
       setMrmsProduct('mesh1440');
       setShowMrms(true);
-      setMrmsLoading(true);
+      setMrmsLoading(false);
       setMrmsError(null);
     });
   }, [selectedDate]);
-  const polygonSwathsForSelectedDate = useMemo(
-    () =>
-      selectedDate
-        ? swaths.filter(
-            (swath) =>
-              swath.date === selectedDate &&
-              (swath.geometry.type === 'Polygon' ||
-                swath.geometry.type === 'MultiPolygon'),
-          )
-        : [],
-    [selectedDate, swaths],
-  );
   const swathsToRender = useMemo(() => {
     // Live now-cast takes priority when the toggle is on.
     if (liveNowCast && liveSwaths.length > 0) {
@@ -775,32 +757,16 @@ function MapContent({
     // adding polygon outlines made it look fragmented. (Vector data
     // still flows backend-side for the cap algorithm and per-band
     // verification — just not rendered here.)
-    if (mrmsHistoricalMode && mrmsMeta?.has_hail) {
+    if (mrmsHistoricalMode) {
       return [];
     }
 
-    // Outside historical mode: prefer vectors when we have them.
-    if (vectorSwaths.length > 0) {
-      return vectorSwaths;
-    }
-
-    if (!mrmsHistoricalMode) {
-      return swaths;
-    }
-
-    if (polygonSwathsForSelectedDate.length > 0) {
-      return polygonSwathsForSelectedDate;
-    }
-
-    return [];
+    return swaths;
   }, [
     liveNowCast,
     liveSwaths,
     mrmsHistoricalMode,
-    mrmsMeta?.has_hail,
-    polygonSwathsForSelectedDate,
     swaths,
-    vectorSwaths,
   ]);
 
   // handleMrmsToggle removed — no UI surface flips MRMS manually anymore.
@@ -851,110 +817,6 @@ function MapContent({
       cancelled = true;
     };
   }, [mrmsHistoricalMode, mrmsProduct, showMrms]);
-
-  useEffect(() => {
-    if (!showMrms || !mrmsHistoricalMode) {
-      return;
-    }
-
-    if (!historicalMrmsParams) {
-      return;
-    }
-
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (!cancelled) {
-        setMrmsLoading(true);
-        setMrmsError(null);
-      }
-    });
-
-    fetchHistoricalMrmsMetadata(historicalMrmsParams)
-      .then((metadata) => {
-        if (cancelled) return;
-        if (!metadata) {
-          setMrmsMeta({
-            product: 'mesh1440',
-            ref_time: historicalMrmsParams.anchorTimestamp || historicalMrmsParams.date,
-            generated_at: undefined,
-            has_hail: true,
-            max_mesh_inches: undefined,
-            hail_pixels: undefined,
-            bounds: historicalMrmsParams.bounds,
-          });
-          setMrmsError(null);
-          return;
-        }
-
-        setMrmsMeta({
-          product: metadata.product || 'mesh1440',
-          ref_time: metadata.ref_time || metadata.timestamp,
-          generated_at: metadata.generated_at || metadata.generated,
-          has_hail: metadata.has_hail,
-          max_mesh_inches: metadata.max_mesh_inches,
-          hail_pixels: metadata.hail_pixels,
-          bounds: metadata.bounds,
-        });
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.warn('[StormMap] Historical MRMS metadata unavailable, using direct overlay fallback.', error);
-          setMrmsMeta({
-            product: 'mesh1440',
-            ref_time: historicalMrmsParams.anchorTimestamp || historicalMrmsParams.date,
-            generated_at: undefined,
-            has_hail: true,
-            max_mesh_inches: undefined,
-            hail_pixels: undefined,
-            bounds: historicalMrmsParams.bounds,
-          });
-          setMrmsError(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setMrmsLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [historicalMrmsParams, mrmsHistoricalMode, showMrms]);
-
-  // Fetch vector swath polygons when a storm date is selected
-  useEffect(() => {
-    if (!mrmsHistoricalMode || !historicalMrmsParams || !selectedDate) {
-      setVectorSwaths([]);
-      return;
-    }
-
-    let cancelled = false;
-
-    fetchSwathPolygons(historicalMrmsParams).then((result) => {
-      if (cancelled || !result) return;
-
-      // Convert SwathPolygonCollection features to MeshSwath format.
-      // Preserve the IHM-matched color and label from the backend so the 10-band
-      // palette renders instead of the legacy 7-band damage palette.
-      const converted: MeshSwath[] = result.features.map((feature, i) => ({
-        id: `mrms-vector-${selectedDate}-${feature.properties.level}-${i}`,
-        date: selectedDate,
-        geometry: feature.geometry,
-        sourceGeometryType: 'polygon' as const,
-        maxMeshInches: feature.properties.sizeInches,
-        avgMeshInches: feature.properties.sizeInches,
-        areaSqMiles: geometryAreaSqMiles(feature.geometry),
-        statesAffected: [],
-        displayColor: feature.properties.color,
-        displayLabel: feature.properties.label,
-      }));
-
-      setVectorSwaths(converted);
-    });
-
-    return () => { cancelled = true; };
-  }, [mrmsHistoricalMode, historicalMrmsParams, selectedDate]);
 
   // Live now-cast polygons — fetches whenever `liveNowCast` is on, refreshing
   // every 2 minutes so the radar display tracks with upstream IEM updates.
@@ -1543,7 +1405,7 @@ function MapContent({
       <MRMSOverlay
         visible={canRenderHistoricalMrms}
         product="mesh1440"
-        opacity={0.86}
+        opacity={0.94}
         bounds={historicalMrmsBounds}
         url={historicalMrmsUrl}
         refreshMs={null}

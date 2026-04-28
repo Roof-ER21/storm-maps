@@ -84,7 +84,7 @@ export default function AddressImpactBadge({
             : '',
         ].join('|')
       : null;
-  const [data, setData] = useState<{ key: string; response: StormImpactResponse } | null>(null);
+  const [data, setData] = useState<{ key: string; response: StormImpactResponse | null } | null>(null);
 
   useEffect(() => {
     if (!requestKey || !selectedDate || searchLat === null || searchLng === null) {
@@ -99,7 +99,7 @@ export default function AddressImpactBadge({
       points: [{ id: 'searched-address', lat: searchLat, lng: searchLng }],
     })
       .then((res) => {
-        if (!cancelled && res) setData({ key: requestKey, response: res });
+        if (!cancelled) setData({ key: requestKey, response: res });
       });
 
     return () => {
@@ -119,7 +119,14 @@ export default function AddressImpactBadge({
     );
   }
 
+  if (!data.response) {
+    return null;
+  }
+
   const impact = data.response.results[0];
+  if (!impact) {
+    return null;
+  }
   // Pre-tier-classifier fallback: synthesize tier from the legacy fields.
   const tier: ImpactTier =
     impact.tier ??

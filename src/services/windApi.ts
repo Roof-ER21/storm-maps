@@ -76,6 +76,26 @@ function windApiBase(): string {
   return '/api/wind';
 }
 
+const warnedOptionalWindFailures = new Set<string>();
+const OPTIONAL_WIND_TIMEOUT_MS = 15000;
+
+function isTimeoutError(err: unknown): boolean {
+  const maybeError = err as { name?: unknown; message?: unknown };
+  const name = typeof maybeError.name === 'string' ? maybeError.name : '';
+  const message = typeof maybeError.message === 'string' ? maybeError.message : String(err);
+  return (
+    name === 'TimeoutError' ||
+    name === 'AbortError' ||
+    message.toLowerCase().includes('timed out')
+  );
+}
+
+function warnOptionalWindFailure(key: string, err: unknown): void {
+  if (isTimeoutError(err) || warnedOptionalWindFailures.has(key)) return;
+  warnedOptionalWindFailures.add(key);
+  console.warn(`[windApi] ${key} unavailable (suppressing further):`, err);
+}
+
 interface WindSwathParams {
   date: string;
   bounds: BoundingBox;
@@ -112,11 +132,11 @@ export async function fetchWindSwathPolygons(
 ): Promise<WindSwathCollection | null> {
   try {
     const url = `${windApiBase()}/swath-polygons?${toBoundsQuery(params)}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(45000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(OPTIONAL_WIND_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`Wind swath returned ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error('[windApi] fetchWindSwathPolygons failed:', err);
+    warnOptionalWindFailure('fetchWindSwathPolygons', err);
     return null;
   }
 }
@@ -136,11 +156,11 @@ export async function fetchLiveWindSwathPolygons(
       params.set('states', states.join(','));
     }
     const url = `${windApiBase()}/now-polygons?${params.toString()}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(45000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(OPTIONAL_WIND_TIMEOUT_MS) });
     if (!res.ok) throw new Error(`Wind now returned ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error('[windApi] fetchLiveWindSwathPolygons failed:', err);
+    warnOptionalWindFailure('fetchLiveWindSwathPolygons', err);
     return null;
   }
 }
@@ -164,12 +184,12 @@ export async function fetchWindImpact(req: {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(req),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(OPTIONAL_WIND_TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`Wind impact returned ${res.status}`);
     return await res.json();
   } catch (err) {
-    console.error('[windApi] fetchWindImpact failed:', err);
+    warnOptionalWindFailure('fetchWindImpact', err);
     return null;
   }
 }
