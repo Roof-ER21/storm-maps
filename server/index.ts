@@ -1717,6 +1717,21 @@ interface LiveCellsQuery {
   east?: string;
   west?: string;
 }
+// In-memory cache for live-cells responses, keyed by bounds bucket. Cold
+// MRMS GRIB2 fetches take 4-6s — Railway's edge proxy times out and reps see
+// 502s on the every-90s poll. Keeping a 60s in-process snapshot per bucket
+// means the upstream is hit ~1×/min/bucket regardless of poll volume.
+type LiveCellsSnapshot = { ts: number; payload: object };
+const liveCellsCache = new Map<string, LiveCellsSnapshot>();
+const LIVE_CELLS_TTL_MS = 60_000;
+
+function liveCellsCacheKey(b: BoundingBox): string {
+  // 0.5° bucket — enough to differentiate territory vs viewport polls
+  // without exploding the cache. Floor to bucket on each axis.
+  const bucket = (n: number) => Math.round(n * 2) / 2;
+  return `${bucket(b.north)}|${bucket(b.south)}|${bucket(b.east)}|${bucket(b.west)}`;
+}
+
 app.get('/api/storm/live-cells', async (req, res) => {
   try {
     const q = req.query as LiveCellsQuery;
@@ -1727,6 +1742,16 @@ app.get('/api/storm/live-cells', async (req, res) => {
       east: parseFloat(q.east ?? '-74.5'),
       west: parseFloat(q.west ?? '-83.5'),
     };
+
+    const key = liveCellsCacheKey(bounds);
+    const cached = liveCellsCache.get(key);
+    if (cached && Date.now() - cached.ts < LIVE_CELLS_TTL_MS) {
+      res.set('Cache-Control', 'public, max-age=60');
+      res.set('X-Live-Cells-Cache', 'hit');
+      res.json(cached.payload);
+      return;
+    }
+
     const [collection, svrPolygons] = await Promise.all([
       buildMrmsNowVectorPolygons(bounds).catch(() => null),
       fetchActiveSvrPolygons({ bounds }).catch(() => [] as Awaited<ReturnType<typeof fetchActiveSvrPolygons>>),
@@ -1738,8 +1763,7 @@ app.get('/api/storm/live-cells', async (req, res) => {
       ) ?? 0;
     const cellCount = collection?.features.length ?? 0;
     const status = getLiveMrmsAlertStatus();
-    res.set('Cache-Control', 'public, max-age=90');
-    res.json({
+    const payload = {
       ok: true,
       // Active = either current radar shows ≥¼" hail OR an SVR/Tornado warning is up.
       active: maxBandIn >= 0.25 || svrPolygons.length > 0,
@@ -1759,7 +1783,11 @@ app.get('/api/storm/live-cells', async (req, res) => {
         firedTodayByState: status.firedTodayByState,
         lastFiredAt: status.lastFiredAt,
       },
-    });
+    };
+    liveCellsCache.set(key, { ts: Date.now(), payload });
+    res.set('Cache-Control', 'public, max-age=60');
+    res.set('X-Live-Cells-Cache', 'miss');
+    res.json(payload);
   } catch (err) {
     console.error('[live-cells] failed', err);
     res.status(500).json({ error: 'Failed to build live cells response' });
@@ -1789,6 +1817,68 @@ app.get('/api/property/parcel', async (req, res) => {
   } catch (err) {
     console.error('[parcel] failed', err);
     res.status(500).json({ error: 'Failed to fetch parcel geometry' });
+  }
+});
+
+// ── Census geocoder server proxy ───────────────────────────────────────
+// GET /api/geocode/census?address=<query>
+//   Proxies the free US Census Bureau geocoder. The browser-side fetch was
+//   blocked by CORS + intermittent 503s; running it server-side fixes both
+//   and lets us cache + retry. Used as a fallback when Google geocode
+//   returns ZERO_RESULTS (typos, partial addresses).
+interface CensusGeocodeQuery {
+  address?: string;
+}
+app.get('/api/geocode/census', async (req, res) => {
+  try {
+    const q = req.query as CensusGeocodeQuery;
+    const address = (q.address ?? '').trim();
+    if (!address || address.length > 300) {
+      res.status(400).json({ error: 'address required (max 300 chars)' });
+      return;
+    }
+    const params = new URLSearchParams({
+      address,
+      benchmark: 'Public_AR_Current',
+      format: 'json',
+    });
+    const ac = new AbortController();
+    const timer = setTimeout(() => ac.abort(), 8_000);
+    try {
+      const upstream = await fetch(
+        `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?${params}`,
+        { signal: ac.signal, headers: { 'User-Agent': 'hail-yes/1.0 (Roof Docs)' } },
+      );
+      clearTimeout(timer);
+      if (!upstream.ok) {
+        res.status(502).json({ error: `Census geocoder returned ${upstream.status}` });
+        return;
+      }
+      const data = (await upstream.json()) as {
+        result?: { addressMatches?: Array<{ matchedAddress?: string; coordinates?: { x: number; y: number } }> };
+      };
+      const matches = data.result?.addressMatches ?? [];
+      const first = matches[0];
+      if (!first?.coordinates) {
+        res.set('Cache-Control', 'public, max-age=300');
+        res.json({ ok: true, match: null });
+        return;
+      }
+      res.set('Cache-Control', 'public, max-age=86400');
+      res.json({
+        ok: true,
+        match: {
+          address: first.matchedAddress ?? address,
+          lat: first.coordinates.y,
+          lng: first.coordinates.x,
+        },
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (err) {
+    console.error('[geocode-census] failed', err);
+    res.status(500).json({ error: 'Failed to geocode address' });
   }
 });
 

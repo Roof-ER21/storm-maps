@@ -757,6 +757,7 @@ function App() {
   const [activeRouteStopId, setActiveRouteStopId] = useState<string | null>(null);
   const [showRoutePanel, setShowRoutePanel] = useState(false);
   const [showHeatmap, setShowHeatmap] = useState(true);
+  const [mapFullscreen, setMapFullscreen] = useState(false);
   const [showHomeownerImport, setShowHomeownerImport] = useState(false);
   const [evidenceProviderStatus, setEvidenceProviderStatus] = useState<{
     youtube: 'live' | 'fallback';
@@ -2727,14 +2728,17 @@ function App() {
   // Mobile heights (Apr 27 mobile-UX pass):
   // - 44px header (`h-11`) is the only chrome above the map.
   // - Map is `h-[45vh]` on mobile so storm-dates list gets ~50vh of breathing
-  //   room below it (was 55vh, before that 70vh — reps still couldn't see
-  //   any dates without scrolling). 45vh keeps the map dominant and visible
-  //   while the dates list shows 4-5 cards above the fold.
+  //   room below it. Fullscreen toggle (h-[calc(100dvh-2.75rem)]) lets reps
+  //   blow up the map for ground-truth visualization.
   // - SearchBar overlays the map (`absolute` positioned in SearchBar.tsx)
   //   so iOS keyboard focus doesn't reflow the map height.
   // - Desktop unchanged (`lg:` keeps `flex-1`, fills remaining viewport).
   const mapArea = (
-    <main className="relative order-1 flex h-[45vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
+    <main
+      className={`relative order-1 flex shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1 ${
+        mapFullscreen ? 'h-[calc(100dvh-2.75rem)]' : 'h-[45vh]'
+      }`}
+    >
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 
@@ -2808,6 +2812,24 @@ function App() {
 
       {/* Legend overlay */}
       <Legend />
+
+      {/* Fullscreen toggle — top-right of map. Hidden on desktop where the
+          map already fills its pane via lg:flex-1. */}
+      <button
+        type="button"
+        onClick={() => setMapFullscreen((v) => !v)}
+        aria-label={mapFullscreen ? 'Exit fullscreen map' : 'Expand map to fullscreen'}
+        title={mapFullscreen ? 'Exit fullscreen' : 'Expand map'}
+        className="absolute top-2 right-2 z-20 flex h-9 w-9 items-center justify-center rounded-lg bg-white/95 text-stone-700 shadow-md ring-1 ring-stone-200 hover:bg-stone-50 lg:hidden"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+          {mapFullscreen ? (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9V4.5M15 9h4.5M15 9l5.25-5.25M15 15v4.5M15 15h4.5M15 15l5.25 5.25" />
+          ) : (
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+          )}
+        </svg>
+      </button>
 
       {/* GPS tracking toggle + center on me */}
       <div className="absolute bottom-6 left-4 z-10 flex gap-2">
@@ -3046,9 +3068,10 @@ function App() {
           // map main gets order-1) so the map shows at top on phones
           // without scrolling past 1100px of sidebar chrome. Desktop
           // unchanged: sidebar left, map right via lg:flex-row.
-          // (flex-col-reverse was tried first but its bottom-anchoring
-          //  breaks scroll on mobile when content exceeds viewport.)
+          // Fullscreen toggle hides the sidebar (`hidden` class) so the
+          // map fills the viewport — preserves sidebar state across toggle.
           <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <div className={mapFullscreen ? 'hidden' : 'contents'}>
             <Sidebar
               stormDates={filteredStormDates}
               events={filteredEvents}
@@ -3089,6 +3112,7 @@ function App() {
               scanningArea={scanningArea}
               areaScanCount={areaScanCount}
             />
+            </div>
 
             {mapWorkspace}
           </div>

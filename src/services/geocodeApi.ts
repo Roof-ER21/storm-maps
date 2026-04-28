@@ -71,49 +71,31 @@ async function geocodeWithGoogle(query: string): Promise<SearchResult | null> {
 }
 
 // ---------------------------------------------------------------------------
-// US Census Bureau Geocoder (free, no API key)
+// US Census Bureau Geocoder (free, no API key) — proxied via /api/geocode/census
 // ---------------------------------------------------------------------------
 
-interface CensusMatch {
-  matchedAddress: string;
-  coordinates: {
-    x: number; // longitude
-    y: number; // latitude
-  };
-}
-
-interface CensusAddressMatch {
-  addressMatches: CensusMatch[];
-}
-
-interface CensusResponse {
-  result: CensusAddressMatch;
-}
-
 async function geocodeWithCensus(query: string): Promise<SearchResult | null> {
-  const params = new URLSearchParams({
-    address: query,
-    benchmark: 'Public_AR_Current',
-    format: 'json',
-  });
+  // Proxied through /api/geocode/census — direct browser calls were
+  // blocked by CORS + hit intermittent 503s on the Census endpoint.
+  const params = new URLSearchParams({ address: query });
 
   try {
-    const res = await fetch(
-      `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?${params}`,
-    );
-    if (!res.ok) throw new Error(`Census geocoder returned ${res.status}`);
+    const res = await fetch(`/api/geocode/census?${params}`);
+    if (!res.ok) throw new Error(`Census proxy returned ${res.status}`);
 
-    const data: CensusResponse = await res.json();
-    const matches = data.result?.addressMatches;
-    if (!matches || matches.length === 0) return null;
+    const data = (await res.json()) as {
+      ok?: boolean;
+      match?: { address: string; lat: number; lng: number } | null;
+    };
+    const match = data.match;
+    if (!match) return null;
 
-    const first = matches[0];
     return {
-      address: first.matchedAddress,
-      lat: first.coordinates.y,
-      lng: first.coordinates.x,
-      placeId: `census-${first.coordinates.y}-${first.coordinates.x}`,
-      viewport: inferCensusViewport(first.coordinates.y, first.coordinates.x, query),
+      address: match.address,
+      lat: match.lat,
+      lng: match.lng,
+      placeId: `census-${match.lat}-${match.lng}`,
+      viewport: inferCensusViewport(match.lat, match.lng, query),
       resultType: isZipCode(query) ? 'postal_code' : 'address',
     };
   } catch (err) {

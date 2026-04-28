@@ -326,17 +326,11 @@ export default function Sidebar({
   return (
     <aside className="order-2 flex w-full flex-1 flex-col overflow-y-auto border-b border-stone-200 bg-white text-stone-900 min-h-0 lg:order-1 lg:w-80 lg:flex-initial lg:shrink-0 lg:border-b-0 lg:border-r">
       {/*
-        Mobile reordering (Apr 27): the AppHeader on mobile already shows
-        page title + searched address, so the Sidebar's own logo/tagline
-        block is redundant chrome above the dates list. Hidden on mobile,
-        restored at lg:.
-
-        Search form, ActiveStormsPanel, Property History, Selected Storm,
-        and Event Filters all use Tailwind `order-` classes on mobile so
-        the Storm Dates list (order-1) appears immediately below the
-        search bar (order-0). Reps tapping the page see dates first;
-        secondary chrome lives below. Desktop (lg:) resets order to DOM
-        sequence — original layout untouched.
+        Mobile (Apr 27 v2): use natural DOM order — the previous order-class
+        layout caused visual overlap between the Storm Reports header and
+        Property History when both were rendered close together.
+        AppHeader handles title + searched address on mobile; logo/tagline
+        block hidden on mobile, shown at lg:.
       */}
       <div className="hidden lg:block border-b border-stone-200 p-4">
         <div className="flex items-center gap-2">
@@ -369,7 +363,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <form onSubmit={handleSearch} className="order-1 p-3 border-b border-stone-200 lg:order-none">
+      <form onSubmit={handleSearch} className="p-3 border-b border-stone-200">
         <div className="relative">
           <input
             key={activeSearchLabel ?? 'search-location'}
@@ -442,16 +436,13 @@ export default function Sidebar({
         </div>
       </form>
 
-      {/* Active Storms — auto-fills when something is firing in
-          territory. Visible regardless of whether a property is searched
-          so reps see live activity the moment they open the app.
-          On mobile, ordered after Storm Dates (order-3). */}
-      <div className="order-3 lg:order-none">
-        <ActiveStormsPanel />
-      </div>
+      {/* Active Storms — auto-fills when something is firing in territory.
+          Visible regardless of whether a property is searched so reps see
+          live activity the moment they open the app. */}
+      <ActiveStormsPanel />
 
       {searchSummary && (
-        <div className="order-4 border-b border-stone-200 px-3 py-3 lg:order-none">
+        <div className="border-b border-stone-200 px-3 py-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
@@ -557,7 +548,7 @@ export default function Sidebar({
       )}
 
       {canvassingAlert?.inHailZone && (
-        <div className="order-5 mx-3 mt-3 rounded-lg border border-orange-300 bg-orange-50 p-3 lg:order-none">
+        <div className="mx-3 mt-3 rounded-lg border border-orange-300 bg-orange-50 p-3">
           <div className="flex items-center gap-2 mb-1">
             <span className="h-2 w-2 animate-pulse rounded-full bg-orange-500" />
             <span className="text-xs font-semibold uppercase tracking-wider text-orange-700">
@@ -576,7 +567,7 @@ export default function Sidebar({
       )}
 
       {selectedDate && (
-        <div className="order-6 border-b border-stone-200 px-3 py-3 lg:order-none">
+        <div className="border-b border-stone-200 px-3 py-3">
           <div className="rounded-2xl border border-orange-200 bg-orange-50 p-3">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -761,8 +752,7 @@ export default function Sidebar({
         </div>
       )}
 
-      <div className="order-7 lg:order-none">
-        <CollapsibleSection title="Event Filters" defaultOpen={true}>
+      <CollapsibleSection title="Event Filters" defaultOpen={false}>
         <div className="grid grid-cols-2 gap-2">
           <FilterButton
             active={eventFilters.hail}
@@ -795,9 +785,8 @@ export default function Sidebar({
 
         <PushAlertsToggle territoryStates={WIND_FOCUS_STATES} />
       </CollapsibleSection>
-      </div>
 
-      <div className="order-2 min-h-0 lg:order-none">
+      <div className="min-h-0">
         <CollapsibleSection
           title="Storm Reports"
           defaultOpen={true}
@@ -924,7 +913,7 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="order-8 p-3 border-t border-stone-200 text-xs text-stone-400 lg:order-none">
+      <div className="p-3 border-t border-stone-200 text-xs text-stone-400">
         <div className="flex justify-between">
           <span>
             {stormDates.length} {getFilterSummaryLabel(eventFilters, stormDates.length)}
