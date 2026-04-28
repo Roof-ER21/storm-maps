@@ -14,7 +14,20 @@
  * Returns a `Buffer` so the express handler can `res.send(...)` directly.
  */
 
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
+
+// Resolve the bundled Roof-ER logo PNG once at module load. Asset lives
+// at server/assets/roofer-logo.png — copied from the user's logo file
+// 4/27/26. Using node:url + import.meta.url so this works both in dev
+// (tsx) and in the bundled prod build regardless of cwd.
+const LOGO_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'assets',
+  'roofer-logo.png',
+);
 import {
   buildMrmsVectorPolygons,
   buildMrmsImpactResponse,
@@ -682,42 +695,37 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }
 
   // 2b. Three-column header row + logos (y = 35..95)
-  // ── Left logo box (vector "ROOFER / THE ROOF DOCS" wordmark) ──
+  // ── Left logo box — real Roof-ER PNG (server/assets/roofer-logo.png) ──
+  // Was a PDFKit vector approximation; user supplied the official logo
+  // 4/27/26. PNG is 768×433 (~1.77:1); we fit-into the 140×60 box with
+  // doc.image's `fit` option which preserves aspect ratio.
   {
     const lg = PDF_LAYOUT.header.logo;
-    // Outer red border (rounded rectangle, 1.5pt stroke)
-    doc.lineWidth(1.5)
-      .roundedRect(lg.x, lg.y, lg.w, lg.h, 2)
-      .strokeColor(COLOR.brandRed)
-      .stroke();
-    // Top "ROOFER" text — bold, brand red, 22pt, baseline ~58
-    doc
-      .fillColor(COLOR.brandRed)
-      .font('Helvetica-Bold')
-      .fontSize(22)
-      .text('ROOFER', lg.x, lg.y + 14, { width: lg.w, align: 'center' });
-    // Tiny roof glyph above text — vector path, fits ~12×8 pt centered.
-    doc.save();
-    doc.translate(lg.x + lg.w / 2 - 6, lg.y + 5);
-    doc.path('M 0 8 L 6 0 L 12 8 L 10 8 L 10 5 L 2 5 L 2 8 Z').fill(COLOR.brandRed);
-    doc.restore();
-    // Hairline divider
-    doc
-      .moveTo(lg.x + 8, lg.y + 38)
-      .lineTo(lg.x + lg.w - 8, lg.y + 38)
-      .strokeColor(COLOR.brandRed)
-      .lineWidth(0.5)
-      .stroke();
-    // Bottom "THE ROOF DOCS" — bold, brand red, 8pt, letter-spacing
-    doc
-      .fillColor(COLOR.brandRed)
-      .font('Helvetica-Bold')
-      .fontSize(8)
-      .text('THE ROOF DOCS', lg.x, lg.y + 44, {
-        width: lg.w,
-        align: 'center',
-        characterSpacing: 1,
+    try {
+      doc.image(LOGO_PATH, lg.x, lg.y, {
+        fit: [lg.w, lg.h],
+        align: 'left',
+        valign: 'center',
       });
+    } catch (err) {
+      console.warn('[reportPdf] logo image embed failed:', (err as Error).message);
+      // Fallback to text wordmark so the header still renders something
+      // recognizable if the asset goes missing or PDFKit chokes on it.
+      doc
+        .fillColor(COLOR.brandRed)
+        .font('Helvetica-Bold')
+        .fontSize(22)
+        .text('ROOFER', lg.x, lg.y + 14, { width: lg.w, align: 'left' });
+      doc
+        .fillColor(COLOR.brandRed)
+        .font('Helvetica-Bold')
+        .fontSize(8)
+        .text('THE ROOF DOCS', lg.x, lg.y + 44, {
+          width: lg.w,
+          align: 'left',
+          characterSpacing: 1,
+        });
+    }
   }
 
   // ── Center-left rep contact ──
