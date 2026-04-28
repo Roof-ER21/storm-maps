@@ -110,7 +110,7 @@ export async function fetchIemVtecWarnings(
       headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
     });
     if (!res.ok) {
-      if (!iemVtecHttpWarned.has(res.status)) {
+      if (shouldLogOptionalUpstreams() && !iemVtecHttpWarned.has(res.status)) {
         iemVtecHttpWarned.add(res.status);
         console.info(`[iem-vtec] optional archive HTTP ${res.status} (suppressing further)`);
       }
@@ -119,7 +119,7 @@ export async function fetchIemVtecWarnings(
     const data = (await res.json()) as VtecApiResponse;
     return parseFeatures(data.features ?? [], q.bounds, allowed);
   } catch (err) {
-    if (!isAbortLike(err) && !iemVtecFetchWarned) {
+    if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !iemVtecFetchWarned) {
       iemVtecFetchWarned = true;
       console.info(
         '[iem-vtec] optional archive unavailable (suppressing further):',
@@ -157,6 +157,10 @@ function isAbortLike(err: unknown): boolean {
   );
 }
 
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
+}
+
 function nwsAlertsFallbackDown(now = Date.now()): boolean {
   return now < nwsAlertsCooldownUntil;
 }
@@ -174,11 +178,13 @@ function recordNwsAlertsFailure(reason: string, now = Date.now()): void {
   nwsAlertsCooldownUntil = now + NWS_ALERTS_COOLDOWN_MS;
   if (!nwsAlertsCooldownWarned) {
     nwsAlertsCooldownWarned = true;
-    console.warn(
-      `[nws-alerts] optional fallback disabled for ${Math.round(
-        NWS_ALERTS_COOLDOWN_MS / 60_000,
-      )} min after repeated failures; latest=${reason}`,
-    );
+    if (shouldLogOptionalUpstreams()) {
+      console.info(
+        `[nws-alerts] optional fallback disabled for ${Math.round(
+          NWS_ALERTS_COOLDOWN_MS / 60_000,
+        )} min after repeated failures; latest=${reason}`,
+      );
+    }
   }
 }
 
@@ -325,9 +331,9 @@ async function fetchNwsAlertsForPoint(opts: {
     if (!res.ok) {
       if (res.status !== 404) {
         recordNwsAlertsFailure(`HTTP ${res.status}`);
-        if (!nwsAlertsHttpWarned.has(res.status)) {
+        if (shouldLogOptionalUpstreams() && !nwsAlertsHttpWarned.has(res.status)) {
           nwsAlertsHttpWarned.add(res.status);
-          console.warn(`[nws-alerts] HTTP ${res.status} (suppressing further)`);
+          console.info(`[nws-alerts] optional fallback HTTP ${res.status} (suppressing further)`);
         }
       }
       return [];
@@ -391,9 +397,9 @@ async function fetchNwsAlertsForPoint(opts: {
     return out;
   } catch (err) {
     recordNwsAlertsFailure(errorMessage(err));
-    if (!isAbortLike(err) && !nwsAlertsFetchWarned) {
+    if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !nwsAlertsFetchWarned) {
       nwsAlertsFetchWarned = true;
-      console.warn('[nws-alerts] fetch failed (suppressing further):', errorMessage(err));
+      console.info('[nws-alerts] optional fallback unavailable (suppressing further):', errorMessage(err));
     }
     return [];
   } finally {

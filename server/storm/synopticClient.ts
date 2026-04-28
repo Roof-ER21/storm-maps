@@ -173,13 +173,17 @@ async function fetchAndParse(
       if (res.status === 403 && body.includes('does not have access to the requested history')) {
         if (!historyLimitWarned) {
           historyLimitWarned = true;
-          console.info(
-            '[synoptic] optional source skipped for >365-day history (free-tier limit)',
-          );
+          if (shouldLogOptionalUpstreams()) {
+            console.info(
+              '[synoptic] optional source skipped for >365-day history (free-tier limit)',
+            );
+          }
         }
         return [];
       }
-      console.info(`[synoptic] optional source HTTP ${res.status}: ${body.slice(0, 200)}`);
+      if (shouldLogOptionalUpstreams()) {
+        console.info(`[synoptic] optional source HTTP ${res.status}: ${body.slice(0, 200)}`);
+      }
       return [];
     }
     const env = (await res.json()) as SynopticEnvelope;
@@ -192,18 +196,22 @@ async function fetchAndParse(
       if (typeof msg === 'string' && msg.includes('does not have access to the requested history')) {
         if (!historyLimitWarned) {
           historyLimitWarned = true;
-          console.info(
-            '[synoptic] optional source skipped for >365-day history (free-tier limit)',
-          );
+          if (shouldLogOptionalUpstreams()) {
+            console.info(
+              '[synoptic] optional source skipped for >365-day history (free-tier limit)',
+            );
+          }
         }
         return [];
       }
-      console.info(`[synoptic] optional source response_code=${code} msg=${msg}`);
+      if (shouldLogOptionalUpstreams()) {
+        console.info(`[synoptic] optional source response_code=${code} msg=${msg}`);
+      }
       return [];
     }
     return (env.STATION ?? []).map(toGroundStation);
   } catch (err) {
-    if (!isAbortLike(err) && !fetchFailWarned) {
+    if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !fetchFailWarned) {
       fetchFailWarned = true;
       console.info(
         '[synoptic] optional source unavailable (suppressing further):',
@@ -218,6 +226,10 @@ async function fetchAndParse(
 
 let historyLimitWarned = false;
 let fetchFailWarned = false;
+
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
+}
 
 function toSynopticUtc(d: Date): string {
   const yyyy = d.getUTCFullYear().toString().padStart(4, '0');

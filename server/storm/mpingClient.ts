@@ -152,7 +152,9 @@ export async function fetchMpingReports(q: MpingQuery): Promise<MpingReport[]> {
         endpointOffline = true;
         if (!offlineLogged) {
           offlineLogged = true;
-          console.log('[mping] optional source disabled: endpoint returned 404');
+          if (shouldLogOptionalUpstreams()) {
+            console.info('[mping] optional source disabled: endpoint returned 404');
+          }
         }
         return all;
       }
@@ -183,9 +185,15 @@ export async function fetchMpingReports(q: MpingQuery): Promise<MpingReport[]> {
       }
       url = data.next ?? null;
     } catch (err) {
-      console.warn('[mping] fetch failed:', (err as Error).message);
+      if (shouldLogOptionalUpstreams()) {
+        console.info('[mping] optional source unavailable:', (err as Error).message);
+      }
       return all;
     }
   }
   return all;
+}
+
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
 }

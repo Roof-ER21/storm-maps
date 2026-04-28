@@ -112,7 +112,7 @@ async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
       // NWS api.weather.gov is rate-limited and routinely 12s-times out
       // during pushFanout cycles. Abort/timeouts are expected and silent;
       // non-timeout failures are informational because the worker retries.
-      if (!isAbortLike(err) && !pushFanoutNwsWarned) {
+      if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !pushFanoutNwsWarned) {
         pushFanoutNwsWarned = true;
         console.info(
           '[push-fanout] optional NWS fetch unavailable (suppressing further):',
@@ -128,6 +128,10 @@ let cyclesRun = 0;
 let lastCycleStartedAt: string | null = null;
 let lastCycleFinishedAt: string | null = null;
 let lastCycleStats = { warnings: 0, pushed: 0, gone: 0, failed: 0 };
+
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
+}
 
 export interface PushFanoutStatus {
   enabled: boolean;

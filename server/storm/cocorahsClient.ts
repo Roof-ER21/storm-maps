@@ -81,7 +81,9 @@ export async function fetchCocorahsHailReports(
       endpointOffline = true;
       if (!offlineLogged) {
         offlineLogged = true;
-        console.log('[cocorahs] optional source disabled: endpoint returned 404');
+        if (shouldLogOptionalUpstreams()) {
+          console.info('[cocorahs] optional source disabled: endpoint returned 404');
+        }
       }
       return [];
     }
@@ -92,6 +94,10 @@ export async function fetchCocorahsHailReports(
   } catch {
     return [];
   }
+}
+
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
 }
 
 function parseCocorahsCsv(

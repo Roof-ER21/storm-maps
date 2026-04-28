@@ -85,9 +85,9 @@ export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport
       // SWDI is supplemental and frequently returns 500 from NCEI's side
       // (it's notoriously flaky). Log once per process status code so we
       // know the source dropped, but don't spam every cycle.
-      if (!swdiHttpWarned.has(res.status)) {
+      if (shouldLogOptionalUpstreams() && !swdiHttpWarned.has(res.status)) {
         swdiHttpWarned.add(res.status);
-        console.warn(`[swdi] HTTP ${res.status} — suppressing further warnings for this status`);
+        console.info(`[swdi] optional source HTTP ${res.status} (suppressing further)`);
       }
       return [];
     }
@@ -96,9 +96,9 @@ export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport
     return parseSwdiCsv(csv, q.minSeverePct ?? 30, q.minSizeInches ?? 0.5);
   } catch (err) {
     recordSwdiFailure('nx3hail');
-    if (!swdiFetchWarned) {
+    if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !swdiFetchWarned) {
       swdiFetchWarned = true;
-      console.warn('[swdi] fetch failed (suppressing further):', (err as Error).message);
+      console.info('[swdi] optional source unavailable (suppressing further):', errorMessage(err));
     }
     return [];
   } finally {
@@ -108,6 +108,27 @@ export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport
 
 const swdiHttpWarned = new Set<number>();
 let swdiFetchWarned = false;
+
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isAbortLike(err: unknown): boolean {
+  const maybe = err as { name?: unknown; message?: unknown };
+  const name = typeof maybe.name === 'string' ? maybe.name : '';
+  const message =
+    typeof maybe.message === 'string' ? maybe.message.toLowerCase() : String(err).toLowerCase();
+  return (
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    message.includes('aborted') ||
+    message.includes('timed out')
+  );
+}
 
 function parseSwdiCsv(
   csv: string,

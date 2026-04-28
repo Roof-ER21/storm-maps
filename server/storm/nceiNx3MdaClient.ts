@@ -86,11 +86,9 @@ export async function fetchMesocyclones(
     });
     if (!res.ok) {
       recordSwdiFailure('nx3mda');
-      if (!nx3mdaHttpWarned.has(res.status)) {
+      if (shouldLogOptionalUpstreams() && !nx3mdaHttpWarned.has(res.status)) {
         nx3mdaHttpWarned.add(res.status);
-        console.warn(
-          `[nx3mda] HTTP ${res.status} — suppressing further warnings for this status`,
-        );
+        console.info(`[nx3mda] optional source HTTP ${res.status} (suppressing further)`);
       }
       return [];
     }
@@ -99,9 +97,9 @@ export async function fetchMesocyclones(
     return parseMesoCsv(csv, q.minStrength ?? 5);
   } catch (err) {
     recordSwdiFailure('nx3mda');
-    if (!nx3mdaFetchWarned) {
+    if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !nx3mdaFetchWarned) {
       nx3mdaFetchWarned = true;
-      console.warn('[nx3mda] fetch failed (suppressing further):', (err as Error).message);
+      console.info('[nx3mda] optional source unavailable (suppressing further):', errorMessage(err));
     }
     return [];
   } finally {
@@ -111,6 +109,27 @@ export async function fetchMesocyclones(
 
 const nx3mdaHttpWarned = new Set<number>();
 let nx3mdaFetchWarned = false;
+
+function shouldLogOptionalUpstreams(): boolean {
+  return process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1';
+}
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isAbortLike(err: unknown): boolean {
+  const maybe = err as { name?: unknown; message?: unknown };
+  const name = typeof maybe.name === 'string' ? maybe.name : '';
+  const message =
+    typeof maybe.message === 'string' ? maybe.message.toLowerCase() : String(err).toLowerCase();
+  return (
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    message.includes('aborted') ||
+    message.includes('timed out')
+  );
+}
 
 function parseMesoCsv(csv: string, minStrength: number): MesocycloneDetection[] {
   const lines = csv.split(/\r?\n/);

@@ -30,10 +30,11 @@ export function recordSwdiFailure(source = 'swdi', now = Date.now()): void {
   if (consecutiveFailures < FAILURE_THRESHOLD) return;
 
   cooldownUntil = now + COOLDOWN_MS;
-  console.warn(
-    `[swdi-cb] NCEI SWDI host marked down for ${Math.round(
-      COOLDOWN_MS / 60_000,
-    )} min after ${consecutiveFailures} consecutive failures; latest=${source}`,
-  );
+  if (process.env.STORM_OPTIONAL_UPSTREAM_LOGS === '1') {
+    console.info(
+      `[swdi-cb] NCEI SWDI host marked down for ${Math.round(
+        COOLDOWN_MS / 60_000,
+      )} min after ${consecutiveFailures} consecutive failures; latest=${source}`,
+    );
+  }
 }
-
