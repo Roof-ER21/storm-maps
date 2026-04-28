@@ -951,6 +951,15 @@ interface ReportPdfBody {
 }
 
 app.post('/api/hail/storm-report-pdf', async (req, res) => {
+  // PDF generation can take 8–15s on cold-cache (GRIB2 decode + per-warning
+  // NEXRAD radar fetches + property roadmap). Default Node socket timeout
+  // and Railway edge-proxy idle timeout both fire well under that window
+  // when the connection is silent — that was the 502s reps were seeing
+  // on Gen Report clicks. Two-line fix: bump the per-request timeout to
+  // 120s, then flush headers immediately so the proxy sees the connection
+  // as "active" and doesn't reset it during the build.
+  req.setTimeout(120_000);
+  res.setTimeout(120_000);
   try {
     const body = (req.body || {}) as ReportPdfBody;
     if (
@@ -965,6 +974,15 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
       });
       return;
     }
+    res.set('Content-Type', 'application/pdf');
+    res.set(
+      'Content-Disposition',
+      `attachment; filename="StormReport_${body.address.replace(/[^a-zA-Z0-9]/g, '_')}_${body.dateOfLoss}.pdf"`,
+    );
+    // Flush the headers eagerly so the edge proxy / browser sees the
+    // status + content-type immediately. Keeps the connection visibly
+    // active while we build the PDF body.
+    res.flushHeaders();
     const pdf = await buildStormReportPdf({
       address: body.address,
       lat: body.lat,
@@ -981,15 +999,18 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
       customerName: body.customerName?.trim() || undefined,
       evidence: body.evidence,
     });
-    res.set('Content-Type', 'application/pdf');
-    res.set(
-      'Content-Disposition',
-      `attachment; filename="StormReport_${body.address.replace(/[^a-zA-Z0-9]/g, '_')}_${body.dateOfLoss}.pdf"`,
-    );
     res.send(pdf);
   } catch (err) {
     console.error('[storm-report-pdf] failed', err);
-    res.status(500).json({ error: 'Failed to build PDF' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to build PDF' });
+    } else {
+      // Headers already flushed (we set them eagerly to keep the proxy
+      // happy). Best we can do is end the response — client will see a
+      // truncated/invalid PDF blob; reportService.ts validates the
+      // Content-Type + size on the client and shows a friendly retry.
+      res.end();
+    }
   }
 });
 
