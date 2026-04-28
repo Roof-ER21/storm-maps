@@ -13,7 +13,9 @@ import {
   bearingToCardinalWord,
 } from '../server/storm/geometry.js';
 import {
+  computeDurationFromPoints,
   computeHailDuration,
+  computePeakTimeFromPoints,
   computeStormDirectionAndSpeed,
   computeStormPeakTime,
   filterEventsByEtDate,
@@ -185,6 +187,46 @@ console.log('\ncomputeDirectionAndSpeedFromPoints:');
   ]);
   check('points: heading = East', r.heading === 'East');
   check('points: speed ≈ 12 mph', approxEq(r.speedMph, 12, 4));
+}
+
+console.log('\ncomputePeakTimeFromPoints:');
+{
+  // 2024-04-15 hail across Vienna VA — 19:55Z (3:55 PM EDT) earliest
+  const r = computePeakTimeFromPoints([
+    { timeIso: '2024-04-15T20:32:00Z' },
+    { timeIso: '2024-04-15T19:55:00Z' },
+    { timeIso: '2024-04-15T20:18:00Z' },
+  ]);
+  check('peak time = 3:55 PM EDT', r === '3:55 PM EDT', `got "${r}"`);
+}
+{
+  const r = computePeakTimeFromPoints([]);
+  check('empty list → null', r === null);
+}
+{
+  const r = computePeakTimeFromPoints([{ timeIso: 'not-a-date' }]);
+  check('invalid timeIso → null', r === null);
+}
+
+console.log('\ncomputeDurationFromPoints:');
+{
+  // 19:55Z to 20:32Z = 37 min
+  const r = computeDurationFromPoints([
+    { timeIso: '2024-04-15T19:55:00Z' },
+    { timeIso: '2024-04-15T20:32:00Z' },
+  ]);
+  check('span ≈ 37 min', approxEq(r, 37, 0.1), `got ${r}`);
+}
+{
+  const r = computeDurationFromPoints([{ timeIso: '2024-04-15T19:55:00Z' }]);
+  check('single point → null', r === null);
+}
+{
+  const r = computeDurationFromPoints([
+    { timeIso: '2024-04-15T19:55:00Z' },
+    { timeIso: '2024-04-15T19:55:00Z' },
+  ]);
+  check('zero duration → null', r === null);
 }
 
 console.log(
