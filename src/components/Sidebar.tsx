@@ -371,7 +371,9 @@ export default function Sidebar({
             type="text"
             defaultValue={activeSearchLabel ?? ''}
             placeholder="Address, city, or ZIP..."
-            className="w-full rounded-lg border border-stone-300 bg-stone-50 py-2 pl-9 pr-3 text-sm text-stone-900 placeholder-stone-400 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
+            // text-base on mobile (16px) prevents iOS Safari's auto-zoom
+            // on focus, which made reps pinch-zoom out to see dates.
+            className="w-full rounded-lg border border-stone-300 bg-stone-50 py-2 pl-9 pr-3 text-base lg:text-sm text-stone-900 placeholder-stone-400 focus:border-orange-400 focus:outline-none focus:ring-1 focus:ring-orange-400"
             aria-label="Search location"
           />
           <svg

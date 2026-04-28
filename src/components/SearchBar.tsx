@@ -157,7 +157,12 @@ export default function SearchBar({ onResult }: SearchBarProps) {
             onChange={(e) => handleInputChange(e.target.value)}
             onFocus={handleInputFocus}
             placeholder="Search address or ZIP code..."
-            className="w-full rounded-lg bg-white/95 py-2.5 pl-10 pr-10 text-sm text-gray-900 shadow-lg backdrop-blur-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
+            // text-base on mobile (16px) prevents iOS Safari's auto-zoom on
+            // focus — the auto-zoom triggers when input font-size < 16px,
+            // which on phones makes the rep have to pinch-zoom out to see
+            // the storm dates list below the map. text-sm at lg+ keeps the
+            // dense desktop styling.
+            className="w-full rounded-lg bg-white/95 py-2.5 pl-10 pr-10 text-base lg:text-sm text-gray-900 shadow-lg backdrop-blur-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400"
             aria-label="Search address or ZIP code"
             aria-describedby={errorMsg ? 'search-error' : undefined}
             autoComplete="off"

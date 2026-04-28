@@ -1371,13 +1371,26 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
     // At-property hail size — uses the same cap call that previously fed
     // the tier card. dolAtPropCtx is the per-band verification ctx.
-    // Falls back to the closest ground report ≤1mi when MRMS bands.atProperty
-    // is null (older DoLs where the GRIB2 file rotated out of the IEM
-    // archive cache; histNceiRows still has the rows). Without this
-    // fallback, the cell reads "—" while the narrative below still says
+    // Fallback chain when MRMS bands.atProperty is null (older DoLs where
+    // the GRIB2 file rotated out of the IEM archive cache). Without
+    // fallback, the cell reads "—" while the narrative below says
     // "penny-sized hail" because composeStormNarrative consults a wider
     // signal — visibly inconsistent on the same page.
+    //   1) propertyImpact.bands.atProperty   (best — at the pin)
+    //   2) propertyImpact.bands.mi1to3       (1-3mi band)
+    //   3) propertyImpact.maxHailInches      (any band)
+    //   4) closest ground report ≤1mi        (radar gap, ground-truth filled)
     let atPropertyVal = propertyImpact?.bands.atProperty ?? null;
+    if (atPropertyVal === null || atPropertyVal === 0) {
+      const mi1to3 = propertyImpact?.bands.mi1to3 ?? null;
+      if (mi1to3 !== null && mi1to3 > 0) {
+        atPropertyVal = mi1to3;
+      }
+    }
+    if (atPropertyVal === null || atPropertyVal === 0) {
+      const wide = propertyImpact?.maxHailInches ?? null;
+      if (wide !== null && wide > 0) atPropertyVal = wide;
+    }
     if (atPropertyVal === null || atPropertyVal === 0) {
       let closestMag = 0;
       let closestDist = Infinity;
