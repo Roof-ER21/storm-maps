@@ -15,6 +15,13 @@
  * but the current /swdiws/ endpoint returns inches directly per the docs.
  */
 
+import { etDayUtcWindow } from './timeUtils.js';
+import {
+  recordSwdiFailure,
+  recordSwdiSuccess,
+  swdiHostDown,
+} from './swdiCircuitBreaker.js';
+
 const SWDI_BASE = 'https://www.ncdc.noaa.gov/swdiws/csv/nx3hail';
 const FETCH_TIMEOUT_MS = 20_000;
 
@@ -32,8 +39,6 @@ export interface SwdiHailReport {
   /** Max expected hail size in inches. */
   maxSizeInches: number;
 }
-
-import { etDayUtcWindow } from './timeUtils.js';
 
 function fmtDateRangeForSwdi(startUtc: Date, endUtc: Date): string {
   // SWDI accepts YYYYMMDDhhmm:YYYYMMDDhhmm time-range format. Use this so
@@ -60,21 +65,23 @@ export interface SwdiQuery {
 }
 
 export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport[]> {
+  if (swdiHostDown()) return [];
+
   const params = new URLSearchParams({
     bbox: `${q.bbox.west},${q.bbox.south},${q.bbox.east},${q.bbox.north}`,
   });
   const w = etDayUtcWindow(q.date);
   const range = fmtDateRangeForSwdi(w.startUtc, w.endUtc);
   const url = `${SWDI_BASE}/${range}?${params.toString()}`;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
     const res = await fetch(url, {
       signal: ac.signal,
       headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
     });
-    clearTimeout(timer);
     if (!res.ok) {
+      recordSwdiFailure('nx3hail');
       // SWDI is supplemental and frequently returns 500 from NCEI's side
       // (it's notoriously flaky). Log once per process status code so we
       // know the source dropped, but don't spam every cycle.
@@ -85,13 +92,17 @@ export async function fetchSwdiHailReports(q: SwdiQuery): Promise<SwdiHailReport
       return [];
     }
     const csv = await res.text();
+    recordSwdiSuccess();
     return parseSwdiCsv(csv, q.minSeverePct ?? 30, q.minSizeInches ?? 0.5);
   } catch (err) {
+    recordSwdiFailure('nx3hail');
     if (!swdiFetchWarned) {
       swdiFetchWarned = true;
       console.warn('[swdi] fetch failed (suppressing further):', (err as Error).message);
     }
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 

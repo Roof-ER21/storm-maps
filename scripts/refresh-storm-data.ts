@@ -10,6 +10,9 @@
  *   npm run ops:refresh-storm-data -- --years 2024-2026 --iem-days 45 --hail-days 180
  *   npm run ops:refresh-storm-data -- --plan
  *   npm run ops:refresh-storm-data -- --dry-run
+ *
+ * Defaults roll forward automatically: current year minus two through current
+ * year for NCEI, plus recent IEM LSR and MRMS cache windows.
  */
 
 import { spawn } from 'node:child_process';
@@ -30,9 +33,15 @@ interface Step {
   args: string[];
 }
 
+function defaultYearRange(now = new Date()): string {
+  const year = now.getFullYear();
+  return `${year - 2}-${year}`;
+}
+
 function parseArgs(argv: string[]): Args {
+  const defaultYears = defaultYearRange();
   const out: Args = {
-    years: '2024-2026',
+    years: defaultYears,
     iemDays: 45,
     hailDays: 180,
     plan: false,
@@ -65,7 +74,7 @@ function parseArgs(argv: string[]): Args {
     } else if (arg === '--skip-hail') {
       out.skipHail = true;
     } else if (arg === '--help' || arg === '-h') {
-      printHelp();
+      printHelp(defaultYears);
       process.exit(0);
     } else {
       throw new Error(`Unknown argument: ${arg}`);
@@ -87,12 +96,12 @@ function parsePositiveInt(value: string, label: string): number {
   return n;
 }
 
-function printHelp(): void {
+function printHelp(defaultYears = defaultYearRange()): void {
   console.log(`Usage:
   npm run ops:refresh-storm-data -- [options]
 
 Options:
-  --years YYYY-YYYY    NCEI year or year range. Default: 2024-2026
+  --years YYYY-YYYY    NCEI year or year range. Default: ${defaultYears}
   --iem-days N         IEM LSR recent-day window. Default: 45
   --hail-days N        MRMS hail prewarm window. Default: 180
   --dry-run            Parse/fetch where supported but do not write

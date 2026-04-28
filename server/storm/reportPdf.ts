@@ -48,9 +48,7 @@ import { sql as pgSql } from '../db.js';
 import type { BoundingBox } from './types.js';
 import {
   bandVerification as buildBandVerification,
-  computeConsensusSize,
   displayHailInches,
-  isSterlingClassStorm,
   type VerificationContext,
 } from './displayCapService.js';
 import { buildVerificationBulk } from './verificationService.js';
@@ -337,54 +335,6 @@ export const PDF_LAYOUT = {
 // Hail Footprint Map" wide-map section. The vector swath rendering
 // machinery lives in mrmsService.ts; this PDF doesn't draw maps anymore.)
 
-async function fetchStaticBasemap(
-  bounds: BoundingBox,
-  width: number,
-  height: number,
-): Promise<Buffer | null> {
-  if (!GOOGLE_STATIC_MAPS_API_KEY) return null;
-  const centerLat = (bounds.north + bounds.south) / 2;
-  const centerLng = (bounds.east + bounds.west) / 2;
-  // Pick a zoom whose pixel-per-degree at this width approximately matches
-  // our requested page width. Google caps at zoom 21 / 640px without a
-  // premium plan, so request the largest size we can and let pdfkit scale.
-  const lngSpan = Math.max(0.05, bounds.east - bounds.west);
-  // Each zoom level halves the world width in pixels; world is 256 * 2^zoom.
-  // We want widthPx / lngSpan to match our requested map width / lngSpan,
-  // i.e. widthPx ≈ (width / lngSpan) * 360.
-  const desiredWidthPx = (width / lngSpan) * 360;
-  let zoom = Math.max(2, Math.min(21, Math.round(Math.log2(desiredWidthPx / 256))));
-  // Empirically zoom-1 looks better since Static Maps centers tightly.
-  zoom = Math.max(2, zoom - 1);
-  const sizeW = Math.min(640, Math.max(120, Math.round(width)));
-  const sizeH = Math.min(640, Math.max(120, Math.round(height)));
-
-  const params = new URLSearchParams({
-    center: `${centerLat.toFixed(5)},${centerLng.toFixed(5)}`,
-    zoom: String(zoom),
-    size: `${sizeW}x${sizeH}`,
-    scale: '2',
-    maptype: 'roadmap',
-    style: 'feature:poi|visibility:off',
-    key: GOOGLE_STATIC_MAPS_API_KEY,
-  });
-
-  try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 8_000);
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/staticmap?${params.toString()}`,
-      { signal: ac.signal },
-    );
-    clearTimeout(timer);
-    if (!res.ok) return null;
-    const ab = await res.arrayBuffer();
-    return Buffer.from(ab);
-  } catch {
-    return null;
-  }
-}
-
 /**
  * Fetch a Google Static Maps roadmap centered on the property point at a
  * fixed zoom. Used by the Section 1 Property Information layout (160×120
@@ -429,9 +379,8 @@ async function fetchPropertyRoadmap(
 // (fetchSatelliteAerial, fetchStreetViewImage, fetchEvidenceImageBytes
 // removed in Phase 7 cleanup — none of the new sections render
 // satellite or street-view imagery, and Field Evidence was retired.
-// fetchStaticBasemap is still used by tests/debug callers that import
-// it; fetchPropertyRoadmap above replaces it for the new Property
-// Information map slot.)
+// fetchPropertyRoadmap above replaces them for the new Property Information
+// map slot.)
 
 function deriveBounds(events: StormEventDto[], lat: number, lng: number): BoundingBox {
   if (events.length === 0) {
@@ -641,22 +590,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const CW = PDF_LAYOUT.contentWidth;
   const BOTTOM = 752;
   const COLOR = PDF_LAYOUT.colors;
-
-  // Compat alias for the legacy color tokens still referenced by sections
-  // that haven't been re-themed yet (Phases 5-7 still tag along with the
-  // old palette). Mapped to the closest equivalents in the new palette so
-  // the legacy bits look as cohesive as possible during the phased rollout.
-  const C = {
-    text: COLOR.bodyText,
-    lightText: COLOR.labelGray,
-    mutedText: COLOR.mutedGray,
-    sectionBg: COLOR.bannerBg,
-    sectionText: COLOR.bannerText,
-    accent: COLOR.brandRed,
-    link: COLOR.linkRed,
-    border: COLOR.borderGray,
-    tableBorder: COLOR.borderGray,
-  };
 
   // Universal section banner — gray fill, centered title, NOT bold (target
   // PDF uses Helvetica regular at 13 pt). Replaces the legacy navy/italic
@@ -1225,19 +1158,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   sortedHistRows.length = 0;
   sortedHistRows.push(...finalSortedHistRows);
 
-  /** Tier from per-band maxes filled by NCEI events + swath containment
-   *  scan. Respects the 0.25" trace floor so sub-trace MRMS readings
-   *  don't get badged as DIRECT HIT (the cap algorithm renders them as
-   *  "—" — a DIRECT HIT row with no value is misleading). */
-  const TRACE_FLOOR = 0.25;
-  const rowTier = (
-    r: HistRow,
-  ): 'direct_hit' | 'near_miss' | 'area_impact' => {
-    if (r.atProperty >= TRACE_FLOOR) return 'direct_hit';
-    if (r.mi1to3 >= TRACE_FLOOR) return 'near_miss';
-    return 'area_impact';
-  };
-
   // ── Property impact + verification (data plumb for downstream sections) ─
   // The tier card visual got removed in the 2026-04-27 redesign, but
   // propertyImpact still feeds the Hail Impact Details "Size of Hail
@@ -1517,7 +1437,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     ).length;
 
     // Closest hail report (event with shortest distance — using haversine)
-    let closestHailIn = 0;
     let closestHailMi: number | undefined;
     let biggestHailIn = collectionMax;
     let biggestHailMi: number | undefined;
@@ -1526,7 +1445,6 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       const d = haversineMiles(req.lat, req.lng, e.beginLat, e.beginLon);
       if (closestHailMi === undefined || d < closestHailMi) {
         closestHailMi = d;
-        closestHailIn = e.magnitude;
       }
       if (e.magnitude > biggestHailIn) {
         biggestHailIn = e.magnitude;

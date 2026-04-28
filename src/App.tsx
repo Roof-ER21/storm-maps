@@ -2727,7 +2727,7 @@ function App() {
 
   // Mobile heights (Apr 27 mobile-UX pass):
   // - 44px header (`h-11`) is the only chrome above the map.
-  // - Map is `h-[45vh]` on mobile so storm-dates list gets ~50vh of breathing
+  // - Map is `h-[45dvh]` on mobile so storm-dates list gets ~50vh of breathing
   //   room below it. Fullscreen toggle (h-[calc(100dvh-2.75rem)]) lets reps
   //   blow up the map for ground-truth visualization.
   // - SearchBar overlays the map (`absolute` positioned in SearchBar.tsx)
@@ -2736,7 +2736,7 @@ function App() {
   const mapArea = (
     <main
       className={`relative order-1 flex shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1 ${
-        mapFullscreen ? 'h-[calc(100dvh-2.75rem)]' : 'h-[45vh]'
+        mapFullscreen ? 'h-[calc(100dvh-2.75rem)]' : 'h-[45dvh]'
       }`}
     >
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
@@ -3319,7 +3319,7 @@ function RouteQueuePanel({
   // Fully collapsed — just a small floating button
   if (!visible) {
     return (
-      <div className="absolute right-4 top-36 z-20">
+      <div className="absolute right-3 top-24 z-20 sm:right-4 sm:top-36">
         <button
           type="button"
           onClick={onToggleOpen}
@@ -3345,8 +3345,8 @@ function RouteQueuePanel({
       : 'Build a canvass route from top hail dates';
 
   return (
-    <div className="absolute right-4 top-36 z-20 w-[min(24rem,calc(100%-2rem))]">
-      <div className="overflow-hidden rounded-2xl border border-orange-500/20 bg-slate-950/92 shadow-[0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur">
+    <div className="absolute inset-x-3 bottom-3 z-30 max-h-[calc(100%-1.5rem)] sm:inset-x-auto sm:right-4 sm:top-36 sm:bottom-auto sm:z-20 sm:w-[min(24rem,calc(100%-2rem))]">
+      <div className="max-h-full overflow-hidden rounded-2xl border border-orange-500/20 bg-slate-950/92 shadow-[0_20px_60px_rgba(2,6,23,0.45)] backdrop-blur">
         <button
           type="button"
           onClick={onToggleOpen}
@@ -3369,7 +3369,7 @@ function RouteQueuePanel({
         </button>
 
         {visible && (stops.length > 0 || knockNowCount > 0) && (
-          <div className="border-t border-slate-800 px-4 py-3">
+          <div className="max-h-[calc(100dvh-9rem)] overflow-y-auto border-t border-slate-800 px-4 py-3 sm:max-h-none">
             {stops.length === 0 ? (
               <div className="space-y-3">
                 <p className="text-sm text-slate-300">
@@ -3546,7 +3546,7 @@ function RouteQueuePanel({
                             value={stop.notes}
                             onChange={(event) => onUpdateStopNotes(stop.id, event.target.value)}
                             placeholder="Gate code, roof condition, homeowner callback, dog in yard..."
-                            className="mt-1 h-20 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs text-white placeholder:text-slate-500 focus:border-orange-400/50 focus:outline-none"
+                            className="mt-1 h-20 w-full resize-none rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-base text-white placeholder:text-slate-500 focus:border-orange-400/50 focus:outline-none sm:text-xs"
                           />
                         </div>
                       </div>

@@ -20,7 +20,7 @@
  *   5. Cache via the shared swath_cache wrapper so the second lookup is <50 ms.
  */
 
-import { fetchSpcHailReportsForDate, type HailPointReport } from './spcHailReports.js';
+import type { HailPointReport } from './spcHailReports.js';
 import { fetchIemHailReports } from './iemHailReports.js';
 import { bufferCircle, expandBounds } from './geometry.js';
 import { getCachedSwath, setCachedSwath } from './cache.js';

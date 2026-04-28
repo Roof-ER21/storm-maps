@@ -339,7 +339,9 @@ async function runPrewarmCycle(): Promise<void> {
   }
 
   // Consilience prewarm — for each hot property, pre-compute the 10-source
-  // corroboration for the top storm dates that turned up in NCEI history.
+  // corroboration for the top storm dates that turned up in official NOAA
+  // history or recent NWS Local Storm Reports. NCEI can lag by weeks, so IEM
+  // LSR keeps the "latest storm data" path warm while the archive catches up.
   // Persisted to consilience_cache so dashboard reads are sub-50ms instead
   // of 3-8s of concurrent network fetches per render.
   //
@@ -388,7 +390,7 @@ async function runPrewarmCycle(): Promise<void> {
       const dateRows = await pgSql<Array<{ event_date: string | Date }>>`
         SELECT DISTINCT event_date
           FROM verified_hail_events
-         WHERE source_ncei_storm_events = TRUE
+         WHERE (source_ncei_storm_events = TRUE OR source_iem_lsr = TRUE)
            AND event_type IN ('Hail', 'Thunderstorm Wind', 'Tornado')
            AND lat BETWEEN ${p.lat - latPad} AND ${p.lat + latPad}
            AND lng BETWEEN ${p.lng - lngPad} AND ${p.lng + lngPad}

@@ -21,6 +21,11 @@
  */
 
 import { etDayUtcWindow } from './timeUtils.js';
+import {
+  recordSwdiFailure,
+  recordSwdiSuccess,
+  swdiHostDown,
+} from './swdiCircuitBreaker.js';
 
 const SWDI_BASE = 'https://www.ncei.noaa.gov/swdiws/csv/nx3mda';
 const FETCH_TIMEOUT_MS = 20_000;
@@ -64,31 +69,48 @@ function fmtSwdiRange(startUtc: Date, endUtc: Date): string {
 export async function fetchMesocyclones(
   q: MesoQuery,
 ): Promise<MesocycloneDetection[]> {
+  if (swdiHostDown()) return [];
+
   const w = etDayUtcWindow(q.date);
   const range = fmtSwdiRange(w.startUtc, w.endUtc);
   const params = new URLSearchParams({
     bbox: `${q.bbox.west},${q.bbox.south},${q.bbox.east},${q.bbox.north}`,
   });
   const url = `${SWDI_BASE}/${range}?${params.toString()}`;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
     const res = await fetch(url, {
       signal: ac.signal,
       headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
     });
-    clearTimeout(timer);
     if (!res.ok) {
-      console.warn(`[nx3mda] HTTP ${res.status}`);
+      recordSwdiFailure('nx3mda');
+      if (!nx3mdaHttpWarned.has(res.status)) {
+        nx3mdaHttpWarned.add(res.status);
+        console.warn(
+          `[nx3mda] HTTP ${res.status} — suppressing further warnings for this status`,
+        );
+      }
       return [];
     }
     const csv = await res.text();
+    recordSwdiSuccess();
     return parseMesoCsv(csv, q.minStrength ?? 5);
   } catch (err) {
-    console.warn('[nx3mda] fetch failed:', (err as Error).message);
+    recordSwdiFailure('nx3mda');
+    if (!nx3mdaFetchWarned) {
+      nx3mdaFetchWarned = true;
+      console.warn('[nx3mda] fetch failed (suppressing further):', (err as Error).message);
+    }
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
+
+const nx3mdaHttpWarned = new Set<number>();
+let nx3mdaFetchWarned = false;
 
 function parseMesoCsv(csv: string, minStrength: number): MesocycloneDetection[] {
   const lines = csv.split(/\r?\n/);
