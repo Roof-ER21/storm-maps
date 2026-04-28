@@ -53,6 +53,9 @@ const cache = new Map<string, CacheEntry>();
 const CACHE_MAX = 32;
 const ARCHIVE_TTL_MS = 60 * 60 * 1000;
 const LIVE_TTL_MS = 5 * 60 * 1000;
+const RASTER_DISPLAY_FLOOR_MM = 6.35; // 1/4" display floor; suppresses trace-noise rectangles.
+const FOOTPRINT_TRIM_PADDING_PX = 10;
+const EDGE_FEATHER_PX = 18;
 
 function cacheKey(date: string, bounds: BoundingBox): string {
   const round = (n: number) => Math.round(n / 0.05) * 0.05;
@@ -92,15 +95,18 @@ const BAND_RGB: Array<{ thresholdMm: number; rgb: [number, number, number] }> =
     rgb: hexToRgb(band.color),
   }));
 
-/** Pick the highest-applicable IHM band for a mm value, or null when below the trace threshold. */
-function bandForValue(mm: number): { rgb: [number, number, number] } | null {
-  if (!Number.isFinite(mm) || mm < BAND_RGB[0].thresholdMm) return null;
+/** Pick the highest-applicable IHM band for a mm value, or null below the display floor. */
+function bandForValue(mm: number): { rgb: [number, number, number]; index: number } | null {
+  if (!Number.isFinite(mm) || mm < RASTER_DISPLAY_FLOOR_MM) return null;
   let chosen = BAND_RGB[0];
-  for (const b of BAND_RGB) {
-    if (mm >= b.thresholdMm) chosen = b;
-    else break;
+  let index = 0;
+  for (let i = 0; i < BAND_RGB.length; i += 1) {
+    const b = BAND_RGB[i];
+    if (mm < b.thresholdMm) break;
+    chosen = b;
+    index = i;
   }
-  return { rgb: chosen.rgb };
+  return { rgb: chosen.rgb, index };
 }
 
 interface CroppedGrid {
@@ -171,6 +177,62 @@ function cropToBboxNoPad(
   };
 }
 
+function trimToDisplayFootprint(cropped: CroppedGrid): CroppedGrid {
+  const { width, height, values } = cropped;
+  if (width === 0 || height === 0) return cropped;
+
+  let minX = width;
+  let minY = height;
+  let maxX = -1;
+  let maxY = -1;
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    for (let x = 0; x < width; x += 1) {
+      const value = values[row + x];
+      if (!Number.isFinite(value) || value < RASTER_DISPLAY_FLOOR_MM) continue;
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+
+  if (maxX < minX || maxY < minY) {
+    return { width: 0, height: 0, values: new Float32Array(), bounds: cropped.bounds };
+  }
+
+  const x0 = Math.max(0, minX - FOOTPRINT_TRIM_PADDING_PX);
+  const y0 = Math.max(0, minY - FOOTPRINT_TRIM_PADDING_PX);
+  const x1 = Math.min(width - 1, maxX + FOOTPRINT_TRIM_PADDING_PX);
+  const y1 = Math.min(height - 1, maxY + FOOTPRINT_TRIM_PADDING_PX);
+  const outW = x1 - x0 + 1;
+  const outH = y1 - y0 + 1;
+  const out = new Float32Array(outW * outH);
+
+  for (let y = 0; y < outH; y += 1) {
+    const srcRow = (y0 + y) * width + x0;
+    const dstRow = y * outW;
+    for (let x = 0; x < outW; x += 1) {
+      out[dstRow + x] = values[srcRow + x];
+    }
+  }
+
+  const latStep = (cropped.bounds.north - cropped.bounds.south) / height;
+  const lngStep = (cropped.bounds.east - cropped.bounds.west) / width;
+
+  return {
+    width: outW,
+    height: outH,
+    values: out,
+    bounds: {
+      north: cropped.bounds.north - y0 * latStep,
+      south: cropped.bounds.north - (y1 + 1) * latStep,
+      west: cropped.bounds.west + x0 * lngStep,
+      east: cropped.bounds.west + (x1 + 1) * lngStep,
+    },
+  };
+}
+
 function gridToPng(cropped: CroppedGrid): {
   pngBytes: Uint8Array;
   hasHail: boolean;
@@ -189,9 +251,17 @@ function gridToPng(cropped: CroppedGrid): {
   // hail intensity to actual streets for door-knocking decisions),
   // and severe bands paint stronger so the worst cells stand out.
   // Was a flat 200 alpha → made the swath look like a solid blob with
-  // no street-level granularity. Now linearly ramped 90→200 across the
+  // no street-level granularity. Now linearly ramped 135→240 across the
   // 13 IHM bands so the basemap stays visible under low-impact areas
-  // and the high-impact cells still pop.
+  // and the high-impact cells still pop. The display now starts at 1/4"
+  // (not 1/8" trace) and trims to the actual visible footprint so a large
+  // fetch bbox does not read as a rectangular storm. Edge feathering softens
+  // the remaining overlay boundary so it reads like a storm corridor instead
+  // of a cropped radar tile.
+  const featherPx = Math.max(
+    0,
+    Math.min(EDGE_FEATHER_PX, Math.floor(Math.min(width, height) / 8)),
+  );
   for (let i = 0; i < values.length; i += 1) {
     const mm = values[i];
     if (mm > maxMeshMm && Number.isFinite(mm)) maxMeshMm = mm;
@@ -199,14 +269,15 @@ function gridToPng(cropped: CroppedGrid): {
     const off = i * 4;
     if (band) {
       hailPixels += 1;
-      // Find the band index to derive alpha (low = transparent, high = opaque).
-      const bandIdx = BAND_RGB.findIndex((b) => b.rgb === band.rgb);
-      const alpha =
-        bandIdx >= 0
-          ? Math.round(
-              90 + (110 * Math.min(bandIdx, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
-            )
-          : 160;
+      const x = i % width;
+      const y = Math.floor(i / width);
+      const edgeDistance = Math.min(x, y, width - 1 - x, height - 1 - y);
+      const edgeScale =
+        featherPx > 0 ? Math.min(1, Math.max(0, edgeDistance / featherPx)) : 1;
+      const baseAlpha = Math.round(
+        135 + (105 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
+      );
+      const alpha = Math.round(baseAlpha * edgeScale);
       png.data[off] = band.rgb[0];
       png.data[off + 1] = band.rgb[1];
       png.data[off + 2] = band.rgb[2];
@@ -286,7 +357,8 @@ export async function buildMrmsRaster(
     const sections = readGrib2(file.grib2Bytes);
     const decoded = decodeGribData(sections);
     const cropped = cropToBboxNoPad(decoded, sections.grid, params.bounds);
-    const { pngBytes, hasHail, maxMeshMm, hailPixels } = gridToPng(cropped);
+    const displayGrid = trimToDisplayFootprint(cropped);
+    const { pngBytes, hasHail, maxMeshMm, hailPixels } = gridToPng(displayGrid);
     if (pngBytes.length === 0) return null;
 
     const result: MrmsRasterResult = {
@@ -295,8 +367,8 @@ export async function buildMrmsRaster(
         date: params.date,
         refTime: file.refTime,
         requestedBounds: params.bounds,
-        bounds: cropped.bounds,
-        imageSize: { width: cropped.width, height: cropped.height },
+        bounds: displayGrid.bounds,
+        imageSize: { width: displayGrid.width, height: displayGrid.height },
         hasHail,
         maxMeshInches: maxMeshMm / 25.4,
         hailPixels,

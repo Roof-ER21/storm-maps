@@ -307,14 +307,6 @@ function getSelectedStormRadarTimestamp(
   return `${selectedDate}T16:00:00Z`;
 }
 
-function formatDateBadge(dateStr: string): string {
-  return formatEasternDateLabel(dateStr, {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
-}
-
 function buildFallbackStormDayRadarTimestamps(selectedDate: string): string[] {
   const localHours = [14, 16, 18, 20, 22];
   const timestamps: string[] = [];
@@ -432,194 +424,6 @@ function MapViewportController({
   return null;
 }
 
-
-function LayerStatusPanel({
-  showNexrad,
-  showMrms,
-  selectedDate,
-  radarTimestamp,
-  mrmsLoading,
-  mrmsError,
-  mrmsMeta,
-  mrmsProduct,
-  onSelectMrmsProduct,
-  mrmsHistoricalMode,
-}: {
-  showNexrad: boolean;
-  showMrms: boolean;
-  selectedDate: string | null;
-  radarTimestamp: string;
-  mrmsLoading: boolean;
-  mrmsError: string | null;
-  mrmsMeta: MrmsStatus | null;
-  mrmsProduct: MrmsOverlayProduct;
-  onSelectMrmsProduct: (product: MrmsOverlayProduct) => void;
-  mrmsHistoricalMode: boolean;
-}) {
-  const [mrmsInfoCollapsed, setMrmsInfoCollapsed] = useState(false);
-
-  if (!showNexrad && !showMrms) {
-    return null;
-  }
-
-  return (
-    <div className="absolute bottom-20 left-4 z-20 flex flex-col gap-3 max-w-sm">
-      {showNexrad && (
-        <div className="rounded-xl border border-stone-200 bg-white/95 p-3 text-stone-900 shadow-lg backdrop-blur">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-green-300">
-                Radar
-              </p>
-              <p className="mt-1 text-sm font-medium">
-                {selectedDate ? 'Historical NEXRAD' : 'Live NEXRAD'}
-              </p>
-            </div>
-            <span className="rounded-full bg-green-600/20 px-2 py-1 text-[11px] text-green-700">
-              {selectedDate
-                ? formatDateBadge(selectedDate)
-                : `${formatEasternTimestamp(radarTimestamp)} ET`}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-stone-600">
-            {selectedDate
-              ? `Bounded to the selected storm on ${selectedDate}.`
-              : 'Following the current map extent.'}
-          </p>
-          {selectedDate && (
-            <p className="mt-2 text-[11px] text-green-700">
-              Historical mode composites the strongest hail-report radar scans for this date.
-            </p>
-          )}
-        </div>
-      )}
-
-      {showMrms && mrmsInfoCollapsed && (
-        <button
-          onClick={() => setMrmsInfoCollapsed(false)}
-          className="rounded-lg bg-white/95 backdrop-blur border border-stone-200 px-3 py-1.5 text-xs font-semibold text-orange-300 backdrop-blur"
-        >
-          MRMS Info
-        </button>
-      )}
-
-      {showMrms && !mrmsInfoCollapsed && (
-        <div className="relative rounded-xl border border-stone-200 bg-white/95 p-3 text-stone-900 shadow-lg backdrop-blur">
-          <button
-            onClick={() => setMrmsInfoCollapsed(true)}
-            className="absolute top-2 right-2 text-stone-400 hover:text-stone-900"
-            aria-label="Collapse MRMS info"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          <div className="flex items-center justify-between gap-3 pr-5">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-orange-300">
-                MRMS
-              </p>
-              <p className="mt-1 text-sm font-medium">
-                {mrmsHistoricalMode ? 'Historical hail footprint' : 'Live hail overlay'}
-              </p>
-            </div>
-            {mrmsHistoricalMode ? (
-              <span className="rounded-full bg-orange-500/20 px-2 py-1 text-[11px] text-orange-700">
-                {selectedDate || 'Historical'}
-              </span>
-            ) : (
-              <div className="flex gap-1 rounded-lg bg-stone-100 p-1">
-                <button
-                  onClick={() => onSelectMrmsProduct('mesh60')}
-                  className={`rounded px-2 py-1 text-[11px] font-semibold ${
-                    mrmsProduct === 'mesh60'
-                      ? 'bg-orange-500 text-stone-900'
-                      : 'text-stone-600'
-                  }`}
-                >
-                  60m
-                </button>
-                <button
-                  onClick={() => onSelectMrmsProduct('mesh1440')}
-                  className={`rounded px-2 py-1 text-[11px] font-semibold ${
-                    mrmsProduct === 'mesh1440'
-                      ? 'bg-orange-500 text-stone-900'
-                      : 'text-stone-600'
-                  }`}
-                >
-                  24h
-                </button>
-              </div>
-            )}
-          </div>
-
-          {mrmsHistoricalMode && (
-            <>
-              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-orange-600">
-                Selected storm mode
-              </p>
-              {mrmsLoading && (
-                <p className="mt-2 text-xs text-stone-600">
-                  Loading archived MRMS hail raster for {selectedDate}...
-                </p>
-              )}
-              {mrmsError && (
-                <p className="mt-2 text-xs text-orange-300">{mrmsError}</p>
-              )}
-              {mrmsMeta && !mrmsLoading && !mrmsError && (
-                <>
-                  <p className="mt-2 text-xs text-stone-600">
-                    Archived MRMS MESH for {selectedDate} · source time{' '}
-                    {formatEasternTimestamp(
-                      mrmsMeta.ref_time || mrmsMeta.generated_at || new Date().toISOString(),
-                    )}{' '}
-                    ET
-                    {mrmsMeta.max_mesh_inches
-                      ? ` · max ${mrmsMeta.max_mesh_inches.toFixed(2)}" hail`
-                      : ''}
-                  </p>
-                  <p className="mt-1 text-xs text-orange-700">
-                    {mrmsMeta.has_hail
-                      ? 'Showing archived MRMS hail pixels only. Transparent areas were not hit by hail in this raster.'
-                      : 'Archived MRMS did not report hail pixels inside the selected storm bounds.'}
-                  </p>
-                </>
-              )}
-            </>
-          )}
-
-          {!mrmsHistoricalMode && mrmsLoading && (
-            <p className="mt-2 text-xs text-stone-600">
-              Loading live MRMS metadata...
-            </p>
-          )}
-
-          {!mrmsHistoricalMode && mrmsError && (
-            <p className="mt-2 text-xs text-orange-300">{mrmsError}</p>
-          )}
-
-          {!mrmsHistoricalMode && mrmsMeta && !mrmsLoading && !mrmsError && (
-            <>
-              <p className="mt-2 text-xs text-stone-600">
-                Updated {formatEasternTimestamp(mrmsMeta.ref_time || mrmsMeta.generated_at || new Date().toISOString())} ET
-                {mrmsMeta.max_mesh_inches
-                  ? ` · max ${mrmsMeta.max_mesh_inches.toFixed(2)}" hail`
-                  : ''}
-              </p>
-              <p className="mt-1 text-xs text-stone-500">
-                {mrmsMeta.has_hail
-                  ? 'Live-only layer. If you do not see hail here, there is probably no current hail near this view.'
-                  : 'No live hail pixels reported in the current MRMS product.'}
-              </p>
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function MapContent({
   events,
   swaths,
@@ -714,7 +518,7 @@ function MapContent({
     useState<MrmsOverlayProduct>('mesh1440');
   const [mrmsMeta, setMrmsMeta] = useState<MrmsStatus | null>(null);
   const [mrmsLoading, setMrmsLoading] = useState(false);
-  const [mrmsError, setMrmsError] = useState<string | null>(null);
+  const [, setMrmsError] = useState<string | null>(null);
   const [vectorSwaths, setVectorSwaths] = useState<MeshSwath[]>([]);
   const [liveNowCast, setLiveNowCast] = useState(false);
   const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
@@ -921,10 +725,6 @@ function MapContent({
   );
   const effectiveMrmsLoading =
     mrmsHistoricalMode && !historicalMrmsParams ? false : mrmsLoading;
-  const effectiveMrmsError =
-    mrmsHistoricalMode && !historicalMrmsParams
-      ? 'Historical MRMS requires selected storm bounds.'
-      : mrmsError;
   const historicalMrmsBounds = mrmsMeta?.bounds || historicalMrmsParams?.bounds || null;
   const canRenderHistoricalMrms =
     showMrms &&
@@ -1006,17 +806,6 @@ function MapContent({
   // handleMrmsToggle removed — no UI surface flips MRMS manually anymore.
   // MRMS auto-enables via the "Auto-enable MRMS layer whenever a historical
   // storm date is selected" effect above.
-
-  const handleSelectMrmsProduct = useCallback(
-    (product: MrmsOverlayProduct) => {
-      setMrmsProduct(product);
-      if (showMrms) {
-        setMrmsLoading(true);
-        setMrmsError(null);
-      }
-    },
-    [showMrms],
-  );
 
   useEffect(() => {
     if (!showMrms || mrmsHistoricalMode) {
@@ -1749,13 +1538,12 @@ function MapContent({
           gradient from Trace→Pea→Penny→Quarter→…) is what reps want
           to see; the vector polygon contours alone looked patchy where
           storm intensity is uniform. Raster paints every pixel by
-          MESH value so the swath reads as a continuous footprint.
-          The HailSwathLayer vector polygons stay rendered on top for
-          click interactivity / exact contour selection. */}
+          actionable MESH value so the swath reads as a continuous,
+          street-level footprint without hard vector contour outlines. */}
       <MRMSOverlay
         visible={canRenderHistoricalMrms}
         product="mesh1440"
-        opacity={0.72}
+        opacity={0.86}
         bounds={historicalMrmsBounds}
         url={historicalMrmsUrl}
         refreshMs={null}
@@ -1769,19 +1557,6 @@ function MapContent({
       />
 
       <GpsTracker position={gpsPosition} />
-
-      <LayerStatusPanel
-        showNexrad={showNexrad}
-        showMrms={showMrms}
-        selectedDate={selectedDate}
-        radarTimestamp={radarTimestamp}
-        mrmsLoading={effectiveMrmsLoading}
-        mrmsError={effectiveMrmsError}
-        mrmsMeta={mrmsMeta}
-        mrmsProduct={mrmsProduct}
-        onSelectMrmsProduct={handleSelectMrmsProduct}
-        mrmsHistoricalMode={mrmsHistoricalMode}
-      />
 
       <MapControl position={ControlPosition.RIGHT_TOP}>
         <div className="flex flex-col gap-1.5 mr-2.5 mt-2.5">

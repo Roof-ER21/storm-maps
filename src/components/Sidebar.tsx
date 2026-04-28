@@ -637,7 +637,7 @@ export default function Sidebar({
               addressLabel={searchSummary?.locationLabel ?? null}
             />
 
-            <div className="mt-3 grid grid-cols-3 gap-2">
+            <div className="mt-3 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => {
@@ -647,13 +647,6 @@ export default function Sidebar({
                 className="rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
               >
                 {generatingReport ? 'Generating...' : 'Generate PDF'}
-              </button>
-              <button
-                type="button"
-                onClick={onOpenEvidence}
-                className="rounded-xl border border-stone-300 bg-white px-3 py-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-stone-50"
-              >
-                Open Evidence
               </button>
               <button
                 type="button"
@@ -891,7 +884,6 @@ export default function Sidebar({
                 evidenceCount={evidenceCountsByDate.get(sd.date) || 0}
                 generatingReport={generatingReport}
                 onGenerateReport={onGenerateReport}
-                onOpenEvidence={onOpenEvidence}
                 routeQueuedCount={queuedRouteCountsByDate[sd.date] || 0}
                 onToggleRoute={() => onToggleStormRoute(sd)}
                 onClick={() => handleDateClick(sd)}
@@ -1437,7 +1429,6 @@ function StormDateCard({
   evidenceCount: _evidenceCount,
   generatingReport,
   onGenerateReport,
-  onOpenEvidence,
   routeQueuedCount,
   onToggleRoute,
   onClick,
@@ -1451,7 +1442,6 @@ function StormDateCard({
   evidenceCount: number;
   generatingReport: boolean;
   onGenerateReport: (dateOfLoss: string) => Promise<void>;
-  onOpenEvidence: () => void;
   routeQueuedCount: number;
   onToggleRoute: () => void;
   onClick: () => void;
@@ -1558,16 +1548,6 @@ function StormDateCard({
               className="rounded-lg bg-orange-500 px-2.5 py-1.5 text-[11px] font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
             >
               {generatingReport ? 'Generating...' : 'PDF'}
-            </button>
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                onOpenEvidence();
-              }}
-              className="rounded-lg border border-stone-300 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 transition-colors hover:bg-stone-50"
-            >
-              Proof
             </button>
             <button
               type="button"

@@ -5,7 +5,7 @@
  * and search into a single cohesive application.
  *
  * The APIProvider wraps the entire map area so that both the
- * SearchBar (Places Autocomplete) and StormMap (Map + overlays)
+ * Sidebar search and StormMap (Map + overlays)
  * share the same Google Maps context.
  */
 
@@ -63,7 +63,6 @@ import AppHeader from './components/AppHeader';
 
 const Sidebar = lazy(() => import('./components/Sidebar'));
 const StormMap = lazy(() => import('./components/StormMap'));
-const SearchBar = lazy(() => import('./components/SearchBar'));
 const Legend = lazy(() => import('./components/Legend'));
 const DashboardPage = lazy(() => import('./components/DashboardPage'));
 const PipelinePage = lazy(() => import('./components/PipelinePage'));
@@ -1181,11 +1180,6 @@ function App() {
       panMapTo,
     ],
   );
-
-  const handleSearchResult = useCallback((result: SearchResult) => {
-    setActiveView('map');
-    applySearchResult(result);
-  }, [applySearchResult]);
 
   // ---- Sidebar search (manual geocoding) ----
   const handleSidebarSearch = useCallback((query: string) => {
@@ -2730,8 +2724,7 @@ function App() {
   // - Map is `h-[45dvh]` on mobile so storm-dates list gets ~50vh of breathing
   //   room below it. Fullscreen toggle (h-[calc(100dvh-2.75rem)]) lets reps
   //   blow up the map for ground-truth visualization.
-  // - SearchBar overlays the map (`absolute` positioned in SearchBar.tsx)
-  //   so iOS keyboard focus doesn't reflow the map height.
+  // - Search stays in the sidebar so the map itself stays clean for reps.
   // - Desktop unchanged (`lg:` keeps `flex-1`, fills remaining viewport).
   const mapArea = (
     <main
@@ -2739,9 +2732,6 @@ function App() {
         mapFullscreen ? 'h-[calc(100dvh-2.75rem)]' : 'h-[45dvh]'
       }`}
     >
-      {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
-      <SearchBar onResult={handleSearchResult} />
-
       {/* Map */}
       <StormMap
         center={camera.center}
