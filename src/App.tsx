@@ -2724,12 +2724,17 @@ function App() {
     );
   }, []);
 
-  // Mobile: 55vh map / 45vh sidebar — was 70vh, but reps couldn't scroll the
-  // storm-dates list under the map because the sidebar was squeezed to ~30vh.
-  // 55vh keeps the map dominant while leaving real room for the dates panel
-  // below. Desktop unchanged.
+  // Mobile heights (Apr 27 mobile-UX pass):
+  // - 44px header (`h-11`) is the only chrome above the map.
+  // - Map is `h-[45vh]` on mobile so storm-dates list gets ~50vh of breathing
+  //   room below it (was 55vh, before that 70vh — reps still couldn't see
+  //   any dates without scrolling). 45vh keeps the map dominant and visible
+  //   while the dates list shows 4-5 cards above the fold.
+  // - SearchBar overlays the map (`absolute` positioned in SearchBar.tsx)
+  //   so iOS keyboard focus doesn't reflow the map height.
+  // - Desktop unchanged (`lg:` keeps `flex-1`, fills remaining viewport).
   const mapArea = (
-    <main className="relative order-1 flex h-[55vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
+    <main className="relative order-1 flex h-[45vh] shrink-0 flex-col min-w-0 lg:order-2 lg:h-auto lg:min-h-0 lg:flex-1">
       {/* Search bar (uses Places Autocomplete when inside APIProvider) */}
       <SearchBar onResult={handleSearchResult} />
 
