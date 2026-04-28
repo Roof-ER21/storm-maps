@@ -24,6 +24,8 @@ import { etDayUtcWindow } from './timeUtils.js';
 
 const IEM_VTEC_BASE = 'https://mesonet.agron.iastate.edu/geojson/sbw.geojson';
 const FETCH_TIMEOUT_MS = 20_000;
+const NWS_ALERTS_FAILURE_THRESHOLD = 3;
+const NWS_ALERTS_COOLDOWN_MS = 5 * 60_000;
 
 export type WarningPhenomenon = 'SV' | 'TO' | 'FF' | 'EW';
 
@@ -131,6 +133,53 @@ export async function fetchIemVtecWarnings(
 
 const iemVtecHttpWarned = new Set<number>();
 let iemVtecFetchWarned = false;
+const nwsAlertsHttpWarned = new Set<number>();
+let nwsAlertsFetchWarned = false;
+let nwsAlertsConsecutiveFailures = 0;
+let nwsAlertsCooldownUntil = 0;
+let nwsAlertsCooldownWarned = false;
+
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isAbortLike(err: unknown): boolean {
+  const maybe = err as { name?: unknown; message?: unknown };
+  const name = typeof maybe.name === 'string' ? maybe.name : '';
+  const message =
+    typeof maybe.message === 'string' ? maybe.message.toLowerCase() : String(err).toLowerCase();
+  return (
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    message.includes('aborted') ||
+    message.includes('timed out')
+  );
+}
+
+function nwsAlertsFallbackDown(now = Date.now()): boolean {
+  return now < nwsAlertsCooldownUntil;
+}
+
+function recordNwsAlertsSuccess(): void {
+  nwsAlertsConsecutiveFailures = 0;
+  nwsAlertsCooldownUntil = 0;
+  nwsAlertsCooldownWarned = false;
+}
+
+function recordNwsAlertsFailure(reason: string, now = Date.now()): void {
+  if (nwsAlertsFallbackDown(now)) return;
+  nwsAlertsConsecutiveFailures += 1;
+  if (nwsAlertsConsecutiveFailures < NWS_ALERTS_FAILURE_THRESHOLD) return;
+  nwsAlertsCooldownUntil = now + NWS_ALERTS_COOLDOWN_MS;
+  if (!nwsAlertsCooldownWarned) {
+    nwsAlertsCooldownWarned = true;
+    console.warn(
+      `[nws-alerts] optional fallback disabled for ${Math.round(
+        NWS_ALERTS_COOLDOWN_MS / 60_000,
+      )} min after repeated failures; latest=${reason}`,
+    );
+  }
+}
 
 function parseFeatures(
   features: VtecApiFeature[],
@@ -249,6 +298,8 @@ async function fetchNwsAlertsForPoint(opts: {
   endIso: string;
   bounds?: BoundingBox;
 }): Promise<IemVtecWarning[]> {
+  if (nwsAlertsFallbackDown()) return [];
+
   const url = new URL('https://api.weather.gov/alerts');
   url.searchParams.set('point', `${opts.lat.toFixed(4)},${opts.lng.toFixed(4)}`);
   url.searchParams.set('start', new Date(opts.startIso).toISOString());
@@ -260,9 +311,9 @@ async function fetchNwsAlertsForPoint(opts: {
     'Severe Thunderstorm Warning,Tornado Warning,Flash Flood Warning,Extreme Wind Warning',
   );
 
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
     const res = await fetch(url.toString(), {
       signal: ac.signal,
       headers: {
@@ -270,13 +321,17 @@ async function fetchNwsAlertsForPoint(opts: {
         Accept: 'application/geo+json',
       },
     });
-    clearTimeout(timer);
     if (!res.ok) {
       if (res.status !== 404) {
-        console.warn(`[nws-alerts] HTTP ${res.status}`);
+        recordNwsAlertsFailure(`HTTP ${res.status}`);
+        if (!nwsAlertsHttpWarned.has(res.status)) {
+          nwsAlertsHttpWarned.add(res.status);
+          console.warn(`[nws-alerts] HTTP ${res.status} (suppressing further)`);
+        }
       }
       return [];
     }
+    recordNwsAlertsSuccess();
     const data = (await res.json()) as {
       features?: Array<{
         properties?: {
@@ -334,8 +389,14 @@ async function fetchNwsAlertsForPoint(opts: {
     }
     return out;
   } catch (err) {
-    console.warn('[nws-alerts] fetch failed:', (err as Error).message);
+    recordNwsAlertsFailure(errorMessage(err));
+    if (!isAbortLike(err) && !nwsAlertsFetchWarned) {
+      nwsAlertsFetchWarned = true;
+      console.warn('[nws-alerts] fetch failed (suppressing further):', errorMessage(err));
+    }
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
