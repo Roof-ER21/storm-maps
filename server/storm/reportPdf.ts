@@ -1521,11 +1521,36 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       'en-US',
       { month: 'long', day: 'numeric', year: 'numeric' },
     );
-    // Best-effort location label from address — "21000 Cascades Pkwy,
-    // Sterling, VA 20165, USA" → "Sterling, VA"
+    // Best-effort location label from address — extracts "City, ST" by
+    // walking parts right-to-left, skipping a trailing "USA" / country
+    // suffix and detecting the "STATE ZIP" segment (e.g., "VA 22182").
+    // Examples:
+    //   "21000 Cascades Pkwy, Sterling, VA 20165, USA" → "Sterling, VA"
+    //   "8100 Boone Blvd, Vienna, VA 22182"           → "Vienna, VA"
+    //   "Sterling, VA"                                → "Sterling, VA"
     const locationFallback = (() => {
-      const parts = req.address.split(',').map((s) => s.trim()).filter(Boolean);
-      if (parts.length >= 3) return `${parts[parts.length - 3]}, ${parts[parts.length - 2].split(' ')[0]}`;
+      let parts = req.address.split(',').map((s) => s.trim()).filter(Boolean);
+      // Drop trailing country suffix.
+      if (
+        parts.length > 0 &&
+        /^(usa|united states|us)$/i.test(parts[parts.length - 1])
+      ) {
+        parts = parts.slice(0, -1);
+      }
+      // Find the "STATE ZIP" segment from the right (e.g., "VA 22182" or "VA").
+      const stateZipRe = /^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
+      for (let i = parts.length - 1; i >= 0; i -= 1) {
+        const m = parts[i].match(stateZipRe);
+        if (m) {
+          const state = m[1];
+          const city = i > 0 ? parts[i - 1] : null;
+          return city ? `${city}, ${state}` : state;
+        }
+      }
+      // No state token found — return the last 2 segments or the raw input.
+      if (parts.length >= 2) {
+        return `${parts[parts.length - 2]}, ${parts[parts.length - 1]}`;
+      }
       return req.address;
     })();
 
