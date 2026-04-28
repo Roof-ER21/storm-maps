@@ -81,9 +81,7 @@ export async function fetchCocorahsHailReports(
       endpointOffline = true;
       if (!offlineLogged) {
         offlineLogged = true;
-        console.warn(
-          '[cocorahs] endpoint returns 404 — disabling source for this process',
-        );
+        console.log('[cocorahs] optional source disabled: endpoint returned 404');
       }
       return [];
     }

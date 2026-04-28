@@ -88,12 +88,79 @@ interface SwathCacheRow {
   expires_at: string | Date;
 }
 
+const CACHE_DB_COOLDOWN_MS = 2 * 60_000;
+let cacheDbCooldownUntil = 0;
+const cacheDbWarned = new Set<string>();
+
+function cacheDbUnavailable(now = Date.now()): boolean {
+  return now < cacheDbCooldownUntil;
+}
+
+function cacheDbSuccess(): void {
+  cacheDbCooldownUntil = 0;
+}
+
+function isConnectivityError(err: unknown): boolean {
+  const e = err as Partial<NodeJS.ErrnoException> & {
+    code?: string;
+    errno?: string;
+  };
+  const code = String(e.code || e.errno || '').toUpperCase();
+  const message = err instanceof Error ? err.message.toLowerCase() : '';
+  return (
+    code.includes('CONNECT_TIMEOUT') ||
+    code.includes('ETIMEDOUT') ||
+    code.includes('ECONNRESET') ||
+    code.includes('ECONNREFUSED') ||
+    code.includes('ENOTFOUND') ||
+    code.includes('EAI_AGAIN') ||
+    message.includes('connect_timeout') ||
+    message.includes('timeout') ||
+    message.includes('connection terminated')
+  );
+}
+
+function summarizeCacheDbError(err: unknown): string {
+  const e = err as Partial<NodeJS.ErrnoException> & {
+    code?: string;
+    errno?: string;
+    address?: string;
+    port?: number;
+  };
+  const code = String(e.code || e.errno || 'DB_ERROR');
+  const host =
+    e.address && e.port
+      ? ` ${e.address}:${e.port}`
+      : e.address
+        ? ` ${e.address}`
+        : '';
+  const message = err instanceof Error ? err.message : String(err);
+  return `${code}${host}${message ? ` - ${message}` : ''}`;
+}
+
+function cacheDbFailure(operation: string, err: unknown): void {
+  const summary = summarizeCacheDbError(err);
+  const key = `${operation}:${summary}`;
+
+  if (!cacheDbWarned.has(key)) {
+    cacheDbWarned.add(key);
+    console.warn(
+      `[cache-db] ${operation} unavailable (${summary}); suppressing repeats`,
+    );
+  }
+
+  if (isConnectivityError(err)) {
+    cacheDbCooldownUntil = Date.now() + CACHE_DB_COOLDOWN_MS;
+  }
+}
+
 export async function getCachedSwath<T>(opts: {
   source: SwathCacheSource;
   date: string;
   bounds: BoundingBox;
 }): Promise<CachedSwathRow<T> | null> {
   if (!pgSql) return null;
+  if (cacheDbUnavailable()) return null;
   const hash = bboxHash(opts.bounds);
   try {
     const rows = await pgSql<SwathCacheRow[]>`
@@ -105,6 +172,7 @@ export async function getCachedSwath<T>(opts: {
          AND expires_at > NOW()
        LIMIT 1
     `;
+    cacheDbSuccess();
     const row = rows[0];
     if (!row) return null;
     return {
@@ -119,7 +187,7 @@ export async function getCachedSwath<T>(opts: {
       expiresAt: new Date(row.expires_at),
     };
   } catch (err) {
-    console.warn('[cache] getCachedSwath failed:', err);
+    cacheDbFailure('getCachedSwath', err);
     return null;
   }
 }
@@ -135,6 +203,7 @@ export async function setCachedSwath<T>(opts: {
   ttlMs?: number;
 }): Promise<void> {
   if (!pgSql) return;
+  if (cacheDbUnavailable()) return;
   const hash = bboxHash(opts.bounds);
   const ttl =
     opts.ttlMs ??
@@ -174,8 +243,9 @@ export async function setCachedSwath<T>(opts: {
         generated_at  = NOW(),
         expires_at    = EXCLUDED.expires_at
     `;
+    cacheDbSuccess();
   } catch (err) {
-    console.warn('[cache] setCachedSwath failed:', err);
+    cacheDbFailure('setCachedSwath', err);
   }
 }
 
@@ -188,6 +258,7 @@ export async function setCachedSwath<T>(opts: {
  */
 export async function purgeExpiredSwaths(force = false): Promise<number> {
   if (!pgSql) return 0;
+  if (cacheDbUnavailable()) return 0;
   try {
     const rows = force
       ? await pgSql<Array<{ count: string }>>`
@@ -197,9 +268,10 @@ export async function purgeExpiredSwaths(force = false): Promise<number> {
           DELETE FROM swath_cache WHERE expires_at <= NOW()
           RETURNING 1 AS count
         `;
+    cacheDbSuccess();
     return rows.length;
   } catch (err) {
-    console.warn('[cache] purgeExpiredSwaths failed:', err);
+    cacheDbFailure('purgeExpiredSwaths', err);
     return 0;
   }
 }
@@ -215,6 +287,7 @@ export interface CacheSummaryEntry {
 
 export async function getCacheSummary(): Promise<CacheSummaryEntry[]> {
   if (!pgSql) return [];
+  if (cacheDbUnavailable()) return [];
   try {
     const rows = await pgSql<
       Array<{
@@ -237,6 +310,7 @@ export async function getCacheSummary(): Promise<CacheSummaryEntry[]> {
       GROUP BY source
       ORDER BY source
     `;
+    cacheDbSuccess();
     return rows.map((r) => ({
       source: r.source,
       total: Number(r.total),
@@ -246,7 +320,7 @@ export async function getCacheSummary(): Promise<CacheSummaryEntry[]> {
       newestEntry: r.newest,
     }));
   } catch (err) {
-    console.warn('[cache] getCacheSummary failed:', err);
+    cacheDbFailure('getCacheSummary', err);
     return [];
   }
 }

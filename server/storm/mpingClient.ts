@@ -152,7 +152,7 @@ export async function fetchMpingReports(q: MpingQuery): Promise<MpingReport[]> {
         endpointOffline = true;
         if (!offlineLogged) {
           offlineLogged = true;
-          console.warn('[mping] endpoint returns 404 — disabling source for this process');
+          console.log('[mping] optional source disabled: endpoint returned 404');
         }
         return all;
       }
