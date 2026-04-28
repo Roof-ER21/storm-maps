@@ -102,32 +102,33 @@ export async function fetchIemVtecWarnings(
     ets: fmtIemTimestamp(q.endIso),
   });
   const url = `${IEM_VTEC_BASE}?${params.toString()}`;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
     const res = await fetch(url, {
       signal: ac.signal,
       headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
     });
-    clearTimeout(timer);
     if (!res.ok) {
       if (!iemVtecHttpWarned.has(res.status)) {
         iemVtecHttpWarned.add(res.status);
-        console.warn(`[iem-vtec] HTTP ${res.status} (suppressing further)`);
+        console.info(`[iem-vtec] optional archive HTTP ${res.status} (suppressing further)`);
       }
       return [];
     }
     const data = (await res.json()) as VtecApiResponse;
     return parseFeatures(data.features ?? [], q.bounds, allowed);
   } catch (err) {
-    if (!iemVtecFetchWarned) {
+    if (!isAbortLike(err) && !iemVtecFetchWarned) {
       iemVtecFetchWarned = true;
-      console.warn(
-        '[iem-vtec] fetch failed (suppressing further):',
-        (err as Error).message,
+      console.info(
+        '[iem-vtec] optional archive unavailable (suppressing further):',
+        errorMessage(err),
       );
     }
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 

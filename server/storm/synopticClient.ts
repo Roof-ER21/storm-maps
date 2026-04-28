@@ -107,6 +107,23 @@ function getToken(): string {
   return t;
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isAbortLike(err: unknown): boolean {
+  const maybe = err as { name?: unknown; message?: unknown };
+  const name = typeof maybe.name === 'string' ? maybe.name : '';
+  const message =
+    typeof maybe.message === 'string' ? maybe.message.toLowerCase() : String(err).toLowerCase();
+  return (
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    message.includes('aborted') ||
+    message.includes('timed out')
+  );
+}
+
 export async function fetchSynopticTimeseriesByRadius(
   q: SynopticRadiusQuery,
 ): Promise<GroundStation[]> {
@@ -143,24 +160,26 @@ async function fetchAndParse(
   params: URLSearchParams,
 ): Promise<GroundStation[]> {
   const url = `${SYNOPTIC_BASE}/stations/timeseries?${params.toString()}`;
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
   try {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
     const res = await fetch(url, {
       signal: ac.signal,
       headers: { 'User-Agent': 'HailYes/1.0 (storm-intelligence-app)' },
     });
-    clearTimeout(timer);
     if (!res.ok) {
       const body = await res.text().catch(() => '');
       // Free-tier history-depth gate is a 403 with a known message.
       if (res.status === 403 && body.includes('does not have access to the requested history')) {
-        console.warn(
-          '[synoptic] 365-day free-tier history limit hit (request older than ~1y). Apply for academic token to extend.',
-        );
+        if (!historyLimitWarned) {
+          historyLimitWarned = true;
+          console.info(
+            '[synoptic] optional source skipped for >365-day history (free-tier limit)',
+          );
+        }
         return [];
       }
-      console.warn(`[synoptic] HTTP ${res.status}: ${body.slice(0, 200)}`);
+      console.info(`[synoptic] optional source HTTP ${res.status}: ${body.slice(0, 200)}`);
       return [];
     }
     const env = (await res.json()) as SynopticEnvelope;
@@ -173,25 +192,27 @@ async function fetchAndParse(
       if (typeof msg === 'string' && msg.includes('does not have access to the requested history')) {
         if (!historyLimitWarned) {
           historyLimitWarned = true;
-          console.warn(
-            '[synoptic] free-tier 365-day history limit reached — suppressing further per-request warnings',
+          console.info(
+            '[synoptic] optional source skipped for >365-day history (free-tier limit)',
           );
         }
         return [];
       }
-      console.warn(`[synoptic] response_code=${code} msg=${msg}`);
+      console.info(`[synoptic] optional source response_code=${code} msg=${msg}`);
       return [];
     }
     return (env.STATION ?? []).map(toGroundStation);
   } catch (err) {
-    if (!fetchFailWarned) {
+    if (!isAbortLike(err) && !fetchFailWarned) {
       fetchFailWarned = true;
-      console.warn(
-        '[synoptic] fetch failed (suppressing further):',
-        (err as Error).message,
+      console.info(
+        '[synoptic] optional source unavailable (suppressing further):',
+        errorMessage(err),
       );
     }
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 

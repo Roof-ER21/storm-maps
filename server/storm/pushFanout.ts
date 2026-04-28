@@ -70,6 +70,23 @@ function shortAlertId(raw: string): string {
 
 let pushFanoutNwsWarned = false;
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
+function isAbortLike(err: unknown): boolean {
+  const maybe = err as { name?: unknown; message?: unknown };
+  const name = typeof maybe.name === 'string' ? maybe.name : '';
+  const message =
+    typeof maybe.message === 'string' ? maybe.message.toLowerCase() : String(err).toLowerCase();
+  return (
+    name === 'AbortError' ||
+    name === 'TimeoutError' ||
+    message.includes('aborted') ||
+    message.includes('timed out')
+  );
+}
+
 async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
   // Pull SVR + Tornado in parallel — both are roof-claim-relevant.
   const events = ['Severe Thunderstorm Warning', 'Tornado Warning'];
@@ -93,13 +110,13 @@ async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
       if (data.features) all.push(...data.features);
     } catch (err) {
       // NWS api.weather.gov is rate-limited and routinely 12s-times out
-      // during pushFanout cycles. Log once per process; the worker keeps
-      // running on the next cycle.
-      if (!pushFanoutNwsWarned) {
+      // during pushFanout cycles. Abort/timeouts are expected and silent;
+      // non-timeout failures are informational because the worker retries.
+      if (!isAbortLike(err) && !pushFanoutNwsWarned) {
         pushFanoutNwsWarned = true;
-        console.warn(
-          '[push-fanout] NWS fetch failed (suppressing further):',
-          (err as Error).message,
+        console.info(
+          '[push-fanout] optional NWS fetch unavailable (suppressing further):',
+          errorMessage(err),
         );
       }
     }
