@@ -974,15 +974,6 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
       });
       return;
     }
-    res.set('Content-Type', 'application/pdf');
-    res.set(
-      'Content-Disposition',
-      `attachment; filename="StormReport_${body.address.replace(/[^a-zA-Z0-9]/g, '_')}_${body.dateOfLoss}.pdf"`,
-    );
-    // Flush the headers eagerly so the edge proxy / browser sees the
-    // status + content-type immediately. Keeps the connection visibly
-    // active while we build the PDF body.
-    res.flushHeaders();
     const pdf = await buildStormReportPdf({
       address: body.address,
       lat: body.lat,
@@ -999,7 +990,19 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
       customerName: body.customerName?.trim() || undefined,
       evidence: body.evidence,
     });
-    res.send(pdf);
+    // Set headers + send the full buffer once the build is done. Earlier
+    // attempt was to flushHeaders() pre-build to prevent edge-proxy 502s,
+    // but it conflicted with res.send()'s implicit Content-Length set
+    // (ERR_HTTP_HEADERS_SENT). The req/res setTimeout(120s) above is
+    // sufficient to keep Railway's proxy from idle-cutting the
+    // connection — headers go out with the body in one shot.
+    res.set('Content-Type', 'application/pdf');
+    res.set('Content-Length', String(pdf.length));
+    res.set(
+      'Content-Disposition',
+      `attachment; filename="StormReport_${body.address.replace(/[^a-zA-Z0-9]/g, '_')}_${body.dateOfLoss}.pdf"`,
+    );
+    res.end(pdf);
   } catch (err) {
     console.error('[storm-report-pdf] failed', err);
     if (!res.headersSent) {
