@@ -18,15 +18,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 
-// Resolve the bundled Roof-ER logo PNG once at module load. Asset lives
-// at server/assets/roofer-logo.png — copied from the user's logo file
-// 4/27/26. Using node:url + import.meta.url so this works both in dev
-// (tsx) and in the bundled prod build regardless of cwd.
+// Resolve the Hail Yes! brand logo PNG once at module load. Asset lives
+// at server/assets/hail-yes-logo.png — generated 4/28/26 from the brand
+// favicon (cloud + hail glyph) plus "Hail Yes!" wordmark + tagline.
+// Using node:url + import.meta.url so this works both in dev (tsx) and
+// in the bundled prod build regardless of cwd.
 const LOGO_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
   'assets',
-  'roofer-logo.png',
+  'hail-yes-logo.png',
 );
 import {
   buildMrmsVectorPolygons,
@@ -60,7 +61,9 @@ import {
 } from './sourceTier.js';
 import {
   computeDirectionAndSpeedFromPoints,
+  computeDurationFromPoints,
   computeHailDuration,
+  computePeakTimeFromPoints,
   computeStormDirectionAndSpeed,
   computeStormPeakTime,
   filterEventsByEtDate,
@@ -617,9 +620,9 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     },
     info: {
       Title: `Hail Impact Report - ${req.address}`,
-      Author: 'Roof-ER Storm Intelligence',
+      Author: 'Hail Yes Storm Intelligence',
       Subject: `Hail Impact Report for ${req.address}`,
-      Creator: 'Hail Yes! · Roof-ER Weather Intelligence Platform',
+      Creator: 'Hail Yes! · HYSI Weather Intelligence Platform',
     },
   });
   const chunks: Buffer[] = [];
@@ -695,9 +698,9 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }
 
   // 2b. Three-column header row + logos (y = 35..95)
-  // ── Left logo box — real Roof-ER PNG (server/assets/roofer-logo.png) ──
-  // Was a PDFKit vector approximation; user supplied the official logo
-  // 4/27/26. PNG is 768×433 (~1.77:1); we fit-into the 140×60 box with
+  // ── Left logo box — Hail Yes! brand PNG (server/assets/hail-yes-logo.png) ──
+  // Generated 4/28/26 from the brand favicon SVG + wordmark composited via
+  // ImageMagick. PNG is 1100×433 (~2.54:1); fit-into the 140×60 box with
   // doc.image's `fit` option which preserves aspect ratio.
   {
     const lg = PDF_LAYOUT.header.logo;
@@ -715,12 +718,12 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         .fillColor(COLOR.brandRed)
         .font('Helvetica-Bold')
         .fontSize(22)
-        .text('ROOFER', lg.x, lg.y + 14, { width: lg.w, align: 'left' });
+        .text('HAIL YES!', lg.x, lg.y + 14, { width: lg.w, align: 'left' });
       doc
         .fillColor(COLOR.brandRed)
         .font('Helvetica-Bold')
         .fontSize(8)
-        .text('THE ROOF DOCS', lg.x, lg.y + 44, {
+        .text('STORM INTELLIGENCE', lg.x, lg.y + 44, {
           width: lg.w,
           align: 'left',
           characterSpacing: 1,
@@ -791,27 +794,30 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       width: rm.w,
       lineBreak: false,
     });
-    doc.text('Roof-ER Storm Intelligence', rm.x, rm.y + 33, {
+    doc.text('Hail Yes Storm Intelligence', rm.x, rm.y + 33, {
       width: rm.w,
       lineBreak: false,
     });
   }
 
-  // ── Right seal/badge — solid red rounded square with white roof glyph ──
+  // ── Right seal/badge — solid brand-red rounded square with white "HY" wordmark ──
+  // Was a roof-house glyph back when this read as Roof-ER; rebranded
+  // 4/28/26 to "HY" (Hail Yes initials) so the seal echoes the wordmark
+  // in the left logo block.
   {
     const sl = PDF_LAYOUT.header.seal;
     doc
       .roundedRect(sl.x, sl.y, sl.w, sl.h, sl.radius)
       .fill(COLOR.brandRed);
-    // White vector roof icon centered in the seal
-    doc.save();
-    doc.translate(sl.x + sl.w / 2, sl.y + sl.h / 2);
     doc
-      .path(
-        'M -10 4 L 0 -8 L 10 4 L 7 4 L 7 9 L 3 9 L 3 5 L -3 5 L -3 9 L -7 9 L -7 4 Z',
-      )
-      .fill(COLOR.white);
-    doc.restore();
+      .fillColor(COLOR.white)
+      .font('Helvetica-Bold')
+      .fontSize(sl.h * 0.55)
+      .text('HY', sl.x, sl.y + sl.h * 0.18, {
+        width: sl.w,
+        align: 'center',
+        lineBreak: false,
+      });
   }
 
   // 2c. Verification line strip — full-bleed gray, code in red+bold+underline
@@ -1323,13 +1329,44 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
 
     const dolDate = new Date(`${req.dateOfLoss}T12:00:00`);
     const dolMdy = `${dolDate.getMonth() + 1}/${dolDate.getDate()}/${dolDate.getFullYear()}`;
-    const peakTimeStr = computeStormPeakTime(events, req.dateOfLoss) ?? '—';
-    const dirSpeed = computeStormDirectionAndSpeed(events, req.dateOfLoss);
+
+    // Hail Impact Details metrics — try the StormEventDto cache first, then
+    // fall back to histNceiRows when the cache window doesn't cover the
+    // date of loss (e.g., 2-year-old adjuster pull). The hist rows come
+    // from verified_hail_events so they cover the full retention period.
+    const histHailPoints: Array<{ lat: number; lng: number; timeIso: string }> = [];
+    for (const r of histNceiRows) {
+      const dateIso = typeof r.event_date === 'string'
+        ? r.event_date.slice(0, 10)
+        : String(r.event_date).slice(0, 10);
+      if (dateIso !== req.dateOfLoss) continue;
+      if (r.event_type !== 'Hail') continue;
+      const lat = typeof r.lat === 'number' ? r.lat : Number(r.lat);
+      const lng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
+      const iso = r.begin_time_utc;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng) || !iso) continue;
+      const dist = haversineMiles(req.lat, req.lng, lat, lng);
+      if (dist > req.radiusMiles) continue;
+      histHailPoints.push({ lat, lng, timeIso: iso });
+    }
+
+    const peakTimeStr =
+      computeStormPeakTime(events, req.dateOfLoss) ??
+      computePeakTimeFromPoints(histHailPoints) ??
+      '—';
+
+    const cacheDirSpeed = computeStormDirectionAndSpeed(events, req.dateOfLoss);
+    const dirSpeed = cacheDirSpeed.speedMph !== null
+      ? cacheDirSpeed
+      : computeDirectionAndSpeedFromPoints(histHailPoints);
     const headingStr = dirSpeed.heading;
     const speedStr = dirSpeed.speedMph !== null
       ? `${dirSpeed.speedMph.toFixed(1)} mph`
       : '—';
-    const durationMin = computeHailDuration(events, req.dateOfLoss);
+
+    const durationMin =
+      computeHailDuration(events, req.dateOfLoss) ??
+      computeDurationFromPoints(histHailPoints);
     const durationStr = durationMin !== null ? `${durationMin.toFixed(1)} minutes` : '—';
 
     // At-property hail size — uses the same cap call that previously fed
@@ -1339,13 +1376,33 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       ? displayHailIn(atPropertyVal, dolAtPropCtx)
       : '—';
 
-    // Nearby hail count = number of distinct hail events on the date.
+    // Nearby hail count + max — prefer the StormEventDto cache, fall back
+    // to histNceiRows when cache is empty (older dates of loss).
     const datedHail = datedEvents.filter((e) => e.eventType === 'Hail');
-    const nearbyCount = datedHail.length;
-
-    // Max nearby hail — biggest event magnitude on the date, capped via
-    // far-band ctx (no consensus override at distance).
-    const biggestNearbyRaw = datedHail.reduce((m, e) => Math.max(m, e.magnitude), 0);
+    let nearbyCount = datedHail.length;
+    let biggestNearbyRaw = datedHail.reduce((m, e) => Math.max(m, e.magnitude), 0);
+    if (nearbyCount === 0 || biggestNearbyRaw === 0) {
+      let histCount = 0;
+      let histMax = 0;
+      for (const r of histNceiRows) {
+        const dateIso = typeof r.event_date === 'string'
+          ? r.event_date.slice(0, 10)
+          : String(r.event_date).slice(0, 10);
+        if (dateIso !== req.dateOfLoss) continue;
+        if (r.event_type !== 'Hail') continue;
+        const lat = typeof r.lat === 'number' ? r.lat : Number(r.lat);
+        const lng = typeof r.lng === 'number' ? r.lng : Number(r.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+        const dist = haversineMiles(req.lat, req.lng, lat, lng);
+        if (dist > req.radiusMiles) continue;
+        const mag = r.magnitude;
+        if (!Number.isFinite(mag) || mag === null || mag <= 0) continue;
+        histCount += 1;
+        if (mag > histMax) histMax = mag;
+      }
+      if (nearbyCount === 0) nearbyCount = histCount;
+      if (biggestNearbyRaw === 0) biggestNearbyRaw = histMax;
+    }
     const maxNearbyStr = biggestNearbyRaw > 0
       ? displayHailIn(biggestNearbyRaw, dolFarBandCtx)
       : '—';
@@ -2238,7 +2295,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .font('Helvetica')
     .fontSize(8.5)
     .text(
-      'Roof-ER Storm Intelligence uses NEXRAD weather radar data and proprietary hail detection algorithms to generate the "Hail Impact" and "Historical Storm Activity" information included in this report. And while Roof-ER attempts to be as accurate as possible, Roof-ER makes no representations or warranties of any kind, including express or implied warranties, that the information on this report is accurate, complete, and / or free from defects. Roof-ER is not responsible for any use of this report or decisions based on the information contained in this report. This report does not constitute a professional roof inspection or engineering assessment. A licensed roofing contractor should perform a physical inspection to confirm the presence and extent of any storm damage.',
+      'Hail Yes Storm Intelligence (HYSI) uses NEXRAD weather radar data and proprietary hail detection algorithms to generate the "Hail Impact" and "Historical Storm Activity" information included in this report. And while Hail Yes attempts to be as accurate as possible, Hail Yes makes no representations or warranties of any kind, including express or implied warranties, that the information on this report is accurate, complete, and / or free from defects. Hail Yes is not responsible for any use of this report or decisions based on the information contained in this report. This report does not constitute a professional roof inspection or engineering assessment. A licensed roofing contractor should perform a physical inspection to confirm the presence and extent of any storm damage.',
       70,
       doc.y + 4,
       { width: 472, align: 'justify', lineGap: 3 },
@@ -2257,7 +2314,7 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     .font('Helvetica')
     .fontSize(PDF_LAYOUT.copyright.fontSize)
     .text(
-      `Copyright © ${yearStr} by Roof-ER`,
+      `Copyright © ${yearStr} by Hail Yes Storm Intelligence (HYSI)`,
       0,
       cpY + 7,
       { width: PW, align: 'center' },

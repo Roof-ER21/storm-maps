@@ -156,6 +156,54 @@ export function computeStormDirectionAndSpeed(
 }
 
 /**
+ * Earliest time across a list of `{timeIso}` points, formatted as ET.
+ * Used by Hail Impact Details when the event-cache window doesn't cover the
+ * date of loss (e.g., adjuster pulling a 2-year-old date) but we still have
+ * primary-source ground rows from `verified_hail_events`.
+ */
+export function computePeakTimeFromPoints(
+  points: Array<{ timeIso: string }>,
+): string | null {
+  if (points.length === 0) return null;
+  let minMs = Infinity;
+  for (const p of points) {
+    const t = new Date(p.timeIso).getTime();
+    if (Number.isFinite(t) && t < minMs) minMs = t;
+  }
+  if (!Number.isFinite(minMs)) return null;
+  const t = new Date(minMs);
+  return t.toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short',
+  });
+}
+
+/**
+ * Span (minutes, 1dp) between earliest and latest points. Single-point
+ * lists return null — same rule as the StormEventDto variant.
+ */
+export function computeDurationFromPoints(
+  points: Array<{ timeIso: string }>,
+): number | null {
+  if (points.length < 2) return null;
+  let minMs = Infinity;
+  let maxMs = -Infinity;
+  for (const p of points) {
+    const t = new Date(p.timeIso).getTime();
+    if (!Number.isFinite(t)) continue;
+    if (t < minMs) minMs = t;
+    if (t > maxMs) maxMs = t;
+  }
+  if (!Number.isFinite(minMs) || !Number.isFinite(maxMs)) return null;
+  const minutes = (maxMs - minMs) / 60_000;
+  if (minutes <= 0) return null;
+  return Math.round(minutes * 10) / 10;
+}
+
+/**
  * Same algorithm but for an arbitrary list of `{lat,lng,timeIso}` points.
  * Used by Section 7 (Historical Storm Activity) where hist rows aren't
  * StormEventDto but row-shaped from `verified_hail_events`.
