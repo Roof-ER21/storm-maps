@@ -982,11 +982,11 @@ app.post('/api/hail/storm-report-pdf', async (req, res) => {
       dateOfLoss: body.dateOfLoss,
       anchorTimestamp: body.anchorTimestamp ?? null,
       rep: {
-        name: body.rep?.name ?? 'Roof-ER21 Rep',
+        name: body.rep?.name ?? 'Hail Yes Rep',
         phone: body.rep?.phone,
         email: body.rep?.email,
       },
-      company: { name: body.company?.name ?? 'Roof-ER21' },
+      company: { name: body.company?.name ?? 'Hail Yes Storm Intelligence' },
       customerName: body.customerName?.trim() || undefined,
       evidence: body.evidence,
     });
