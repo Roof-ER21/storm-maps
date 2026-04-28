@@ -18,16 +18,23 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import PDFDocument from 'pdfkit';
 
-// Resolve the Hail Yes! brand logo PNG once at module load. Asset lives
-// at server/assets/hail-yes-logo.png — generated 4/28/26 from the brand
-// favicon (cloud + hail glyph) plus "Hail Yes!" wordmark + tagline.
-// Using node:url + import.meta.url so this works both in dev (tsx) and
-// in the bundled prod build regardless of cwd.
+// Resolve the header logos once at module load.
+//   LOGO_PATH      → Roof-ER company wordmark (left side, 140×60 box)
+//   SEAL_LOGO_PATH → Hail Yes! brand square seal (right side, 52×52 box)
+// Layout per user direction 4/28/26: company logo left, product seal right
+// (mirrors the s21-style report). Roof-ER is the company; Hail Yes is the
+// tool generating the report.
 const LOGO_PATH = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   '..',
   'assets',
-  'hail-yes-logo.png',
+  'roofer-logo.png',
+);
+const SEAL_LOGO_PATH = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'assets',
+  'hail-yes-seal.png',
 );
 import {
   buildMrmsVectorPolygons,
@@ -631,10 +638,10 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   }
 
   // 2b. Three-column header row + logos (y = 35..95)
-  // ── Left logo box — Hail Yes! brand PNG (server/assets/hail-yes-logo.png) ──
-  // Generated 4/28/26 from the brand favicon SVG + wordmark composited via
-  // ImageMagick. PNG is 1100×433 (~2.54:1); fit-into the 140×60 box with
-  // doc.image's `fit` option which preserves aspect ratio.
+  // ── Left logo box — Roof-ER company wordmark (server/assets/roofer-logo.png) ──
+  // PNG is 768×433 (~1.77:1); fit-into the 140×60 box with doc.image's
+  // `fit` option which preserves aspect ratio. Hail Yes seal lives on the
+  // right side as the product badge.
   {
     const lg = PDF_LAYOUT.header.logo;
     try {
@@ -651,12 +658,12 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         .fillColor(COLOR.brandRed)
         .font('Helvetica-Bold')
         .fontSize(22)
-        .text('HAIL YES!', lg.x, lg.y + 14, { width: lg.w, align: 'left' });
+        .text('ROOFER', lg.x, lg.y + 14, { width: lg.w, align: 'left' });
       doc
         .fillColor(COLOR.brandRed)
         .font('Helvetica-Bold')
         .fontSize(8)
-        .text('STORM INTELLIGENCE', lg.x, lg.y + 44, {
+        .text('THE ROOF DOCS', lg.x, lg.y + 44, {
           width: lg.w,
           align: 'left',
           characterSpacing: 1,
@@ -733,24 +740,35 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
     });
   }
 
-  // ── Right seal/badge — solid brand-red rounded square with white "HY" wordmark ──
-  // Was a roof-house glyph back when this read as Roof-ER; rebranded
-  // 4/28/26 to "HY" (Hail Yes initials) so the seal echoes the wordmark
-  // in the left logo block.
+  // ── Right seal/badge — Hail Yes! brand square (server/assets/hail-yes-seal.png) ──
+  // 256×256 PNG rendered from the brand favicon SVG (purple rounded
+  // square + cloud + hail streaks). Embedded in the 52×52 seal slot via
+  // doc.image's `fit`. Falls through to the previous red-square + "HY"
+  // text glyph if the PNG fails to load, so the header always renders
+  // something recognizable.
   {
     const sl = PDF_LAYOUT.header.seal;
-    doc
-      .roundedRect(sl.x, sl.y, sl.w, sl.h, sl.radius)
-      .fill(COLOR.brandRed);
-    doc
-      .fillColor(COLOR.white)
-      .font('Helvetica-Bold')
-      .fontSize(sl.h * 0.55)
-      .text('HY', sl.x, sl.y + sl.h * 0.18, {
-        width: sl.w,
+    try {
+      doc.image(SEAL_LOGO_PATH, sl.x, sl.y, {
+        fit: [sl.w, sl.h],
         align: 'center',
-        lineBreak: false,
+        valign: 'center',
       });
+    } catch (err) {
+      console.warn('[reportPdf] seal image embed failed:', (err as Error).message);
+      doc
+        .roundedRect(sl.x, sl.y, sl.w, sl.h, sl.radius)
+        .fill(COLOR.brandRed);
+      doc
+        .fillColor(COLOR.white)
+        .font('Helvetica-Bold')
+        .fontSize(sl.h * 0.55)
+        .text('HY', sl.x, sl.y + sl.h * 0.18, {
+          width: sl.w,
+          align: 'center',
+          lineBreak: false,
+        });
+    }
   }
 
   // 2c. Verification line strip — full-bleed gray, code in red+bold+underline
