@@ -300,7 +300,7 @@ const REPORT_REP_PHONE =
 const REPORT_REP_EMAIL =
   import.meta.env.VITE_REPORT_REP_EMAIL || 'ahmed@theroofdocs.com';
 const REPORT_COMPANY_NAME =
-  import.meta.env.VITE_REPORT_COMPANY_NAME || 'The Roof Docs';
+  import.meta.env.VITE_REPORT_COMPANY_NAME || 'Hail Yes Storm Intelligence';
 
 interface GenerateStormReportParams {
   address: string;
