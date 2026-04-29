@@ -1285,6 +1285,80 @@ async function fetchGroundReportUpgrades(
   }
 }
 
+// ── per-date-impact concurrency + negative cache ───────────────────────────
+// MRMS GRIB fetches are the heaviest upstream call we make. At the old
+// `Promise.all(dates.map(...))` over up to 60 dates, a 10Y range sweep would
+// kick off 60 simultaneous GRIB decodes — which is what crashed prod twice
+// on 2026-04-29. We cap concurrency to 4 and remember "no MRMS" misses so
+// repeated date sweeps don't refetch the same negative result.
+const PER_DATE_IMPACT_CONCURRENCY = 4;
+type PerDateUnknownEntry = { expiresAt: number };
+const perDateUnknownCache = new Map<string, PerDateUnknownEntry>();
+const PER_DATE_UNKNOWN_CACHE_MAX = 5000;
+
+function perDateUnknownKey(
+  lat: number,
+  lng: number,
+  radiusMi: number,
+  date: string,
+): string {
+  // Round to 0.01° (~0.7 mi) so neighbors share negative entries.
+  const round = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
+  return `${date}|${round(lat)}|${round(lng)}|${radiusMi}`;
+}
+
+function perDateUnknownTtlMs(date: string): number {
+  const ageDays =
+    (Date.now() - Date.parse(`${date}T12:00:00Z`)) / 86_400_000;
+  if (ageDays < 1) return 15 * 60 * 1000; // 15 min
+  if (ageDays < 7) return 60 * 60 * 1000; // 1 h
+  if (ageDays < 30) return 6 * 60 * 60 * 1000; // 6 h
+  return 24 * 60 * 60 * 1000; // 1 d
+}
+
+function getCachedUnknown(key: string): boolean {
+  const hit = perDateUnknownCache.get(key);
+  if (!hit) return false;
+  if (hit.expiresAt <= Date.now()) {
+    perDateUnknownCache.delete(key);
+    return false;
+  }
+  // touch for LRU-by-insertion-order
+  perDateUnknownCache.delete(key);
+  perDateUnknownCache.set(key, hit);
+  return true;
+}
+
+function setCachedUnknown(key: string, ttlMs: number): void {
+  perDateUnknownCache.set(key, { expiresAt: Date.now() + ttlMs });
+  while (perDateUnknownCache.size > PER_DATE_UNKNOWN_CACHE_MAX) {
+    const oldest = perDateUnknownCache.keys().next().value;
+    if (!oldest) break;
+    perDateUnknownCache.delete(oldest);
+  }
+}
+
+async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  worker: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let cursor = 0;
+  const runners = Array.from(
+    { length: Math.min(limit, items.length) },
+    async () => {
+      while (true) {
+        const i = cursor++;
+        if (i >= items.length) return;
+        results[i] = await worker(items[i], i);
+      }
+    },
+  );
+  await Promise.all(runners);
+  return results;
+}
+
 app.post('/api/hail/per-date-impact', async (req, res) => {
   try {
     const body = (req.body || {}) as PerDateImpactBody;
@@ -1307,6 +1381,19 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
     };
 
     const dates = body.dates.slice(0, 60).filter(isValidIsoDate);
+
+    // Short-circuit dates we've already classified as "unknown" recently.
+    // Those still need ground-upgrade + verification lookups (cheap bulk
+    // queries), but skip the expensive per-date MRMS GRIB fetch.
+    const knownUnknown = new Set<string>();
+    const datesNeedingMrms: string[] = [];
+    for (const d of dates) {
+      if (getCachedUnknown(perDateUnknownKey(body.lat, body.lng, radiusMi, d))) {
+        knownUnknown.add(d);
+      } else {
+        datesNeedingMrms.push(d);
+      }
+    }
 
     // Two bulk lookups in parallel: Path B ground-report upgrade AND
     // per-date VerificationContext (≥3 ground / ≥1 gov / consensus
@@ -1333,8 +1420,29 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
       return { display: displayHailInches(r, v), raw: raw ?? null };
     };
 
-    const results = await Promise.all(
-      dates.map(async (date) => {
+    const results = await mapWithConcurrency(
+      dates,
+      PER_DATE_IMPACT_CONCURRENCY,
+      async (date) => {
+        // Cached "unknown" — skip MRMS but still apply ground upgrade if
+        // present (verified_hail_events may have landed since we cached).
+        if (knownUnknown.has(date)) {
+          const ground = groundUpgradeByDate.get(date);
+          if (ground) {
+            const { display, raw } = cap(ground.maxHail, date);
+            return {
+              date,
+              tier: 'direct_hit',
+              directHit: true,
+              upgradedVia: 'ground_report',
+              closestMiles: ground.closestMi,
+              atPropertyInches: display,
+              rawAtPropertyInches: raw,
+              stormPeakInches: ground.maxHail,
+            };
+          }
+          return { date, tier: 'unknown', directHit: false, closestMiles: null };
+        }
         try {
           const resp = await buildMrmsImpactResponse({
             date,
@@ -1357,6 +1465,12 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
                 stormPeakInches: ground.maxHail,
               };
             }
+            // Remember this miss so a re-issued sweep for the same
+            // neighborhood doesn't refetch GRIB.
+            setCachedUnknown(
+              perDateUnknownKey(body.lat!, body.lng!, radiusMi, date),
+              perDateUnknownTtlMs(date),
+            );
             return { date, tier: 'unknown', directHit: false, closestMiles: null };
           }
           // Path A direct hit — polygon contains property; bands.atProperty
@@ -1413,7 +1527,7 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
         } catch {
           return { date, tier: 'unknown', directHit: false, closestMiles: null };
         }
-      }),
+      },
     );
 
     res.json({ results });
