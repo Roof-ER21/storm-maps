@@ -23,7 +23,23 @@ import type { BoundingBox } from './types.js';
 import { etDayUtcWindow } from './timeUtils.js';
 
 const IEM_VTEC_BASE = 'https://mesonet.agron.iastate.edu/geojson/sbw.geojson';
-const FETCH_TIMEOUT_MS = 20_000;
+const IEM_VTEC_TIMEOUT_MS = Math.max(
+  1_000,
+  Number.parseInt(process.env.IEM_VTEC_FETCH_TIMEOUT_MS ?? '10000', 10) || 10_000,
+);
+const NWS_ALERTS_TIMEOUT_MS = Math.max(
+  1_000,
+  Number.parseInt(process.env.NWS_ALERTS_FETCH_TIMEOUT_MS ?? '8000', 10) || 8_000,
+);
+const NWS_ALERTS_FALLBACK_LOOKBACK_MS =
+  Math.max(
+    1,
+    Number.parseInt(process.env.NWS_ALERTS_FALLBACK_LOOKBACK_DAYS ?? '7', 10) || 7,
+  ) *
+  24 *
+  60 *
+  60 *
+  1000;
 const NWS_ALERTS_FAILURE_THRESHOLD = 3;
 const NWS_ALERTS_COOLDOWN_MS = 5 * 60_000;
 
@@ -74,6 +90,11 @@ interface VtecApiResponse {
   features: VtecApiFeature[];
 }
 
+interface VtecFetchResult {
+  warnings: IemVtecWarning[];
+  ok: boolean;
+}
+
 function fmtIemTimestamp(iso: string): string {
   // SBW endpoint accepts ISO 8601 with second precision and a Z suffix.
   const d = new Date(iso);
@@ -93,6 +114,12 @@ export interface IemVtecQuery {
 export async function fetchIemVtecWarnings(
   q: IemVtecQuery,
 ): Promise<IemVtecWarning[]> {
+  return (await fetchIemVtecWarningsWithStatus(q)).warnings;
+}
+
+async function fetchIemVtecWarningsWithStatus(
+  q: IemVtecQuery,
+): Promise<VtecFetchResult> {
   const allowed = new Set<WarningPhenomenon>(q.phenomena ?? ['SV', 'TO']);
   // SBW endpoint doesn't filter server-side by phenomena; we filter client-
   // side. Significance=W only (warnings, not watches/advisories) is enforced
@@ -103,7 +130,7 @@ export async function fetchIemVtecWarnings(
   });
   const url = `${IEM_VTEC_BASE}?${params.toString()}`;
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => ac.abort(), IEM_VTEC_TIMEOUT_MS);
   try {
     const res = await fetch(url, {
       signal: ac.signal,
@@ -114,10 +141,10 @@ export async function fetchIemVtecWarnings(
         iemVtecHttpWarned.add(res.status);
         console.info(`[iem-vtec] optional archive HTTP ${res.status} (suppressing further)`);
       }
-      return [];
+      return { warnings: [], ok: false };
     }
     const data = (await res.json()) as VtecApiResponse;
-    return parseFeatures(data.features ?? [], q.bounds, allowed);
+    return { warnings: parseFeatures(data.features ?? [], q.bounds, allowed), ok: true };
   } catch (err) {
     if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !iemVtecFetchWarned) {
       iemVtecFetchWarned = true;
@@ -126,7 +153,7 @@ export async function fetchIemVtecWarnings(
         errorMessage(err),
       );
     }
-    return [];
+    return { warnings: [], ok: false };
   } finally {
     clearTimeout(timer);
   }
@@ -274,16 +301,18 @@ export async function fetchIemVtecForDate(opts: {
 }): Promise<IemVtecWarning[]> {
   const w = etDayUtcWindow(opts.date);
   // Try IEM VTEC first (legacy path; might work for older queries).
-  const iemResult = await fetchIemVtecWarnings({
+  const iemResult = await fetchIemVtecWarningsWithStatus({
     startIso: w.startUtc.toISOString(),
     endIso: w.endUtc.toISOString(),
     bounds: opts.bounds,
   });
-  if (iemResult.length > 0) return iemResult;
+  if (iemResult.ok || iemResult.warnings.length > 0) return iemResult.warnings;
   // Fall back to NWS api.weather.gov which is what SA21 uses and which
-  // actually returns GeoJSON (IEM watchwarn returns ZIP shapefile only,
-  // and `fmt=geojson` is silently ignored by the upgraded endpoint).
+  // returns GeoJSON. Only use it when the archive fetch itself failed and
+  // the date is recent enough for the NWS alerts API to be relevant. An
+  // empty IEM archive response usually means "no warnings", not "fallback".
   if (!opts.bounds) return [];
+  if (!shouldUseNwsAlertsFallback(w.startUtc, w.endUtc)) return [];
   const lat = (opts.bounds.north + opts.bounds.south) / 2;
   const lng = (opts.bounds.east + opts.bounds.west) / 2;
   return fetchNwsAlertsForPoint({
@@ -293,6 +322,17 @@ export async function fetchIemVtecForDate(opts: {
     endIso: w.endUtc.toISOString(),
     bounds: opts.bounds,
   });
+}
+
+function shouldUseNwsAlertsFallback(
+  startUtc: Date,
+  endUtc: Date,
+  now = Date.now(),
+): boolean {
+  return (
+    endUtc.getTime() >= now - NWS_ALERTS_FALLBACK_LOOKBACK_MS &&
+    startUtc.getTime() <= now + 24 * 60 * 60 * 1000
+  );
 }
 
 /** Fetch warnings/alerts from api.weather.gov for a property point and a
@@ -319,7 +359,7 @@ async function fetchNwsAlertsForPoint(opts: {
   );
 
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => ac.abort(), NWS_ALERTS_TIMEOUT_MS);
   try {
     const res = await fetch(url.toString(), {
       signal: ac.signal,

@@ -22,8 +22,11 @@ import {
   swdiHostDown,
 } from './swdiCircuitBreaker.js';
 
-const SWDI_BASE = 'https://www.ncdc.noaa.gov/swdiws/csv/nx3hail';
-const FETCH_TIMEOUT_MS = 20_000;
+const SWDI_BASE = 'https://www.ncei.noaa.gov/swdiws/csv/nx3hail';
+const FETCH_TIMEOUT_MS = Math.max(
+  1_000,
+  Number.parseInt(process.env.SWDI_FETCH_TIMEOUT_MS ?? '6000', 10) || 6_000,
+);
 
 export interface SwdiHailReport {
   /** ISO 8601 UTC. */

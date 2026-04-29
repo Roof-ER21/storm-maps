@@ -8,61 +8,176 @@ import { getCacheStats, purgeExpiredCache } from "../services/enrichmentCache.js
 
 const router = Router();
 
+interface DashboardOverviewRow {
+  all_scans: number | string | null;
+  completed: number | string | null;
+  high_priority: number | string | null;
+  aluminum_siding: number | string | null;
+  today: number | string | null;
+  roof_type_breakdown: Record<string, unknown> | null;
+  lead_pipeline: Record<string, unknown> | null;
+  activity_breakdown: Record<string, unknown> | null;
+}
+
+function countValue(value: unknown): number {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function normalizeCountMap(input: Record<string, unknown> | null | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [key, value] of Object.entries(input ?? {})) {
+    out[key] = countValue(value);
+  }
+  return out;
+}
+
+function errorCause(error: unknown): unknown {
+  return (error as { cause?: unknown } | null)?.cause ?? error;
+}
+
+function dashboardErrorSummary(error: unknown): string {
+  const causeValue = errorCause(error);
+  const cause = (causeValue && typeof causeValue === "object" ? causeValue : {}) as {
+    code?: unknown;
+    errno?: unknown;
+    address?: unknown;
+    port?: unknown;
+    message?: unknown;
+  };
+  const code = String(cause.code ?? cause.errno ?? "DB_ERROR");
+  const address =
+    typeof cause.address === "string"
+      ? `${cause.address}${cause.port ? `:${cause.port}` : ""}`
+      : "";
+  const message =
+    typeof cause.message === "string"
+      ? cause.message
+      : error instanceof Error
+        ? error.message
+        : String(error);
+  return [code, address, message].filter(Boolean).join(" ");
+}
+
+function isDbConnectivityError(error: unknown): boolean {
+  const summary = dashboardErrorSummary(error).toUpperCase();
+  return (
+    summary.includes("CONNECT_TIMEOUT") ||
+    summary.includes("ETIMEDOUT") ||
+    summary.includes("ECONNRESET") ||
+    summary.includes("ECONNREFUSED") ||
+    summary.includes("ENOTFOUND") ||
+    summary.includes("EAI_AGAIN") ||
+    summary.includes("CONNECTION TERMINATED")
+  );
+}
+
 // GET /api/dashboard - Stats overview
 router.get("/", async (_req, res) => {
   try {
-    const [totalResult, completedResult, highPriorityResult, aluminumResult, todayResult, roofBreakdown, modeBreakdown, recentActivity] = await Promise.all([
-      db.select({ count: sql<number>`count(*)` }).from(propertyAnalyses),
-      db.select({ count: sql<number>`count(*)` }).from(propertyAnalyses).where(eq(propertyAnalyses.status, "completed")),
-      db.select({ count: sql<number>`count(*)` }).from(propertyAnalyses).where(eq(propertyAnalyses.isHighPriority, true)),
-      db.select({ count: sql<number>`count(*)` }).from(propertyAnalyses).where(eq(propertyAnalyses.isAluminumSiding, true)),
-      db.select({ count: sql<number>`count(*)` }).from(propertyAnalyses).where(
-        sql`created_at > now() - interval '24 hours'`
+    const overviewRows = await db.execute(sql`
+      WITH
+      stats AS (
+        SELECT
+          count(*)::int AS all_scans,
+          count(*) FILTER (WHERE status = 'completed')::int AS completed,
+          count(*) FILTER (WHERE is_high_priority = TRUE)::int AS high_priority,
+          count(*) FILTER (WHERE is_aluminum_siding = TRUE)::int AS aluminum_siding,
+          count(*) FILTER (WHERE created_at > now() - interval '24 hours')::int AS today
+        FROM property_analyses
       ),
-      db.select({
-        type: propertyAnalyses.roofType,
-        count: sql<number>`count(*)`,
-      }).from(propertyAnalyses).where(eq(propertyAnalyses.status, "completed")).groupBy(propertyAnalyses.roofType),
-      db.select({
-        action: activityLog.action,
-        count: sql<number>`count(*)`,
-      }).from(activityLog).groupBy(activityLog.action),
+      roof AS (
+        SELECT COALESCE(jsonb_object_agg(COALESCE(roof_type, 'unknown'), n), '{}'::jsonb) AS roof_type_breakdown
+        FROM (
+          SELECT roof_type, count(*)::int AS n
+          FROM property_analyses
+          WHERE status = 'completed'
+          GROUP BY roof_type
+        ) grouped_roofs
+      ),
+      pipeline AS (
+        SELECT COALESCE(jsonb_object_agg(COALESCE(lead_status, 'new'), n), '{}'::jsonb) AS lead_pipeline
+        FROM (
+          SELECT lead_status, count(*)::int AS n
+          FROM property_analyses
+          WHERE status = 'completed'
+          GROUP BY lead_status
+        ) grouped_pipeline
+      ),
+      activity AS (
+        SELECT COALESCE(jsonb_object_agg(action, n), '{}'::jsonb) AS activity_breakdown
+        FROM (
+          SELECT action, count(*)::int AS n
+          FROM activity_log
+          GROUP BY action
+        ) grouped_activity
+      )
+      SELECT
+        stats.all_scans,
+        stats.completed,
+        stats.high_priority,
+        stats.aluminum_siding,
+        stats.today,
+        roof.roof_type_breakdown,
+        pipeline.lead_pipeline,
+        activity.activity_breakdown
+      FROM stats
+      CROSS JOIN roof
+      CROSS JOIN pipeline
+      CROSS JOIN activity
+    `) as DashboardOverviewRow[];
+
+    const overview = overviewRows[0] ?? {
+      all_scans: 0,
+      completed: 0,
+      high_priority: 0,
+      aluminum_siding: 0,
+      today: 0,
+      roof_type_breakdown: {},
+      lead_pipeline: {},
+      activity_breakdown: {},
+    };
+
+    const [recentActivity, topLeads, recentAnalyses] = await Promise.all([
       db.query.activityLog.findMany({
         orderBy: desc(activityLog.createdAt),
         limit: 20,
       }),
+      db.query.propertyAnalyses.findMany({
+        where: eq(propertyAnalyses.isHighPriority, true),
+        orderBy: desc(propertyAnalyses.prospectScore),
+        limit: 5,
+        columns: {
+          id: true,
+          inputAddress: true,
+          normalizedAddress: true,
+          roofType: true,
+          prospectScore: true,
+          isAluminumSiding: true,
+          leadStatus: true,
+        },
+      }),
+      db.query.propertyAnalyses.findMany({
+        where: eq(propertyAnalyses.status, "completed"),
+        orderBy: desc(propertyAnalyses.createdAt),
+        limit: 15,
+        columns: {
+          id: true,
+          inputAddress: true,
+          normalizedAddress: true,
+          roofType: true,
+          prospectScore: true,
+          isHighPriority: true,
+          isAluminumSiding: true,
+          leadStatus: true,
+          createdAt: true,
+        },
+      }),
     ]);
 
     // Estimate API cost: ~$0.01 per full analysis (Street View + Satellite + Gemini)
-    const totalCompleted = Number(completedResult[0]?.count || 0);
+    const totalCompleted = countValue(overview.completed);
     const estimatedCost = (totalCompleted * 0.012).toFixed(2);
-
-    // Lead pipeline
-    const pipelineResult = await db.select({
-      status: propertyAnalyses.leadStatus,
-      count: sql<number>`count(*)`,
-    }).from(propertyAnalyses).where(eq(propertyAnalyses.status, "completed")).groupBy(propertyAnalyses.leadStatus);
-
-    const pipeline: Record<string, number> = {};
-    for (const row of pipelineResult) {
-      pipeline[row.status || "new"] = Number(row.count);
-    }
-
-    // Top scoring leads
-    const topLeads = await db.query.propertyAnalyses.findMany({
-      where: eq(propertyAnalyses.isHighPriority, true),
-      orderBy: desc(propertyAnalyses.prospectScore),
-      limit: 5,
-      columns: {
-        id: true,
-        inputAddress: true,
-        normalizedAddress: true,
-        roofType: true,
-        prospectScore: true,
-        isAluminumSiding: true,
-        leadStatus: true,
-      },
-    });
 
     // Enrichment data cache stats
     const cacheStats = await getCacheStats(db).catch(() => ({ totalEntries: 0, byType: {}, expiredCount: 0 }));
@@ -78,21 +193,17 @@ router.get("/", async (_req, res) => {
 
     res.json({
       totals: {
-        allScans: Number(totalResult[0]?.count || 0),
+        allScans: countValue(overview.all_scans),
         completed: totalCompleted,
-        highPriority: Number(highPriorityResult[0]?.count || 0),
-        aluminumSiding: Number(aluminumResult[0]?.count || 0),
-        today: Number(todayResult[0]?.count || 0),
+        highPriority: countValue(overview.high_priority),
+        aluminumSiding: countValue(overview.aluminum_siding),
+        today: countValue(overview.today),
       },
       estimatedApiCost: `$${estimatedCost}`,
-      roofTypeBreakdown: Object.fromEntries(
-        roofBreakdown.map((r) => [r.type || "unknown", Number(r.count)])
-      ),
-      leadPipeline: pipeline,
+      roofTypeBreakdown: normalizeCountMap(overview.roof_type_breakdown),
+      leadPipeline: normalizeCountMap(overview.lead_pipeline),
       topLeads,
-      activityBreakdown: Object.fromEntries(
-        modeBreakdown.map((r) => [r.action, Number(r.count)])
-      ),
+      activityBreakdown: normalizeCountMap(overview.activity_breakdown),
       recentActivity: recentActivity.map((a) => ({
         action: a.action,
         details: a.details,
@@ -104,18 +215,14 @@ router.get("/", async (_req, res) => {
       },
       enrichmentCache: cacheStats,
       lastBackup: getLatestBackup()?.result || null,
-      recentAnalyses: (await db.query.propertyAnalyses.findMany({
-        where: eq(propertyAnalyses.status, "completed"),
-        orderBy: desc(propertyAnalyses.createdAt),
-        limit: 15,
-        columns: {
-          id: true, inputAddress: true, normalizedAddress: true,
-          roofType: true, prospectScore: true, isHighPriority: true,
-          isAluminumSiding: true, leadStatus: true, createdAt: true,
-        },
-      })),
+      recentAnalyses,
     });
   } catch (error) {
+    if (isDbConnectivityError(error)) {
+      console.warn(`[dashboard] database temporarily unavailable: ${dashboardErrorSummary(error)}`);
+      res.status(503).json({ error: "Dashboard temporarily unavailable" });
+      return;
+    }
     console.error("Dashboard error:", error);
     res.status(500).json({ error: "Failed to load dashboard" });
   }

@@ -103,6 +103,8 @@ let lastCycleStats = {
   hailDatesScanned: 0,
   errors: 0,
 };
+let cycleInFlight = false;
+let overlapWarned = false;
 
 export interface PrewarmStatus {
   enabled: boolean;
@@ -229,6 +231,28 @@ function reportInBounds(
 }
 
 async function runPrewarmCycle(): Promise<void> {
+  if (cycleInFlight) {
+    if (!overlapWarned) {
+      overlapWarned = true;
+      console.warn('[prewarm] previous cycle still running; skipping overlapping run');
+    }
+    return;
+  }
+  cycleInFlight = true;
+  try {
+    await runPrewarmCycleInner();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    lastCycleFinishedAt = new Date().toISOString();
+    lastCycleStats = { ...lastCycleStats, errors: lastCycleStats.errors + 1 };
+    console.warn('[prewarm] cycle failed:', message);
+  } finally {
+    cycleInFlight = false;
+    overlapWarned = false;
+  }
+}
+
+async function runPrewarmCycleInner(): Promise<void> {
   lastCycleStartedAt = new Date().toISOString();
   const cycleStats = {
     warmedSwath: 0,

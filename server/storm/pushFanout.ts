@@ -22,6 +22,12 @@ const NWS_HEADERS = {
   'User-Agent': '(HailYes, contact@roofer21.com)',
   Accept: 'application/geo+json',
 };
+const NWS_FETCH_TIMEOUT_MS = Math.max(
+  1_000,
+  Number.parseInt(process.env.NWS_ACTIVE_FETCH_TIMEOUT_MS ?? '8000', 10) || 8_000,
+);
+const NWS_FAILURE_THRESHOLD = 3;
+const NWS_COOLDOWN_MS = 5 * 60_000;
 
 interface NwsAlertProps {
   '@id'?: string;
@@ -44,7 +50,7 @@ interface NwsAlertResponse {
   features?: NwsAlertFeature[];
 }
 
-const STATE_REGEX = /\b(VA|MD|PA|WV|DC|DE)\b/g;
+const STATE_REGEX = /\b(VA|MD|PA|WV|DC|DE|NJ)\b/g;
 
 function parseStatesFromAreaDesc(areaDesc?: string | null): string[] {
   if (!areaDesc) return [];
@@ -69,6 +75,10 @@ function shortAlertId(raw: string): string {
 }
 
 let pushFanoutNwsWarned = false;
+let pushFanoutCooldownWarned = false;
+let nwsConsecutiveFailures = 0;
+let nwsCooldownUntil = 0;
+let cycleInFlight = false;
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
@@ -87,41 +97,87 @@ function isAbortLike(err: unknown): boolean {
   );
 }
 
-async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
-  // Pull SVR + Tornado in parallel — both are roof-claim-relevant.
-  const events = ['Severe Thunderstorm Warning', 'Tornado Warning'];
-  const all: NwsAlertFeature[] = [];
-  for (const event of events) {
-    try {
-      const params = new URLSearchParams({
-        event,
-        status: 'actual',
-        message_type: 'alert',
-      });
-      const ac = new AbortController();
-      const timer = setTimeout(() => ac.abort(), 12_000);
-      const res = await fetch(`${NWS_BASE}/alerts/active?${params.toString()}`, {
-        headers: NWS_HEADERS,
-        signal: ac.signal,
-      });
-      clearTimeout(timer);
-      if (!res.ok) continue;
-      const data = (await res.json()) as NwsAlertResponse;
-      if (data.features) all.push(...data.features);
-    } catch (err) {
-      // NWS api.weather.gov is rate-limited and routinely 12s-times out
-      // during pushFanout cycles. Abort/timeouts are expected and silent;
-      // non-timeout failures are informational because the worker retries.
-      if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !pushFanoutNwsWarned) {
-        pushFanoutNwsWarned = true;
-        console.info(
-          '[push-fanout] optional NWS fetch unavailable (suppressing further):',
-          errorMessage(err),
-        );
-      }
-    }
+function nwsActiveDown(now = Date.now()): boolean {
+  return now < nwsCooldownUntil;
+}
+
+function recordNwsActiveSuccess(): void {
+  nwsConsecutiveFailures = 0;
+  nwsCooldownUntil = 0;
+  pushFanoutCooldownWarned = false;
+}
+
+function recordNwsActiveFailure(reason: string, now = Date.now()): void {
+  if (nwsActiveDown(now)) return;
+  nwsConsecutiveFailures += 1;
+  if (nwsConsecutiveFailures < NWS_FAILURE_THRESHOLD) return;
+  nwsCooldownUntil = now + NWS_COOLDOWN_MS;
+  if (shouldLogOptionalUpstreams() && !pushFanoutCooldownWarned) {
+    pushFanoutCooldownWarned = true;
+    console.info(
+      `[push-fanout] optional NWS polling paused for ${Math.round(
+        NWS_COOLDOWN_MS / 60_000,
+      )} min after repeated failures; latest=${reason}`,
+    );
   }
-  return all;
+}
+
+interface ActiveWarningFetchResult {
+  features: NwsAlertFeature[];
+  ok: boolean;
+  reason?: string;
+}
+
+async function fetchActiveWarningsForEvent(
+  event: string,
+): Promise<ActiveWarningFetchResult> {
+  const params = new URLSearchParams({
+    event,
+    status: 'actual',
+    message_type: 'alert',
+  });
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), NWS_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${NWS_BASE}/alerts/active?${params.toString()}`, {
+      headers: NWS_HEADERS,
+      signal: ac.signal,
+    });
+    if (!res.ok) {
+      return { features: [], ok: false, reason: `HTTP ${res.status}` };
+    }
+    const data = (await res.json()) as NwsAlertResponse;
+    return { features: data.features ?? [], ok: true };
+  } catch (err) {
+    if (shouldLogOptionalUpstreams() && !isAbortLike(err) && !pushFanoutNwsWarned) {
+      pushFanoutNwsWarned = true;
+      console.info(
+        '[push-fanout] optional NWS fetch unavailable (suppressing further):',
+        errorMessage(err),
+      );
+    }
+    return { features: [], ok: false, reason: errorMessage(err) };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchActiveSevereWarnings(): Promise<NwsAlertFeature[]> {
+  if (nwsActiveDown()) return [];
+
+  // Pull SVR + Tornado in parallel — both are roof-claim-relevant.
+  const results = await Promise.all([
+    fetchActiveWarningsForEvent('Severe Thunderstorm Warning'),
+    fetchActiveWarningsForEvent('Tornado Warning'),
+  ]);
+
+  if (results.some((r) => r.ok)) {
+    recordNwsActiveSuccess();
+  } else {
+    recordNwsActiveFailure(results.map((r) => r.reason).filter(Boolean).join(', ') || 'fetch failed');
+  }
+
+  return results.flatMap((r) => r.features);
 }
 
 let cyclesRun = 0;
@@ -143,57 +199,67 @@ export interface PushFanoutStatus {
 }
 
 async function runFanoutCycle(): Promise<void> {
+  if (cycleInFlight) return;
+  cycleInFlight = true;
   lastCycleStartedAt = new Date().toISOString();
   const stats = { warnings: 0, pushed: 0, gone: 0, failed: 0 };
 
-  const warnings = await fetchActiveSevereWarnings();
-  stats.warnings = warnings.length;
+  try {
+    const warnings = await fetchActiveSevereWarnings();
+    stats.warnings = warnings.length;
 
-  for (const w of warnings) {
-    const props = w.properties;
-    if (!props) continue;
-    const states = parseStatesFromAreaDesc(props.areaDesc);
-    if (states.length === 0) continue;
-    const rawId = props['@id'] ?? props.id ?? w.id ?? '';
-    if (!rawId) continue;
-    const alertId = shortAlertId(rawId);
+    for (const w of warnings) {
+      const props = w.properties;
+      if (!props) continue;
+      const states = parseStatesFromAreaDesc(props.areaDesc);
+      if (states.length === 0) continue;
+      const rawId = props['@id'] ?? props.id ?? w.id ?? '';
+      if (!rawId) continue;
+      const alertId = shortAlertId(rawId);
 
-    const hail = parseHail(props.parameters?.maxHailSize);
-    const wind = parseWind(props.parameters?.maxWindGust);
+      const hail = parseHail(props.parameters?.maxHailSize);
+      const wind = parseWind(props.parameters?.maxWindGust);
 
-    const lines: string[] = [];
-    if (hail !== null) lines.push(`Hail ${hail}″`);
-    if (wind !== null) lines.push(`${wind} mph wind`);
-    const areaShort = (props.areaDesc ?? '').split(';').slice(0, 2).join(',');
+      const lines: string[] = [];
+      if (hail !== null) lines.push(`Hail ${hail}″`);
+      if (wind !== null) lines.push(`${wind} mph wind`);
+      const areaShort = (props.areaDesc ?? '').split(';').slice(0, 2).join(',');
 
-    const subs = await listSubscriptionsForStates({ states, alertId });
-    for (const sub of subs) {
-      const result = await sendPushPayload(
-        sub,
-        {
-          title: props.event ?? 'Severe Storm Warning',
-          body: [lines.join(' · '), areaShort].filter(Boolean).join(' — '),
-          url: '/',
-          tag: `nws-${alertId}`,
-          requireInteraction: hail !== null && hail >= 1.0,
-          data: { alertId, states, hail, wind },
-        },
-        { alertId },
-      );
-      if (result.ok) stats.pushed += 1;
-      else if (result.reason === 'gone') stats.gone += 1;
-      else stats.failed += 1;
+      const subs = await listSubscriptionsForStates({ states, alertId });
+      for (const sub of subs) {
+        const result = await sendPushPayload(
+          sub,
+          {
+            title: props.event ?? 'Severe Storm Warning',
+            body: [lines.join(' · '), areaShort].filter(Boolean).join(' — '),
+            url: '/',
+            tag: `nws-${alertId}`,
+            requireInteraction: hail !== null && hail >= 1.0,
+            data: { alertId, states, hail, wind },
+          },
+          { alertId },
+        );
+        if (result.ok) stats.pushed += 1;
+        else if (result.reason === 'gone') stats.gone += 1;
+        else stats.failed += 1;
+      }
     }
-  }
-
-  lastCycleStats = stats;
-  lastCycleFinishedAt = new Date().toISOString();
-  cyclesRun += 1;
-  if (stats.pushed > 0 || stats.gone > 0 || stats.failed > 0) {
-    console.log(
-      `[push-fanout] cycle ${cyclesRun} — warnings=${stats.warnings} ` +
-        `pushed=${stats.pushed} gone=${stats.gone} failed=${stats.failed}`,
-    );
+  } catch (err) {
+    stats.failed += 1;
+    if (shouldLogOptionalUpstreams()) {
+      console.info('[push-fanout] cycle failed:', errorMessage(err));
+    }
+  } finally {
+    lastCycleStats = stats;
+    lastCycleFinishedAt = new Date().toISOString();
+    cyclesRun += 1;
+    cycleInFlight = false;
+    if (stats.pushed > 0 || stats.gone > 0 || stats.failed > 0) {
+      console.log(
+        `[push-fanout] cycle ${cyclesRun} — warnings=${stats.warnings} ` +
+          `pushed=${stats.pushed} gone=${stats.gone} failed=${stats.failed}`,
+      );
+    }
   }
 }
 
