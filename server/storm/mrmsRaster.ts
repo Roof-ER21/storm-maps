@@ -54,7 +54,10 @@ const CACHE_MAX = 32;
 const ARCHIVE_TTL_MS = 60 * 60 * 1000;
 const LIVE_TTL_MS = 5 * 60 * 1000;
 const RASTER_DISPLAY_FLOOR_MM = 6.35; // 1/4" display floor; suppresses trace-noise rectangles.
-const EDGE_FEATHER_PX = 8;
+const EDGE_FEATHER_PX = 5;
+const EDGE_MIN_ALPHA_SCALE = 0.55;
+const RASTER_COLOR_LUMA_SCALE = 0.94;
+const RASTER_COLOR_SATURATION = 1.45;
 
 function cacheKey(date: string, bounds: BoundingBox): string {
   const round = (n: number) => Math.round(n / 0.05) * 0.05;
@@ -91,7 +94,13 @@ function hexToRgb(hex: string): [number, number, number] {
 function deepenRgb([r, g, b]: [number, number, number]): [number, number, number] {
   const luma = 0.299 * r + 0.587 * g + 0.114 * b;
   const saturate = (channel: number) =>
-    Math.max(0, Math.min(255, Math.round(luma + (channel - luma) * 1.45)));
+    Math.max(
+      0,
+      Math.min(
+        255,
+        Math.round(luma * RASTER_COLOR_LUMA_SCALE + (channel - luma) * RASTER_COLOR_SATURATION),
+      ),
+    );
   return [saturate(r), saturate(g), saturate(b)];
 }
 
@@ -243,8 +252,8 @@ function gridToPng(cropped: CroppedGrid): {
   let hailPixels = 0;
   // Ramp alpha by hail size so the basemap stays readable under lower-impact
   // areas while high-impact cells still pop. The display starts at 1/4"
-  // (not 1/8" trace), with edge feathering applied to the visible hail mask
-  // itself so the footprint reads like a storm corridor instead of a radar tile.
+  // (not 1/8" trace). Keep edge feathering modest so narrow MRMS cells
+  // retain a visible core on neighborhood-scale maps.
   const featherPx = Math.max(
     0,
     Math.min(EDGE_FEATHER_PX, Math.floor(Math.min(width, height) / 8)),
@@ -260,9 +269,12 @@ function gridToPng(cropped: CroppedGrid): {
       hailPixels += 1;
       const edgeDistance = edgeDistances ? edgeDistances[i] : featherPx;
       const edgeScale =
-        featherPx > 0 ? Math.min(1, Math.max(0, edgeDistance / featherPx)) : 1;
+        featherPx > 0
+          ? EDGE_MIN_ALPHA_SCALE +
+            (1 - EDGE_MIN_ALPHA_SCALE) * Math.min(1, Math.max(0, edgeDistance / featherPx))
+          : 1;
       const baseAlpha = Math.round(
-        190 + (65 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
+        210 + (45 * Math.min(band.index, BAND_RGB.length - 1)) / Math.max(1, BAND_RGB.length - 1),
       );
       const alpha = Math.round(baseAlpha * edgeScale);
       png.data[off] = band.rgb[0];
