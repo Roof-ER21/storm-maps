@@ -88,7 +88,12 @@ interface SwathCacheRow {
   expires_at: string | Date;
 }
 
-const CACHE_DB_COOLDOWN_MS = 2 * 60_000;
+// 30s cooldown after a cache-DB failure. Was 2 min, but that meant a single
+// transient connect blip blackholed every swath/wind/hail endpoint for two
+// full minutes onto the slow live-fetch path. 30s lets us recover quickly
+// while still preventing a tight retry loop. If the DB is genuinely down,
+// the next failure re-extends the cooldown.
+const CACHE_DB_COOLDOWN_MS = 30_000;
 let cacheDbCooldownUntil = 0;
 const cacheDbWarned = new Set<string>();
 
