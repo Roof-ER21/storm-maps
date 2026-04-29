@@ -1292,6 +1292,26 @@ async function fetchGroundReportUpgrades(
 // on 2026-04-29. We cap concurrency to 4 and remember "no MRMS" misses so
 // repeated date sweeps don't refetch the same negative result.
 const PER_DATE_IMPACT_CONCURRENCY = 4;
+// Per-date budget. If a single MRMS lookup takes longer than this, treat
+// it as "unknown" and move on. Keeps a slow upstream from pinning the
+// whole 60-date batch past the Railway edge timeout (~30s).
+const PER_DATE_IMPACT_BUDGET_MS = 12_000;
+
+function withBudget<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise<T | null>((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    p.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      () => {
+        clearTimeout(timer);
+        resolve(null);
+      },
+    );
+  });
+}
 type PerDateUnknownEntry = { expiresAt: number };
 const perDateUnknownCache = new Map<string, PerDateUnknownEntry>();
 const PER_DATE_UNKNOWN_CACHE_MAX = 5000;
@@ -1444,11 +1464,14 @@ app.post('/api/hail/per-date-impact', async (req, res) => {
           return { date, tier: 'unknown', directHit: false, closestMiles: null };
         }
         try {
-          const resp = await buildMrmsImpactResponse({
-            date,
-            bounds,
-            points: [{ id: 'addr', lat: body.lat!, lng: body.lng! }],
-          });
+          const resp = await withBudget(
+            buildMrmsImpactResponse({
+              date,
+              bounds,
+              points: [{ id: 'addr', lat: body.lat!, lng: body.lng! }],
+            }),
+            PER_DATE_IMPACT_BUDGET_MS,
+          );
           const r = resp?.results[0];
           if (!r) {
             const ground = groundUpgradeByDate.get(date);

@@ -15,7 +15,13 @@
 import { inflate } from 'pako';
 
 const IEM_BASE = 'https://mtarchive.geol.iastate.edu';
-const FETCH_TIMEOUT_MS = 30_000;
+// Per-attempt fetch timeout. Was 30s, dropped to 6s on 2026-04-29 because
+// 10Y rep queries fan out to up to 60 dates and each MRMS GRIB2 fetch tries
+// up to ~36 candidate URLs. A single hung URL × 30s × multiple dates was
+// blowing past the Railway edge timeout. IEM MTArchive responds within
+// ~500ms when the file exists or 404s, so 6s is a forgiving ceiling for
+// genuine network slowness without compounding into 30s per stuck URL.
+const FETCH_TIMEOUT_MS = 6_000;
 
 export type MrmsProduct = 'MESH_Max_60min' | 'MESH_Max_1440min' | 'MESH';
 
