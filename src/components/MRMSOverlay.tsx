@@ -46,10 +46,13 @@ export default function MRMSOverlay({
 
     if (!visible) return;
 
-    // Cache-bust with timestamp to get fresh data
-    const overlayUrl = url
-      ? `${url}${url.includes('?') ? '&' : '?'}t=${Date.now()}`
-      : `${getMrmsOverlayUrl(product)}?t=${Date.now()}`;
+    // Only cache-bust refreshing/live overlays. Historical MRMS URLs are
+    // date+bbox deterministic and should reuse browser/CDN/server cache.
+    const baseOverlayUrl = url ?? getMrmsOverlayUrl(product);
+    const shouldCacheBust = Boolean(refreshMs && refreshMs > 0);
+    const overlayUrl = shouldCacheBust
+      ? `${baseOverlayUrl}${baseOverlayUrl.includes('?') ? '&' : '?'}t=${Date.now()}`
+      : baseOverlayUrl;
     const overlayBounds = bounds || CONUS_BOUNDS;
 
     const groundBounds = new google.maps.LatLngBounds(
@@ -63,7 +66,7 @@ export default function MRMSOverlay({
     });
 
     overlayRef.current.setMap(map);
-  }, [map, opacity, product, visible, bounds, url]);
+  }, [map, opacity, product, visible, bounds, url, refreshMs]);
 
   useEffect(() => {
     createOverlay();

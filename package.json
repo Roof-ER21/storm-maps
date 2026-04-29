@@ -38,6 +38,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@vis.gl/react-google-maps": "^1.7.1",
     "bcryptjs": "^3.0.3",
+    "compression": "^1.8.1",
     "d3-contour": "^4.0.2",
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
@@ -59,6 +60,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
+    "@types/compression": "^1.8.1",
     "@types/d3-contour": "^3.0.6",
     "@types/google.maps": "^3.58.1",
     "@types/node": "^24.12.0",

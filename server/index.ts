@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import rateLimit from 'express-rate-limit';
+import compression from 'compression';
 import { db, sql as pgSql } from './db.js';
 import { leads, properties, evidence, archives, reps, shareableReports } from './schema.js';
 import { eq } from 'drizzle-orm';
@@ -76,12 +77,14 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAILS || 'ahmed@theroofdocs.com')
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = path.join(__dirname, '../uploads');
+const DIST_DIR = path.join(__dirname, '../dist');
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const app = express();
 app.set('trust proxy', 1);
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
+app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '10mb' }));
 
 // Rate limiting — bumped from 300/15min after reps hit the ceiling on
@@ -147,8 +150,31 @@ app.use('/api/ai/autocomplete', aiAutocompleteRoutes);
 app.use('/api/ai/images', aiImageProxy);
 app.use('/api/ai/dashboard', aiDashboardRoutes);
 
-// Serve Vite build
-app.use(express.static(path.join(__dirname, '../dist')));
+// Serve Vite build. Vite fingerprints compiled assets, so those can be
+// cached for a year; the app shell and service worker must revalidate so
+// reps pick up deploys without manual cache clearing.
+app.use(
+  express.static(DIST_DIR, {
+    setHeaders: (res, filePath) => {
+      const baseName = path.basename(filePath);
+      const isFingerprintedAsset = filePath
+        .split(path.sep)
+        .includes('assets');
+
+      if (isFingerprintedAsset) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        return;
+      }
+
+      if (baseName === 'index.html' || baseName === 'sw.js') {
+        res.setHeader('Cache-Control', 'no-cache');
+        return;
+      }
+
+      res.setHeader('Cache-Control', 'public, max-age=300');
+    },
+  }),
+);
 
 // ── Auth ────────────────────────────────────────────────
 // Signup endpoint removed: app is admin-default. Login + bootstrap remain
@@ -2365,11 +2391,13 @@ setInterval(() => {
 
 // ── SPA fallback ────────────────────────────────────────
 app.get('/report/:slug', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
 app.get('{*path}', (_req, res) => {
-  res.sendFile(path.join(__dirname, '../dist/index.html'));
+  res.set('Cache-Control', 'no-cache');
+  res.sendFile(path.join(DIST_DIR, 'index.html'));
 });
 
 // Process-level safety net. Background tasks (backfills, push fanout, prewarm
