@@ -46,6 +46,7 @@ import WindLegend from './WindLegend';
 import {
   fetchMrmsMetadata,
   fetchLiveSwathPolygons,
+  fetchSwathPolygons,
   getHistoricalMrmsOverlayUrl,
   fetchStormImpact,
   type MrmsOverlayProduct,
@@ -519,6 +520,14 @@ function MapContent({
   const [, setMrmsError] = useState<string | null>(null);
   const [liveNowCast, setLiveNowCast] = useState(false);
   const [liveSwaths, setLiveSwaths] = useState<MeshSwath[]>([]);
+  // Historical-mode vector contour polygons fetched from /api/hail/mrms-vector
+  // when a storm date is selected. Replaces the raster GroundOverlay (which
+  // pixelates on zoom and produces single-cell rectangles for sparse storms).
+  // Same per-pixel color truth as the raster — just rendered as crisp vector
+  // polygons so storm shape stays organic at any zoom.
+  const [historicalContourSwaths, setHistoricalContourSwaths] = useState<
+    MeshSwath[]
+  >([]);
   const [liveSwathMeta, setLiveSwathMeta] = useState<{ maxInches: number; refTime: string } | null>(null);
   const [windCollection, setWindCollection] = useState<WindSwathCollection | null>(null);
   // Storm timeline scrubber: null = "all frames merged" (default), otherwise
@@ -724,7 +733,12 @@ function MapContent({
   const canRenderHistoricalMrms =
     showMrms &&
     mrmsHistoricalMode &&
-    Boolean(historicalMrmsUrl && historicalMrmsBounds);
+    Boolean(historicalMrmsUrl && historicalMrmsBounds) &&
+    // Only show the raster overlay as a FALLBACK when the vector
+    // contours haven't loaded yet. Once vector data is in, the raster
+    // is hidden — the polygon bands are a strict upgrade (no
+    // pixelation, no single-cell rectangles, no flicker on zoom).
+    historicalContourSwaths.length === 0;
 
   useEffect(() => {
     if (!selectedDate) {
@@ -750,15 +764,15 @@ function MapContent({
       return liveSwaths;
     }
 
-    // Historical mode + raster overlay rendering — return [] so the
-    // smooth gradient raster (Trace→Pea→Penny→Quarter→…) reads as a
-    // continuous footprint without hard vector contour edges layered
-    // on top. Per Ahmed (4/27/26) the raster look is what reps want;
-    // adding polygon outlines made it look fragmented. (Vector data
-    // still flows backend-side for the cap algorithm and per-band
-    // verification — just not rendered here.)
+    // Historical mode — render MRMS contour polygons (smooth-fill vector
+    // bands). Replaces the raster GroundOverlay which pixelated on zoom
+    // and rendered single-cell rectangles for sparse storms (West
+    // Friendship 9/9/23). HailSwathLayer recognizes the `mrms-contour-`
+    // id prefix and renders these with strokeWeight=0 so the bands
+    // stack as a continuous heat map (same look as the raster, but
+    // vector-crisp and shape-faithful).
     if (mrmsHistoricalMode) {
-      return [];
+      return historicalContourSwaths;
     }
 
     return swaths;
@@ -766,6 +780,7 @@ function MapContent({
     liveNowCast,
     liveSwaths,
     mrmsHistoricalMode,
+    historicalContourSwaths,
     swaths,
   ]);
 
@@ -865,6 +880,56 @@ function MapContent({
       clearInterval(id);
     };
   }, [liveNowCast, mapBounds]);
+
+  // ── Historical MRMS contour polygons (vector) ────────────────────────────
+  // When a storm date is selected, fetch the per-band MRMS contour polygons
+  // for that date+bbox and feed them to HailSwathLayer. These render as a
+  // smooth filled stack (no stroke per the 4/27/26 decision against
+  // fragmented contours), giving the same heat-map look as the raster but:
+  //   - crisp at any zoom (no pixelation)
+  //   - real organic storm shape (no single-pixel rectangles for sparse storms)
+  //   - no flicker on pan/zoom (vector primitives don't reflow)
+  // Falls back to silently empty + raster GroundOverlay if the fetch fails.
+  useEffect(() => {
+    if (!mrmsHistoricalMode || !historicalMrmsParams) {
+      setHistoricalContourSwaths([]);
+      return;
+    }
+    let cancelled = false;
+    const date = historicalMrmsParams.date;
+    const bounds = historicalMrmsParams.bounds;
+    void fetchSwathPolygons({
+      date,
+      bounds,
+      anchorTimestamp: historicalMrmsParams.anchorTimestamp ?? null,
+    }).then((collection) => {
+      if (cancelled) return;
+      if (!collection || collection.features.length === 0) {
+        setHistoricalContourSwaths([]);
+        return;
+      }
+      const converted: MeshSwath[] = collection.features.map((feature, i) => ({
+        // id prefix triggers HailSwathLayer's no-stroke historical-contour
+        // rendering path (smooth fill, no fragmented lines).
+        id: `mrms-contour-${date}-${feature.properties.level}-${i}`,
+        date,
+        geometry: feature.geometry,
+        sourceGeometryType: 'polygon' as const,
+        maxMeshInches: feature.properties.sizeInches,
+        avgMeshInches: feature.properties.sizeInches,
+        areaSqMiles: geometryAreaSqMiles(feature.geometry),
+        statesAffected: [],
+        displayColor: feature.properties.color,
+        displayLabel: feature.properties.label,
+      }));
+      setHistoricalContourSwaths(converted);
+    }).catch(() => {
+      if (!cancelled) setHistoricalContourSwaths([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [mrmsHistoricalMode, historicalMrmsParams]);
 
   // ── Wind swath layer fetch ───────────────────────────────────────────────
   // Pulls per-band wind polygons whenever the wind filter is on. In live mode

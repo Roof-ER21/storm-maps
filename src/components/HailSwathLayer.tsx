@@ -35,6 +35,15 @@ interface FeatureProps {
   isFocused: boolean;
   isEmphasized: boolean;
   isLine: boolean;
+  /**
+   * True when this feature is a per-band MRMS contour polygon for the
+   * selected historical date. Renders with strokeWeight=0 so the bands
+   * read as a smooth heat-map gradient (Trace→Pea→Penny→Quarter→…)
+   * instead of the fragmented stroked contours that Ahmed flagged on
+   * 4/27/26. Same color truth as the raster, but vector-crisp at any
+   * zoom and with real organic storm shape (no single-pixel rectangles).
+   */
+  isHistoricalContour: boolean;
   infoContent: string;
 }
 
@@ -122,6 +131,9 @@ function meshToGeoJsonFeatures(
       const isFocused = Boolean(selectedDate);
       const isEmphasized = isFocused && highlightSelected;
       const level = Math.min(9, Math.max(0, Math.floor(swath.maxMeshInches * 2)));
+      // MRMS historical contour polygons carry id="mrms-contour-N" — those
+      // get rendered without stroke so the bands stack as a smooth fill.
+      const isHistoricalContour = swath.id.startsWith('mrms-contour-');
       return {
         type: 'Feature',
         id: swath.id,
@@ -132,6 +144,7 @@ function meshToGeoJsonFeatures(
           isFocused,
           isEmphasized,
           isLine: classifyGeometry(swath.geometry) === 'line',
+          isHistoricalContour,
           infoContent: buildInfoContent(swath, color),
         },
         geometry: swath.geometry,
@@ -158,6 +171,27 @@ function styleFeature(
       strokeOpacity,
       strokeWeight,
       zIndex: isEmphasized ? 19 : isFocused ? 15 : 11,
+      clickable: true,
+    };
+  }
+
+  // MRMS historical contour bands — render as filled polygons with NO
+  // stroke so the 13-band stack reads as a smooth color-gradient heat
+  // map (matching the raster look reps liked on 4/27) instead of the
+  // fragmented contour-line look. Per-band fill alpha rises with band
+  // index so heavier hail pops without obscuring the lighter outer
+  // bands.
+  const isHistoricalContour = Boolean(
+    feature.getProperty('isHistoricalContour'),
+  );
+  if (isHistoricalContour) {
+    const fillOpacity = Math.min(0.78, 0.42 + level * 0.04);
+    return {
+      fillColor: color,
+      fillOpacity,
+      strokeOpacity: 0,
+      strokeWeight: 0,
+      zIndex: 50 + level,
       clickable: true,
     };
   }
