@@ -1271,9 +1271,11 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
     // 0.25 filters out SPC/IEM-buffered fallback writes (1-3 features)
     // without the slow JSONB metadata.source extraction.
     //
-    // 8s SQL budget. Under heavy DB load this endpoint was racing against
-    // statement_timeout=30s and blocking the pool for everything else;
-    // failing fast with an empty result is better than holding a slot.
+    // SET LOCAL statement_timeout caps THIS query at 6s without affecting
+    // other connections. Promise.race alone wasn't enough — it returned
+    // early but the SQL kept running and held the pool slot for the
+    // remaining 24s of the global statement_timeout. Postgres-side cancel
+    // actually frees the connection.
     type SwathRow = {
       date: string;
       payload: {
@@ -1283,24 +1285,41 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
         }>;
       };
     };
-    const queryPromise = pgSql<SwathRow[]>`
-      SELECT DISTINCT ON (date) date::text, payload
-        FROM swath_cache
-       WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
-         AND date >= ${sinceStr}
-         AND bbox_south <= ${lat} AND bbox_north >= ${lat}
-         AND bbox_west  <= ${lng} AND bbox_east  >= ${lng}
-         AND feature_count >= 4
-         AND max_value >= 0.25
-       ORDER BY date DESC, max_value DESC
-       LIMIT 100
-    `;
-    const candidates = (await Promise.race([
-      queryPromise,
-      new Promise<SwathRow[]>((resolve) =>
-        setTimeout(() => resolve([]), DATES_BY_LOCATION_BUDGET_MS),
-      ),
-    ])) as SwathRow[];
+    let candidates: SwathRow[];
+    try {
+      candidates = await pgSql.begin(async (tx) => {
+        await tx`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`;
+        return tx<SwathRow[]>`
+          SELECT DISTINCT ON (date) date::text, payload
+            FROM swath_cache
+           WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
+             AND date >= ${sinceStr}
+             AND bbox_south <= ${lat} AND bbox_north >= ${lat}
+             AND bbox_west  <= ${lng} AND bbox_east  >= ${lng}
+             AND feature_count >= 4
+             AND max_value >= 0.25
+           ORDER BY date DESC, max_value DESC
+           LIMIT 100
+        `;
+      });
+    } catch (err) {
+      // Statement timeout (57014) or any other DB error — return empty
+      // result so reps see consistent UX during DB stress instead of a
+      // 500 spinner. Cache the empty result briefly so they don't pile
+      // on retries.
+      const code = (err as { code?: string })?.code;
+      if (code !== '57014') {
+        console.warn('[dates-by-location] query failed:', (err as Error).message);
+      }
+      const empty = { dates: [] };
+      datesByLocationCache.set(cacheKey, {
+        expiresAt: Date.now() + 30_000,
+        payload: empty,
+      });
+      res.set('Cache-Control', 'public, max-age=30');
+      res.json(empty);
+      return;
+    }
 
     // Per-date max band-the-house-is-in. Multiple cached entries (different
     // hours) for the same date — keep the highest band that contains the
