@@ -1248,6 +1248,17 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
             .toISOString()
             .slice(0, 10);
 
+    // Kill switch — defaults to disabled until the swath_cache GIST index
+    // ships. The bbox-containment scan was hot-pinning the DB on rep
+    // queries and cascading into reportPdf + per-date-impact + every
+    // other endpoint sharing the pool. Set HAIL_DATES_BY_LOCATION=1 once
+    // the index is in and verified to actually be used by the planner.
+    if (process.env.HAIL_DATES_BY_LOCATION !== '1') {
+      res.set('Cache-Control', 'public, max-age=300');
+      res.json({ dates: [] });
+      return;
+    }
+
     if (!pgSql) {
       res.json({ dates: [] });
       return;
