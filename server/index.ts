@@ -1282,12 +1282,29 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
       }
     }
 
+    // Apply the adjuster-credibility display cap before returning. Reps and
+    // adjusters expect "flat" sizes (0.75 / 1.0 / 1.25 / ...) — never the
+    // raw IHM band like 0.38 (3/8") which doesn't appear in HailTrace or
+    // HailRecon outputs. Pass an unverified context so we get the floor +
+    // pass-through bands; consensus / Sterling-class paths require a bulk
+    // verification lookup we don't run from this hot endpoint.
+    const unverifiedCtx = {
+      isVerified: false,
+      isAtLocation: false,
+      isSterlingClass: false,
+      consensusSize: null,
+    };
     const dates = Array.from(byDate.entries())
-      .map(([date, atPropertyInches]) => ({
-        date,
-        atPropertyInches,
-        tier: 'direct_hit' as const,
-      }))
+      .map(([date, rawAtProperty]) => {
+        const display = displayHailInches(rawAtProperty, unverifiedCtx);
+        return {
+          date,
+          atPropertyInches: display ?? rawAtProperty,
+          rawAtPropertyInches: rawAtProperty,
+          tier: 'direct_hit' as const,
+        };
+      })
+      .filter((d) => d.atPropertyInches !== null)
       .sort((a, b) => b.date.localeCompare(a.date));
 
     res.set('Cache-Control', 'public, max-age=120');
