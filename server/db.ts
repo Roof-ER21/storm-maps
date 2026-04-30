@@ -17,7 +17,11 @@ const pgMaxConnections = positiveIntEnv(
   process.env.NODE_ENV === 'production' ? 12 : 10,
 );
 
-const pgStatementTimeoutMs = positiveIntEnv('PG_STATEMENT_TIMEOUT_MS', 15_000);
+// Statement timeout. 15s was too aggressive — the PDF generator's
+// swath_cache scan + the lead sync's per-row SELECT both legitimately
+// take >15s under prewarm-worker concurrent load. 30s is a safer ceiling
+// that still kills genuinely hung queries before they hold a pool slot.
+const pgStatementTimeoutMs = positiveIntEnv('PG_STATEMENT_TIMEOUT_MS', 30_000);
 
 // Silence "relation X already exists, skipping" NOTICEs that flood the log
 // every boot because the migrate scripts use idempotent CREATE IF NOT EXISTS.

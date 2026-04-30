@@ -1108,18 +1108,27 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
         date: string;
         payload: { features: Array<{ properties: { sizeInches: number }; geometry: { coordinates: number[][][][] } }> };
       };
+      // Cast bounds on parameter side, not row side, so the existing
+      // swath_cache_date_idx (source, date) is usable. Limit reduced to
+      // 200 — each payload is JSONB up to ~100KB; >200 returned blows
+      // through statement_timeout on the wire transfer alone. The bbox
+      // filter typically narrows to <50 rows for any single property.
+      const dolDate = req.dateOfLoss.slice(0, 10);
+      const startDate = new Date(`${dolDate}T00:00:00Z`);
+      startDate.setUTCDate(startDate.getUTCDate() - historyWindowDays);
+      const startStr = startDate.toISOString().slice(0, 10);
       const swathRows = await pgSql<SwathRow[]>`
         SELECT date::text, payload
           FROM swath_cache
          WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
-           AND date::date BETWEEN
-               (${req.dateOfLoss}::date - ${historyWindowDays}::int)
-           AND (${req.dateOfLoss}::date)
+           AND date >= ${startStr}
+           AND date <= ${dolDate}
            AND bbox_south <= ${req.lat}
            AND bbox_north >= ${req.lat}
            AND bbox_west  <= ${req.lng}
            AND bbox_east  >= ${req.lng}
-         LIMIT 1000
+         ORDER BY date DESC
+         LIMIT 200
       `;
       for (const sr of swathRows) {
         let bestSize = 0;
