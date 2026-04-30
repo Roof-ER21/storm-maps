@@ -1391,31 +1391,27 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       computeDurationFromPoints(histHailPoints);
     const durationStr = durationMin !== null ? `${durationMin.toFixed(1)} minutes` : '—';
 
-    // At-property hail size — uses the same cap call that previously fed
-    // the tier card. dolAtPropCtx is the per-band verification ctx.
-    // Fallback chain when MRMS bands.atProperty is null (older DoLs where
-    // the GRIB2 file rotated out of the IEM archive cache). Without
-    // fallback, the cell reads "—" while the narrative below says
-    // "penny-sized hail" because composeStormNarrative consults a wider
-    // signal — visibly inconsistent on the same page.
-    //   1) propertyImpact.bands.atProperty   (best — at the pin, polygon-contained)
-    //   2) propertyImpact.maxHailInches      (Pass 2 atPropertyMax for near_miss
-    //                                         tier — closest swath edge ≤0.5mi)
-    //   3) propertyImpact.bands.mi1to3       (1-3mi MRMS band)
-    //   4) closest ground report ≤1mi        (radar gap, ground-truth filled)
-    // Order chosen so the Size cell matches the narrative's cappedHeadline,
-    // which favors the at-or-near-property signal over the wider mi1to3
-    // band. Falling to mi1to3 only when both at-pin signals are null.
+    // At-property hail size — MUST agree with the narrative's
+    // headlineHailIn computation below (Math.max of atProperty,
+    // maxHailInches, peakHailEvents). When narrative says "no hail
+    // crossed the reportable threshold", this cell must also read "—"
+    // — Reese flagged a 9/20/25 Seymour Terrace report where the cell
+    // showed 0.75" but narrative said no hail (2026-04-30).
+    //
+    // Previous mi1to3 fallback was the bug: mi1to3 means a polygon
+    // edge 1-3 mi away. That doesn't belong in a cell labeled "Size
+    // of Hail Detected" at the property. Removed.
+    //
+    // Fallback chain (matches narrative exactly):
+    //   1) propertyImpact.bands.atProperty (polygon contains property)
+    //   2) propertyImpact.maxHailInches    (Pass 2 atPropertyMax for
+    //                                       near_miss — edge ≤0.5mi)
+    //   3) closest ground report ≤1mi     (radar-gap ground truth)
+    // No more mi1to3 fallback.
     let atPropertyVal = propertyImpact?.bands.atProperty ?? null;
     if (atPropertyVal === null || atPropertyVal === 0) {
       const wide = propertyImpact?.maxHailInches ?? null;
       if (wide !== null && wide > 0) atPropertyVal = wide;
-    }
-    if (atPropertyVal === null || atPropertyVal === 0) {
-      const mi1to3 = propertyImpact?.bands.mi1to3 ?? null;
-      if (mi1to3 !== null && mi1to3 > 0) {
-        atPropertyVal = mi1to3;
-      }
     }
     if (atPropertyVal === null || atPropertyVal === 0) {
       let closestMag = 0;
