@@ -194,13 +194,39 @@ export function buildMrmsVectorCollection(
   // for thresholds > 0, which is what we want.
   const fillValues = new Float64Array(values.length);
   let maxValMm = 0;
+  for (let i = 0; i < values.length; i += 1) {
+    const v = values[i];
+    if (Number.isFinite(v) && v >= 0) {
+      if (v > maxValMm) maxValMm = v;
+    }
+  }
+
+  // ── Unit scaling sanity check (Bug 2 Fix) ──────────────────────────
+  // Some archived GRIB2 files (e.g., 2024-07-16) have grid values that are
+  // scaled by 25.4× (mm) but then treated as inches by the upstream
+  // producer, or double-converted.
+  //
+  // If max is > 150mm (~6", larger than the world record hailstone),
+  // check if dividing by 25.4 brings it into a sane range (0.1–5").
+  let scaleFactor = 1.0;
+  if (maxValMm > 150) {
+    const correctedMax = maxValMm / 25.4;
+    if (correctedMax < 150) {
+      console.log(
+        `[mrms-contour] Suspicious max ${maxValMm.toFixed(1)}mm for ${params.date}. Applying 25.4x unit correction.`,
+      );
+      scaleFactor = 1.0 / 25.4;
+      maxValMm = correctedMax;
+    }
+  }
+
   let hailCells = 0;
   for (let i = 0; i < values.length; i += 1) {
     const v = values[i];
     if (Number.isFinite(v) && v >= 0) {
-      fillValues[i] = v;
-      if (v >= IHM_HAIL_LEVELS[0].sizeMm) hailCells += 1;
-      if (v > maxValMm) maxValMm = v;
+      const correctedV = v * scaleFactor;
+      fillValues[i] = correctedV;
+      if (correctedV >= IHM_HAIL_LEVELS[0].sizeMm) hailCells += 1;
     } else {
       fillValues[i] = -1;
     }

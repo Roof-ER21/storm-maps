@@ -950,10 +950,22 @@ app.get('/api/hail/mrms-vector', async (req, res) => {
       bounds,
       anchorIso: q.anchorTimestamp,
     });
+
+    // ── Auto-Fallback (Bug 1 Fix - Tightened) ────────────────────────
+    // If the MRMS pipeline failed entirely (null), fall back to the
+    // ground-report buffered polygons. If it returned 0 features, it
+    // means radar legitimately said "nothing" — return empty to
+    // preserve the "MRMS = Direct Hit" canon.
     if (!collection) {
-      res.status(502).json({ error: 'MRMS pipeline unavailable' });
+      const fallback = await buildHailFallbackCollection({
+        date,
+        bounds,
+      });
+      res.set('Cache-Control', 'public, max-age=600');
+      res.json(fallback);
       return;
     }
+
     res.set('Cache-Control', 'public, max-age=600');
     res.json(collection);
   } catch (err) {

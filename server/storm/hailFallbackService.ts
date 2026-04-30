@@ -25,6 +25,21 @@ import { fetchIemHailReports } from './iemHailReports.js';
 import { bufferCircle, expandBounds } from './geometry.js';
 import { getCachedSwath, setCachedSwath } from './cache.js';
 import type { BoundingBox } from './types.js';
+import { sql as pgSql } from '../db.js';
+
+interface VerifiedHailRow {
+  lat: number;
+  lng: number;
+  hail_size_inches: number | null;
+  magnitude: number | null;
+  source_ncei_storm_events: boolean | null;
+  source_spc_hail: boolean | null;
+  source_mping: boolean | null;
+  source_iem_lsr: boolean | null;
+  state_code: string | null;
+  county: string | null;
+  narrative: string | null;
+}
 
 // IHM-matched 13 hail bands. Mirrors src/types/ihmHailLevels.ts so the
 // frontend Legend renders exactly the same color/label set.
@@ -202,13 +217,7 @@ export async function buildHailFallbackCollection(
   const padded = expandBounds(req.bounds, 30);
   const sources: string[] = [];
 
-  // Per the 2026-04-27 afternoon addendum, swath rendering uses
-  // PRIMARY sources only — adjusters don't recognize SPC spotter
-  // reports, and per-report buffer circles from many SPC points were
-  // creating the "polygon-y / finicky" fragmented look Ahmed flagged.
-  // IEM LSR is kept (it's the NWS LSR mirror = primary). SPC is
-  // dropped from the fallback collection. The SPC fetch is also
-  // skipped to save the network round-trip.
+  // 1. Fetch live IEM LSR reports.
   const iemReports = await fetchIemHailReports({
     date: req.date,
     bounds: padded,
@@ -217,7 +226,51 @@ export async function buildHailFallbackCollection(
 
   if (iemReports.length > 0) sources.push('IEM LSR');
 
-  const all = iemReports
+  // 2. Fetch archived verified ground reports (Bug 1 Enhancement).
+  // This pulls from federal ground sources already in our DB, capturing
+  // historical dates that the live LSR feed may have rolled off.
+  let archiveReports: HailPointReport[] = [];
+  try {
+    const rows = await pgSql<VerifiedHailRow[]>`
+      SELECT lat, lng, hail_size_inches, magnitude,
+             source_ncei_storm_events, source_mping,
+             source_iem_lsr, source_nws_warnings,
+             state_code, county, narrative
+        FROM verified_hail_events
+       WHERE event_date = ${req.date}::date
+         AND lat BETWEEN ${padded.south} AND ${padded.north}
+         AND lng BETWEEN ${padded.west} AND ${padded.east}
+         AND (
+           source_ncei_storm_events = TRUE
+           OR source_mping = TRUE
+           OR source_iem_lsr = TRUE
+           OR source_nws_warnings = TRUE
+         )
+    `;
+    archiveReports = rows.map((row, idx) => {
+      let sourceLabel = 'Verified Archive';
+      if (row.source_ncei_storm_events) sourceLabel = 'NCEI Storm Events';
+      else if (row.source_iem_lsr) sourceLabel = 'IEM LSR';
+      else if (row.source_nws_warnings) sourceLabel = 'NWS Warning';
+
+      return {
+        id: `arch-h-${req.date}-${idx}`,
+        time: req.date,
+        lat: row.lat,
+        lng: row.lng,
+        sizeInches: row.hail_size_inches ?? row.magnitude ?? 0.5,
+        source: sourceLabel,
+        state: row.state_code ?? undefined,
+        county: row.county ?? undefined,
+        description: row.narrative ?? undefined,
+      };
+    });
+    if (archiveReports.length > 0) sources.push('Verified Archive');
+  } catch (err) {
+    console.warn('[hail-fallback] DB archive fetch failed:', err);
+  }
+
+  const all = [...iemReports, ...archiveReports]
     .filter((r) => Number.isFinite(r.sizeInches) && r.sizeInches > 0)
     .filter((r) => inBounds(r, padded));
   const deduped = dedupeReports(all);
@@ -233,7 +286,7 @@ export async function buildHailFallbackCollection(
       bounds: req.bounds,
       reportCount: deduped.length,
       maxHailInches,
-      sources,
+      sources: [...new Set(sources)],
       generatedAt: new Date().toISOString(),
       source: 'in-repo-fallback',
     },
