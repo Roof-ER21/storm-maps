@@ -1190,6 +1190,37 @@ app.get('/api/hail/mrms-now-vector', async (req, res) => {
 //   1. Bbox-prefilters swath_cache rows whose bbox contains the point
 //   2. Decodes payload.features and runs point-in-polygon for each
 //   3. Returns { date, atPropertyInches, tier='direct_hit' } for matches
+
+// In-memory result cache. Reps load the same property multiple times in
+// rapid succession (panel refresh, tab switches, navigation). Without this
+// cache the endpoint hits swath_cache on every single render, hammering
+// the pool when the rep's view triggers cascading mounts.
+type DatesByLocationEntry = {
+  expiresAt: number;
+  payload: {
+    dates: Array<{
+      date: string;
+      atPropertyInches: number;
+      rawAtPropertyInches: number;
+      tier: 'direct_hit';
+    }>;
+  };
+};
+const datesByLocationCache = new Map<string, DatesByLocationEntry>();
+const DATES_BY_LOCATION_TTL_MS = 120_000;
+const DATES_BY_LOCATION_CACHE_MAX = 500;
+const DATES_BY_LOCATION_BUDGET_MS = 8_000;
+
+function datesByLocationCacheKey(
+  lat: number,
+  lng: number,
+  sinceStr: string,
+): string {
+  // Round to 0.005° (~0.35 mi) so neighbors share cache entries.
+  const round = (n: number) => (Math.round(n * 200) / 200).toFixed(3);
+  return `${round(lat)}|${round(lng)}|${sinceStr}`;
+}
+
 interface HailDatesByLocationQuery {
   lat?: string;
   lng?: string;
@@ -1222,17 +1253,27 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
       return;
     }
 
+    // L1 cache — most rep navigation re-fires the same query. 2-min TTL
+    // is short enough that fresh swath_cache writes from the worker
+    // surface quickly while still keeping the DB unburdened during a
+    // session.
+    const cacheKey = datesByLocationCacheKey(lat, lng, sinceStr);
+    const cached = datesByLocationCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      res.set('Cache-Control', 'public, max-age=120');
+      res.json(cached.payload);
+      return;
+    }
+
     // Bbox-prefilter: only candidates where the cached bbox contains the
-    // property. We dedupe to ONE row per date (highest max_value) at query
-    // time so we don't pull 10+ payloads for the same storm date — that
-    // was choking statement_timeout when reps loaded high-storm-density
-    // properties (50+ rows × ~50KB JSONB each = >2MB transferred + parsed
-    // before PIP could even start).
+    // property. DISTINCT ON (date) collapses 10+ same-day cached entries
+    // (different scan times) to one. feature_count >= 4 + max_value >=
+    // 0.25 filters out SPC/IEM-buffered fallback writes (1-3 features)
+    // without the slow JSONB metadata.source extraction.
     //
-    // feature_count >= 4 filters out the SPC/IEM-buffered fallback writes
-    // (those produce 1-3 features); the real MRMS GRIB pipeline produces
-    // 4+ IHM bands per cached entry. Cheaper than the JSONB metadata.source
-    // extraction it replaces.
+    // 8s SQL budget. Under heavy DB load this endpoint was racing against
+    // statement_timeout=30s and blocking the pool for everything else;
+    // failing fast with an empty result is better than holding a slot.
     type SwathRow = {
       date: string;
       payload: {
@@ -1242,7 +1283,7 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
         }>;
       };
     };
-    const candidates = await pgSql<SwathRow[]>`
+    const queryPromise = pgSql<SwathRow[]>`
       SELECT DISTINCT ON (date) date::text, payload
         FROM swath_cache
        WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
@@ -1254,6 +1295,12 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
        ORDER BY date DESC, max_value DESC
        LIMIT 100
     `;
+    const candidates = (await Promise.race([
+      queryPromise,
+      new Promise<SwathRow[]>((resolve) =>
+        setTimeout(() => resolve([]), DATES_BY_LOCATION_BUDGET_MS),
+      ),
+    ])) as SwathRow[];
 
     // Per-date max band-the-house-is-in. Multiple cached entries (different
     // hours) for the same date — keep the highest band that contains the
@@ -1316,8 +1363,22 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
       .filter((d) => d.atPropertyInches !== null)
       .sort((a, b) => b.date.localeCompare(a.date));
 
+    const payload = { dates };
+
+    // Cache for 2 min (shared across nearby reps) + cap entries to avoid
+    // unbounded growth.
+    datesByLocationCache.set(cacheKey, {
+      expiresAt: Date.now() + DATES_BY_LOCATION_TTL_MS,
+      payload,
+    });
+    while (datesByLocationCache.size > DATES_BY_LOCATION_CACHE_MAX) {
+      const oldest = datesByLocationCache.keys().next().value;
+      if (!oldest) break;
+      datesByLocationCache.delete(oldest);
+    }
+
     res.set('Cache-Control', 'public, max-age=120');
-    res.json({ dates });
+    res.json(payload);
   } catch (err) {
     console.error('[dates-by-location] failed', err);
     res.status(500).json({ error: 'Failed to find MRMS hail dates' });
