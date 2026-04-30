@@ -38,6 +38,7 @@ import { fetchActiveSvrPolygons } from './storm/nwsAlerts.js';
 import { fetchMesocyclones } from './storm/nceiNx3MdaClient.js';
 import { corroborateSynopticObservations } from './storm/synopticObservationsService.js';
 import { etDayUtcWindow } from './storm/timeUtils.js';
+import { pointInRing } from './storm/geometry.js';
 import { displayHailInches } from './storm/displayCapService.js';
 import {
   buildBandedVerificationBulk,
@@ -1173,6 +1174,127 @@ app.get('/api/hail/mrms-now-vector', async (req, res) => {
   } catch (err) {
     console.error('[mrms-now-vector] failed', err);
     res.status(500).json({ error: 'Failed to build MRMS now-cast' });
+  }
+});
+
+// ── Hail dates by location ─────────────────────────────────────────────────
+// Discover hail dates where the property is INSIDE an MRMS swath polygon,
+// even when no point report exists in verified_hail_events and no NHP
+// centerline exists for the storm. Closes the UI/PDF parity gap: previously
+// the PDF would scan swath_cache and find a containment, but the UI's
+// storm-dates panel relied on NHP + verified_hail_events alone — so dates
+// like 2025-06-25 in Burke (real MRMS hail, no NCEI hail report, no NHP
+// centerline) were invisible until the rep generated a PDF.
+//
+// This endpoint:
+//   1. Bbox-prefilters swath_cache rows whose bbox contains the point
+//   2. Decodes payload.features and runs point-in-polygon for each
+//   3. Returns { date, atPropertyInches, tier='direct_hit' } for matches
+interface HailDatesByLocationQuery {
+  lat?: string;
+  lng?: string;
+  since?: string;
+  months?: string;
+}
+
+app.get('/api/hail/dates-by-location', async (req, res) => {
+  try {
+    const q = req.query as HailDatesByLocationQuery;
+    const lat = parseFloat(q.lat ?? '');
+    const lng = parseFloat(q.lng ?? '');
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      res.status(400).json({ error: 'lat/lng required' });
+      return;
+    }
+    const monthsBack = Math.min(
+      120,
+      Math.max(1, parseInt(q.months ?? '24', 10) || 24),
+    );
+    const sinceStr =
+      q.since && /^\d{4}-\d{2}-\d{2}$/.test(q.since)
+        ? q.since
+        : new Date(Date.now() - monthsBack * 30 * 86_400_000)
+            .toISOString()
+            .slice(0, 10);
+
+    if (!pgSql) {
+      res.json({ dates: [] });
+      return;
+    }
+
+    // Bbox-prefilter: only candidates where the cached bbox contains the
+    // property. Cheap btree-or-seq scan; payload JSONB stays compressed
+    // until we actually need to decode it.
+    type SwathRow = {
+      date: string;
+      payload: {
+        features: Array<{
+          properties: { sizeInches: number };
+          geometry: { coordinates: number[][][][] };
+        }>;
+      };
+    };
+    const candidates = await pgSql<SwathRow[]>`
+      SELECT date::text, payload
+        FROM swath_cache
+       WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
+         AND date >= ${sinceStr}
+         AND bbox_south <= ${lat} AND bbox_north >= ${lat}
+         AND bbox_west  <= ${lng} AND bbox_east  >= ${lng}
+         AND payload->'metadata'->>'source' = 'mrms-vector'
+       ORDER BY date DESC
+       LIMIT 500
+    `;
+
+    // Per-date max band-the-house-is-in. Multiple cached entries (different
+    // hours) for the same date — keep the highest band that contains the
+    // point. ¼" trace floor matches the existing display logic.
+    const byDate = new Map<string, number>();
+    for (const row of candidates) {
+      const features = row.payload?.features ?? [];
+      let bestSize = 0;
+      for (const feat of features) {
+        const sz = Number(feat.properties?.sizeInches ?? 0);
+        if (sz < 0.25) continue; // sub-trace floor
+        const polys = feat.geometry?.coordinates ?? [];
+        let inside = false;
+        for (const poly of polys) {
+          if (!poly || poly.length === 0) continue;
+          if (!pointInRing(lat, lng, poly[0])) continue;
+          // hole check — outer must contain, holes must not
+          let inHole = false;
+          for (let r = 1; r < poly.length; r += 1) {
+            if (pointInRing(lat, lng, poly[r])) {
+              inHole = true;
+              break;
+            }
+          }
+          if (!inHole) {
+            inside = true;
+            break;
+          }
+        }
+        if (inside && sz > bestSize) bestSize = sz;
+      }
+      if (bestSize > 0) {
+        const existing = byDate.get(row.date) ?? 0;
+        if (bestSize > existing) byDate.set(row.date, bestSize);
+      }
+    }
+
+    const dates = Array.from(byDate.entries())
+      .map(([date, atPropertyInches]) => ({
+        date,
+        atPropertyInches,
+        tier: 'direct_hit' as const,
+      }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+
+    res.set('Cache-Control', 'public, max-age=120');
+    res.json({ dates });
+  } catch (err) {
+    console.error('[dates-by-location] failed', err);
+    res.status(500).json({ error: 'Failed to find MRMS hail dates' });
   }
 });
 

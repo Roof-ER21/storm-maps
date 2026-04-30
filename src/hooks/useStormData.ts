@@ -211,7 +211,18 @@ export function useStormData({
       // CORS-blocked + timing out (10+ seconds of dead time per request,
       // visible in console as `[stormApi] SPC fetch failed for ...`). Now
       // we trust the server aggregator and just pull NHP swaths in parallel.
-      const [swdiEvents, nhpSwaths] = await Promise.allSettled([
+      //
+      // Also pull MRMS-polygon-containment hail dates in parallel. NHP
+      // centerlines miss smaller storms that our local MRMS GRIB decode
+      // captures; without this third call, a date like 2025-06-25 in
+      // Burke (real MRMS hail, no NCEI hail report, no NHP centerline)
+      // never surfaces in the storm-dates panel even though the PDF can
+      // see it. Endpoint returns dates where the property is inside an
+      // MRMS swath polygon; <100ms typical (bbox prefilter + JS PIP).
+      const sinceQuery = sinceDate
+        ? `&since=${encodeURIComponent(sinceDate)}`
+        : `&months=${effectiveMonths}`;
+      const [swdiEvents, nhpSwaths, mrmsDates] = await Promise.allSettled([
         searchByCoordinates(
           lat,
           lng,
@@ -227,6 +238,26 @@ export function useStormData({
           sinceDate,
           controller.signal,
         ),
+        fetch(
+          `/api/hail/dates-by-location?lat=${lat}&lng=${lng}${sinceQuery}`,
+          { signal: controller.signal },
+        )
+          .then((r) =>
+            r.ok
+              ? (r.json() as Promise<{
+                  dates: Array<{
+                    date: string;
+                    atPropertyInches: number;
+                    tier: 'direct_hit';
+                  }>;
+                }>)
+              : { dates: [] },
+          )
+          .catch(() => ({ dates: [] as Array<{
+            date: string;
+            atPropertyInches: number;
+            tier: 'direct_hit';
+          }> })),
       ]);
 
       if (controller.signal.aborted) return;
@@ -265,7 +296,48 @@ export function useStormData({
 
       // Merge event dates and swath dates
       const eventDates = groupEventsByDate(dedupedEvents, lat, lng, resolvedSwaths);
-      const mergedDates = mergeDateLists(eventDates, swathDates);
+      let mergedDates = mergeDateLists(eventDates, swathDates);
+
+      // Inject MRMS-only direct-hit dates from /api/hail/dates-by-location.
+      // These are the dates where our local MRMS polygon decoder finds the
+      // property INSIDE a hail swath, even though there's no NCEI hail row
+      // and no NHP centerline. Each date is treated as a swath-style
+      // StormDate so the existing per-date-impact tier upgrade still runs
+      // and patches in atProperty band classification.
+      const mrmsDatesPayload =
+        mrmsDates.status === 'fulfilled' ? mrmsDates.value.dates : [];
+      if (mrmsDatesPayload.length > 0) {
+        const mrmsStormDates: StormDate[] = mrmsDatesPayload
+          .filter((d) => isDateInRange(d.date, sinceDate))
+          .map((d) => ({
+            date: d.date,
+            label: formatDateLabel(d.date),
+            eventCount: 0,
+            maxHailInches: d.atPropertyInches,
+            maxWindMph: 0,
+            statesAffected: [],
+            closestMiles: 0,
+            tier: 'direct_hit' as StormImpactTier,
+          }));
+        mergedDates = mergeDateLists(mergedDates, mrmsStormDates);
+
+        // mergeDateLists preserves the event-derived tier (correct for NHP
+        // swaths which can be coarse). For MRMS polygon containment we
+        // override — the polygon truth is stronger than any distance-based
+        // tier from a wind-only event 12 mi away. Upgrade the tier to
+        // direct_hit on every date the MRMS endpoint returned.
+        const mrmsHitDates = new Set(mrmsStormDates.map((d) => d.date));
+        for (const sd of mergedDates) {
+          if (mrmsHitDates.has(sd.date)) {
+            sd.tier = 'direct_hit';
+            sd.closestMiles = 0;
+            const mrmsHit = mrmsDatesPayload.find((d) => d.date === sd.date);
+            if (mrmsHit && mrmsHit.atPropertyInches > sd.maxHailInches) {
+              sd.maxHailInches = mrmsHit.atPropertyInches;
+            }
+          }
+        }
+      }
 
       setEvents(dedupedEvents);
       setSwaths(resolvedSwaths);

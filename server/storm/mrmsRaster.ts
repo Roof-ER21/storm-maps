@@ -58,6 +58,16 @@ const EDGE_FEATHER_PX = 5;
 const EDGE_MIN_ALPHA_SCALE = 0.55;
 const RASTER_COLOR_LUMA_SCALE = 0.94;
 const RASTER_COLOR_SATURATION = 1.45;
+// Lighter IHM bands (¼", ⅜", ½") wash out on green/road map backgrounds.
+// Per rep feedback (2026-04-30) the deeper bands look right but the pale
+// yellows are barely visible. We detect "pale" inputs by their luma and
+// apply an extra saturation pump + a luma drop so the color reads as a
+// saturated yellow-orange instead of a wash. Threshold tuned so #FEF3B0
+// (⅛"), #FDE68A (¼"), #FCD34D (⅜"), #FBBF24 (½") all get the boost while
+// #F59E0B (¾") and darker stay where they are.
+const PALE_LUMA_THRESHOLD = 195;
+const PALE_SATURATION_PUMP = 1.35;
+const PALE_LUMA_DROP = 0.85;
 
 function cacheKey(date: string, bounds: BoundingBox): string {
   const round = (n: number) => Math.round(n / 0.05) * 0.05;
@@ -93,12 +103,19 @@ function hexToRgb(hex: string): [number, number, number] {
 
 function deepenRgb([r, g, b]: [number, number, number]): [number, number, number] {
   const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+  const isPale = luma >= PALE_LUMA_THRESHOLD;
+  const lumaScale = isPale
+    ? RASTER_COLOR_LUMA_SCALE * PALE_LUMA_DROP
+    : RASTER_COLOR_LUMA_SCALE;
+  const saturation = isPale
+    ? RASTER_COLOR_SATURATION * PALE_SATURATION_PUMP
+    : RASTER_COLOR_SATURATION;
   const saturate = (channel: number) =>
     Math.max(
       0,
       Math.min(
         255,
-        Math.round(luma * RASTER_COLOR_LUMA_SCALE + (channel - luma) * RASTER_COLOR_SATURATION),
+        Math.round(luma * lumaScale + (channel - luma) * saturation),
       ),
     );
   return [saturate(r), saturate(g), saturate(b)];

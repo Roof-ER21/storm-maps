@@ -836,6 +836,16 @@ function App() {
       for (const swath of swaths) {
         visibleDateKeys.add(swath.date);
       }
+      // Also include MRMS-polygon-containment direct-hit dates that aren't
+      // backed by an NHP centerline or a point report. /api/hail/dates-by-
+      // location adds these to stormDates with tier='direct_hit' and
+      // maxHailInches > 0; without this branch they'd be invisible under
+      // hail-only filter (no event, no swath in the swaths array).
+      for (const sd of stormDates) {
+        if (sd.maxHailInches > 0 || sd.tier === 'direct_hit') {
+          visibleDateKeys.add(sd.date);
+        }
+      }
     }
 
     return Array.from(visibleDateKeys)
