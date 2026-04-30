@@ -555,42 +555,6 @@ const SharedReportPage = lazy(() => import('./components/SharedReportPage'));
 const TOKEN_KEY = 'hailyes_token';
 const USER_KEY = 'hailyes_user';
 
-function BootstrapPinPrompt({ onSubmit }: { onSubmit: (pin: string) => void }) {
-  const [pin, setPin] = useState('');
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-stone-950 text-white p-6">
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (pin.trim()) onSubmit(pin.trim());
-        }}
-        className="w-full max-w-sm rounded-3xl border border-stone-800 bg-stone-900 p-8 shadow-2xl"
-      >
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] text-white font-bold text-sm">H!</div>
-          <span className="text-white font-bold">Hail Yes!</span>
-        </div>
-        <p className="text-sm text-stone-400 mb-4">Enter access PIN to continue.</p>
-        <input
-          type="password"
-          autoFocus
-          value={pin}
-          onChange={(e) => setPin(e.target.value)}
-          placeholder="PIN"
-          className="w-full rounded-xl border border-stone-800 bg-stone-950 px-4 py-3 text-white placeholder:text-stone-500 focus:border-orange-500 focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={!pin.trim()}
-          className="mt-4 w-full rounded-2xl bg-[linear-gradient(135deg,#f97316,#7c3aed)] px-4 py-3 text-sm font-semibold text-white shadow-lg disabled:opacity-50"
-        >
-          Unlock
-        </button>
-      </form>
-    </div>
-  );
-}
-
 function ReportRoute({ slug }: { slug: string }) {
   return (
     <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-orange-400 border-t-transparent" /></div>}>
@@ -608,8 +572,8 @@ function ReportRoute({ slug }: { slug: string }) {
 function AppRouter() {
   const reportSlug = window.location.pathname.match(/^\/report\/([^/]+)/)?.[1];
 
-  const [pinRequired, setPinRequired] = useState(false);
-  const [pinPrompt, setPinPrompt] = useState(false);
+  // PIN prompt removed — reps shouldn't see one. Admin auth stays server-side
+  // via /api/auth/admin-bootstrap?pin=…
 
   useEffect(() => {
     if (reportSlug) return;
@@ -617,39 +581,23 @@ function AppRouter() {
     let cancelled = false;
     (async () => {
       try {
-        // Check if a PIN is required first — short-circuits the bootstrap call.
-        const cfgRes = await fetch('/api/auth/bootstrap-config');
-        if (cfgRes.ok) {
-          const cfg = (await cfgRes.json()) as { bootstrapPinRequired?: boolean };
-          if (cfg.bootstrapPinRequired) {
-            const stored = localStorage.getItem('hailyes_bootstrap_pin') ?? '';
-            if (!stored) {
-              if (!cancelled) {
-                setPinRequired(true);
-                setPinPrompt(true);
-              }
-              return;
-            }
-            const res = await fetch(`/api/auth/admin-bootstrap?pin=${encodeURIComponent(stored)}`);
-            if (!res.ok) {
-              localStorage.removeItem('hailyes_bootstrap_pin');
-              if (!cancelled) {
-                setPinRequired(true);
-                setPinPrompt(true);
-              }
-              return;
-            }
-            const data = await res.json();
-            if (cancelled) return;
-            if (data?.token && data?.user) {
-              localStorage.setItem(TOKEN_KEY, data.token);
-              localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-            }
-            return;
-          }
+        // Reps shouldn't see a PIN prompt — admin endpoints stay gated
+        // server-side by the JWT/PIN check on /api/auth/admin-bootstrap.
+        // If a stored PIN exists locally, attempt admin bootstrap with it
+        // so admins keep their auto-login. Otherwise just try the open
+        // bootstrap; on failure (PIN required server-side) we fall through
+        // and the app renders with a synthetic user.
+        const stored = localStorage.getItem('hailyes_bootstrap_pin') ?? '';
+        const url = stored
+          ? `/api/auth/admin-bootstrap?pin=${encodeURIComponent(stored)}`
+          : '/api/auth/admin-bootstrap';
+        const res = await fetch(url);
+        if (!res.ok) {
+          // PIN gate kicked in or server error — silently skip and let the
+          // app render anonymously. Reps don't need a token to view.
+          if (stored) localStorage.removeItem('hailyes_bootstrap_pin');
+          return;
         }
-        const res = await fetch('/api/auth/admin-bootstrap');
-        if (!res.ok) throw new Error(`bootstrap ${res.status}`);
         const data = await res.json();
         if (cancelled) return;
         if (data?.token && data?.user) {
@@ -662,19 +610,6 @@ function AppRouter() {
     })();
     return () => { cancelled = true; };
   }, [reportSlug]);
-
-  if (pinPrompt) {
-    return (
-      <BootstrapPinPrompt
-        onSubmit={(pin) => {
-          localStorage.setItem('hailyes_bootstrap_pin', pin);
-          setPinPrompt(false);
-          window.location.reload();
-        }}
-      />
-    );
-  }
-  void pinRequired;
 
   if (reportSlug) return <ReportRoute slug={reportSlug} />;
 

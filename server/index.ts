@@ -211,12 +211,20 @@ app.get('/api/auth/admin-bootstrap', async (req, res) => {
   }
 });
 
-/** Public-facing config endpoint — tells the SPA whether bootstrap requires a PIN. */
+/** Public-facing config endpoint.
+ *
+ * Previously reported `bootstrapPinRequired: true` whenever BOOTSTRAP_PIN was
+ * set, which made the SPA show a PIN prompt to every visitor — including reps
+ * who only need to view storm reports / dashboard. Reps don't need admin
+ * access; admin endpoints are still gated server-side by the JWT path in
+ * `requireAdmin` and the PIN check on `/api/auth/admin-bootstrap`.
+ *
+ * So the SPA always renders without a prompt now. Anyone who legitimately
+ * needs admin access hits /api/auth/admin-bootstrap?pin=… with the PIN.
+ */
 app.get('/api/auth/bootstrap-config', (_req, res) => {
-  res.set('Cache-Control', 'public, max-age=300');
-  res.json({
-    bootstrapPinRequired: Boolean(process.env.BOOTSTRAP_PIN?.trim()),
-  });
+  res.set('Cache-Control', 'no-store');
+  res.json({ bootstrapPinRequired: false });
 });
 
 app.post('/api/auth/login', async (req, res) => {
