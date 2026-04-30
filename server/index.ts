@@ -1248,17 +1248,6 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
             .toISOString()
             .slice(0, 10);
 
-    // Kill switch — defaults to disabled until the swath_cache GIST index
-    // ships. The bbox-containment scan was hot-pinning the DB on rep
-    // queries and cascading into reportPdf + per-date-impact + every
-    // other endpoint sharing the pool. Set HAIL_DATES_BY_LOCATION=1 once
-    // the index is in and verified to actually be used by the planner.
-    if (process.env.HAIL_DATES_BY_LOCATION !== '1') {
-      res.set('Cache-Control', 'public, max-age=300');
-      res.json({ dates: [] });
-      return;
-    }
-
     if (!pgSql) {
       res.json({ dates: [] });
       return;
@@ -1276,19 +1265,28 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
       return;
     }
 
-    // Bbox-prefilter: only candidates where the cached bbox contains the
-    // property. DISTINCT ON (date) collapses 10+ same-day cached entries
-    // (different scan times) to one. feature_count >= 4 + max_value >=
-    // 0.25 filters out SPC/IEM-buffered fallback writes (1-3 features)
-    // without the slow JSONB metadata.source extraction.
+    // Two-stage query — the original single-query was timing out NOT
+    // because of slow filtering (it's 2.5ms even on 2710 rows) but
+    // because of JSONB payload transfer. ~700 matching rows × ~60KB
+    // payload each = ~42MB on the wire, which doesn't fit in 8s.
     //
-    // SET LOCAL statement_timeout caps THIS query at 6s without affecting
-    // other connections. Promise.race alone wasn't enough — it returned
-    // early but the SQL kept running and held the pool slot for the
-    // remaining 24s of the global statement_timeout. Postgres-side cancel
-    // actually frees the connection.
-    type SwathRow = {
+    // Stage 1: cheap prefilter, no payload — gives us (id, date,
+    // max_value) for the highest-band entry per date, capped at 30
+    // dates. <200ms.
+    //
+    // Stage 2: fetch payloads for those 30 ids only via primary-key
+    // lookup. <400ms. ~9MB total transfer.
+    //
+    // SET LOCAL statement_timeout=6s on each so a runaway can't pin
+    // the pool. 57014 catch returns empty + caches briefly so retries
+    // don't pile on.
+    type SwathPrefilterRow = {
+      id: number;
       date: string;
+      max_value: number;
+    };
+    type SwathPayloadRow = {
+      id: number;
       payload: {
         features: Array<{
           properties: { sizeInches: number };
@@ -1296,12 +1294,14 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
         }>;
       };
     };
-    let candidates: SwathRow[];
+
+    let prefilter: SwathPrefilterRow[];
     try {
-      candidates = await pgSql.begin(async (tx) => {
+      prefilter = await pgSql.begin(async (tx) => {
         await tx`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`;
-        return tx<SwathRow[]>`
-          SELECT DISTINCT ON (date) date::text, payload
+        return tx<SwathPrefilterRow[]>`
+          SELECT DISTINCT ON (date)
+                 id, date::text, max_value::float AS max_value
             FROM swath_cache
            WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
              AND date >= ${sinceStr}
@@ -1310,17 +1310,13 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
              AND feature_count >= 4
              AND max_value >= 0.25
            ORDER BY date DESC, max_value DESC
-           LIMIT 100
+           LIMIT 30
         `;
       });
     } catch (err) {
-      // Statement timeout (57014) or any other DB error — return empty
-      // result so reps see consistent UX during DB stress instead of a
-      // 500 spinner. Cache the empty result briefly so they don't pile
-      // on retries.
       const code = (err as { code?: string })?.code;
       if (code !== '57014') {
-        console.warn('[dates-by-location] query failed:', (err as Error).message);
+        console.warn('[dates-by-location] prefilter failed:', (err as Error).message);
       }
       const empty = { dates: [] };
       datesByLocationCache.set(cacheKey, {
@@ -1331,6 +1327,50 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
       res.json(empty);
       return;
     }
+
+    if (prefilter.length === 0) {
+      const empty = { dates: [] };
+      datesByLocationCache.set(cacheKey, {
+        expiresAt: Date.now() + DATES_BY_LOCATION_TTL_MS,
+        payload: empty,
+      });
+      res.set('Cache-Control', 'public, max-age=120');
+      res.json(empty);
+      return;
+    }
+
+    let payloadRows: SwathPayloadRow[];
+    try {
+      const ids = prefilter.map((r) => r.id);
+      payloadRows = await pgSql.begin(async (tx) => {
+        await tx`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`;
+        return tx<SwathPayloadRow[]>`
+          SELECT id, payload FROM swath_cache WHERE id = ANY(${ids})
+        `;
+      });
+    } catch (err) {
+      const code = (err as { code?: string })?.code;
+      if (code !== '57014') {
+        console.warn('[dates-by-location] payload fetch failed:', (err as Error).message);
+      }
+      const empty = { dates: [] };
+      datesByLocationCache.set(cacheKey, {
+        expiresAt: Date.now() + 30_000,
+        payload: empty,
+      });
+      res.set('Cache-Control', 'public, max-age=30');
+      res.json(empty);
+      return;
+    }
+
+    // Re-attach payload to each prefilter row by id, preserving date order.
+    const payloadById = new Map<number, SwathPayloadRow['payload']>();
+    for (const r of payloadRows) payloadById.set(r.id, r.payload);
+    const candidates = prefilter
+      .map((r) => ({ date: r.date, payload: payloadById.get(r.id) ?? null }))
+      .filter((r): r is { date: string; payload: SwathPayloadRow['payload'] } =>
+        Boolean(r.payload),
+      );
 
     // Per-date max band-the-house-is-in. Multiple cached entries (different
     // hours) for the same date — keep the highest band that contains the
