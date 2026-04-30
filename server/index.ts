@@ -1223,8 +1223,16 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
     }
 
     // Bbox-prefilter: only candidates where the cached bbox contains the
-    // property. Cheap btree-or-seq scan; payload JSONB stays compressed
-    // until we actually need to decode it.
+    // property. We dedupe to ONE row per date (highest max_value) at query
+    // time so we don't pull 10+ payloads for the same storm date — that
+    // was choking statement_timeout when reps loaded high-storm-density
+    // properties (50+ rows × ~50KB JSONB each = >2MB transferred + parsed
+    // before PIP could even start).
+    //
+    // feature_count >= 4 filters out the SPC/IEM-buffered fallback writes
+    // (those produce 1-3 features); the real MRMS GRIB pipeline produces
+    // 4+ IHM bands per cached entry. Cheaper than the JSONB metadata.source
+    // extraction it replaces.
     type SwathRow = {
       date: string;
       payload: {
@@ -1235,15 +1243,16 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
       };
     };
     const candidates = await pgSql<SwathRow[]>`
-      SELECT date::text, payload
+      SELECT DISTINCT ON (date) date::text, payload
         FROM swath_cache
        WHERE source IN ('mrms-hail', 'mrms-vector', 'mrms-mesh')
          AND date >= ${sinceStr}
          AND bbox_south <= ${lat} AND bbox_north >= ${lat}
          AND bbox_west  <= ${lng} AND bbox_east  >= ${lng}
-         AND payload->'metadata'->>'source' = 'mrms-vector'
-       ORDER BY date DESC
-       LIMIT 500
+         AND feature_count >= 4
+         AND max_value >= 0.25
+       ORDER BY date DESC, max_value DESC
+       LIMIT 100
     `;
 
     // Per-date max band-the-house-is-in. Multiple cached entries (different
