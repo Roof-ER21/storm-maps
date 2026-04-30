@@ -46,9 +46,9 @@ const NWS_ALERTS_COOLDOWN_MS = 5 * 60_000;
 export type WarningPhenomenon = 'SV' | 'TO' | 'FF' | 'EW';
 
 export interface IemVtecWarning {
-  /** Issue time ISO 8601 UTC. */
+  /** Issue time ISO 8601 UTC. Full warning lifetime, not polygon segment. */
   issueIso: string;
-  /** Expire time ISO 8601 UTC. */
+  /** Expire time ISO 8601 UTC. Full warning lifetime, not polygon segment. */
   expireIso: string;
   /** Phenomenon code: SV=severe-thunderstorm, TO=tornado, FF=flash-flood, EW=extreme-wind. */
   phenomenon: WarningPhenomenon;
@@ -58,14 +58,22 @@ export interface IemVtecWarning {
   rings: number[][][];
   /** Free-text product/headline. May contain hail size. */
   product?: string;
+  /** Official NWS-tagged hail size in inches (HAILTAG). */
+  hailTagInches?: number;
+  /** Official NWS-tagged wind speed in mph (WINDTAG). */
+  windTagMph?: number;
+  /** NWS product id for deduping multi-polygon-segment warnings. */
+  productId?: string;
 }
 
 interface VtecApiFeature {
   properties: {
     issue?: string;
-    /** SBW endpoint uses `polygon_begin` / `polygon_end` for the actual
-     *  effective window. `expire` exists too but for some products it's
-     *  the long-tail expiration (multi-day flood warnings etc.). */
+    /** SBW endpoint also returns `polygon_begin` / `polygon_end` per
+     *  POLYGON SEGMENT (a 5-min slice as the storm moves). For displaying
+     *  the warning duration to reps + adjusters we want issue/expire (the
+     *  full warning lifetime). polygon_begin/end is kept around in case a
+     *  consumer needs segment-level timing. */
     polygon_begin?: string;
     polygon_end?: string;
     expire?: string;
@@ -78,6 +86,12 @@ interface VtecApiFeature {
     /** Legacy field kept for back-compat with older callers. */
     product?: string;
     productlink?: string;
+    /** Official NWS hail size tag (inches). */
+    hailtag?: number | string | null;
+    /** Official NWS wind speed tag (mph). */
+    windtag?: number | string | null;
+    /** Tornado damage tag — present field, not currently used. */
+    tornadotag?: string | null;
   };
   geometry?: {
     type: 'Polygon' | 'MultiPolygon';
@@ -220,20 +234,29 @@ function parseFeatures(
   bounds: BoundingBox | undefined,
   allowedPhenomena: Set<WarningPhenomenon>,
 ): IemVtecWarning[] {
-  const out: IemVtecWarning[] = [];
+  // Use a map keyed by product_id (or fallback eventid+wfo) so multi-
+  // segment warnings (5-min polygon updates as a storm moves) collapse
+  // to ONE entry. Reese (2026-04-30) flagged that Hail Yes was showing
+  // a 5-min duration like "4:42 PM EDT until 4:47 PM EDT" instead of
+  // the full warning lifetime "4:42 PM EDT until 5:30 PM EDT" — caused
+  // by treating each polygon segment as a separate warning. We now
+  // pick the FIRST segment we see for each product_id; rings track the
+  // initial polygon (which is normally the broadest coverage area).
+  const byProduct = new Map<string, IemVtecWarning>();
+  let anonId = 0;
   for (const f of features) {
     if (!f.geometry || !f.properties) continue;
     const ph = f.properties.phenomena;
     if (!ph || !allowedPhenomena.has(ph as WarningPhenomenon)) continue;
-    // SBW returns watches/advisories (sig A/Y) too — keep only warnings.
     if (f.properties.significance && f.properties.significance !== 'W') continue;
-    // SBW issue/expire window: prefer polygon_begin/polygon_end (the
-    // active polygon period). Fall back to issue/expire for back-compat
-    // with the legacy watchwarn payload shape.
+
+    // Use issue/expire (full warning lifetime). Only fall through to
+    // polygon_begin/polygon_end if the upstream is missing the full
+    // window — older archive rows occasionally do.
     const issueIso =
-      f.properties.polygon_begin ?? f.properties.issue ?? '';
+      f.properties.issue ?? f.properties.polygon_begin ?? '';
     const expireIso =
-      f.properties.polygon_end ?? f.properties.expire ?? '';
+      f.properties.expire ?? f.properties.polygon_end ?? '';
     if (!issueIso || !expireIso) continue;
 
     const rings = flattenPolygon(f.geometry);
@@ -241,16 +264,53 @@ function parseFeatures(
 
     if (bounds && !ringsIntersectBounds(rings, bounds)) continue;
 
-    out.push({
+    const productId =
+      f.properties.product_id ??
+      (f.properties.wfo && f.properties.eventid
+        ? `${f.properties.wfo}-${f.properties.eventid}`
+        : `anon-${(anonId += 1)}`);
+
+    const hailTag = toNumberOrUndef(f.properties.hailtag);
+    const windTag = toNumberOrUndef(f.properties.windtag);
+
+    const existing = byProduct.get(productId);
+    if (existing) {
+      // Union polygon segments — pointInWarning needs to return true if
+      // the property was in ANY segment. Without this, dedupe by-first
+      // would miss properties covered by later segments only.
+      for (const ring of rings) existing.rings.push(ring);
+      // Tags stay from first segment; promote if missing.
+      if (existing.hailTagInches === undefined && hailTag !== undefined) {
+        existing.hailTagInches = hailTag;
+      }
+      if (existing.windTagMph === undefined && windTag !== undefined) {
+        existing.windTagMph = windTag;
+      }
+      continue;
+    }
+
+    byProduct.set(productId, {
       issueIso,
       expireIso,
       phenomenon: ph as WarningPhenomenon,
       wfo: (f.properties.wfo ?? '').toUpperCase(),
-      rings,
+      rings: [...rings],
       product: f.properties.product ?? f.properties.product_id,
+      hailTagInches: hailTag,
+      windTagMph: windTag,
+      productId,
     });
   }
-  return out;
+  return Array.from(byProduct.values());
+}
+
+function toNumberOrUndef(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string') {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
 }
 
 function flattenPolygon(geom: NonNullable<VtecApiFeature['geometry']>): number[][][] {

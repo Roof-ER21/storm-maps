@@ -2089,10 +2089,23 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
       };
 
       const G = W.grid;
+      // Prefer the official NWS hailtag / windtag values from the IEM
+      // SBW endpoint (added 2026-04-30 after Reese flagged 8/18/24
+      // Tuckahoe showing "Hail Size: n/a" when the underlying warning
+      // had hailtag=1.0 / windtag=60). Fall back to the product-text
+      // extractor only when tags are absent.
+      const hailVal =
+        typeof w.hailTagInches === 'number' && w.hailTagInches > 0
+          ? `${w.hailTagInches.toFixed(2)}"`
+          : extractHailSize(w.product);
+      const windVal =
+        typeof w.windTagMph === 'number' && w.windTagMph > 0
+          ? `${Math.round(w.windTagMph)} mph`
+          : extractWindSpeed(w.product);
       drawWarningKV('Effective:', fmtTime(w.issueIso), G.col.labelL, G.col.valueL, gridTopY);
       drawWarningKV('Expires:', fmtTime(w.expireIso), G.col.labelR, G.col.valueR, gridTopY);
-      drawWarningKV('Hail Size:', extractHailSize(w.product), G.col.labelL, G.col.valueL, gridTopY + G.rowPitch);
-      drawWarningKV('Wind Speed:', extractWindSpeed(w.product), G.col.labelR, G.col.valueR, gridTopY + G.rowPitch);
+      drawWarningKV('Hail Size:', hailVal, G.col.labelL, G.col.valueL, gridTopY + G.rowPitch);
+      drawWarningKV('Wind Speed:', windVal, G.col.labelR, G.col.valueR, gridTopY + G.rowPitch);
       drawWarningKV('Urgency:', 'Immediate', G.col.labelL, G.col.valueL, gridTopY + G.rowPitch * 2);
       drawWarningKV('Certainty:', 'Observed', G.col.labelR, G.col.valueR, gridTopY + G.rowPitch * 2);
 
