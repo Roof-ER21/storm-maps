@@ -518,6 +518,23 @@ function bandVerification(
   return buildBandVerification(reports, date, lat, lng, isGovObserverSource);
 }
 
+/**
+ * Per-step budget. PDF gen has multiple optional MRMS GRIB / NEXRAD /
+ * verification calls; if any one of them stalls, the whole PDF blows
+ * past Railway's edge proxy timeout (~30s of silence) and the rep gets
+ * a 502 instead of a degraded PDF. Wrapping each step in a budget lets
+ * us return null and proceed gracefully when upstream is slow.
+ */
+function pdfBudget<T>(p: Promise<T>, ms: number): Promise<T | null> {
+  return new Promise<T | null>((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      () => { clearTimeout(timer); resolve(null); },
+    );
+  });
+}
+
 export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const historyRange = req.historyRange ?? '2y';
   const historyWindowDays = reportHistoryWindowDays(historyRange);
@@ -576,11 +593,16 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   const bounds = req.bounds ?? deriveBounds(datedEvents, req.lat, req.lng);
 
   // 2. Pull swath polygons — try real MRMS first, then in-repo fallback.
-  let collection = await buildMrmsVectorPolygons({
-    date: req.dateOfLoss,
-    bounds,
-    anchorIso: req.anchorTimestamp ?? undefined,
-  });
+  // Budget: if MRMS upstream is slow/unavailable (no archive for the date,
+  // network blip), don't pin the entire PDF on it. The fallback covers it.
+  let collection = await pdfBudget(
+    buildMrmsVectorPolygons({
+      date: req.dateOfLoss,
+      bounds,
+      anchorIso: req.anchorTimestamp ?? undefined,
+    }),
+    10_000,
+  );
   if (!collection || collection.features.length === 0) {
     const fb = await buildHailFallbackCollection({
       date: req.dateOfLoss,
@@ -1243,12 +1265,15 @@ export async function buildStormReportPdf(req: ReportRequest): Promise<Buffer> {
   let propertyImpact: MrmsImpactResult | null = null;
   if (collection) {
     try {
-      const resp = await buildMrmsImpactResponse({
-        date: req.dateOfLoss,
-        bounds,
-        anchorIso: req.anchorTimestamp ?? undefined,
-        points: [{ id: 'property', lat: req.lat, lng: req.lng }],
-      });
+      const resp = await pdfBudget(
+        buildMrmsImpactResponse({
+          date: req.dateOfLoss,
+          bounds,
+          anchorIso: req.anchorTimestamp ?? undefined,
+          points: [{ id: 'property', lat: req.lat, lng: req.lng }],
+        }),
+        8_000,
+      );
       propertyImpact = resp?.results[0] ?? null;
     } catch (err) {
       console.warn('[reportPdf] impact response failed:', (err as Error).message);
