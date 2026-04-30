@@ -1298,7 +1298,9 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
     let prefilter: SwathPrefilterRow[];
     try {
       prefilter = await pgSql.begin(async (tx) => {
-        await tx`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`;
+        // SET LOCAL doesn't accept parameter bindings — inline the value
+        // as literal SQL via unsafe(). Constant, no injection risk.
+        await tx.unsafe(`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`);
         return tx<SwathPrefilterRow[]>`
           SELECT DISTINCT ON (date)
                  id, date::text, max_value::float AS max_value
@@ -1310,7 +1312,7 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
              AND feature_count >= 4
              AND max_value >= 0.25
            ORDER BY date DESC, max_value DESC
-           LIMIT 30
+           LIMIT 200
         `;
       });
     } catch (err) {
@@ -1343,7 +1345,7 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
     try {
       const ids = prefilter.map((r) => r.id);
       payloadRows = await pgSql.begin(async (tx) => {
-        await tx`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`;
+        await tx.unsafe(`SET LOCAL statement_timeout = ${DATES_BY_LOCATION_BUDGET_MS}`);
         return tx<SwathPayloadRow[]>`
           SELECT id, payload FROM swath_cache WHERE id = ANY(${ids})
         `;
