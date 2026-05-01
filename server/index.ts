@@ -1324,7 +1324,7 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
              AND feature_count >= 4
              AND max_value >= 0.25
            ORDER BY date DESC, max_value DESC
-           LIMIT 30
+           LIMIT 200
         `;
       });
     } catch (err) {
@@ -1356,12 +1356,24 @@ app.get('/api/hail/dates-by-location', async (req, res) => {
     let payloadRows: SwathPayloadRow[];
     try {
       const ids = prefilter.map((r) => r.id);
-      payloadRows = await pgSql.begin(async (tx) => {
-        await tx`SELECT set_config('statement_timeout', ${String(DATES_BY_LOCATION_BUDGET_MS)}, true)`;
-        return tx<SwathPayloadRow[]>`
-          SELECT id, payload FROM swath_cache WHERE id = ANY(${ids})
-        `;
-      });
+      // Chunk the payload fetch — 200 ids × multi-MB JSONB payloads
+      // exceeds the 8s budget on a single ANY($1) round-trip. 25 per
+      // batch is comfortably under the budget and Promise.all keeps
+      // wall-clock close to a single batch's time.
+      const CHUNK = 25;
+      const chunks: number[][] = [];
+      for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+      const batches = await Promise.all(
+        chunks.map((chunk) =>
+          pgSql.begin(async (tx) => {
+            await tx`SELECT set_config('statement_timeout', ${String(DATES_BY_LOCATION_BUDGET_MS)}, true)`;
+            return tx<SwathPayloadRow[]>`
+              SELECT id, payload FROM swath_cache WHERE id = ANY(${chunk})
+            `;
+          }),
+        ),
+      );
+      payloadRows = batches.flat();
     } catch (err) {
       const code = (err as { code?: string })?.code;
       if (code !== '57014') {
