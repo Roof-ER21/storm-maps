@@ -27,6 +27,11 @@ import { requireAuth, checkScanLimit } from './ai/authMiddleware.js';
 import cookieParser from 'cookie-parser';
 import { authRouter } from './auth/routes.js';
 import { authMiddleware } from './auth/middleware.js';
+// Audited PDF stack ported from storm-archive (Phase 3 of 2026-05-03 merge).
+// Mounts /api/events/:id/pdf (rep-facing rebuilt route) + /api/impact (POST).
+// The legacy /api/hail/storm-report-pdf stays alive as fallback.
+import { pdfRouter } from './sa-port/route-pdf.js';
+import { impactRouter } from './sa-port/route-impact.js';
 import {
   buildWindSwathCollection,
   buildWindImpactResponse,
@@ -97,6 +102,12 @@ app.use(cookieParser());
 // set AUTH_REQUIRED=required to enforce on all /api/* routes.
 app.use(authMiddleware);
 app.use(authRouter);
+
+// Audited PDF + impact routes from storm-archive (Phase 3).
+//   POST /api/impact            (lat/lng or address → impact hits)
+//   POST /api/events/:id/pdf    (rep-facing adjuster PDF)
+app.use(impactRouter);
+app.use(pdfRouter);
 
 // Rate limiting — bumped from 300/15min after reps hit the ceiling on
 // normal storm-page browsing (each storm-date click fires per-date-impact +
