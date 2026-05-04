@@ -24,7 +24,7 @@ import type { Sql } from "../db.js";
 import { haversineMiles } from "./geometry.js";
 import { fetchSpcHailForDate } from "./sources/spc-hail.js";
 import { fetchMesocycloneDetections } from "./sources/nx3mda.js";
-import { fetchMpingHailReports } from "../sources/mping.js";
+import { fetchMpingHailReports } from "./sources/mping.js";
 import { fetchNwsWarningsForDateAndPoint } from "./nws-vtec.js";
 
 export interface ConsilienceSourceResult {

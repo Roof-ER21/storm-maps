@@ -1148,6 +1148,36 @@ function App() {
     // Intentionally a no-op — see comment above.
   }, []);
 
+  // Long-press / right-click on the map → reverse-geocode → applySearchResult.
+  // Lets reps zoom into a neighborhood and hold a roof to auto-fill the
+  // search bar with that property's address. Falls back to "lat, lng" label
+  // if the geocoder doesn't resolve.
+  const handleMapLongPress = useCallback(
+    async (lat: number, lng: number) => {
+      let address = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      try {
+        const geocoder = new google.maps.Geocoder();
+        const result = await geocoder.geocode({ location: { lat, lng } });
+        const top = result.results[0];
+        if (top?.formatted_address) address = top.formatted_address;
+      } catch {
+        /* fallthrough — keep lat,lng label */
+      }
+      applySearchResult({
+        lat,
+        lng,
+        address,
+        // Synthetic placeId — long-press doesn't go through Places, but
+        // SearchResult requires this field. Prefix `longpress:` so any
+        // downstream code that filters by placeId can identify these.
+        placeId: `longpress:${lat.toFixed(5)},${lng.toFixed(5)}`,
+        resultType: 'address',
+        viewport: null,
+      });
+    },
+    [applySearchResult],
+  );
+
   const handleOpenStormDate = useCallback((stormDate: StormDate) => {
     setActiveView('map');
     setSelectedDate(stormDate);
@@ -2696,6 +2726,7 @@ function App() {
         fitBoundsRequest={fitBoundsRequest}
         onCameraChanged={handleCameraChanged}
         onMapClick={handleMapClick}
+        onLongPress={handleMapLongPress}
         propertyMarker={
           searchSummary
             ? {

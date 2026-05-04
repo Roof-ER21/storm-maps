@@ -86,6 +86,13 @@ interface StormMapProps {
     bounds: BoundingBox | null;
   }) => void;
   onMapClick?: (event: StormEvent | null) => void;
+  /**
+   * Long-press / right-click on the map → reverse-geocode the coords
+   * and run an impact lookup at that point. Wired in App.tsx as a
+   * canvass shortcut: rep zooms into a neighborhood, holds a roof,
+   * gets the address auto-filled.
+   */
+  onLongPress?: (lat: number, lng: number) => void;
   leadPins?: CanvassRouteStop[];
   onLeadPinClick?: (stop: CanvassRouteStop) => void;
   evidencePins?: Array<{ id: string; lat: number; lng: number; title: string; status: string }>;
@@ -443,6 +450,7 @@ function MapContent({
   windStates,
   propertyMarker,
   searchRadiusMiles,
+  onLongPress,
 }: MapContentProps) {
   const map = useMap();
   const [selectedEvent, setSelectedEvent] = useState<StormEvent | null>(null);
@@ -1124,6 +1132,19 @@ function MapContent({
     return () => {};
   }, [map, onMapClick, visibleHailEvents]);
 
+  // Long-press / right-click → onLongPress(lat,lng) so callers can
+  // reverse-geocode and run an impact lookup at the touched point.
+  // Google Maps fires `rightclick` on desktop right-click AND on touch
+  // long-press, so a single listener covers both interaction modes.
+  useEffect(() => {
+    if (!map || !onLongPress) return;
+    const listener = map.addListener('rightclick', (e: google.maps.MapMouseEvent) => {
+      if (!e.latLng) return;
+      onLongPress(e.latLng.lat(), e.latLng.lng());
+    });
+    return () => google.maps.event.removeListener(listener);
+  }, [map, onLongPress]);
+
   return (
     <>
       <MapViewportController fitBoundsRequest={fitBoundsRequest} />
@@ -1707,6 +1728,7 @@ export default function StormMap({
   windStates,
   propertyMarker,
   searchRadiusMiles,
+  onLongPress,
 }: StormMapProps) {
   if (!HAS_API_KEY) {
     return (
@@ -1770,6 +1792,7 @@ export default function StormMap({
         windStates={windStates}
         propertyMarker={propertyMarker}
         searchRadiusMiles={searchRadiusMiles}
+        onLongPress={onLongPress}
       />
     </Map>
   );
