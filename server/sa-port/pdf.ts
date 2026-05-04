@@ -48,12 +48,16 @@ const HY_PURPLE_DARK = "#5b21b6";
 
 // ─── Logo asset paths (resolved at module load) ──────────────────────────────
 function resolveAsset(name: string): string | null {
-  // dist/services/pdf.js → ../../assets/<name>; src/services/pdf.ts (ts-node) → ../../assets/<name>
+  // sa-port keeps assets co-located at ./assets/<name>. Legacy SA paths
+  // remain as fallbacks so this exact module also runs unchanged in
+  // storm-archive's deploy.
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
-    pathResolve(here, "../../assets", name),
-    pathResolve(here, "../../../assets", name),
+    pathResolve(here, "assets", name),                                 // hailyes: server/sa-port/assets
+    pathResolve(here, "../../assets", name),                           // SA: dist/services → assets
+    pathResolve(here, "../../../assets", name),                        // SA: src/services → assets
     pathResolve(process.cwd(), "apps/api/assets", name),
+    pathResolve(process.cwd(), "server/sa-port/assets", name),         // hailyes prod: cwd=/app
     pathResolve(process.cwd(), "assets", name),
   ];
   for (const p of candidates) {
