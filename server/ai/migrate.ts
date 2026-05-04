@@ -122,9 +122,11 @@ export async function ensureAiTables(db: PostgresJsDatabase) {
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_images_analysis_id ON property_images(analysis_id)`);
   await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_images_type ON property_images(image_type)`);
 
-  // activity_log — audit trail
+  // ai_activity_log — AI-action audit trail. Renamed from activity_log
+  // to free that name for the storm-archive-ported HTTP audit table
+  // (server/migrations/sa/100_auth_extension.sql).
   await db.execute(sql`
-    CREATE TABLE IF NOT EXISTS activity_log (
+    CREATE TABLE IF NOT EXISTS ai_activity_log (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       action VARCHAR(50) NOT NULL,
       analysis_id UUID,
@@ -133,8 +135,8 @@ export async function ensureAiTables(db: PostgresJsDatabase) {
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_activity_action ON activity_log(action)`);
-  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_activity_created_at ON activity_log(created_at)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ai_activity_action ON ai_activity_log(action)`);
+  await db.execute(sql`CREATE INDEX IF NOT EXISTS idx_ai_activity_created_at ON ai_activity_log(created_at)`);
 
   // data_cache — enrichment API result caching
   await db.execute(sql`

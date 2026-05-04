@@ -163,9 +163,13 @@ export const propertyImages = pgTable(
   ]
 );
 
-// Activity log — every action taken in the app
+// AI activity log — every action taken in the AI subsystem.
+// Renamed from `activity_log` to `ai_activity_log` 2026-05-03 to free
+// the unprefixed name for storm-archive's HTTP audit log (different
+// schema). The Drizzle export name stays `activityLog` for code
+// stability; only the underlying table name changed.
 export const activityLog = pgTable(
-  "activity_log",
+  "ai_activity_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
     action: varchar("action", { length: 50 }).notNull(), // search, zip_scan, batch_upload, star, status_change, correction, report_view
@@ -175,8 +179,8 @@ export const activityLog = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
   },
   (table) => [
-    index("idx_activity_action").on(table.action),
-    index("idx_activity_created_at").on(table.createdAt),
+    index("idx_ai_activity_action").on(table.action),
+    index("idx_ai_activity_created_at").on(table.createdAt),
   ]
 );
 

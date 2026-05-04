@@ -108,7 +108,7 @@ router.get("/", async (_req, res) => {
         SELECT COALESCE(jsonb_object_agg(action, n), '{}'::jsonb) AS activity_breakdown
         FROM (
           SELECT action, count(*)::int AS n
-          FROM activity_log
+          FROM ai_activity_log
           GROUP BY action
         ) grouped_activity
       )
