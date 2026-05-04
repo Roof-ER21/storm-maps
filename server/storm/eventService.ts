@@ -467,29 +467,35 @@ export async function fetchStormEventsCached(
   const startIso = new Date(sinceMs).toISOString();
   const endIso = new Date().toISOString();
 
-  const stageT0 = Date.now();
-  const timed = <T>(name: string, p: Promise<T>): Promise<T> =>
-    p.then((v) => { console.log(`[eventService] ${name} took ${Date.now() - stageT0}ms`); return v; });
+  // 2026-05-03 perf fix: IEM LSR span fetch was the 13.8s bottleneck on
+  // a 12-month query. IEM is only useful for the most recent week before
+  // NCEI publishes — historical LSR rows are already in our verified DB
+  // via the backfill jobs. Clamp the IEM start window to 14 days so the
+  // span fetch is bounded.
+  const iemStartMs = Math.max(sinceMs, Date.now() - 14 * 86_400_000);
+  const iemStartIso = new Date(iemStartMs).toISOString();
   const [verifiedEvents, spcResults, iemResults] = await Promise.all([
-    timed('verified', fetchVerifiedArchiveEvents(params, sinceMs).catch((err) => {
+    fetchVerifiedArchiveEvents(params, sinceMs).catch((err) => {
       console.warn('[eventService] verified archive fetch failed:', err);
       return [] as StormEventDto[];
-    })),
-    timed('spc', Promise.allSettled(
+    }),
+    Promise.allSettled(
       dateKeys.flatMap((d) => [
         fetchSpcHailReportsForDate(d).then((r) => ({ kind: 'hail' as const, reports: r })),
         fetchSpcWindReports(d).then((r) => ({ kind: 'wind' as const, reports: r })),
       ]),
-    )),
-    timed('iem', Promise.all([
-      fetchIemHailReports({ startIso, endIso, states: params.states }).catch(() => []),
+    ),
+    Promise.all([
+      fetchIemHailReports({ startIso: iemStartIso, endIso, states: params.states }).catch(() => []),
       fetchIemWindReports({
         date: endIso.slice(0, 10),
         bounds: null,
         states: params.states,
       }).catch(() => []),
-    ])),
+    ]),
   ]);
+  // Use computed value to silence unused-var warning in clamped path
+  void startIso;
 
   if (verifiedEvents.length > 0) {
     for (const event of verifiedEvents) {
