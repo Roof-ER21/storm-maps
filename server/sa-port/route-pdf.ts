@@ -67,17 +67,24 @@ pdfRouter.post("/api/events/:id/pdf", async (req, res, next) => {
     // PDF render doesn't crash on duplicate report_id (vanishingly rare
     // — the ID combines Date.now() + random — but the upsert is cheap).
     const clientId = req.header("x-client-id") ?? null;
-    await sql`
-      INSERT INTO pdf_reports
-        (report_id, verification_code, event_id, event_date, state,
-         lat, lng, address, generated_by_user, client_id, payload)
-      VALUES (${built.reportId}, ${built.verificationCode}, ${eventId},
-              ${built.eventDate}::date, ${built.state},
-              ${lat}, ${lng}, ${address ?? null},
-              ${req.user?.id ?? null}, ${clientId},
-              ${sql.json({ normalized } as never)})
-      ON CONFLICT (report_id) DO NOTHING
-    `;
+    // Use text-cast jsonb to avoid postgres.js v3.4.8 sql.json() bind
+    // edge case (see route-impact.ts comment).
+    await sql.unsafe(
+      `
+        INSERT INTO pdf_reports
+          (report_id, verification_code, event_id, event_date, state,
+           lat, lng, address, generated_by_user, client_id, payload)
+        VALUES ($1, $2, $3, $4::date, $5, $6, $7, $8, $9, $10, $11::jsonb)
+        ON CONFLICT (report_id) DO NOTHING
+      `,
+      [
+        built.reportId, built.verificationCode, eventId,
+        built.eventDate, built.state,
+        lat, lng, address ?? null,
+        req.user?.id ?? null, clientId,
+        JSON.stringify({ normalized }),
+      ],
+    );
 
     const filename = `storm-impact-${eventId}-${Date.now()}.pdf`;
     res.set({

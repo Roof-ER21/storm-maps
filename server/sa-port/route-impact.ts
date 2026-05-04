@@ -118,27 +118,22 @@ impactRouter.post("/api/impact", async (req, res) => {
     // Persist via tagged-template form so postgres.js handles the jsonb
     // binding cleanly (it stringifies the object once and casts to jsonb;
     // we then read it back as text on hits to skip the V8 reparse path).
-    if (body.address) {
-      await sql`
+    // Pre-serialize to text and let Postgres cast to jsonb. sql.json()
+    // tripped postgres.js v3.4.8 in Hail Yes prod with "instance of Object"
+    // bind errors when the ImpactResponse contained nested Date values.
+    // text → ::jsonb is portable and avoids the binding edge case entirely.
+    const ttlInterval = body.address ? "24 hours" : "1 hour";
+    await sql.unsafe(
+      `
         INSERT INTO impact_lookups (address_normalized, lat, lng, result, expires_at)
-        VALUES (${cacheKey}, ${lat}, ${lng}, ${sql.json(result as never)},
-                NOW() + INTERVAL '24 hours')
+        VALUES ($1, $2, $3, $4::jsonb, NOW() + INTERVAL '${ttlInterval}')
         ON CONFLICT (address_normalized) DO UPDATE SET
           result = EXCLUDED.result,
           lat = EXCLUDED.lat, lng = EXCLUDED.lng,
           expires_at = EXCLUDED.expires_at
-      `;
-    } else {
-      await sql`
-        INSERT INTO impact_lookups (address_normalized, lat, lng, result, expires_at)
-        VALUES (${cacheKey}, ${lat}, ${lng}, ${sql.json(result as never)},
-                NOW() + INTERVAL '1 hour')
-        ON CONFLICT (address_normalized) DO UPDATE SET
-          result = EXCLUDED.result,
-          lat = EXCLUDED.lat, lng = EXCLUDED.lng,
-          expires_at = EXCLUDED.expires_at
-      `;
-    }
+      `,
+      [cacheKey, lat, lng, serialized],
+    );
     return { result, serialized };
   });
 
