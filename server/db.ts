@@ -48,3 +48,5 @@ export const sql = postgres(connectionString, {
 });
 export const db = drizzle(sql, { schema: { ...schema, ...aiSchema } });
 export type DB = typeof db;
+/** postgres.js client type — used by /server/auth/services.ts ported from storm-archive */
+export type Sql = typeof sql;

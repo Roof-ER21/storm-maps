@@ -24,6 +24,9 @@ import aiImageProxy from './ai/routes/imageProxy.js';
 import aiDashboardRoutes from './ai/routes/dashboardRoutes.js';
 import aiBridgeRoutes from './ai/routes/bridgeRoutes.js';
 import { requireAuth, checkScanLimit } from './ai/authMiddleware.js';
+import cookieParser from 'cookie-parser';
+import { authRouter } from './auth/routes.js';
+import { authMiddleware } from './auth/middleware.js';
 import {
   buildWindSwathCollection,
   buildWindImpactResponse,
@@ -87,6 +90,13 @@ const PORT = parseInt(process.env.PORT || '3100', 10);
 
 app.use(compression({ threshold: 1024 }));
 app.use(express.json({ limit: '10mb' }));
+app.use(cookieParser());
+
+// PIN/session auth — populates req.user/req.session from session cookie.
+// Mode is "optional" by default (legacy bcrypt+JWT routes still work);
+// set AUTH_REQUIRED=required to enforce on all /api/* routes.
+app.use(authMiddleware);
+app.use(authRouter);
 
 // Rate limiting — bumped from 300/15min after reps hit the ceiling on
 // normal storm-page browsing (each storm-date click fires per-date-impact +
@@ -228,7 +238,12 @@ app.get('/api/auth/bootstrap-config', (_req, res) => {
   res.json({ bootstrapPinRequired: false });
 });
 
-app.post('/api/auth/login', async (req, res) => {
+// Legacy bcrypt+JWT login moved to /api/auth/legacy-login. Kept alive
+// only so the 2 pre-existing Stripe accounts (sole password-auth users)
+// can still log in. New PIN-based /api/auth/login + /api/auth/me are
+// served by authRouter (../auth/routes) and authMiddleware (../auth/
+// middleware) which both mount before this file's routes.
+app.post('/api/auth/legacy-login', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
@@ -257,7 +272,10 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-app.get('/api/auth/me', async (req, res) => {
+// Legacy /api/auth/me using JWT; new authRouter serves /api/auth/me
+// from session cookie. Keep this at /api/auth/legacy-me for the same
+// reason.
+app.get('/api/auth/legacy-me', async (req, res) => {
   try {
     const auth = req.headers.authorization;
     if (!auth?.startsWith('Bearer ')) {
