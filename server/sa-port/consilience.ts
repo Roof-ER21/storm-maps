@@ -21,7 +21,7 @@
  * /api/events/:id/consilience and folded into /api/impact responses.
  */
 import type { Sql } from "../db.js";
-import { haversineMiles } from "@storm-archive/geometry";
+import { haversineMiles } from "./geometry.js";
 import { fetchSpcHailForDate } from "./sources/spc-hail.js";
 import { fetchMesocycloneDetections } from "./sources/nx3mda.js";
 import { fetchMpingHailReports } from "../sources/mping.js";

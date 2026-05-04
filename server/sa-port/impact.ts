@@ -27,7 +27,7 @@ import {
   pointInRing,
   haversineMiles,
   nearestRingDistanceMiles,
-} from "@storm-archive/geometry";
+} from "./geometry.js";
 import { lookupCounty } from "./geocode.js";
 
 // Distance buckets for impact bands — Hail Yes column layout exactly:
