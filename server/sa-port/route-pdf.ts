@@ -139,3 +139,4 @@ pdfRouter.get("/api/reports/verify", async (req, res) => {
   res.set("Cache-Control", "no-store");
   res.json({ verified: true, report: rows[0] });
 });
+// Phase 5: env-pickup redeploy
