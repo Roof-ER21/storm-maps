@@ -467,25 +467,28 @@ export async function fetchStormEventsCached(
   const startIso = new Date(sinceMs).toISOString();
   const endIso = new Date().toISOString();
 
+  const stageT0 = Date.now();
+  const timed = <T>(name: string, p: Promise<T>): Promise<T> =>
+    p.then((v) => { console.log(`[eventService] ${name} took ${Date.now() - stageT0}ms`); return v; });
   const [verifiedEvents, spcResults, iemResults] = await Promise.all([
-    fetchVerifiedArchiveEvents(params, sinceMs).catch((err) => {
+    timed('verified', fetchVerifiedArchiveEvents(params, sinceMs).catch((err) => {
       console.warn('[eventService] verified archive fetch failed:', err);
       return [] as StormEventDto[];
-    }),
-    Promise.allSettled(
+    })),
+    timed('spc', Promise.allSettled(
       dateKeys.flatMap((d) => [
         fetchSpcHailReportsForDate(d).then((r) => ({ kind: 'hail' as const, reports: r })),
         fetchSpcWindReports(d).then((r) => ({ kind: 'wind' as const, reports: r })),
       ]),
-    ),
-    Promise.all([
+    )),
+    timed('iem', Promise.all([
       fetchIemHailReports({ startIso, endIso, states: params.states }).catch(() => []),
       fetchIemWindReports({
         date: endIso.slice(0, 10),
         bounds: null,
         states: params.states,
       }).catch(() => []),
-    ]),
+    ])),
   ]);
 
   if (verifiedEvents.length > 0) {
