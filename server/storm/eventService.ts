@@ -438,8 +438,13 @@ export async function fetchStormEventsCached(
   const sinceMs = params.sinceDate
     ? Date.parse(`${params.sinceDate}T00:00:00Z`)
     : Date.now() - params.months * 30 * 86_400_000;
+  // 2026-05-03 perf fix: SPC archive only covers ~7 days; beyond that the
+  // per-date fetches return 404 but still cost a TCP round-trip each.
+  // Cap dateKeys at 30 days. The verified DB read covers the full
+  // historical window separately; SPC is only useful for ground-truth on
+  // the most recent week. Was 180 → 360 HTTP requests on first cold hit.
   const days = Math.min(
-    180, // safety cap so a "since 5y" query doesn't fetch 1800 SPC files
+    30,
     Math.max(1, Math.ceil((Date.now() - sinceMs) / 86_400_000)),
   );
 
