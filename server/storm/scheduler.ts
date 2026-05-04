@@ -252,6 +252,57 @@ async function runPrewarmCycle(): Promise<void> {
   }
 }
 
+/**
+ * 2026-05-03 perf hardening: warm /api/storm/live-cells for the default
+ * 7-state focus territory bounds so the first map mount of the morning
+ * doesn't eat the 8s cold path. Fires every prewarm cycle, with the
+ * cache-key matching exactly what the route uses.
+ */
+async function warmLiveCellsCache(): Promise<void> {
+  const liveCellsUrl = `http://127.0.0.1:${process.env.PORT ?? '8080'}/api/storm/live-cells`;
+  try {
+    // The route reads default bounds from query param defaults — hitting
+    // it bare gives us the canonical "focus territory" key everyone hits
+    // on first map mount.
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 12_000);
+    await fetch(liveCellsUrl, { signal: ac.signal }).catch(() => {});
+    clearTimeout(t);
+  } catch {
+    /* prewarm is best-effort */
+  }
+}
+
+/**
+ * 2026-05-03 perf: synthetic warm-up for cold-path /api/storm/events
+ * fan-out across the 5–7 default territory centroids. Reps land on
+ * warm cache for their first pin-drop.
+ */
+const WARMUP_CENTROIDS = [
+  { lat: 38.85, lng: -77.30, label: 'DMV' },         // northern VA / DC
+  { lat: 39.50, lng: -76.50, label: 'MD' },          // central MD
+  { lat: 40.30, lng: -76.90, label: 'south PA' },
+  { lat: 41.20, lng: -77.20, label: 'central PA' },
+  { lat: 37.55, lng: -77.45, label: 'Richmond' },
+  { lat: 39.20, lng: -75.50, label: 'DE' },
+  { lat: 40.20, lng: -74.70, label: 'NJ' },
+];
+
+async function warmEventsForCentroids(): Promise<void> {
+  const port = process.env.PORT ?? '8080';
+  for (const c of WARMUP_CENTROIDS) {
+    const url = `http://127.0.0.1:${port}/api/storm/events?lat=${c.lat}&lng=${c.lng}&radius=20&months=12`;
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 25_000);
+      await fetch(url, { signal: ac.signal }).catch(() => {});
+      clearTimeout(t);
+    } catch {
+      /* best-effort */
+    }
+  }
+}
+
 async function runPrewarmCycleInner(): Promise<void> {
   lastCycleStartedAt = new Date().toISOString();
   const cycleStats = {
@@ -262,6 +313,11 @@ async function runPrewarmCycleInner(): Promise<void> {
     hailDatesScanned: 0,
     errors: 0,
   };
+
+  // Live-cells + per-centroid /events warm: kick these off in parallel
+  // with the rest of the prewarm so the first rep request lands warm.
+  void warmLiveCellsCache();
+  void warmEventsForCentroids();
 
   // Wind swaths — 30 days × 3 regions.
   for (let dayOffset = 0; dayOffset < PREWARM_DAYS; dayOffset += 1) {

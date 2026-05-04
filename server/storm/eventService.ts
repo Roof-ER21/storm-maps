@@ -452,7 +452,37 @@ export async function fetchStormEventsCached(
   const sources = new Set<string>();
   const allEvents: StormEventDto[] = [];
 
-  const verifiedEvents = await fetchVerifiedArchiveEvents(params, sinceMs);
+  // 2026-05-03 perf fix: the three stages (verifiedEvents DB query +
+  // SPC HTTP fan-out + IEM LSR span fetch) were running serially, which
+  // gave 18-20s cold latency on first pin-drop into a new (lat,lng).
+  // Now all three run in parallel — drops cold to roughly the slowest
+  // single stage instead of the sum. Each stage is independently
+  // .catch()-guarded so a transient SPC/IEM hiccup doesn't kill the
+  // whole response — the verified DB rows alone are usually enough.
+  const startIso = new Date(sinceMs).toISOString();
+  const endIso = new Date().toISOString();
+
+  const [verifiedEvents, spcResults, iemResults] = await Promise.all([
+    fetchVerifiedArchiveEvents(params, sinceMs).catch((err) => {
+      console.warn('[eventService] verified archive fetch failed:', err);
+      return [] as StormEventDto[];
+    }),
+    Promise.allSettled(
+      dateKeys.flatMap((d) => [
+        fetchSpcHailReportsForDate(d).then((r) => ({ kind: 'hail' as const, reports: r })),
+        fetchSpcWindReports(d).then((r) => ({ kind: 'wind' as const, reports: r })),
+      ]),
+    ),
+    Promise.all([
+      fetchIemHailReports({ startIso, endIso, states: params.states }).catch(() => []),
+      fetchIemWindReports({
+        date: endIso.slice(0, 10),
+        bounds: null,
+        states: params.states,
+      }).catch(() => []),
+    ]),
+  ]);
+
   if (verifiedEvents.length > 0) {
     for (const event of verifiedEvents) {
       for (const source of event.source.split(' + ')) sources.add(source);
@@ -460,13 +490,6 @@ export async function fetchStormEventsCached(
     }
   }
 
-  // SPC same-day/yesterday/archive — both hail and wind in parallel.
-  const spcResults = await Promise.allSettled(
-    dateKeys.flatMap((d) => [
-      fetchSpcHailReportsForDate(d).then((r) => ({ kind: 'hail', reports: r })),
-      fetchSpcWindReports(d).then((r) => ({ kind: 'wind', reports: r })),
-    ]),
-  );
   for (const result of spcResults) {
     if (result.status !== 'fulfilled') continue;
     const { kind, reports } = result.value;
@@ -481,17 +504,7 @@ export async function fetchStormEventsCached(
     }
   }
 
-  // IEM LSR — span query of the whole window in one call.
-  const startIso = new Date(sinceMs).toISOString();
-  const endIso = new Date().toISOString();
-  const [iemHail, iemWind] = await Promise.all([
-    fetchIemHailReports({ startIso, endIso, states: params.states }).catch(() => []),
-    fetchIemWindReports({
-      date: endIso.slice(0, 10),
-      bounds: null,
-      states: params.states,
-    }).catch(() => []),
-  ]);
+  const [iemHail, iemWind] = iemResults;
   if (iemHail.length > 0) sources.add('IEM LSR');
   if (iemWind.length > 0) sources.add('IEM LSR');
   for (const r of iemHail) allEvents.push(hailReportToEvent(r));

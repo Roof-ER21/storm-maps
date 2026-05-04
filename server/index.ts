@@ -974,17 +974,20 @@ app.get('/api/hail/mrms-vector', async (req, res) => {
       res.status(400).json({ error: 'date must be YYYY-MM-DD' });
       return;
     }
-    const collection = await buildMrmsVectorPolygons({
-      date,
-      bounds,
-      anchorIso: q.anchorTimestamp,
-    });
+    // 2026-05-03 perf fix: budget the GRIB2 decode so a slow upstream
+    // (NCEP archive, IEM mirror) can't hang the request past Railway's
+    // edge timeout (~30s). On null OR timeout, fall back to ground-
+    // report buffered polygons. The fallback path always returns
+    // something; reps never see a 504/30s spinner.
+    const collection = await withBudget(
+      buildMrmsVectorPolygons({
+        date,
+        bounds,
+        anchorIso: q.anchorTimestamp,
+      }),
+      15_000,
+    );
 
-    // ── Auto-Fallback (Bug 1 Fix - Tightened) ────────────────────────
-    // If the MRMS pipeline failed entirely (null), fall back to the
-    // ground-report buffered polygons. If it returned 0 features, it
-    // means radar legitimately said "nothing" — return empty to
-    // preserve the "MRMS = Direct Hit" canon.
     if (!collection) {
       const fallback = await buildHailFallbackCollection({
         date,
