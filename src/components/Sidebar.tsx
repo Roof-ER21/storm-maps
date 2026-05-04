@@ -634,7 +634,7 @@ export default function Sidebar({
               onChange={setReportHistoryRange}
             />
 
-            <div className="mt-3">
+            <div className="mt-3 space-y-2">
               <button
                 type="button"
                 onClick={() => {
@@ -645,7 +645,47 @@ export default function Sidebar({
                 disabled={generatingReport}
                 className="w-full rounded-xl bg-orange-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:cursor-not-allowed disabled:bg-stone-200 disabled:text-stone-400"
               >
-                {generatingReport ? 'Generating...' : 'Generate PDF'}
+                {generatingReport ? 'Generating...' : 'Generate PDF (property history)'}
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!selectedDate || searchLat == null || searchLng == null) return;
+                  // Posts to the audited /api/adjuster-pdf route ported from
+                  // storm-archive: single-event report with federal citation
+                  // block (PCS / FEMA / NCEI Googleable URLs) and scope-
+                  // honest hero band. Different from "Generate PDF (property
+                  // history)" above which is the multi-storm aggregate.
+                  const r = await fetch(`/api/adjuster-pdf`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      date: selectedDate.date,
+                      address: activeSearchLabel ?? `${searchLat.toFixed(5)}, ${searchLng.toFixed(5)}`,
+                      lat: searchLat,
+                      lng: searchLng,
+                    }),
+                  });
+                  if (!r.ok) {
+                    let msg = `${r.status}`;
+                    try { msg = (await r.json()).error ?? msg; } catch { /* ignore */ }
+                    alert(`Adjuster report failed: ${msg}`);
+                    return;
+                  }
+                  const blob = await r.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `adjuster-report-${selectedDate.date}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+                }}
+                disabled={searchLat == null || searchLng == null}
+                className="w-full rounded-xl border-2 border-purple-500 bg-white px-3 py-2 text-sm font-semibold text-purple-700 transition-colors hover:bg-purple-50 disabled:cursor-not-allowed disabled:border-stone-200 disabled:text-stone-400"
+              >
+                Adjuster Report (single-event, audited)
               </button>
             </div>
           </div>
