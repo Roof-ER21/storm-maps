@@ -17,6 +17,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { intelCors, requireIntelAuth, consumerLabel } from './auth.js';
 import { sql as pgSql } from '../db.js';
+import { analyzeDenial } from './denial-analyzer.js';
+import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
 
 // Phase 4: read intel data from Postgres `intel_blobs` table when available,
 // fall back to /data/*.json files (local dev convenience). Same response shape.
@@ -54,6 +56,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'carrier-orphans': { file: 'carrier-orphans.json', description: '165 Insurance-typed jobs missing carrier on file' },
   'cheat-sheets':    { file: 'cheat-sheets.json',    description: 'Per-entity math-backed cheat sheets (rep / carrier / adjuster / state / zip)' },
   'carrier-patents': { file: 'carrier-patents.json', description: 'Carrier AI decoder — patent-disclosed decision rules + counter-plays + bad-faith signals' },
+  'lifetime-touch':  { file: 'lifetime-touch.json',  description: 'Per-rep math-prioritized re-engagement queue (roof age + storm exposure + trade gaps)' },
 };
 
 // Storm light file lives in storms/ subdir
@@ -226,6 +229,22 @@ const refreshState: RefreshStatus = {
 router.get('/api/intel/refresh/status', (_req, res) => {
   res.json(refreshState);
 });
+
+/**
+ * Denial Letter Analyzer — POST a denial letter (paste-in), get back patent-matched
+ * decision rules, bad-faith signals, and a drafted counter-letter. Uses Gemini 2.0 Flash.
+ *
+ * Body: { denialText: string (50-25000 chars), carrier?: string }
+ */
+router.post('/api/intel/analyze-denial', analyzeDenial);
+
+/**
+ * Adjuster Twin — simulator for adjuster responses.
+ *   GET  /api/intel/adjuster-twin/list      List adjusters with cheat-sheet data (N>=5)
+ *   POST /api/intel/adjuster-twin/predict   { adjusterName, carrier, scope } → prediction
+ */
+router.get('/api/intel/adjuster-twin/list', listAdjusters);
+router.post('/api/intel/adjuster-twin/predict', predictAdjuster);
 
 /**
  * Trigger a STEALTH refresh from the SPA. Runs scripts/roofdocs/refresh-stealth.sh

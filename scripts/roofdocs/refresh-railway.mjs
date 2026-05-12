@@ -100,6 +100,7 @@ async function pushDerivedToDb() {
     { key: 'carrier-orphans', file: path.join(DATA_DIR, 'carrier-orphans.json') },
     { key: 'cheat-sheets',    file: path.join(DATA_DIR, 'cheat-sheets.json') },
     { key: 'carrier-patents', file: path.join(DATA_DIR, 'carrier-patents.json') },
+    { key: 'lifetime-touch',  file: path.join(DATA_DIR, 'lifetime-touch.json') },
     { key: 'storms-light',    file: path.join(STORMS_DIR, 'iem-hail-wind-2018-2026.json') },
   ];
 
@@ -156,6 +157,9 @@ async function pushDerivedToDb() {
 
     log('Building cheat sheets…');
     await runChild('node', ['scripts/roofdocs/build-cheat-sheets.mjs']);
+
+    log('Building lifetime touch engine…');
+    await runChild('node', ['scripts/roofdocs/build-lifetime-touch.mjs']);
 
     await pushDerivedToDb();
 

@@ -40,6 +40,26 @@
     "url": "https://patents.google.com/patent/US10157445/en"
   },
   {
+    "id": "US11257132",
+    "assignee": "Allstate Insurance",
+    "carrier": "Allstate",
+    "title": "Processing systems and methods having a machine learning engine for providing a surface dimension output",
+    "filed": "2018",
+    "category": "roof-measurement",
+    "why": "Allstate's roof-measurement AI — automated dimension calculation. Drives their square-foot scope before adjuster ever arrives.",
+    "url": "https://patents.google.com/patent/US11257132/en"
+  },
+  {
+    "id": "US11348134",
+    "assignee": "Allstate Insurance",
+    "carrier": "Allstate",
+    "title": "Data processing system with machine learning engine to provide output generation functions",
+    "filed": "2019",
+    "category": "claims-process",
+    "why": "General ML output-generation framework Allstate uses to auto-generate claim outcomes.",
+    "url": "https://patents.google.com/patent/US11348134/en"
+  },
+  {
     "id": "US10089396",
     "assignee": "Accurence (CoreLogic/Cotality)",
     "carrier": "VENDOR_MULTI",
@@ -78,6 +98,16 @@
     "category": "roof",
     "why": "ScopeAssist patent — how the carrier-side scope is auto-generated.",
     "url": "https://patents.google.com/patent/US10497289/en"
+  },
+  {
+    "id": "US10776883",
+    "assignee": "Accurence (CoreLogic/Cotality)",
+    "carrier": "VENDOR_MULTI",
+    "title": "Systems and methods for performing image analysis",
+    "filed": "2018-12-03",
+    "category": "roof",
+    "why": "Accurence's image analysis layer — applies carrier-specific rules to images, generates settlements without physical inspection.",
+    "url": "https://patents.google.com/patent/US10776883/en"
   },
   {
     "id": "US10977734",
@@ -120,6 +150,26 @@
     "url": "https://patents.google.com/patent/US10565658/en"
   },
   {
+    "id": "US20220414781",
+    "assignee": "State Farm",
+    "carrier": "State Farm",
+    "title": "Systems and Methods for Automating Property Assessment Using Probable Roof Loss Confidence Scores",
+    "filed": "2021-06-24",
+    "category": "roof",
+    "why": "State Farm's confidence-score system: building data + roof data + historical hail + climate region = automated underwriting/claims decisions. THIS is the engine that decides if your claim ever sees a human.",
+    "url": "https://patents.google.com/patent/US20220414781A1/en"
+  },
+  {
+    "id": "US11195234",
+    "assignee": "State Farm",
+    "carrier": "State Farm",
+    "title": "Systems and methods of utilizing unmanned vehicles to detect insurance claim buildup",
+    "filed": "2018",
+    "category": "fraud-detection",
+    "why": "State Farm's drone-based fraud detection — looks for 'claim buildup' (allegedly inflated claims). Roofers must understand what triggers this so legitimate scopes don't get flagged.",
+    "url": "https://patents.google.com/patent/US11195234/en"
+  },
+  {
     "id": "US11410230",
     "assignee": "USAA",
     "carrier": "USAA",
@@ -128,5 +178,55 @@
     "category": "property-damage",
     "why": "USAA's generative AI for aerial imagery — analyzes before/after, initiates claims.",
     "url": "https://patents.google.com/patent/US11410230/en"
+  },
+  {
+    "id": "US11216889",
+    "assignee": "USAA",
+    "carrier": "USAA",
+    "title": "Systems and methods for detecting items at a property",
+    "filed": "2019",
+    "category": "property-damage",
+    "why": "USAA's property-item detector — what's on/around the property. Used for both underwriting and post-loss validation.",
+    "url": "https://patents.google.com/patent/US11216889/en"
+  },
+  {
+    "id": "WO2018156846",
+    "assignee": "Dolphin AI",
+    "carrier": "VENDOR_MULTI",
+    "title": "Machine learning-based recognition of weather damage",
+    "filed": "2018-02-23",
+    "category": "roof",
+    "why": "Classifier distinguishes hail / wind / ice / wear-and-tear / human-made damage. Lays out the EXACT visual signatures the algorithm uses for each damage type — this is the wear-and-tear definition you're up against.",
+    "url": "https://patents.google.com/patent/WO2018156846A1/en"
+  },
+  {
+    "id": "US20190304026",
+    "assignee": "Betterview Marketplace",
+    "carrier": "VENDOR_MULTI",
+    "title": "Property investigation system and method",
+    "filed": "2019-03-27",
+    "category": "underwriting",
+    "why": "Betterview is used by 100+ carriers for property risk scoring. Generates wear-and-tear scores from satellite/aerial — frequently the basis for pre-loss non-renewal or post-loss reduction.",
+    "url": "https://patents.google.com/patent/US20190304026A1/en"
+  },
+  {
+    "id": "US20180373931",
+    "assignee": "Panton Inc",
+    "carrier": "VENDOR_MULTI",
+    "title": "Image recognition system for roof damage detection and management",
+    "filed": "2018-06-20",
+    "category": "roof",
+    "why": "UAV-based roof imagery + 3D structural model + damage feature extraction. Used by carriers as third-party adjuster verification.",
+    "url": "https://patents.google.com/patent/US20180373931A1/en"
+  },
+  {
+    "id": "US20150228031",
+    "assignee": "BuildFax",
+    "carrier": "VENDOR_MULTI",
+    "title": "Method of modeling roof age of a structure",
+    "filed": "2015-04-27",
+    "category": "underwriting",
+    "why": "Models 'real' roof age from tree height, structures, weather. Carriers use this to dispute homeowner-reported roof age — and to reduce ACV depreciation arguments.",
+    "url": "https://patents.google.com/patent/US20150228031A1/en"
   }
 ]

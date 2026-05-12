@@ -33,6 +33,7 @@ const DATASETS = [
   { key: 'carrier-orphans',  file: 'carrier-orphans.json' },
   { key: 'cheat-sheets',     file: 'cheat-sheets.json' },
   { key: 'carrier-patents',  file: 'carrier-patents.json' },
+  { key: 'lifetime-touch',   file: 'lifetime-touch.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
 ];
 
