@@ -99,6 +99,7 @@ async function pushDerivedToDb() {
     { key: 'job-storms',      file: path.join(DATA_DIR, 'job-storms.json') },
     { key: 'carrier-orphans', file: path.join(DATA_DIR, 'carrier-orphans.json') },
     { key: 'cheat-sheets',    file: path.join(DATA_DIR, 'cheat-sheets.json') },
+    { key: 'carrier-patents', file: path.join(DATA_DIR, 'carrier-patents.json') },
     { key: 'storms-light',    file: path.join(STORMS_DIR, 'iem-hail-wind-2018-2026.json') },
   ];
 

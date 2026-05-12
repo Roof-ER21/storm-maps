@@ -1,0 +1,132 @@
+[
+  {
+    "id": "US11720971",
+    "assignee": "Allstate Insurance",
+    "carrier": "Allstate",
+    "title": "Machine learning based accident assessment",
+    "filed": "2017",
+    "category": "claims-process",
+    "why": "Allstate's primary ML claim-assessment patent. Defines the decision pipeline they apply to incoming claims.",
+    "url": "https://patents.google.com/patent/US11720971/en"
+  },
+  {
+    "id": "US11798095",
+    "assignee": "Allstate Insurance",
+    "carrier": "Allstate",
+    "title": "Commercial claim processing platform using machine learning",
+    "filed": "2018",
+    "category": "claims-process",
+    "why": "ML claims processing platform — describes their training/inference pipeline.",
+    "url": "https://patents.google.com/patent/US11798095/en"
+  },
+  {
+    "id": "US10685400",
+    "assignee": "Allstate Insurance",
+    "carrier": "Allstate",
+    "title": "Mobile claims assessment",
+    "filed": "2014",
+    "category": "claims-process",
+    "why": "Allstate's automated mobile photo damage assessment without human adjuster involvement — first wave.",
+    "url": "https://patents.google.com/patent/US10685400/en"
+  },
+  {
+    "id": "US10157445",
+    "assignee": "Allstate Insurance",
+    "carrier": "Allstate",
+    "title": "Property image generation and assessment",
+    "filed": "2014",
+    "category": "property-damage",
+    "why": "Captures the photo-evaluation logic Allstate's AI applies to inbound damage photos.",
+    "url": "https://patents.google.com/patent/US10157445/en"
+  },
+  {
+    "id": "US10089396",
+    "assignee": "Accurence (CoreLogic/Cotality)",
+    "carrier": "VENDOR_MULTI",
+    "title": "Method and system for automated roof estimating",
+    "filed": "2011",
+    "category": "roof",
+    "why": "THE foundational carrier-vendor patent for automated roof estimating with per-carrier guideline application. Shingle severity, repair-vs-replace, steep charges, ice/water.",
+    "url": "https://patents.google.com/patent/US10089396/en"
+  },
+  {
+    "id": "US10546264",
+    "assignee": "Accurence (CoreLogic/Cotality)",
+    "carrier": "VENDOR_MULTI",
+    "title": "Method and system for automated roof estimating - extension",
+    "filed": "2014",
+    "category": "roof",
+    "why": "Extension of the Accurence roof estimating patent — refines per-carrier ruleset.",
+    "url": "https://patents.google.com/patent/US10546264/en"
+  },
+  {
+    "id": "US10043307",
+    "assignee": "Accurence (CoreLogic/Cotality)",
+    "carrier": "VENDOR_MULTI",
+    "title": "Method and system for automated roof estimating - imagery rules",
+    "filed": "2015",
+    "category": "roof",
+    "why": "Image-analysis rules layer — what visual features the system looks for in aerial imagery.",
+    "url": "https://patents.google.com/patent/US10043307/en"
+  },
+  {
+    "id": "US10497289",
+    "assignee": "Accurence (CoreLogic/Cotality)",
+    "carrier": "VENDOR_MULTI",
+    "title": "System and method for ScopeAssist scope automation",
+    "filed": "2016",
+    "category": "roof",
+    "why": "ScopeAssist patent — how the carrier-side scope is auto-generated.",
+    "url": "https://patents.google.com/patent/US10497289/en"
+  },
+  {
+    "id": "US10977734",
+    "assignee": "State Farm",
+    "carrier": "State Farm",
+    "title": "Computer-implemented methods for analyzing real property damage claims",
+    "filed": "2017",
+    "category": "property-damage",
+    "why": "State Farm's property damage claim analysis system. Cited in some lawsuit filings.",
+    "url": "https://patents.google.com/patent/US10977734/en"
+  },
+  {
+    "id": "US11315193",
+    "assignee": "State Farm",
+    "carrier": "State Farm",
+    "title": "Methods and systems for capturing real property data and a building plan structure",
+    "filed": "2019",
+    "category": "property-damage",
+    "why": "State Farm's property/structure capture system — feeds their automated damage assessment.",
+    "url": "https://patents.google.com/patent/US11315193/en"
+  },
+  {
+    "id": "US10832346",
+    "assignee": "State Farm",
+    "carrier": "State Farm",
+    "title": "Method and system for evaluating insurance claim with hazard imagery",
+    "filed": "2016",
+    "category": "property-damage",
+    "why": "Evaluates claims using hazard imagery (storm/hail). Likely covers their hail-evaluation logic.",
+    "url": "https://patents.google.com/patent/US10832346/en"
+  },
+  {
+    "id": "US10565658",
+    "assignee": "State Farm",
+    "carrier": "State Farm",
+    "title": "Storm event roof damage detection",
+    "filed": "2015",
+    "category": "roof",
+    "why": "Direct hit — roof damage detection after storm events. Core to their hail-payout algorithm.",
+    "url": "https://patents.google.com/patent/US10565658/en"
+  },
+  {
+    "id": "US11410230",
+    "assignee": "USAA",
+    "carrier": "USAA",
+    "title": "Systems and methods for generating insurance claims based on aerial imagery analysis",
+    "filed": "2019",
+    "category": "property-damage",
+    "why": "USAA's generative AI for aerial imagery — analyzes before/after, initiates claims.",
+    "url": "https://patents.google.com/patent/US11410230/en"
+  }
+]

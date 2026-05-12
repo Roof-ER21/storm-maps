@@ -32,6 +32,7 @@ const DATASETS = [
   { key: 'geocoded',         file: 'geocoded.json' },
   { key: 'carrier-orphans',  file: 'carrier-orphans.json' },
   { key: 'cheat-sheets',     file: 'cheat-sheets.json' },
+  { key: 'carrier-patents',  file: 'carrier-patents.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
 ];
 

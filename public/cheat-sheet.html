@@ -116,10 +116,16 @@ let DATA;
 let activeTab = 'rep';
 let activeEntity = null;
 
+let PATENTS = { patents: {}, byCarrier: {} };
+
 async function load() {
-  const r = await fetch('/api/intel/cheat-sheets');
+  const [r, rp] = await Promise.all([
+    fetch('/api/intel/cheat-sheets'),
+    fetch('/api/intel/carrier-patents').catch(() => null),
+  ]);
   if (!r.ok) throw new Error('Load failed ' + r.status);
   DATA = await r.json();
+  if (rp && rp.ok) PATENTS = await rp.json();
   $('loading').style.display = 'none';
   $('content').style.display = 'grid';
   // URL deep-link
@@ -314,6 +320,81 @@ function renderRep(r) {
   `;
 }
 
+// Carrier AI Decoder — surfaces patent-disclosed decision rules + counter-plays
+// + bad-faith signals for each carrier. Data source: data/carrier-patents.json
+// (12 carrier-AI patents decoded by Gemini from Google Patents).
+function renderPatentDecoder(carrierName) {
+  const ids = [
+    ...(PATENTS.byCarrier?.[carrierName] || []),
+    ...(PATENTS.byCarrier?.VENDOR_MULTI || []), // carrier-vendor patents apply to all
+  ];
+  if (ids.length === 0) return '';
+  const patents = ids.map((id) => PATENTS.patents[id]).filter(Boolean);
+  return `
+    <div class="panel" style="border-color: var(--purple, #a78bfa); border-width: 1px">
+      <h2 style="color: var(--purple, #a78bfa)">🥷 ${carrierName} AI Playbook — decoded from ${patents.length} public patent${patents.length === 1 ? '' : 's'}</h2>
+      <div class="method" style="border-left-color: var(--purple, #a78bfa)">
+        Source: public patent filings (Google Patents / USPTO) where this carrier or its vendor disclosed how their automated claim-assessment AI works. Each block below is what THEIR AI is documented to look for and decide. Use this to pre-align your scope and to spot when a denial diverges from the patent (= possible bad faith — court allowed discovery into insurer AI in 2026).
+      </div>
+      ${patents.map((p) => {
+        const e = p.extracted || {};
+        return `
+          <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 14px 18px; margin-bottom: 14px">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 8px">
+              <div>
+                <strong style="color: var(--accent); font-size: 14px">${p.id}</strong>
+                <span style="color: var(--muted); font-size: 11px; margin-left: 6px">filed ${p.filed} · ${p.assignee}</span>
+              </div>
+              <a href="${p.url}" target="_blank" rel="noreferrer" class="riq-link" style="font-size: 11px">📜 Open patent →</a>
+            </div>
+            <div style="font-size: 12.5px; line-height: 1.55; color: var(--text); margin-bottom: 10px">
+              <strong>${p.title.replace(/^US\d+B?\d?\s*-\s*/, '').replace(/\s*-\s*Google Patents$/, '')}</strong><br>
+              <span style="color: var(--muted)">${e.summary || ''}</span>
+            </div>
+            ${e.relevanceToRoofers ? `<div style="font-size:12px;color:var(--text);margin-bottom:10px;padding:6px 10px;background:#342c23;border-left:2px solid var(--accent);border-radius:0 4px 4px 0"><strong>Why this matters:</strong> ${e.relevanceToRoofers}</div>` : ''}
+            ${(e.imageFeaturesScanned || []).length ? `
+              <div style="margin-bottom:10px">
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">📷 What their AI scans for</div>
+                <div style="font-size:12px;line-height:1.6">${e.imageFeaturesScanned.map((f) => `<span style="display:inline-block;background:#342c23;border:1px solid var(--border);border-radius:3px;padding:2px 8px;margin:2px 4px 2px 0;color:var(--accent);font-family:ui-monospace,monospace;font-size:11px">${f}</span>`).join('')}</div>
+              </div>
+            ` : ''}
+            ${(e.decisionRules || []).length ? `
+              <div style="margin-bottom:10px">
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">⚙️ Decision rules they use</div>
+                ${e.decisionRules.map((r) => `<div style="font-size:12px;line-height:1.5;padding:4px 0;border-bottom:1px solid #342c23"><strong>IF</strong> ${r.trigger || r.condition || '—'} <strong style="color:var(--accent)">→</strong> ${r.outcome || ''}</div>`).join('')}
+              </div>
+            ` : ''}
+            ${(e.scoringThresholds || []).length ? `
+              <div style="margin-bottom:10px">
+                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">📐 Numeric thresholds</div>
+                ${e.scoringThresholds.map((t) => `<div style="font-size:12px;line-height:1.5;padding:3px 0"><strong>${t.metric}</strong>: <code style="color:var(--accent)">${t.threshold}</code> — ${t.meaning || ''}</div>`).join('')}
+              </div>
+            ` : ''}
+            ${(e.exclusions || []).length ? `
+              <div style="margin-bottom:10px;padding:8px 12px;background:rgba(239,68,68,0.05);border-left:2px solid var(--red);border-radius:0 4px 4px 0">
+                <div style="font-size:10px;color:var(--red);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">⚠️ Exclusions (carve-outs they apply)</div>
+                ${e.exclusions.map((x) => `<div style="font-size:12px;line-height:1.5">• ${x}</div>`).join('')}
+              </div>
+            ` : ''}
+            ${(e.counterPlaysForRoofers || []).length ? `
+              <div style="margin-bottom:10px;padding:8px 12px;background:rgba(16,185,129,0.05);border-left:2px solid var(--green);border-radius:0 4px 4px 0">
+                <div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">🎯 Counter-plays for the rep</div>
+                ${e.counterPlaysForRoofers.map((cp) => `<div style="font-size:12px;line-height:1.55;padding:2px 0">→ ${cp}</div>`).join('')}
+              </div>
+            ` : ''}
+            ${(e.badFaithSignals || []).length ? `
+              <div style="margin-bottom:6px;padding:8px 12px;background:rgba(168,139,250,0.05);border-left:2px solid var(--purple, #a78bfa);border-radius:0 4px 4px 0">
+                <div style="font-size:10px;color:var(--purple,#a78bfa);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">⚖️ Bad-faith signals (denial vs. patent)</div>
+                ${e.badFaithSignals.map((bf) => `<div style="font-size:12px;line-height:1.55;padding:2px 0">⚠ ${bf}</div>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+}
+
 function renderCarrier(c) {
   return `
     <div class="panel">
@@ -370,6 +451,8 @@ function renderCarrier(c) {
         </table>
       </div>
     </div>
+
+    ${renderPatentDecoder(c.name)}
 
     <div class="panel">
       <h2>🎯 Top Reps Against ${c.name}</h2>

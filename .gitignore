@@ -74,3 +74,6 @@ server/index-legacy.ts.bak
 dist/
 public/cheat-sheets.json
 data/cheat-sheets.json
+data/carrier-patents.json
+public/carrier-patents.json
+data/carrier-patents-raw/
