@@ -1,0 +1,26 @@
+{
+  "threadId": "192b9eb5fd4c75ff",
+  "subject": "USAA claim 015826705-800 — Andre Jones",
+  "carrier": "USAA",
+  "adjuster": "Shamanda Houston (USAA Claims Service)",
+  "claimNumber": "015826705-800",
+  "denialCategory": "estimate-issued",
+  "dateOfDenial": "2024-10-23",
+  "outcome": "pending",
+  "messages": [
+    {
+      "sender": "Shamanda Houston (USAA Claims Service)",
+      "date": "2024-10-23",
+      "role": "carrier-estimate",
+      "body": "Hello, This correspondence is regarding the following USAA claim: USAA policyholder: Andre Jones, Claim number: 015826705-800. I have attached the estimate per your request. You may reply to this message. If you need to provide documentation, you can attach documents to your email. We can't guarantee the security of any medical, financial or other personally identifiable information sent by email."
+    }
+  ],
+  "denialText": "I have attached the estimate per your request. You may reply to this message. If you need to provide documentation, you can attach documents to your email.",
+  "counterText": null,
+  "keyDenialLanguage": [
+    "I have attached the estimate per your request",
+    "If you need to provide documentation, you can attach documents to your email"
+  ],
+  "carrierTactic": "USAA's terse delivery model — minimal explanation. Estimate attached as PDF. Supplement requests via email reply only.",
+  "patentMapping": "USAA patents US11410230 (aerial imagery → claim generation) and US11216889 (property items detection) drive this auto-estimate workflow. The lack of detailed reasoning in the email itself is consistent with patent-described automation."
+}

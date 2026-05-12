@@ -45,6 +45,24 @@ interface CarrierPatentsBlob {
   byCarrier: Record<string, string[]>;
 }
 
+interface DenialCorpusEntry {
+  id: string;
+  source: string;
+  sourceType: string;
+  carrier: string | null;
+  adjuster: string | null;
+  denialText: string;
+  counterText?: string;
+  outcome?: string | null;
+  denialCategory?: string | null;
+  dateOfDenial?: string | null;
+  caseRef?: string | null;
+}
+
+interface DenialCorpus {
+  entries: DenialCorpusEntry[];
+}
+
 async function loadPatents(): Promise<CarrierPatentsBlob | null> {
   try {
     const rows = await pgSql<Array<{ data: CarrierPatentsBlob }>>`
@@ -55,6 +73,55 @@ async function loadPatents(): Promise<CarrierPatentsBlob | null> {
   } catch {
     return null;
   }
+}
+
+async function loadCorpus(): Promise<DenialCorpus | null> {
+  try {
+    const rows = await pgSql<Array<{ data: DenialCorpus }>>`
+      SELECT data FROM intel_blobs WHERE key = 'denial-corpus' LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    return rows[0].data;
+  } catch {
+    return null;
+  }
+}
+
+/** Pick the most useful few-shot examples for this carrier.
+ * Priority: carrier-matched gmail-thread w/ counterText > carrier-matched rd-canon > carrier-matched rep-chatter > generic rd-canon. */
+function selectFewShot(corpus: DenialCorpus, carrier: string, max = 4): DenialCorpusEntry[] {
+  if (!corpus || !corpus.entries || corpus.entries.length === 0) return [];
+  const target = (carrier || '').toLowerCase().trim();
+  const entries = corpus.entries;
+  const rank = (e: DenialCorpusEntry): number => {
+    const carrierMatch = e.carrier && e.carrier.toLowerCase() === target ? 100 : 0;
+    const hasCounter = e.counterText ? 30 : 0;
+    const sourceScore = e.sourceType === 'gmail-thread' ? 25 : e.sourceType === 'pdf-archive' ? 20 : e.sourceType === 'rd-canon' ? 15 : e.sourceType === 'rep-chatter' ? 5 : 0;
+    const textQuality = Math.min(10, (e.denialText || '').length / 200);
+    return carrierMatch + hasCounter + sourceScore + textQuality;
+  };
+  const ranked = [...entries].sort((a, b) => rank(b) - rank(a));
+  // Filter out anything with <100 chars of denial text (too thin)
+  const usable = ranked.filter((e) => (e.denialText || '').length >= 100);
+  return usable.slice(0, max);
+}
+
+function shapeFewShot(examples: DenialCorpusEntry[]): string {
+  if (examples.length === 0) return '(no past denials in corpus matching this carrier)';
+  return examples
+    .map((e, i) => {
+      const counter = e.counterText
+        ? `\n  ROOF DOCS COUNTER: ${e.counterText.slice(0, 800)}`
+        : '';
+      const meta = [
+        e.carrier ? `carrier=${e.carrier}` : '',
+        e.adjuster ? `adjuster=${e.adjuster}` : '',
+        e.outcome ? `outcome=${e.outcome}` : '',
+        e.dateOfDenial ? `date=${e.dateOfDenial}` : '',
+      ].filter(Boolean).join(', ');
+      return `EXAMPLE ${i + 1} (${e.sourceType}${meta ? ' · ' + meta : ''}):\n  DENIAL TEXT: ${e.denialText.slice(0, 1000)}${counter}`;
+    })
+    .join('\n\n');
 }
 
 function patentsForCarrier(blob: CarrierPatentsBlob, carrier: string): PatentEntry[] {
@@ -152,6 +219,10 @@ CARRIER PATENT DECODER CORPUS:
 {{PATENTS}}
 
 ================
+PAST DENIAL EXAMPLES FROM ROOF DOCS' REAL ARCHIVE (use as style/leverage reference; do NOT copy verbatim):
+{{EXAMPLES}}
+
+================
 DENIAL LETTER (verbatim):
 {{LETTER}}
 `;
@@ -187,8 +258,13 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
     return;
   }
 
+  // Few-shot examples from the real denial corpus
+  const corpus = await loadCorpus();
+  const examples = corpus ? selectFewShot(corpus, carrierHint, 4) : [];
+
   const prompt = ANALYZE_PROMPT
     .replace('{{PATENTS}}', shapePatentsForPrompt(patents))
+    .replace('{{EXAMPLES}}', shapeFewShot(examples))
     .replace('{{LETTER}}', denialText.slice(0, 25000));
 
   try {
@@ -213,6 +289,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
       model: MODEL,
       carrierHint,
       patentsConsidered: patents.map((p) => p.id),
+      corpusExamplesUsed: examples.map((e) => ({ id: e.id, source: e.source, carrier: e.carrier })),
       analysis: parsed,
     });
   } catch (err: unknown) {

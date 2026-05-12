@@ -57,6 +57,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'cheat-sheets':    { file: 'cheat-sheets.json',    description: 'Per-entity math-backed cheat sheets (rep / carrier / adjuster / state / zip)' },
   'carrier-patents': { file: 'carrier-patents.json', description: 'Carrier AI decoder — patent-disclosed decision rules + counter-plays + bad-faith signals' },
   'lifetime-touch':  { file: 'lifetime-touch.json',  description: 'Per-rep math-prioritized re-engagement queue (roof age + storm exposure + trade gaps)' },
+  'denial-corpus':   { file: 'denial-corpus.json',   description: 'Real denial archive mined from GroupMe + Gmail + PDFs + Susan canon (for few-shot prompting)' },
 };
 
 // Storm light file lives in storms/ subdir

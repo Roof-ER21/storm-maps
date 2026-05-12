@@ -101,6 +101,7 @@ async function pushDerivedToDb() {
     { key: 'cheat-sheets',    file: path.join(DATA_DIR, 'cheat-sheets.json') },
     { key: 'carrier-patents', file: path.join(DATA_DIR, 'carrier-patents.json') },
     { key: 'lifetime-touch',  file: path.join(DATA_DIR, 'lifetime-touch.json') },
+    { key: 'denial-corpus',   file: path.join(DATA_DIR, 'denial-corpus.json') },
     { key: 'storms-light',    file: path.join(STORMS_DIR, 'iem-hail-wind-2018-2026.json') },
   ];
 

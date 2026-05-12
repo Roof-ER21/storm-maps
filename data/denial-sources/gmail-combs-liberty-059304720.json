@@ -1,0 +1,35 @@
+{
+  "threadId": "196ee30dcb24ecc1",
+  "subject": "Liberty Mutual Claim 059304720-01 — Coverage Explanation & Settlement",
+  "carrier": "Liberty Mutual",
+  "adjuster": "Brett Beatty",
+  "claimNumber": "059304720-01",
+  "denialCategory": "partial-approval",
+  "dateOfDenial": "2025-05-20",
+  "outcome": "partial-paid",
+  "messages": [
+    {
+      "sender": "Brett Beatty (Liberty Mutual / Property Field Claim Resolution Specialist III, FL Adjuster License G043685)",
+      "date": "2025-05-20",
+      "role": "carrier-coverage-letter",
+      "body": "This email contains very important information about your claim. Please read and review the attached documents and all information below in its entirety. Attached is a copy of 'Coverage Payment Letter' and 'Approved Estimate'. The 'Coverage Payment Letter' will explain what is covered for this claim and/or explain what is not covered under the terms of the policy. In addition, it will explain the breakdown of the payment. The 'Approved Estimate' will break down in detail what is covered and how much it will cost. The pricing we use in our estimate adheres to industry market standards for most licensed contractors to complete the job. But if your chosen contractor's estimate is more they can submit for a supplement request for anything essential that was not included in our 'Approved Estimate', by going to https://property-supplements.libertymutual.com/. Please do not submit any estimates to us from contractors that you do not choose to complete the repairs. Once completed, our Property Resolution Team will review the request and try to reach a reasonable agreement. The assigned Resolution Specialist will work directly with your contractor and may require additional documentation to support their request. 'Recoverable Depreciation' refers to the difference between the Replacement Cost Value and the Actual cash value of the covered loss. We will release up to this amount only when proof of repairs or replacement has been received."
+    },
+    {
+      "sender": "Jermaine Perkins (Roof-ER Operations)",
+      "date": "2025-05-20",
+      "role": "rooftop-internal-handoff",
+      "body": "Tagged you both in File #10283 - Jeffrey Combs. Cody missed the meeting with the HO and Adjuster from yesterday. HO already received an email from INS Co. I asked the HO to send the information he rec'd from his INS Co. HO does not understand/am able to read all of the information received, but he sees that there was a full approval. Please contact HO with review, confirmation, and next steps."
+    }
+  ],
+  "denialText": "The 'Coverage Payment Letter' will explain what is covered for this claim and/or explain what is not covered under the terms of the policy. The pricing we use in our estimate adheres to industry market standards for most licensed contractors to complete the job. Please do not submit any estimates to us from contractors that you do not choose to complete the repairs.",
+  "counterText": null,
+  "keyDenialLanguage": [
+    "industry market standards for most licensed contractors",
+    "if your chosen contractor's estimate is more they can submit for a supplement request",
+    "Please do not submit any estimates to us from contractors that you do not choose to complete the repairs",
+    "Recoverable Depreciation will be released only when proof of repairs has been received"
+  ],
+  "carrierTactic": "Forces homeowner to choose contractor first BEFORE submitting estimates. Pricing tied to 'industry market standards' (typically meaning Xactimate baseline, not regional roofer pricing). Holds depreciation hostage until completion.",
+  "rooferTactic": "Required: file supplement request via property-supplements.libertymutual.com. Resolution Specialist Brett Beatty (mobile 804-997-5698, FL Adjuster G043685) is the contact point. Must work directly through contractor.",
+  "patentMapping": "Liberty Mutual is one of the 'big 3' carriers in AI patents per the Insurance Journal 2025 report. The 'industry market standards' language likely maps to their automated pricing engine — supplements require breaking the AI baseline with case-specific evidence."
+}

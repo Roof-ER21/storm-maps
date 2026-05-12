@@ -1,0 +1,46 @@
+{
+  "threadId": "1934597fe86028f2",
+  "subject": "065417-GQ — Cheng / Vienna VA",
+  "carrier": "Nationwide",
+  "adjuster": "Ryan Lacy",
+  "claimNumber": "065417-GQ",
+  "denialCategory": "partial-repair",
+  "dateOfDenial": "2024-11-21",
+  "outcome": "pending",
+  "messages": [
+    {
+      "sender": "Danny Ticktin (Roof-ER)",
+      "date": "2024-11-19",
+      "role": "roofer-initial",
+      "body": "I write to you today as our mutual client's information as well as the Partial Repair approval for 5 shingles on each slope from Nationwide we had on file came across my desk. So we scheduled our Field Technician to perform a repair attempt to remove and replace one individual shingle in order to demonstrate the irreparability of this old and brittle roof. As can be clearly seen in the video and pictures, the homeowner's roof sustained additional damage during the attempted repairs. Thus confirming a failed brittle test for the shingles, indicating irreparability as a major concern for the roof as a whole. With this fact established, your estimate as it currently stands would not actually fix the damages, but would in fact further compromise the integrity of the roof as a whole. Therefore I have gone ahead and written up an estimate that accurately reflects the full scope of work necessary to make our mutual client whole again. These photos clearly demonstrate the brittleness of this roof, and moving forward with further patch repairs will inevitably do further unavoidable damage to surrounding shingles. Please review these findings and revise your estimate/scope of work accordingly, so we can begin to move forward with the necessary full roof replacement."
+    },
+    {
+      "sender": "Ryan Lacy (Nationwide Claims Associate)",
+      "date": "2024-11-21",
+      "role": "carrier-denial",
+      "body": "Following up with you with feedback on the video and photos you had submitted on Cheng / Vienna, VA. Nationwide is of the opinion that the video and photos do not effectively prove that this roof is in an unrepairable condition, as there did not appear to be much - if any - damage present following the repair attempt. We will stand on the attached current estimate at this time. Manming and Maria: I do need to issue the initial payment on this claim today per Nationwide's claim handling guidelines. I will be sending you a $3,470.61 check now. Total: $5,091.25, Deductible: $1,000.00, Nationwide Owes: $4,091.25, Phase 1: $3,470.61, Phase 2: $620.64."
+    },
+    {
+      "sender": "Reese Samala (Roof-ER Director)",
+      "date": "2024-11-21",
+      "role": "roofer-counter",
+      "body": "Hello Ryan, Could you clarify how the photos and videos did not prove that the roof is not repairable? In the video and photos taken by our specialist, I can clearly see the typical indicators of a roof that are not repairable. If there is any additional information that I could provide, please let me know."
+    },
+    {
+      "sender": "Ryan Lacy (Nationwide Claims Associate)",
+      "date": "2024-11-22",
+      "role": "carrier-doubling-down",
+      "body": "Good Morning Reese, Thank you for reaching out on Cheng / Vienna, VA. We're not seeing the clear creasing and/or granule loss to the surrounding shingles in the video, in particular, that would allow us to determine that the roof is not in a repairable condition. The shingles appeared to be pliable enough to us to proceed with the repair per shingle on this file."
+    }
+  ],
+  "denialText": "Nationwide is of the opinion that the video and photos do not effectively prove that this roof is in an unrepairable condition, as there did not appear to be much - if any - damage present following the repair attempt. We will stand on the attached current estimate at this time. ... We're not seeing the clear creasing and/or granule loss to the surrounding shingles in the video, in particular, that would allow us to determine that the roof is not in a repairable condition. The shingles appeared to be pliable enough to us to proceed with the repair per shingle on this file.",
+  "counterText": "Could you clarify how the photos and videos did not prove that the roof is not repairable? In the video and photos taken by our specialist, I can clearly see the typical indicators of a roof that are not repairable.",
+  "keyDenialLanguage": [
+    "do not effectively prove that this roof is in an unrepairable condition",
+    "not seeing the clear creasing and/or granule loss to the surrounding shingles",
+    "shingles appeared to be pliable enough to us to proceed with the repair per shingle"
+  ],
+  "rooferTactic": "brittle test demonstration with before/after photos to prove irreparability",
+  "carrierTactic": "shifts the goalposts from 'damage' to 'unrepairability' — requires specific visual proof (creasing + granule loss in surrounding shingles)",
+  "patentMapping": "Nationwide's photographic test (creasing + granule loss in surrounding shingles) closely matches the imageFeaturesScanned in Accurence US10089396 and WO2018156846. The carrier is invoking the patent-documented inspection criteria."
+}

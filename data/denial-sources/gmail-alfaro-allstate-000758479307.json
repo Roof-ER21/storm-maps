@@ -1,0 +1,39 @@
+{
+  "threadId": "190e1d2bf82ec5eb",
+  "subject": "Allstate claim 000758479307 — Carlos Alfaro",
+  "carrier": "Allstate",
+  "adjuster": "Alicia Janay Williams (Phone 210-867-4950)",
+  "claimNumber": "000758479307",
+  "denialCategory": "partial-closed",
+  "dateOfDenial": "2024-07-23",
+  "outcome": "appeal-requested",
+  "messages": [
+    {
+      "sender": "Alicia Janay Williams (Allstate Vehicle and Property Insurance)",
+      "date": "2024-07-23",
+      "role": "carrier-initial-estimate",
+      "body": "I have attached a copy of your estimate for your records. If there is anything I may have missed or if you receive estimates from contractors that are higher than the Replacement Cost amount on my estimate, please reach out to me right away so I can review for any potential adjustments that may be needed. You may also email a copy of their estimate along with any photos of damage we may have missed to claims@claims.allstate.com with your claim # in the subject line. If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand and you can go ahead and schedule your repairs. If it is higher than what we allowed, please submit the contractor's proposal prior to getting any work done so we can review for possible supplement."
+    },
+    {
+      "sender": "Reese Samala (Roof-ER Director)",
+      "date": "2024-07-23",
+      "role": "roofer-internal-strategy",
+      "body": "Need to do iTel and RA."
+    },
+    {
+      "sender": "Carlos Alfaro (homeowner — drafted)",
+      "date": "2024-09-09",
+      "role": "homeowner-appeal-letter",
+      "body": "Dear Allstate Team, I am writing to formally express my disagreement with the recent decision to close my claim without a full approval. After reviewing the Repair Estimate and iTel Report provided by my contractor, I believe that my roof deserves a second inspection before the matter is finalized. I have been an Allstate member in good standing since 2016, and I am respectfully requesting that this claim be reopened and a reinspection scheduled with a different adjuster. A fresh evaluation will ensure that all aspects of the damage are thoroughly reviewed. I would also like to request a meeting to discuss the decision and any additional facts that may support reconsidering the claim. Please let me know when it would be convenient to arrange this conversation. Thank you for your time and attention to this matter. I look forward to your prompt response."
+    }
+  ],
+  "denialText": "I have attached a copy of your estimate for your records. If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand and you can go ahead and schedule your repairs. If it is higher than what we allowed, please submit the contractor's proposal prior to getting any work done so we can review for possible supplement.",
+  "counterText": "Dear Allstate Team, I am writing to formally express my disagreement with the recent decision to close my claim without a full approval. After reviewing the Repair Estimate and iTel Report provided by my contractor, I believe that my roof deserves a second inspection before the matter is finalized. I have been an Allstate member in good standing since 2016, and I am respectfully requesting that this claim be reopened and a reinspection scheduled with a different adjuster.",
+  "keyDenialLanguage": [
+    "estimates that are higher than the Replacement Cost amount on my estimate",
+    "If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand",
+    "review for possible supplement"
+  ],
+  "rooferTactic": "Carlos's appeal letter shows the classic 'good standing member' + 'request reinspection with different adjuster' play. Counter is to deploy iTel report + Repair Agreement to force a second look.",
+  "patentMapping": "Allstate's 'Replacement Cost' framing matches their patents US10685400 (mobile claims assessment), US10157445 (property image), US11257132 (surface dimension AI). The auto-issued estimate is patent-driven — the supplement request is how you re-engage human review."
+}
