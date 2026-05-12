@@ -68,6 +68,22 @@
   .legend .green::before { background: var(--green); }
   .toast { position: fixed; top: 20px; right: 20px; background: var(--green); color: #1a1612; padding: 12px 18px; border-radius: 6px; font-weight: 700; z-index: 100; opacity: 0; transform: translateY(-10px); transition: all 0.3s; }
   .toast.show { opacity: 1; transform: translateY(0); }
+  .dropzone { border: 2px dashed var(--border); border-radius: 8px; padding: 28px 20px; text-align: center; cursor: pointer; transition: all 0.18s; background: #2a241e; margin-bottom: 12px; }
+  .dropzone:hover, .dropzone:focus, .dropzone.drag { border-color: var(--accent); background: #342c23; outline: none; }
+  .dropzone .dz-ico { font-size: 32px; display: block; margin-bottom: 8px; }
+  .dropzone .dz-inner { color: var(--text); line-height: 1.55; }
+  .dropzone .dz-sub { color: var(--muted); font-size: 11px; margin-top: 6px; }
+  #dz-status { margin: 6px 0 10px; min-height: 18px; font-size: 12px; color: var(--muted); }
+  #dz-status.ok { color: var(--green); }
+  #dz-status.err { color: var(--red); }
+  .outcome-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .outcome-bar button { background: #342c23; color: var(--text); border: 1px solid var(--border); padding: 7px 14px; border-radius: 5px; font-size: 12px; font-weight: 600; cursor: pointer; }
+  .outcome-bar button:hover { border-color: var(--accent); }
+  .outcome-bar button.ok { background: var(--green); color: var(--bg); border-color: var(--green); }
+  .outcome-bar button.bad { background: var(--red); color: white; border-color: var(--red); }
+  .outcome-bar button.warn { background: var(--yellow); color: var(--bg); border-color: var(--yellow); }
+  .outcome-bar button.muted { background: #342c23; color: var(--muted); }
+  .outcome-bar button:disabled { opacity: 0.5; cursor: default; }
 </style>
 </head>
 <body>
@@ -84,9 +100,18 @@
 <main>
 
   <section>
-    <h2>Paste the denial letter</h2>
-    <p class="desc">Drop the full letter text below. The analyzer runs it against 22+ carrier patents to find the exact decision rule the AI used, flag contradictions, and draft a counter-letter you can send.</p>
-    <textarea id="denial-input" placeholder="Paste the full carrier denial letter here. Include the header, body, and signature — the more context, the better the analysis."></textarea>
+    <h2>Drop, paste, or upload the denial letter</h2>
+    <p class="desc">PDF or screenshot? Drag-drop or click to upload — RIQ transcribes it with Gemini vision. Already have the text? Paste it. The analyzer runs against 22 carrier patents + 289 real-world denials to decode it.</p>
+    <div id="dropzone" class="dropzone" tabindex="0" onclick="document.getElementById('file-input').click()">
+      <div class="dz-inner">
+        <span class="dz-ico">📄</span>
+        <div><strong>Drop a denial PDF or photo here</strong> · or click to choose</div>
+        <div class="dz-sub">PDF, JPG, PNG, HEIC up to 15&nbsp;MB</div>
+      </div>
+      <input id="file-input" type="file" accept="application/pdf,image/*" style="display:none" onchange="handleFile(event.target.files[0])" />
+    </div>
+    <div id="dz-status"></div>
+    <textarea id="denial-input" placeholder="…or paste the full carrier denial letter here. Include the header, body, and signature — the more context, the better the analysis."></textarea>
     <div class="input-row">
       <div>
         <label for="carrier-select">Carrier (helps target the right patents)</label>
@@ -119,6 +144,69 @@
 const $ = (id) => document.getElementById(id);
 
 const KNOWN_CARRIERS = ['Allstate', 'State Farm', 'USAA'];
+
+let CURRENT_INTAKE_ID = null;
+
+function setDzStatus(msg, cls) {
+  const el = $('dz-status');
+  el.textContent = msg || '';
+  el.className = cls || '';
+}
+
+function readFileAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => {
+      const url = String(r.result || '');
+      resolve(url.replace(/^data:[^;]+;base64,/, ''));
+    };
+    r.onerror = () => reject(new Error('FileReader failed'));
+    r.readAsDataURL(file);
+  });
+}
+
+async function handleFile(file) {
+  if (!file) return;
+  const sizeMb = file.size / 1024 / 1024;
+  if (sizeMb > 15) {
+    setDzStatus('File too large (' + sizeMb.toFixed(1) + ' MB). Limit is 15 MB.', 'err');
+    return;
+  }
+  if (!/pdf|image\//.test(file.type)) {
+    setDzStatus('Unsupported type ' + file.type + '. Use PDF or image.', 'err');
+    return;
+  }
+  setDzStatus('Transcribing ' + file.name + ' (' + sizeMb.toFixed(1) + ' MB) with Gemini vision…');
+  try {
+    const base64 = await readFileAsBase64(file);
+    const r = await fetch('/api/intel/transcribe-denial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ format: file.type.startsWith('image/') ? 'image' : 'pdf', base64, mimeType: file.type }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || ('HTTP ' + r.status));
+    }
+    const data = await r.json();
+    $('denial-input').value = data.text || '';
+    setDzStatus('✓ Transcribed ' + (data.text || '').length + ' chars. Review then click Analyze.', 'ok');
+  } catch (e) {
+    setDzStatus('Transcription failed: ' + e.message, 'err');
+  }
+}
+
+function initDropzone() {
+  const dz = $('dropzone');
+  dz.addEventListener('dragover', (e) => { e.preventDefault(); dz.classList.add('drag'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+  dz.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dz.classList.remove('drag');
+    const f = e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleFile(f);
+  });
+}
 
 async function loadCarriers() {
   try {
@@ -202,6 +290,7 @@ function renderAnalysis(result) {
   const a = result.analysis || {};
   const out = $('output');
   const strength = strengthFill(a.appealStrength);
+  CURRENT_INTAKE_ID = result.intakeId || null;
 
   const html = [];
 
@@ -320,15 +409,60 @@ function renderAnalysis(result) {
     html.push('</section>');
   }
 
+  // Outcome tracking
+  if (CURRENT_INTAKE_ID) {
+    html.push('<section>');
+    html.push('<h2>📌 Track Outcome (intake #' + CURRENT_INTAKE_ID + ')</h2>');
+    html.push('<p class="desc">When you hear back from the carrier, mark the outcome so RIQ learns which counter-letters actually flip denials.</p>');
+    html.push('<div class="outcome-bar" id="outcome-bar">');
+    html.push('<button class="ok" onclick="markOutcome(\'approved\')">✓ Approved (full)</button>');
+    html.push('<button class="warn" onclick="markOutcome(\'partial\')">◐ Partial approval</button>');
+    html.push('<button class="bad" onclick="markOutcome(\'denied\')">✗ Denied (stood firm)</button>');
+    html.push('<button class="muted" onclick="markOutcome(\'pending\')">… Pending / no reply yet</button>');
+    html.push('<button class="muted" onclick="markOutcome(\'withdrawn\')">↩ Withdrawn</button>');
+    html.push('</div>');
+    html.push('<div id="outcome-status" style="margin-top:8px; font-size:12px; color:var(--muted);"></div>');
+    html.push('</section>');
+  }
+
   // Footer
+  const corpusCount = (result.corpusExamplesUsed || []).length;
+  const corpusText = corpusCount > 0 ? ' · ' + corpusCount + ' real denials referenced from archive' : '';
   html.push('<section style="text-align: center; color: var(--muted); font-size: 11px;">');
-  html.push('Powered by Gemini 2.0 Flash · ' + (result.patentsConsidered || []).length + ' patents in decoder corpus · Generated ' + new Date(result.generated).toLocaleString());
+  html.push('Powered by Gemini 2.0 Flash · ' + (result.patentsConsidered || []).length + ' patents in decoder' + corpusText + ' · Generated ' + new Date(result.generated).toLocaleString());
+  if (result.intakeId) html.push('<br>Archived as intake #' + result.intakeId + ' · This denial is now part of the corpus and will inform future analyses');
   html.push('</section>');
 
   out.innerHTML = html.join('');
 }
 
+async function markOutcome(outcome) {
+  if (!CURRENT_INTAKE_ID) return;
+  const status = $('outcome-status');
+  const bar = $('outcome-bar');
+  status.textContent = 'Saving…';
+  try {
+    const r = await fetch('/api/intel/denial-intake/' + CURRENT_INTAKE_ID + '/outcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outcome }),
+    });
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      throw new Error(err.detail || ('HTTP ' + r.status));
+    }
+    const data = await r.json();
+    status.style.color = 'var(--green)';
+    status.textContent = '✓ Outcome saved (' + outcome + ') as #' + data.outcomeId + '. Counter-strategy performance is now being tracked.';
+    bar.querySelectorAll('button').forEach((b) => b.disabled = true);
+  } catch (e) {
+    status.style.color = 'var(--red)';
+    status.textContent = 'Failed: ' + e.message;
+  }
+}
+
 loadCarriers();
+initDropzone();
 </script>
 </body>
 </html>

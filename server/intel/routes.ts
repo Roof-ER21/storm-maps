@@ -19,6 +19,14 @@ import { intelCors, requireIntelAuth, consumerLabel } from './auth.js';
 import { sql as pgSql } from '../db.js';
 import { analyzeDenial } from './denial-analyzer.js';
 import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
+import { transcribeDenial } from './denial-transcribe.js';
+import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } from './denial-intake.js';
+
+// Fire-and-forget on module load — table creation is idempotent and the
+// app shouldn't crash if Postgres is temporarily unavailable at boot.
+void ensureIntakeTables().catch((err) => {
+  console.warn('[denial-intake] ensureIntakeTables failed at boot:', err instanceof Error ? err.message : err);
+});
 
 // Phase 4: read intel data from Postgres `intel_blobs` table when available,
 // fall back to /data/*.json files (local dev convenience). Same response shape.
@@ -238,6 +246,21 @@ router.get('/api/intel/refresh/status', (_req, res) => {
  * Body: { denialText: string (50-25000 chars), carrier?: string }
  */
 router.post('/api/intel/analyze-denial', analyzeDenial);
+
+/**
+ * Transcribe an uploaded PDF or image of a denial letter to plain text via
+ * Gemini multimodal. Returns the verbatim text for the user to review + analyze.
+ */
+router.post('/api/intel/transcribe-denial', transcribeDenial);
+
+/**
+ * Denial intake — durable archive + outcome tracking. Every successful
+ * analysis is recorded automatically. Reps mark outcomes to close the loop.
+ */
+router.get('/api/intel/denial-intake/stats', intakeStats);
+router.get('/api/intel/denial-intake/list', listIntake);
+router.get('/api/intel/denial-intake/:id', getIntake);
+router.post('/api/intel/denial-intake/:id/outcome', postOutcome);
 
 /**
  * Adjuster Twin — simulator for adjuster responses.

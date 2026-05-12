@@ -16,6 +16,7 @@
 import type { Request, Response } from 'express';
 import { GoogleGenAI } from '@google/genai';
 import { sql as pgSql } from '../db.js';
+import { recordIntake } from './denial-intake.js';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -284,12 +285,30 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
       const cleaned = text.replace(/^```json\s*|\s*```$/gm, '').trim();
       parsed = JSON.parse(cleaned);
     }
+    const corpusExamplesUsed = examples.map((e) => ({ id: e.id, source: e.source, carrier: e.carrier }));
+    const patentsConsidered = patents.map((p) => p.id);
+
+    // Durable intake — fire-and-forget so analyzer latency isn't blocked on DB
+    let intakeId: number | null = null;
+    try {
+      intakeId = await recordIntake(req, {
+        carrier: carrierHint,
+        denialText,
+        analysis: parsed,
+        patentsConsidered,
+        corpusExamplesUsed,
+      });
+    } catch {
+      // Already swallowed inside recordIntake — defensive double-catch
+    }
+
     res.json({
       generated: new Date().toISOString(),
       model: MODEL,
       carrierHint,
-      patentsConsidered: patents.map((p) => p.id),
-      corpusExamplesUsed: examples.map((e) => ({ id: e.id, source: e.source, carrier: e.carrier })),
+      patentsConsidered,
+      corpusExamplesUsed,
+      intakeId,
       analysis: parsed,
     });
   } catch (err: unknown) {

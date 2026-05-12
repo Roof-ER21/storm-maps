@@ -40,7 +40,7 @@ const app = express();
 app.set('trust proxy', 1);
 const PORT = parseInt(process.env.PORT || '3100', 10);
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '30mb' })); // bumped for denial PDF/image uploads (base64 inflates ~33%)
 app.use(cookieParser());
 
 // PIN/session auth — populates req.user/req.session from session cookie when
