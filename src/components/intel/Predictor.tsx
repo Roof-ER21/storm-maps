@@ -252,7 +252,7 @@ export function Predictor() {
     if (finalRate >= 0.7)
       recs.unshift({ tone: 'good', html: '<strong>High-probability lead.</strong> Get to the door fast. Schedule inspection within 7 days.' });
     else if (finalRate >= 0.5)
-      recs.unshift({ tone: '', html: '<strong>Moderate.</strong> Pre-document aggressively. Pre-inspect with drone before adjuster arrives.' });
+      recs.unshift({ tone: '', html: '<strong>Moderate.</strong> Pre-document aggressively. Pre-inspect on foot with chalk + phone macro photos before adjuster arrives.' });
     else
       recs.unshift({ tone: 'warn', html: '<strong>Lower probability.</strong> Pre-inspection essential. Consider invoking PA from day one.' });
 

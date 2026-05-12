@@ -310,7 +310,7 @@ function predict() {
   if (finalRate >= 0.7) {
     recs.push({ tone: 'good', text: `<strong>High-probability lead.</strong> Get to the door fast. Schedule inspection within 7 days.` });
   } else if (finalRate >= 0.5) {
-    recs.push({ tone: '', text: `<strong>Moderate.</strong> Solid lead but pre-document aggressively. Pre-inspect with drone before adjuster arrives.` });
+    recs.push({ tone: '', text: `<strong>Moderate.</strong> Solid lead but pre-document aggressively. Pre-inspect on foot with chalk + phone macro photos before adjuster arrives.` });
   } else {
     recs.push({ tone: 'warn', text: `<strong>Lower probability.</strong> Pre-inspection and complete documentation essential. Consider invoking PA from day one.` });
   }
