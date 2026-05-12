@@ -195,8 +195,8 @@ function render(rows) {
   const head = '<thead><tr>' + COLS.map((c) => `<th data-k="${c.k}" class="${c.num ? 'num' : ''}">${c.l}${sortKey === c.k ? `<span class="arrow">${sortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</th>`).join('') + '<th>Cities</th><th>Reps</th></tr></thead>';
   const body = '<tbody>' + rows.slice(0, 1000).map((a) => `
     <tr>
-      <td><strong>${a.name}</strong></td>
-      <td>${a.carrier}</td>
+      <td><strong><a class="riq-link" href="adjuster-detail.html?name=${encodeURIComponent(a.name)}">${a.name}</a></strong></td>
+      <td><a class="riq-link" href="carrier-detail.html?name=${encodeURIComponent(a.carrier || '')}">${a.carrier}</a></td>
       <td>${a.emails ? `<a href="mailto:${a.emails}" style="color:var(--accent);text-decoration:none">${a.emails}</a>` : '—'}</td>
       <td>${a.phones ? `<a href="tel:${a.phones.replace(/\D/g, '')}" style="color:var(--accent);text-decoration:none">${a.phones}</a>` : '—'}</td>
       <td class="num">${a.signed}</td>

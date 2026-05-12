@@ -316,7 +316,7 @@ function renderTable(rows) {
   </tr></thead>`;
   const body = '<tbody>' + rows.slice(0, 2000).map((c) => `
     <tr>
-      <td>${c.name}</td>
+      <td>${window.RIQ ? window.RIQ.custLink({ customer: c.name, addressLine1: (c.addr || '').split(',')[0], city: (c.addr || '').split(',')[1]?.trim() }) : c.name}</td>
       <td>${c.addr || '—'}</td>
       <td>${c.state || '—'}</td>
       <td><span style="font-size:11px">${[...c.trades].sort().join(', ') || '—'}</span></td>

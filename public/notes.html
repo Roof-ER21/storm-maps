@@ -145,7 +145,7 @@ function render(rows, q) {
     <div class="note-card">
       <div class="head">
         <div>
-          <span class="name">${escape(r.customer || '—')}</span>
+          <span class="name">${window.RIQ ? window.RIQ.custLink(r) : escape(r.customer || '—')}</span>
           <span class="addr">  ${escape(r.address)}</span>
         </div>
         <div class="meta">${r.insurance || '—'} · ${r.salesRep || '—'} · ${r.stage || '—'} · ${r.signedDate || '—'} · #${r.id}</div>

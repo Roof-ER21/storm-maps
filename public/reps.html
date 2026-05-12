@@ -249,10 +249,22 @@ async function start() {
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('rep-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderRepList, 200); });
+  // Direct link support: ?rep=<name> or #<name> auto-opens that rep
+  const params = new URLSearchParams(location.search);
+  const wantedRep = decodeURIComponent(location.hash.slice(1) || params.get('rep') || '');
+  if (wantedRep) {
+    $('rep-search').value = wantedRep;
+  }
   renderRepList();
   if (reps.length > 0) {
-    // auto-select first
-    setTimeout(() => $('rep-list').querySelector('.rep-item')?.click(), 50);
+    setTimeout(() => {
+      if (wantedRep) {
+        const item = [...$('rep-list').querySelectorAll('.rep-item')].find((el) => el.dataset.rep?.replace(/&quot;/g, '"') === wantedRep);
+        if (item) item.click(); else $('rep-list').querySelector('.rep-item')?.click();
+      } else {
+        $('rep-list').querySelector('.rep-item')?.click();
+      }
+    }, 50);
   }
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });

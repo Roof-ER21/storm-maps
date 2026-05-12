@@ -149,7 +149,7 @@ function render(rows) {
   const body = '<tbody>' + rows.slice(0, 300).map((r, i) => {
     const sms = buildSMS(r);
     return `<tr>
-      <td><strong>${r.name || '—'}</strong></td>
+      <td><strong>${window.RIQ ? window.RIQ.custLink({ customer: r.name, address: r.address }) : (r.name || '—')}</strong></td>
       <td><a href="sms:${(r.phone || '').replace(/\D/g, '')}&body=${encodeURIComponent(sms)}" style="color:var(--accent);text-decoration:none">${r.phone}</a></td>
       <td>${r.address || '—'}</td>
       <td>${r.carrier || '—'}</td>

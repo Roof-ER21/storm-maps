@@ -215,7 +215,19 @@ async function start() {
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
   renderList();
-  setTimeout(() => $('list').querySelector('.item')?.click(), 50);
+  // Direct link support: ?name=<adjuster> opens that adjuster
+  const params = new URLSearchParams(location.search);
+  const target = params.get('name');
+  if (target) {
+    $('search').value = target;
+    renderList();
+    setTimeout(() => {
+      const item = [...$('list').querySelectorAll('.item')].find((el) => el.textContent?.startsWith(target));
+      if (item) item.click(); else $('list').querySelector('.item')?.click();
+    }, 50);
+  } else {
+    setTimeout(() => $('list').querySelector('.item')?.click(), 50);
+  }
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
 </script>

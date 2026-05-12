@@ -124,7 +124,7 @@ function render(rows) {
   const body = '<tbody>' + rows.map((r) => {
     const cls = r.medianDays <= 30 ? 'fast' : r.medianDays <= 90 ? 'med' : 'slow';
     return `<tr>
-      <td><strong>${r.name}</strong></td>
+      <td><strong><a class="riq-link" href="reps.html#${encodeURIComponent(r.name)}">${r.name}</a></strong></td>
       <td class="num">${r.jobs}</td>
       <td class="num">${r.completed}</td>
       <td class="num"><span class="pill ${cls}">${r.medianDays}d</span></td>

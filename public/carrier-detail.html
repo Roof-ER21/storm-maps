@@ -218,11 +218,11 @@ function showCarrier(name) {
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top reps for this carrier</h2><div class="scroll"><table>
         <thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Revenue</th></tr></thead>
-        <tbody>${topReps.map((r) => `<tr><td>${r.n}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
+        <tbody>${topReps.map((r) => `<tr><td><a class="riq-link" href="reps.html#${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top adjusters</h2><div class="scroll"><table>
         <thead><tr><th>Adjuster</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Approval %</th></tr></thead>
-        <tbody>${topAdjusters.map((r) => `<tr><td>${r.n}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
+        <tbody>${topAdjusters.map((r) => `<tr><td><a class="riq-link" href="adjuster-detail.html?name=${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Year-over-year</h2><div class="scroll"><table>
         <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Close%</th><th class="num">Revenue</th></tr></thead>
@@ -248,7 +248,7 @@ async function start() {
   setTimeout(() => $('list').querySelector('.item')?.click(), 50);
   // Allow direct linking
   const params = new URLSearchParams(location.search);
-  const c = params.get('carrier');
+  const c = params.get('carrier') || params.get('name');  // accept either param
   if (c) {
     const target = [...$('list').querySelectorAll('.item')].find((el) => el.dataset.name === c);
     if (target) target.click();

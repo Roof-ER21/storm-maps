@@ -415,7 +415,7 @@ function quickSearch() {
       items.push({
         name: p.customer || '(unknown)',
         sub: `${p.addressLine1 || ''}, ${p.city || ''} ${p.state || ''} · ${p.insurance || ''} · ${p.salesRep || ''}`,
-        href: `customers.html`,
+        href: window.RIQ ? window.RIQ.custProfileUrl(p) : 'customers.html',
       });
       n++;
     }
