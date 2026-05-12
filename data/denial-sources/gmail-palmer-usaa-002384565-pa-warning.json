@@ -1,0 +1,43 @@
+{
+  "threadId": "19bfb74445326613",
+  "subject": "USAA Claim 002384565-803 — Palmer / PA Warning thread",
+  "carrier": "USAA",
+  "adjuster": "James Robinson",
+  "claimNumber": "002384565-803",
+  "denialCategory": "partial-approval-pa-pushback",
+  "dateOfDenial": "2026-01-22",
+  "outcome": "clarification-letter-sent",
+  "messages": [
+    {
+      "sender": "Shane Santangelo (Roof-ER) — original Susan-drafted email",
+      "date": "2025-11-26",
+      "role": "roofer-initial-request",
+      "body": "Dear Mr. Robinson, I am writing to you today regarding the property of our client, Mr. Robert Palmer, located at 13003 Winding Creek Ln in Bowie, MD, under claim number 002384565-803 with USAA. Mr. Palmer has requested a reinspection of his roof due to significant hail damage observed on both the shingles and the soft metals. Our recent photo report, which you will find under the shingle damage section, thoroughly documents clear signs of hail impact on the shingle surfaces. Furthermore, this damage extends to the soft metals across the roof. It is also important to note that several of Mr. Palmer's immediate neighbors have already received approvals and payment from their respective insurance carriers for similar hail damage stemming from the same storm event. As the property is located in Maryland, we would also like to emphasize that Maryland state regulations require insurance companies to account for matching in the event of partial replacement. Given the extensive nature of the documented damage and the challenges in achieving a uniform appearance with partial repairs, a full roof replacement is warranted. Considering the documented damage on both shingles and soft metals, the neighboring approvals, and Maryland's matching requirements, we respectfully request that Mr. Palmer's claim be updated to reflect a full roof replacement."
+    },
+    {
+      "sender": "James Robinson (USAA adjuster) — paraphrased pushback",
+      "date": "2026-01-22",
+      "role": "carrier-pa-warning",
+      "body": "Adjuster warned that Roof-ER's previous email language sounded like acting as a Public Adjuster (interpreting policy coverage, negotiating settlement, acting as intermediary between insured and USAA — all of which require public adjuster licensing)."
+    },
+    {
+      "sender": "Roof Docs (Ahmed/Shane via Susan) — clarification response",
+      "date": "2026-01-26",
+      "role": "roofer-clarification",
+      "body": "Subject: Re: Claim #002384565-803 - Clarification of Contractor Role. Dear [Adjuster Name], Thank you for your response regarding public adjuster licensing. I appreciate the opportunity to clarify my role and intent. You are absolutely correct that I am not licensed as a public adjuster, and that was never my intention. Upon reflection, I can see how my previous email's language could have created that impression, and I apologize for any confusion. To be clear: I am not interpreting Mr. Palmer's policy coverage, negotiating his claim settlement, or acting as an intermediary between Mr. Palmer and USAA. Those determinations remain entirely between you and your insured. My role is solely as the licensed roofing contractor who would be responsible for performing any approved repair work. In that capacity, my previous email was intended to communicate the technical and code-compliance challenges I would face in attempting a partial repair on this specific property. CONTRACTOR'S TECHNICAL ASSESSMENT: Based on the documented damage and the current condition of Mr. Palmer's roof, any partial repair would face the following construction challenges: Building code compliance issues related to material uniformity requirements; Manufacturer warranty specifications that prohibit mixing aged and new materials; Material matching impossibility due to product discontinuation/aging; Industry standard requirements for addressing full affected areas. These are construction and liability considerations that affect what I can professionally recommend and execute as a licensed contractor — not determinations about what USAA's policy covers. If a partial repair is approved, I would need to decline the project due to the code compliance and warranty issues it would create. I felt it was important to communicate these technical limitations upfront rather than after your adjustment was complete."
+    }
+  ],
+  "denialText": "Adjuster James Robinson at USAA warned Roof-ER that the contractor's previous email language sounded like the contractor was acting as a Public Adjuster (interpreting policy coverage, negotiating settlement, acting as intermediary between insured and USAA — all of which require public adjuster licensing).",
+  "counterText": "Subject: Re: Claim #002384565-803 - Clarification of Contractor Role. Thank you for your response regarding public adjuster licensing. You are absolutely correct that I am not licensed as a public adjuster, and that was never my intention. My role is solely as the licensed roofing contractor who would be responsible for performing any approved repair work. CONTRACTOR'S TECHNICAL ASSESSMENT: Building code compliance issues related to material uniformity requirements; Manufacturer warranty specifications that prohibit mixing aged and new materials; Material matching impossibility due to product discontinuation/aging; Industry standard requirements for addressing full affected areas. These are construction and liability considerations that affect what I can professionally recommend and execute as a licensed contractor — not determinations about what USAA's policy covers. If a partial repair is approved, I would need to decline the project due to the code compliance and warranty issues it would create.",
+  "keyDenialLanguage": [
+    "warning of acting like a Public Adjuster",
+    "interpreting policy coverage",
+    "negotiating his claim settlement",
+    "acting as an intermediary between the insured and USAA",
+    "requires public adjuster licensing"
+  ],
+  "carrierTactic": "USAA adjuster (James Robinson) deflects contractor advocacy by invoking unauthorized practice of public adjusting. Tactic shuts down further roofer-led arguments unless reframed strictly as contractor-technical-assessment.",
+  "rooferTactic": "Reframe as CONTRACTOR'S TECHNICAL ASSESSMENT (building code + manufacturer warranty + material matching + industry standard). Explicit non-PA disclaimer. Decline-project leverage if partial approved. Joint inspection offer.",
+  "patentMapping": "USAA patents US11410230 + US11216889 are about automated claim generation from aerial imagery and property item detection. The PA pushback is a HUMAN escalation tactic — when AI auto-denials get challenged, carriers fall back on regulatory technicalities to limit contractor advocacy.",
+  "lessonForAnalyzer": "When drafting counter-letters for USAA (and likely other carriers), AVOID: 'we respectfully request', 'negotiate', 'on behalf of', 'represent', 'advocate', 'matching requirements', 'state law requires'. USE: 'as the licensed contractor', 'technical/construction challenges', 'manufacturer warranty', 'code compliance', 'decline the project', 'joint inspection'."
+}

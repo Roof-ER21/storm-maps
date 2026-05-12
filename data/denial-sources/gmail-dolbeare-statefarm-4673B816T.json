@@ -1,0 +1,33 @@
+{
+  "threadId": "192ba1e299eab8e2",
+  "subject": "State Farm Claim 4673B816T — Brian Dolbeare — No Hail Roof Denial",
+  "carrier": "State Farm",
+  "adjuster": null,
+  "claimNumber": "4673B816T",
+  "denialCategory": "no-hail-roof-denial",
+  "dateOfDenial": "2024-09-03",
+  "outcome": "denial-shared-with-roofer",
+  "propertyAddress": "9129 Lakeland Valley Ct. Springfield, VA 22153",
+  "messages": [
+    {
+      "sender": "HOME CLMS-FIRECLAIMS (State Farm — statefarmfireclaims@statefarm.com)",
+      "date": "2024-09-03",
+      "role": "carrier-denial",
+      "body": "Email to BDOLBEARE@yahoo.com, Subject: State Farm Claim 4673B816T. Attachment: 'No Hail RFG Denial 4673B816T Dolbeare.pdf' — formal state farm denial letter classifying the roof claim as no-hail."
+    },
+    {
+      "sender": "Brian Dolbeare (homeowner)",
+      "date": "2024-10-23",
+      "role": "homeowner-forward-to-roofer",
+      "body": "This is the estimate for: 9129 Lakeland Valley Ct. Springfield, VA 22153. (Forwarded the State Farm denial PDF to Roof-ER marketing for contractor review)."
+    }
+  ],
+  "denialText": "State Farm denial classified as 'No Hail RFG Denial' for claim 4673B816T at 9129 Lakeland Valley Ct, Springfield VA 22153. Sent from statefarmfireclaims@statefarm.com on 2024-09-03. (Full denial language in PDF attachment 'No Hail RFG Denial 4673B816T Dolbeare.pdf'.)",
+  "counterText": null,
+  "keyDenialLanguage": [
+    "No Hail RFG Denial"
+  ],
+  "carrierTactic": "State Farm classifies the entire roof claim as 'No Hail' — the AI-driven binary determination from their patent US10565658 (Storm event roof damage detection) and US20220414781 (Probable Roof Loss Confidence Scores). When the AI's hail-confidence score doesn't cross threshold, the claim is automatically routed to a generic no-hail denial template.",
+  "patentMapping": "State Farm patents US10565658 (Storm event roof damage detection) + US20220414781 (Probable Roof Loss Confidence Scores) drive this binary classification. The 'No Hail RFG Denial' template suggests AI confidence below threshold — the homeowner can rebut by showing patent-mapped evidence (creasing on surrounding shingles, soft metal damage, neighbor approvals).",
+  "lessonForAnalyzer": "When a State Farm denial uses 'No Hail' framing, the counter-letter should: (1) cite specific hail evidence the AI scanner likely missed (test square hits per pattern in carrier-specific patent), (2) request the underlying confidence score under emerging AI disclosure rules, (3) reference neighbor approvals if available (forces adjuster to explain why same storm = different outcome)."
+}
