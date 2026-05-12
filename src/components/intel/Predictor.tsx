@@ -251,7 +251,7 @@ export function Predictor() {
     // ===== Open-with rec: probability framing =====
     if (finalRate >= 0.7) recs.unshift({ tone: 'good', html: '<strong>High-probability lead.</strong> Get to the door fast. Schedule inspection within 7 days. Push for same-day signing.' });
     else if (finalRate >= 0.5) recs.unshift({ tone: '', html: '<strong>Moderate.</strong> Pre-document the roof on foot (chalk circles, macro phone photos, every slope) before adjuster arrives. Geo-tagged + timestamped.' });
-    else recs.unshift({ tone: 'warn', html: '<strong>Lower probability.</strong> Pre-inspection essential. Consider invoking a Public Adjuster from day one.' });
+    else recs.unshift({ tone: 'warn', html: '<strong>Lower probability.</strong> Pre-inspection essential. Build heavy photo documentation (every slope, chalk circles on every impact). If first adjuster denies, escalate in writing to their supervisor + request a re-inspection — do not accept verbal denials.' });
 
     // ===== Hail-tier specific =====
     if (hailNum >= 1.25 && hailNum < 1.5)

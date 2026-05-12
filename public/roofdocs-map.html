@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Roof Docs Project Map (v0)</title>
 <link rel="icon" href="data:," />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
   :root {
     --bg: #1a1612;
@@ -33,8 +30,15 @@
   .legend .row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 4px; }
   .legend .dot { width: 10px; height: 10px; border-radius: 50%; }
   #map { width: 100%; height: 100vh; background: #1a2440; }
-  .leaflet-popup-content-wrapper { background: #2a241e; color: var(--text); }
-  .leaflet-popup-tip { background: #2a241e; }
+  /* Google InfoWindow tweaks — make popups match RIQ palette */
+  .gm-style .gm-style-iw-c { background: #2a241e !important; padding: 0 !important; max-width: 360px !important; }
+  .gm-style .gm-style-iw-tc::after { background: #2a241e !important; }
+  .gm-style .gm-style-iw-d { overflow: auto !important; padding: 12px 16px !important; }
+  .gm-style .gm-style-iw button { filter: invert(1); }
+  .gm-style .popup { color: var(--text); font-size: 12px; line-height: 1.5; }
+  .gm-style .popup .ttl { font-size: 14px; font-weight: 700; color: var(--accent); margin-bottom: 6px; }
+  .gm-style .popup .kv { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; }
+  .gm-style .popup .kv .k { color: var(--muted); }
   .popup { font-size: 13px; min-width: 240px; }
   .popup .ttl { font-weight: 600; margin-bottom: 6px; color: var(--accent); }
   .popup .kv { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px dashed #3d3528; }
@@ -93,8 +97,12 @@
       <select id="f-lead"><option value="">All</option></select>
     </div>
     <div class="filter">
-      <label>Stage contains</label>
-      <input id="f-stage" type="text" placeholder="e.g. Completed" />
+      <label>City</label>
+      <select id="f-city"><option value="">All</option></select>
+    </div>
+    <div class="filter">
+      <label>Stage</label>
+      <select id="f-stage"><option value="">All</option></select>
     </div>
     <div class="filter">
       <label>Min job value ($)</label>
@@ -133,25 +141,29 @@
   <div id="map"></div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/@googlemaps/markerclusterer@2/dist/index.min.js"></script>
 <script src="/riq-links.js"></script>
 <script>
 const FILE = '/api/intel/projects';
 
-const map = L.map('map', { preferCanvas: true }).setView([38.95, -77.3], 9);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; OpenStreetMap &copy; CARTO',
-  maxZoom: 19,
-}).addTo(map);
+// Google Maps loader (uses key from server-side config)
+let _gmapsPromise = null;
+function loadGoogleMaps() {
+  if (window.google?.maps) return Promise.resolve();
+  if (_gmapsPromise) return _gmapsPromise;
+  _gmapsPromise = fetch('/api/intel/_config').then((r) => r.json()).then((cfg) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.async = true; s.defer = true;
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(cfg.googleMapsKey)}&v=quarterly`;
+    s.onload = resolve; s.onerror = reject;
+    document.head.appendChild(s);
+  }));
+  return _gmapsPromise;
+}
 
-let cluster = L.markerClusterGroup({
-  chunkedLoading: true,
-  showCoverageOnHover: false,
-  maxClusterRadius: 60,
-});
-map.addLayer(cluster);
-
+let map = null;
+let cluster = null;
+let openInfoWindow = null;
 let all = [];
 
 const TYPE_COLORS = {
@@ -247,34 +259,48 @@ function passes(p) {
   if (st && p.state !== st) return false;
   const ls = document.getElementById('f-lead').value;
   if (ls && p.leadSource !== ls) return false;
-  const stg = document.getElementById('f-stage').value.trim().toLowerCase();
-  if (stg && !(p.stage || '').toLowerCase().includes(stg)) return false;
+  const city = document.getElementById('f-city').value;
+  if (city && (p.city || '').trim() !== city) return false;
+  const stg = document.getElementById('f-stage').value;
+  if (stg && p.stage !== stg) return false;
   const v = Number(document.getElementById('f-val').value || 0);
   if (v && (p.jobTotal || 0) < v) return false;
   return true;
 }
 
 function render() {
-  cluster.clearLayers();
-  const layer = [];
+  if (!map || !window.google?.maps) return;
+  // Clear prior markers/cluster
+  if (cluster) cluster.clearMarkers();
+  if (openInfoWindow) { openInfoWindow.close(); openInfoWindow = null; }
+  const markers = [];
   let totalValue = 0;
   let count = 0;
   for (const p of all) {
     if (!passes(p)) continue;
     const color = classify(p);
-    const m = L.circleMarker([p.lat, p.lng], {
-      radius: 5,
-      fillColor: color,
-      color: '#fff',
-      weight: 1,
-      opacity: 1,
-      fillOpacity: 0.85,
-    }).bindPopup(popupHTML(p));
-    layer.push(m);
+    const marker = new google.maps.Marker({
+      position: { lat: p.lat, lng: p.lng },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 5, fillColor: color, fillOpacity: 0.85,
+        strokeColor: '#fff', strokeWeight: 1,
+      },
+    });
+    marker.addListener('click', () => {
+      if (openInfoWindow) openInfoWindow.close();
+      openInfoWindow = new google.maps.InfoWindow({ content: popupHTML(p) });
+      openInfoWindow.open({ anchor: marker, map });
+    });
+    markers.push(marker);
     if (p.jobTotal) totalValue += p.jobTotal;
     count++;
   }
-  cluster.addLayers(layer);
+  if (window.markerClusterer && window.markerClusterer.MarkerClusterer) {
+    cluster = new window.markerClusterer.MarkerClusterer({ map, markers });
+  } else {
+    for (const m of markers) m.setMap(map);
+  }
   document.getElementById('stat-count').textContent = count.toLocaleString();
   document.getElementById('stat-value').textContent = fmtMoney(totalValue);
 }
@@ -288,12 +314,33 @@ async function start() {
     const m = new Map(storms.map((s) => [s.jobId, s]));
     for (const p of all) p.stormMatch = m.get(p.id) || null;
   }
+
+  // Init Google Maps (Roadmap + Satellite + Hybrid + Terrain toggle, Street View pegman, fullscreen)
+  await loadGoogleMaps();
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 38.95, lng: -77.3 },
+    zoom: 9,
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+      position: google.maps.ControlPosition.TOP_LEFT,
+      mapTypeIds: ['roadmap', 'satellite', 'hybrid', 'terrain'],
+    },
+    streetViewControl: true,
+    fullscreenControl: true,
+    zoomControl: true,
+    gestureHandling: 'greedy',
+  });
+
   const years = new Set();
   const types = new Set();
   const ins = new Set();
   const reps = new Set();
   const states = new Set();
   const leads = new Set();
+  const cities = new Set();
+  const stages = new Set();
   let minDate = '9999';
   let maxDate = '0000';
   for (const p of all) {
@@ -304,6 +351,8 @@ async function start() {
     if (p.salesRep) reps.add(p.salesRep);
     if (p.state) states.add(p.state);
     if (p.leadSource) leads.add(p.leadSource);
+    if (p.city) cities.add(p.city.trim());
+    if (p.stage) stages.add(p.stage);
     const d = p.signedDate || p.completedDate;
     if (d) {
       if (d < minDate) minDate = d;
@@ -316,9 +365,11 @@ async function start() {
   populateFilter('f-rep', [...reps].sort());
   populateFilter('f-state', [...states].sort());
   populateFilter('f-lead', [...leads].sort());
+  populateFilter('f-city', [...cities].filter(Boolean).sort());
+  populateFilter('f-stage', [...stages].sort());
   document.getElementById('stat-range').textContent =
     minDate !== '9999' ? `${minDate.slice(0, 4)} – ${maxDate.slice(0, 4)}` : '—';
-  for (const id of ['f-year', 'f-type', 'f-ins', 'f-rep', 'f-state', 'f-lead']) {
+  for (const id of ['f-year', 'f-type', 'f-ins', 'f-rep', 'f-state', 'f-lead', 'f-city', 'f-stage']) {
     document.getElementById(id).addEventListener('change', render);
   }
   document.getElementById('f-colorby').addEventListener('change', () => {
@@ -327,12 +378,10 @@ async function start() {
     document.getElementById('legend-type').style.display = v === 'type' ? '' : 'none';
     render();
   });
-  for (const id of ['f-stage', 'f-val']) {
-    document.getElementById(id).addEventListener('input', () => {
-      clearTimeout(window._t);
-      window._t = setTimeout(render, 250);
-    });
-  }
+  document.getElementById('f-val').addEventListener('input', () => {
+    clearTimeout(window._t);
+    window._t = setTimeout(render, 250);
+  });
   render();
 }
 

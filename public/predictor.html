@@ -312,7 +312,7 @@ function predict() {
   } else if (finalRate >= 0.5) {
     recs.push({ tone: '', text: `<strong>Moderate.</strong> Solid lead but pre-document aggressively. Pre-inspect on foot with chalk + phone macro photos before adjuster arrives.` });
   } else {
-    recs.push({ tone: 'warn', text: `<strong>Lower probability.</strong> Pre-inspection and complete documentation essential. Consider invoking PA from day one.` });
+    recs.push({ tone: 'warn', text: `<strong>Lower probability.</strong> Pre-inspection essential. Heavy photo documentation (every slope, chalk circles). On first denial, escalate IN WRITING to the supervisor adjuster + request re-inspection. Don't accept verbal denials.` });
   }
   if (hail >= 1.25 && hail < 1.5) {
     recs.push({ tone: 'warn', text: `<strong>Engineer-zone hail (1.25-1.5").</strong> Carriers often route to engineering reports here. Bring an independent HAAG-certified inspector to first meeting.` });
