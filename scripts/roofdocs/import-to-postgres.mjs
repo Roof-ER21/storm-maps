@@ -31,6 +31,7 @@ const DATASETS = [
   { key: 'job-storms',       file: 'job-storms.json' },
   { key: 'geocoded',         file: 'geocoded.json' },
   { key: 'carrier-orphans',  file: 'carrier-orphans.json' },
+  { key: 'cheat-sheets',     file: 'cheat-sheets.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
 ];
 

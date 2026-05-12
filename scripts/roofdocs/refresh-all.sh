@@ -86,10 +86,13 @@ node "$BASE/scripts/roofdocs/build-notes.mjs" 2>&1 | tail -3
 echo "→ [12/14] Mining statistical patterns (carrier × zip × hail × rep × time)…"
 node "$BASE/scripts/roofdocs/build-patterns.mjs" 2>&1 | tail -3
 
-echo "→ [13/14] Building carrier-orphan backfill list…"
+echo "→ [13/15] Building carrier-orphan backfill list…"
 node "$BASE/scripts/roofdocs/build-carrier-orphans.mjs" 2>&1 | tail -3
 
-echo "→ [14/14] Re-flattening projects (with new storms) + copying to public/…"
+echo "→ [14/15] Building per-entity cheat sheets…"
+node "$BASE/scripts/roofdocs/build-cheat-sheets.mjs" 2>&1 | tail -3
+
+echo "→ [15/15] Re-flattening projects (with new storms) + copying to public/…"
 node "$BASE/scripts/roofdocs/flatten-v3.mjs" 2>&1 | tail -3
 cp "$BASE/data/projects.json" "$BASE/public/projects.json"
 cp "$BASE/data/resurrection.json" "$BASE/public/resurrection.json"
@@ -100,6 +103,7 @@ cp "$BASE/data/storm-playbook.json" "$BASE/public/storm-playbook.json"
 cp "$BASE/data/notes.json" "$BASE/public/notes.json"
 cp "$BASE/data/patterns.json" "$BASE/public/patterns.json"
 cp "$BASE/data/carrier-orphans.json" "$BASE/public/carrier-orphans.json"
+cp "$BASE/data/cheat-sheets.json" "$BASE/public/cheat-sheets.json"
 echo "  ✓ Data files in $BASE/public/"
 
 echo ""

@@ -47,7 +47,8 @@ type IntelView =
   | 'notes'
   | 'sms-reminders'
   | 'weekly-recap'
-  | 'carrier-orphans';
+  | 'carrier-orphans'
+  | 'cheat-sheet';
 
 const VIEW_FILES: Record<Exclude<IntelView, 'home' | 'predictor'>, string> = {
   'field-guide': 'field-guide.html',
@@ -78,6 +79,7 @@ const VIEW_FILES: Record<Exclude<IntelView, 'home' | 'predictor'>, string> = {
   'sms-reminders': 'sms-reminders.html',
   'weekly-recap': 'weekly-recap.html',
   'carrier-orphans': 'carrier-orphans.html',
+  'cheat-sheet': 'cheat-sheet.html',
 };
 
 const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: string }> }> = [
@@ -94,6 +96,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: st
     label: 'Smart Brain',
     items: [
       { id: 'predictor', label: '🔮 Predictor (native)' },
+      { id: 'cheat-sheet', label: '🎓 Cheat Sheet' },
       { id: 'field-guide', label: '📖 Field Guide' },
       { id: 'lead-score', label: '🎯 Lead Score' },
     ],

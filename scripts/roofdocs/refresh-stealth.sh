@@ -40,10 +40,11 @@ node "$BASE/scripts/roofdocs/build-storm-exposure.mjs" 2>&1 | tail -3
 echo "→ [4/6] Mining statistical patterns…"
 node "$BASE/scripts/roofdocs/build-patterns.mjs" 2>&1 | tail -3
 
-echo "→ [5/6] Rebuilding receivables + notes + orphans (from local data)…"
+echo "→ [5/6] Rebuilding receivables + notes + orphans + cheat sheets (from local data)…"
 node "$BASE/scripts/roofdocs/build-receivables.mjs" 2>&1 | tail -3
 node "$BASE/scripts/roofdocs/build-notes.mjs" 2>&1 | tail -3
 node "$BASE/scripts/roofdocs/build-carrier-orphans.mjs" 2>&1 | tail -3
+node "$BASE/scripts/roofdocs/build-cheat-sheets.mjs" 2>&1 | tail -3
 
 echo "→ [6/6] Copying to public/ for static serving…"
 for f in projects resurrection job-storms receivables storm-exposure storm-playbook notes patterns carrier-orphans; do

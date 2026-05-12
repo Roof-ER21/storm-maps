@@ -52,6 +52,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'job-storms':      { file: 'job-storms.json',      description: 'Job → storm-of-record matches (5.7k pairs)' },
   'geocoded':        { file: 'geocoded.json',        description: 'Census-geocoded coords for jobs missing portal lat/lng' },
   'carrier-orphans': { file: 'carrier-orphans.json', description: '165 Insurance-typed jobs missing carrier on file' },
+  'cheat-sheets':    { file: 'cheat-sheets.json',    description: 'Per-entity math-backed cheat sheets (rep / carrier / adjuster / state / zip)' },
 };
 
 // Storm light file lives in storms/ subdir
