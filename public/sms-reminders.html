@@ -186,8 +186,8 @@ function exportCSV() {
 
 async function start() {
   const [rec, res] = await Promise.all([
-    fetch('receivables.json').then((r) => r.json()),
-    fetch('resurrection.json').then((r) => r.json()).catch(() => []),
+    fetch('/api/intel/receivables').then((r) => r.json()),
+    fetch('/api/intel/resurrection').then((r) => r.json()).catch(() => []),
   ]);
   // Downpayments
   data.dp = (rec.downpayments || []).map((d) => ({

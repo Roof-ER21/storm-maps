@@ -306,7 +306,7 @@ function exportCSV() {
 async function start() {
   let res;
   try {
-    res = await fetch('resurrection.json');
+    res = await fetch('/api/intel/resurrection');
     if (!res.ok) throw new Error('HTTP ' + res.status);
   } catch (e) {
     $('loading').innerHTML = `Storm correlation hasn't finished yet — resurrection.json not available.<br><br>Once it's done, refresh.`;

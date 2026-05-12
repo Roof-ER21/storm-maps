@@ -203,7 +203,7 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('storm-playbook.json');
+  const res = await fetch('/api/intel/storm-playbook');
   playbook = await res.json();
   $('loading').style.display = 'none';
   $('content').style.display = '';

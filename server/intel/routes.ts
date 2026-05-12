@@ -193,16 +193,112 @@ router.get('/api/intel/:key', async (req: Request, res: Response) => {
   res.sendFile(p);
 });
 
-router.post('/api/intel/refresh', (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(403).json({ error: 'session_required_for_refresh', consumer: consumerLabel(req) });
+// In-progress refresh state — single-flight so the UI button can't kick off
+// concurrent runs that hammer NOAA + the DB. Status is read by the SPA via
+// GET /api/intel/refresh/status.
+type RefreshStatus = {
+  state: 'idle' | 'running' | 'success' | 'error';
+  startedAt: string | null;
+  finishedAt: string | null;
+  consumer: string | null;
+  log: string[];
+  error: string | null;
+};
+const refreshState: RefreshStatus = {
+  state: 'idle',
+  startedAt: null,
+  finishedAt: null,
+  consumer: null,
+  log: [],
+  error: null,
+};
+
+router.get('/api/intel/refresh/status', (_req, res) => {
+  res.json(refreshState);
+});
+
+/**
+ * Trigger a STEALTH refresh from the SPA. Runs scripts/roofdocs/refresh-stealth.sh
+ * (no portal API calls — only IEM + rebuild + DB push). Returns immediately;
+ * the SPA polls /api/intel/refresh/status for progress.
+ *
+ * Auth: requires session OR API key. Skipped if a refresh is already running.
+ */
+router.post('/api/intel/refresh', async (req: Request, res: Response) => {
+  if (refreshState.state === 'running') {
+    res.status(409).json({ error: 'already_running', status: refreshState });
     return;
   }
-  res.json({
-    ok: true,
-    instructions: 'Run scripts/roofdocs/refresh-all.sh from the repo root, or wait for the nightly 3:33 AM ET cron.',
-    scriptPath: 'scripts/roofdocs/refresh-all.sh',
-  });
+
+  refreshState.state = 'running';
+  refreshState.startedAt = new Date().toISOString();
+  refreshState.finishedAt = null;
+  refreshState.consumer = consumerLabel(req);
+  refreshState.log = [];
+  refreshState.error = null;
+
+  res.json({ ok: true, status: refreshState, message: 'Refresh started — poll /api/intel/refresh/status for progress' });
+
+  // Run async in the background so the HTTP response is fast.
+  void runRefresh();
 });
+
+async function runRefresh(): Promise<void> {
+  const { spawn } = await import('node:child_process');
+  const path = await import('node:path');
+  const fs = await import('node:fs');
+
+  const repoRoot = path.resolve(__dirname, '..', '..');
+  const script = path.join(repoRoot, 'scripts/roofdocs/refresh-stealth.sh');
+
+  if (!fs.existsSync(script)) {
+    refreshState.state = 'error';
+    refreshState.error = `Script not found: ${script}`;
+    refreshState.finishedAt = new Date().toISOString();
+    return;
+  }
+
+  refreshState.log.push(`[${new Date().toISOString()}] Spawning ${path.basename(script)}…`);
+  const proc = spawn('/bin/bash', [script], { cwd: repoRoot });
+  proc.stdout.on('data', (chunk) => {
+    for (const line of chunk.toString().split('\n').filter(Boolean)) {
+      refreshState.log.push(line);
+      if (refreshState.log.length > 200) refreshState.log.shift();
+    }
+  });
+  proc.stderr.on('data', (chunk) => {
+    for (const line of chunk.toString().split('\n').filter(Boolean)) {
+      refreshState.log.push(`[stderr] ${line}`);
+      if (refreshState.log.length > 200) refreshState.log.shift();
+    }
+  });
+  proc.on('close', async (code) => {
+    if (code !== 0) {
+      refreshState.state = 'error';
+      refreshState.error = `refresh-stealth.sh exited ${code}`;
+      refreshState.finishedAt = new Date().toISOString();
+      return;
+    }
+
+    // Push to Postgres
+    refreshState.log.push(`[${new Date().toISOString()}] Pushing to Postgres…`);
+    const importer = path.join(repoRoot, 'scripts/roofdocs/import-to-postgres.mjs');
+    const importProc = spawn('node', [importer], {
+      cwd: repoRoot,
+      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL ?? '' },
+    });
+    importProc.stdout.on('data', (chunk) => {
+      for (const line of chunk.toString().split('\n').filter(Boolean)) {
+        refreshState.log.push(line);
+        if (refreshState.log.length > 200) refreshState.log.shift();
+      }
+    });
+    importProc.on('close', (importCode) => {
+      refreshState.state = importCode === 0 ? 'success' : 'error';
+      refreshState.error = importCode === 0 ? null : `import-to-postgres exited ${importCode}`;
+      refreshState.finishedAt = new Date().toISOString();
+    });
+  });
+}
 
 export { router as intelRouter };

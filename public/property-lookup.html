@@ -240,8 +240,8 @@ async function look(address) {
 
 async function start() {
   const [r1, r2] = await Promise.all([
-    fetch('projects.json').then((r) => r.json()),
-    fetch('storms-light.json').then((r) => r.ok ? r.json() : null).catch(() => null),
+    fetch('/api/intel/projects').then((r) => r.json()),
+    fetch('/api/intel/storms-light').then((r) => r.ok ? r.json() : null).catch(() => null),
   ]);
   allJobs = r1;
   if (r2) {
@@ -249,7 +249,7 @@ async function start() {
   } else {
     // Fallback: load hail-wind file
     try {
-      const r3 = await fetch('iem-hail-wind-2018-2026.json');
+      const r3 = await fetch('/api/intel/storms-light');
       if (r3.ok) {
         const fc = await r3.json();
         allStorms = fc.features.map((f) => {

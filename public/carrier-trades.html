@@ -63,7 +63,7 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 
 async function start() {
-  const res = await fetch('projects.json');
+  const res = await fetch('/api/intel/projects');
   const allJobs = await res.json();
 
   // Aggregate carrier × trade

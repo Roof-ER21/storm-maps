@@ -4,7 +4,7 @@ Internal Roof Docs intelligence layer. Mines portal jobs + IEM storm events into
 predictor + field-guide + resurrection + storm-playbook + carrier-orphan datasets.
 
 **Base URL:** `https://riq21.up.railway.app` (when deployed) · `http://localhost:3100` (local dev)
-**Refresh cadence:** nightly 3:33 AM ET via launchd (manual: `./scripts/roofdocs/refresh-all.sh`)
+**Refresh cadence:** stealth cron weekday business hours ~2-3x/week (re-derives + IEM storms only, never touches portal). New jobs pulled in via manual `./scripts/roofdocs/refresh-all.sh`.
 **Data source:** `portal.theroofdocs.com` + IEM LSR + correlation engine
 
 ---

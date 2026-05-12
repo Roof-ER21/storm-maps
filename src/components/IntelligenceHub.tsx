@@ -15,6 +15,7 @@
 import { useState } from 'react';
 import { Predictor } from './intel/Predictor';
 import { StormFeed } from './intel/StormFeed';
+import { RefreshButton } from './intel/RefreshButton';
 
 type IntelView =
   | 'home'
@@ -228,6 +229,8 @@ function HomePane({ setView }: { setView: (v: IntelView) => void }) {
         458 carriers · 346 named adjusters · 12,225 deduped customers. Refreshes nightly from the
         portal.
       </p>
+
+      <RefreshButton />
 
       <StormFeed />
 

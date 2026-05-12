@@ -158,7 +158,7 @@ function render(rows, q) {
 }
 
 async function start() {
-  const res = await fetch('notes.json');
+  const res = await fetch('/api/intel/notes');
   all = await res.json();
   $('loading').style.display = 'none';
   $('content').style.display = '';

@@ -223,7 +223,7 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('storm-exposure.json');
+  const res = await fetch('/api/intel/storm-exposure');
   all = await res.json();
   $('loading').style.display = 'none';
   $('content').style.display = '';

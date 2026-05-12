@@ -236,7 +236,7 @@ function showCarrier(name) {
 }
 
 async function start() {
-  const res = await fetch('projects.json');
+  const res = await fetch('/api/intel/projects');
   jobs = await res.json();
   carriers = buildCarriers();
   $('loading').style.display = 'none';

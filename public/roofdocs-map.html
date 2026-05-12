@@ -280,7 +280,7 @@ function render() {
 
 async function start() {
   document.getElementById('stat-count').textContent = 'loading…';
-  const [r1, r2] = await Promise.all([fetch(FILE), fetch('job-storms.json').catch(() => null)]);
+  const [r1, r2] = await Promise.all([fetch(FILE), fetch('/api/intel/job-storms').catch(() => null)]);
   all = await r1.json();
   if (r2 && r2.ok) {
     const storms = await r2.json();

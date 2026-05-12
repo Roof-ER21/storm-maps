@@ -358,7 +358,7 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('projects.json');
+  const res = await fetch('/api/intel/projects');
   allJobs = await res.json();
   customers = buildCustomers();
   $('loading').style.display = 'none';

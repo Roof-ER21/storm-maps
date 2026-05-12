@@ -272,7 +272,7 @@ function exportCSV(rows, name, type) {
 }
 
 async function start() {
-  const res = await fetch('receivables.json');
+  const res = await fetch('/api/intel/receivables');
   const data = await res.json();
   accounts = data.accounts || [];
   downpayments = data.downpayments || [];

@@ -229,7 +229,7 @@ function recalc() {
 }
 
 async function start() {
-  const res = await fetch('projects.json');
+  const res = await fetch('/api/intel/projects');
   jobs = await res.json();
   recalc();
   $('loading').style.display = 'none';

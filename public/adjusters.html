@@ -240,7 +240,7 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('projects.json');
+  const res = await fetch('/api/intel/projects');
   const all = await res.json();
   adjusters = build(all);
   $('loading').style.display = 'none';

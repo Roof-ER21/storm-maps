@@ -175,7 +175,7 @@ function showZip(zip) {
   const scriptMostRecentStorm = recentStorms[0];
   const scriptIntro = scriptMostRecentStorm
     ? `we've been working in your neighborhood after the ${(scriptMostRecentStorm.stormDate || '').slice(0,10)} ${scriptMostRecentStorm.stormType} (${scriptMostRecentStorm.stormMagnitude || ''} ${scriptMostRecentStorm.stormUnit || ''})`
-    : 'we've been working in your neighborhood';
+    : "we've been working in your neighborhood";
 
   $('detail').innerHTML = `
     <h2>${z.zip} — ${z.city}</h2>
@@ -241,7 +241,7 @@ function showZip(zip) {
 }
 
 async function start() {
-  const res = await fetch('projects.json');
+  const res = await fetch('/api/intel/projects');
   const jobs = await res.json();
   zips = build(jobs);
   $('loading').style.display = 'none';

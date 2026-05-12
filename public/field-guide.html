@@ -380,7 +380,7 @@ function wireAdj() {
 }
 
 async function start() {
-  patterns = await fetch('patterns.json').then((r) => r.json());
+  patterns = await fetch('/api/intel/patterns').then((r) => r.json());
   $('loading').style.display = 'none';
   $('content').style.display = '';
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));

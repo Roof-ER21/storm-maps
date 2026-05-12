@@ -296,11 +296,11 @@ const fmt = {
 
 async function load() {
   const [projects, resurrection, exposure, playbook, receivables] = await Promise.all([
-    fetch('projects.json').then((r) => r.json()),
-    fetch('resurrection.json').then((r) => r.json()).catch(() => []),
-    fetch('storm-exposure.json').then((r) => r.json()).catch(() => []),
-    fetch('storm-playbook.json').then((r) => r.json()).catch(() => []),
-    fetch('receivables.json').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
+    fetch('/api/intel/projects').then((r) => r.json()),
+    fetch('/api/intel/resurrection').then((r) => r.json()).catch(() => []),
+    fetch('/api/intel/storm-exposure').then((r) => r.json()).catch(() => []),
+    fetch('/api/intel/storm-playbook').then((r) => r.json()).catch(() => []),
+    fetch('/api/intel/receivables').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
   ]);
   // Stats
   const total = projects.length;

@@ -359,7 +359,7 @@ function predict() {
 }
 
 async function start() {
-  patterns = await fetch('patterns.json').then((r) => r.json());
+  patterns = await fetch('/api/intel/patterns').then((r) => r.json());
   $('loading').style.display = 'none';
   $('content').style.display = '';
   // Populate carrier dropdown

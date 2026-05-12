@@ -86,7 +86,7 @@ const sortState = { key: 'priority', dir: 'desc' };
 const filterEls = { stage: 'filterStage', rep: 'filterRep', docs: 'filterDocs' };
 
 async function load() {
-  DATA = await (await fetch('/carrier-orphans.json')).json();
+  DATA = await (await fetch('/api/intel/carrier-orphans')).json();
   renderStats();
   populateRepFilter();
   refresh();

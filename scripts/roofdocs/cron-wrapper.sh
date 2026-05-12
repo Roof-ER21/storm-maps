@@ -60,8 +60,20 @@ rc=$?
 if [ "$rc" -eq 0 ]; then
   echo "=== [$(date -Iseconds)] Local stealth refresh OK — pushing to Railway Postgres ===" >> "$LOG"
 
-  RIQ_DB_URL="${RIQ_DB_PUBLIC_URL:-postgresql://postgres:zpIxviFXCPpsQJvcGibGwKhBBjTHJbSx@gondola.proxy.rlwy.net:48564/railway}"
-  DATABASE_URL="$RIQ_DB_URL" node "$BASE/scripts/roofdocs/import-to-postgres.mjs" >> "$LOG" 2>&1
+  # DB URL must come from env (set in .env.local, never committed).
+  # Source local env without leaking it to subshells beyond this scope.
+  if [ -f "$BASE/.env.local" ]; then
+    set -a
+    # shellcheck disable=SC1091
+    . "$BASE/.env.local"
+    set +a
+  fi
+  if [ -z "${RIQ_DB_PUBLIC_URL:-}" ]; then
+    echo "  ⚠ RIQ_DB_PUBLIC_URL not set — skipping Railway push" >> "$LOG"
+    echo "$now" > "$LAST_OK"
+    exit 0
+  fi
+  DATABASE_URL="$RIQ_DB_PUBLIC_URL" node "$BASE/scripts/roofdocs/import-to-postgres.mjs" >> "$LOG" 2>&1
   push_rc=$?
 
   if [ "$push_rc" -eq 0 ]; then
