@@ -82,6 +82,8 @@ export async function recordIntake(req: Request, args: {
     if (existing.length > 0) return existing[0].id;
 
     const a = args.analysis as Record<string, unknown>;
+    // postgres.js v3 rejects raw objects/arrays for JSONB bindings —
+    // see feedback_postgres-js-sql-json memory. Use JSON.stringify + ::jsonb.
     const rows = await pgSql<Array<{ id: number }>>`
       INSERT INTO denial_intake (
         consumer, carrier, identified_carrier, identified_adjuster,
@@ -97,9 +99,9 @@ export async function recordIntake(req: Request, args: {
         ${pickPrimaryCategory(a)},
         ${(a.appealStrength as string) || null},
         ${args.denialText},
-        ${args.analysis}::jsonb,
-        ${args.patentsConsidered},
-        ${args.corpusExamplesUsed}::jsonb,
+        ${JSON.stringify(args.analysis)}::jsonb,
+        ${args.patentsConsidered as unknown as string[]},
+        ${JSON.stringify(args.corpusExamplesUsed)}::jsonb,
         ${letterHash}
       )
       RETURNING id
