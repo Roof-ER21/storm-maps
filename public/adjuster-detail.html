@@ -73,6 +73,7 @@
     </div>
   </div>
 </main>
+<script src="/riq-links.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = {
@@ -196,7 +197,7 @@ function show(key) {
       <tbody>${recent.map((j) => `
         <tr>
           <td>${j.signedDate || '—'}</td>
-          <td>${j.customer || '—'}</td>
+          <td>${window.RIQ ? window.RIQ.custLink(j) : (j.customer || '—')}</td>
           <td>${j.city || '—'}</td>
           <td>${j.stage || '—'}</td>
           <td class="num money">${fmt.money(j.jobTotal)}</td>

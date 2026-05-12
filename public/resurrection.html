@@ -108,6 +108,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="/riq-links.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = {
@@ -218,7 +219,7 @@ function renderTable(rows) {
     const magStr = s.stormMagnitude != null ? `${s.stormMagnitude}${s.stormUnit ? ' ' + s.stormUnit : ''}` : '—';
     return `
     <tr data-i="${i}">
-      <td>${r.customer || '—'}</td>
+      <td>${window.RIQ ? window.RIQ.custLink(r) : (r.customer || '—')}</td>
       <td>${r.address}</td>
       <td>${r.state || '—'}</td>
       <td>${r.insurance || '—'}</td>

@@ -118,6 +118,7 @@
   </div>
 </main>
 
+<script src="/riq-links.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = {
@@ -262,7 +263,7 @@ function rankRender(rows) {
     const cls = r.score >= 60 ? 'high' : (r.score >= 35 ? 'med' : 'low');
     return `<tr>
       <td class="num"><span class="score ${cls}">${r.score}</span></td>
-      <td><strong>${r.customer || '—'}</strong><br><span style="color:var(--muted);font-size:11px">${r.email || ''}</span></td>
+      <td><strong>${window.RIQ ? window.RIQ.custLink(r) : (r.customer || '—')}</strong><br><span style="color:var(--muted);font-size:11px">${r.email || ''}</span></td>
       <td>${r.address}</td>
       <td class="num">${r.stormHits}${r.strongestStorm ? `<br><span style="color:var(--muted);font-size:11px">${r.strongestStorm.type} ${r.strongestStorm.mag || ''}</span>` : ''}</td>
       <td class="num">${r.tradeGaps.length}</td>

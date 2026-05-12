@@ -20,10 +20,17 @@
   }
 
   // Match customer-detail.html's custKey(): lower(customer) | lower(addressLine1) | lower(city)
+  // Resilient to records that store `address` as a single concat'd string (e.g.
+  // resurrection.json, carrier-orphans.json) instead of split addressLine1/city.
   function custKey(job) {
+    let addr = job.addressLine1;
+    if (!addr && job.address) {
+      // "23997 Bishop Meade Pl, Ashburn, VA, 20148" → "23997 Bishop Meade Pl"
+      addr = String(job.address).split(',')[0];
+    }
     return (
       String(job.customer || '').trim().toLowerCase() + '|' +
-      String(job.addressLine1 || '').trim().toLowerCase() + '|' +
+      String(addr || '').trim().toLowerCase() + '|' +
       String(job.city || '').trim().toLowerCase()
     );
   }
@@ -77,6 +84,59 @@
     document.head.appendChild(s);
   }
 
+  // Data-freshness badge — fetches /api/intel/health and shows when projects
+  // were last refreshed from the portal. So every screen with a number on it
+  // also tells you HOW STALE that number might be.
+  async function installFreshnessBadge() {
+    if (document.getElementById('riq-freshness')) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'riq-freshness';
+    wrap.style.cssText = [
+      'position: fixed', 'bottom: 12px', 'right: 12px', 'z-index: 9999',
+      'background: rgba(42, 36, 30, 0.95)',
+      'border: 1px solid #3d3528', 'border-radius: 6px',
+      'padding: 6px 12px', 'font-size: 11px',
+      'font-family: -apple-system, system-ui, sans-serif',
+      'color: #a09486', 'box-shadow: 0 2px 8px rgba(0,0,0,0.3)',
+      'cursor: default', 'user-select: none',
+    ].join(';');
+    wrap.textContent = '⟳ checking…';
+    document.body.appendChild(wrap);
+    try {
+      const r = await fetch('/api/intel/health', { cache: 'no-store' });
+      if (!r.ok) throw new Error('health ' + r.status);
+      const d = await r.json();
+      // Use projects file age as the "data age" since it drives everything
+      const proj = d.files?.projects;
+      const ageH = proj?.ageHours;
+      if (ageH == null) {
+        wrap.textContent = '⚠ no portal data yet';
+        wrap.style.color = '#e07b5a';
+        return;
+      }
+      let color = '#9ed27a', icon = '✓';
+      if (ageH > 36) { color = '#e0a04f'; icon = '⚠'; }
+      if (ageH > 72) { color = '#e07b5a'; icon = '!'; }
+      const ageStr = ageH < 1 ? `${Math.round(ageH * 60)}m`
+        : ageH < 24 ? `${ageH.toFixed(1)}h`
+        : `${(ageH / 24).toFixed(1)}d`;
+      wrap.innerHTML = `<span style="color:${color}">${icon}</span> Portal data: <strong style="color:#f0ebe2">${ageStr}</strong> old · <span style="color:#f4a738">${d.storageBacking || 'unknown'}</span>`;
+      wrap.title = `Last portal refresh: ${proj.bytes.toLocaleString()} bytes\nLatest refresh: ${ageH.toFixed(2)}h ago\nStorage: ${d.storageBacking}\nClick to dismiss`;
+      wrap.style.cursor = 'pointer';
+      wrap.addEventListener('click', () => wrap.remove());
+    } catch (e) {
+      wrap.textContent = '⚠ data status unknown';
+      wrap.style.color = '#a09486';
+    }
+  }
+  if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', installFreshnessBadge);
+    } else {
+      installFreshnessBadge();
+    }
+  }
+
   global.RIQ = global.RIQ || {};
   global.RIQ.custKey = custKey;
   global.RIQ.custProfileUrl = custProfileUrl;
@@ -86,4 +146,5 @@
   global.RIQ.jobLink = jobLink;
   global.RIQ.portalLink = portalLink;
   global.RIQ.escapeHtml = escapeHtml;
+  global.RIQ.installFreshnessBadge = installFreshnessBadge;
 })(window);

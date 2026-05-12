@@ -84,6 +84,7 @@
   </div>
 </main>
 
+<script src="/riq-links.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = {
@@ -175,7 +176,7 @@ function render(rows) {
     const ss = c.strongestStorm;
     const ms = c.mostRecentStorm;
     return `<tr>
-      <td><strong>${c.customer || '—'}</strong><br><span style="color:var(--muted);font-size:11px">${c.customerEmail || ''}</span></td>
+      <td><strong>${window.RIQ ? window.RIQ.custLink(c) : (c.customer || '—')}</strong><br><span style="color:var(--muted);font-size:11px">${c.customerEmail || ''}</span></td>
       <td>${[c.addressLine1, c.city].filter(Boolean).join(', ')}</td>
       <td>${c.state || '—'}</td>
       <td class="num">${c.stormCount}</td>
