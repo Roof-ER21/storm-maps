@@ -382,6 +382,18 @@ async function migrate() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
 
+  // RIQ 21 intel blob storage — one jsonb row per dataset
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_blobs (
+      key TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      source_mtime TIMESTAMP,
+      bytes INTEGER DEFAULT 0,
+      row_count INTEGER DEFAULT 0,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)

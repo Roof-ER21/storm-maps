@@ -177,6 +177,21 @@ export const pushSubscriptions = pgTable('push_subscriptions', {
   lastAlertId: text('last_alert_id'),
 });
 
+// RIQ 21 intel blob storage — each dataset stored as one jsonb row keyed by
+// dataset name (e.g. 'projects', 'patterns', 'resurrection'). Same shape as
+// the file-based serving so /api/intel/:key responses don't change.
+// Future Phase 4b: decompose the big arrays into proper indexed tables for
+// query power. For now this gets the data onto Railway without per-row
+// migrations.
+export const intelBlobs = pgTable('intel_blobs', {
+  key: text('key').primaryKey(),
+  data: jsonb('data').notNull(),
+  sourceMtime: timestamp('source_mtime'),
+  bytes: integer('bytes').default(0),
+  rowCount: integer('row_count').default(0),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export const shareableReports = pgTable('shareable_reports', {
   id: serial('id').primaryKey(),
   slug: text('slug').notNull().unique(),

@@ -16,6 +16,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { intelCors, requireIntelAuth, consumerLabel } from './auth.js';
+import { sql as pgSql } from '../db.js';
+
+// Phase 4: read intel data from Postgres `intel_blobs` table when available,
+// fall back to /data/*.json files (local dev convenience). Same response shape.
+async function fetchFromDb(key: string): Promise<{ data: unknown; mtime: Date; bytes: number } | null> {
+  try {
+    const rows = await pgSql<Array<{ data: unknown; source_mtime: Date; bytes: number }>>`
+      SELECT data, source_mtime, bytes FROM intel_blobs WHERE key = ${key} LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    return { data: rows[0].data, mtime: rows[0].source_mtime, bytes: rows[0].bytes };
+  } catch {
+    // DB unreachable (e.g. local dev without Postgres) — caller falls back to file
+    return null;
+  }
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -45,26 +61,50 @@ const STORMS_LIGHT = path.join(DATA_DIR, 'storms', 'iem-hail-wind-2018-2026.json
 router.use(intelCors);
 router.use(requireIntelAuth);
 
-/** Health + freshness — public-ish endpoint for monitoring. */
-router.get('/api/intel/health', (_req, res) => {
-  const files: Record<string, { available: boolean; bytes: number; ageHours: number | null }> = {};
+/** Health + freshness — public-ish endpoint for monitoring.
+ * Reads from Postgres first (source of truth on Railway) then falls back to
+ * local files (dev convenience). */
+router.get('/api/intel/health', async (_req, res) => {
+  const out: Record<string, { available: boolean; bytes: number; ageHours: number | null; source: 'db' | 'file' | 'missing' }> = {};
   let oldest = 0;
+  let backed = 'mixed';
+
+  // Pull all DB rows in one shot
+  let dbRows: Array<{ key: string; bytes: number; source_mtime: Date | null }> = [];
+  try {
+    dbRows = await pgSql<Array<{ key: string; bytes: number; source_mtime: Date | null }>>`
+      SELECT key, bytes, source_mtime FROM intel_blobs
+    `;
+    backed = 'db';
+  } catch {
+    backed = 'file';
+  }
+  const dbMap = new Map(dbRows.map((r) => [r.key, r]));
+
   for (const [key, { file }] of Object.entries(FILES)) {
+    const dbEntry = dbMap.get(key);
+    if (dbEntry && dbEntry.source_mtime) {
+      const ageHours = (Date.now() - new Date(dbEntry.source_mtime).getTime()) / 3.6e6;
+      out[key] = { available: true, bytes: dbEntry.bytes, ageHours: Math.round(ageHours * 10) / 10, source: 'db' };
+      if (ageHours > oldest) oldest = ageHours;
+      continue;
+    }
     try {
       const st = fs.statSync(path.join(DATA_DIR, file));
       const ageHours = (Date.now() - st.mtimeMs) / 3.6e6;
-      files[key] = { available: true, bytes: st.size, ageHours: Math.round(ageHours * 10) / 10 };
+      out[key] = { available: true, bytes: st.size, ageHours: Math.round(ageHours * 10) / 10, source: 'file' };
       if (ageHours > oldest) oldest = ageHours;
     } catch {
-      files[key] = { available: false, bytes: 0, ageHours: null };
+      out[key] = { available: false, bytes: 0, ageHours: null, source: 'missing' };
     }
   }
   res.json({
     status: oldest < 36 ? 'ok' : oldest < 72 ? 'stale' : 'critical',
     oldestFileHours: Math.round(oldest * 10) / 10,
     refreshedNightly: '3:33 AM ET via launchd',
+    storageBacking: backed,
     generated: new Date().toISOString(),
-    files,
+    files: out,
   });
 });
 
@@ -111,19 +151,30 @@ router.get('/api/intel/manifest', (_req, res) => {
   res.json({ generated: new Date().toISOString(), files: out });
 });
 
-router.get('/api/intel/:key', (req: Request, res: Response) => {
+router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;
-  // Don't shadow health/_meta/manifest/refresh
   if (['health', '_meta', 'manifest', 'refresh'].includes(key)) {
     res.status(404).json({ error: 'unknown_key' });
     return;
   }
+
+  // Postgres first (Railway production), file fallback (local dev).
+  const dbBlob = await fetchFromDb(key);
+  if (dbBlob) {
+    res.setHeader('Cache-Control', 'private, max-age=600');
+    res.setHeader('X-RIQ-Source', 'db');
+    res.json(dbBlob.data);
+    return;
+  }
+
+  // File fallback
   if (key === 'storms-light') {
     if (!fs.existsSync(STORMS_LIGHT)) {
       res.status(404).json({ error: 'not_found' });
       return;
     }
     res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('X-RIQ-Source', 'file');
     res.sendFile(STORMS_LIGHT);
     return;
   }
@@ -138,6 +189,7 @@ router.get('/api/intel/:key', (req: Request, res: Response) => {
     return;
   }
   res.setHeader('Cache-Control', 'private, max-age=600');
+  res.setHeader('X-RIQ-Source', 'file');
   res.sendFile(p);
 });
 
