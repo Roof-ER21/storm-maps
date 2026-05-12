@@ -243,7 +243,24 @@ async function start() {
     fetch('/api/intel/resurrection').then((r) => r.json()).catch(() => []),
     fetch('/api/intel/receivables').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
   ]);
-  allJobs = r1; allStorms = r2; resurrection = r3; receivables = r4;
+  allJobs = r1;
+  // storms-light is GeoJSON FeatureCollection — unwrap + normalize.
+  const features = Array.isArray(r2) ? r2 : (r2?.features || []);
+  allStorms = features.map((f) => {
+    const p = f.properties || {};
+    const c = (f.geometry || {}).coordinates;
+    if (!Array.isArray(c)) return null;
+    return {
+      type: p.typetext,
+      mag: p.magf != null ? Number(p.magf) : (p.magnitude != null ? Number(p.magnitude) : null),
+      valid: p.valid,
+      city: p.city,
+      state: p.state,
+      lat: c[1],
+      lng: c[0],
+    };
+  }).filter(Boolean);
+  resurrection = r3; receivables = r4;
   $('window').addEventListener('change', buildRecap);
   $('state').addEventListener('change', buildRecap);
   $('print').addEventListener('click', () => window.print());

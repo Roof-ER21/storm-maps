@@ -244,22 +244,24 @@ async function start() {
     fetch('/api/intel/storms-light').then((r) => r.ok ? r.json() : null).catch(() => null),
   ]);
   allJobs = r1;
+  // storms-light is GeoJSON FeatureCollection — flatten + normalize.
   if (r2) {
-    allStorms = r2;
-  } else {
-    // Fallback: load hail-wind file
-    try {
-      const r3 = await fetch('/api/intel/storms-light');
-      if (r3.ok) {
-        const fc = await r3.json();
-        allStorms = fc.features.map((f) => {
-          const p = f.properties || {};
-          const c = (f.geometry || {}).coordinates;
-          if (!Array.isArray(c)) return null;
-          return { type: p.typetext, mag: p.magnitude != null ? Number(p.magnitude) : null, unit: p.unit, valid: p.valid, city: p.city, state: p.state, lat: c[1], lng: c[0] };
-        }).filter(Boolean);
-      }
-    } catch {}
+    const features = Array.isArray(r2) ? r2 : (r2?.features || []);
+    allStorms = features.map((f) => {
+      const p = f.properties || {};
+      const c = (f.geometry || {}).coordinates;
+      if (!Array.isArray(c)) return null;
+      return {
+        type: p.typetext,
+        mag: p.magf != null ? Number(p.magf) : (p.magnitude != null ? Number(p.magnitude) : null),
+        unit: p.unit,
+        valid: p.valid,
+        city: p.city,
+        state: p.state,
+        lat: c[1],
+        lng: c[0],
+      };
+    }).filter(Boolean);
   }
   $('go').addEventListener('click', () => look($('addr').value.trim()));
   $('addr').addEventListener('keydown', (e) => { if (e.key === 'Enter') look(e.target.value.trim()); });

@@ -339,8 +339,27 @@ async function start() {
     fetch('/api/intel/storms-light').then((r) => r.json()),
   ]);
   allJobs = r1;
-  // Filter to strong storms only
-  allStorms = r2.filter((s) => {
+  // storms-light is GeoJSON FeatureCollection — unwrap features + normalize.
+  const features = Array.isArray(r2) ? r2 : (r2?.features || []);
+  const normalized = features.map((f) => {
+    const p = f.properties || {};
+    const t = (p.typetext || '').toUpperCase();
+    const coords = f.geometry?.coordinates || [];
+    return {
+      stormId: f.id,
+      valid: p.valid || null,
+      type: t === 'HAIL' || t === 'TORNADO' || t === 'FUNNEL CLOUD' || t.includes('WND') ? t : '',
+      mag: typeof p.magf === 'number' ? p.magf : (typeof p.magnitude === 'number' ? p.magnitude : 0),
+      remark: p.remark || '',
+      city: p.city || '',
+      county: p.county || '',
+      state: p.state || '',
+      source: p.source || '',
+      lat: coords[1] ?? null,
+      lng: coords[0] ?? null,
+    };
+  });
+  allStorms = normalized.filter((s) => {
     if (s.type === 'HAIL' && (s.mag || 0) >= 0.75) return true;
     if ((s.type || '').includes('WND') && (s.mag || 0) >= 55) return true;
     if (s.type === 'TORNADO' || s.type === 'FUNNEL CLOUD') return true;
