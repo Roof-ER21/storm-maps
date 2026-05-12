@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Exec Snapshot</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 28px 24px; max-width: 1500px; margin: 0 auto; }
+  .hero { background: linear-gradient(135deg, #342c23 0%, #2a241e 100%); border: 1px solid var(--border); border-radius: 12px; padding: 28px 32px; margin-bottom: 24px; }
+  .hero .big { font-size: 48px; font-weight: 800; color: var(--accent); margin: 0; line-height: 1; }
+  .hero .label { color: var(--muted); font-size: 13px; margin-top: 8px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .hero-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 24px; }
+  .row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 16px; }
+  @media (max-width: 1000px) { .row { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; }
+  section h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; color: var(--text); }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 14px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 22px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .kpi .sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .opp-card { background: #342c23; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .opp-card .left { flex: 1; }
+  .opp-card .title { font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .opp-card .desc { font-size: 12px; color: var(--muted); }
+  .opp-card .right { text-align: right; }
+  .opp-card .count { font-size: 28px; font-weight: 700; color: var(--green); }
+  .opp-card .link { color: var(--accent); text-decoration: none; font-size: 12px; font-weight: 600; margin-top: 4px; display: inline-block; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 5px 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .badge.good { background: rgba(16,185,129,0.2); color: var(--green); }
+  .badge.warn { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .badge.bad  { background: rgba(239,68,68,0.2); color: var(--red); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📊 Exec Snapshot — RIQ 21 — Intelligence Brief</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="exec.html" class="active">Exec</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-playbook.html">Playbook</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="reps.html">Reps</a>
+    <a href="zip-intel.html">ZIP Intel</a>
+    <a href="hot-zips.html">Hot ZIPs</a>
+    <a href="notes.html">Notes</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+
+    <div class="hero">
+      <div class="hero-row" id="hero"></div>
+    </div>
+
+    <div class="row">
+      <section>
+        <h2>🎯 Immediate Opportunities — Money & Leads on the Table</h2>
+        <div class="desc">Pre-qualified outreach lists. Each is a CSV away from a campaign.</div>
+        <div id="opportunities"></div>
+      </section>
+      <section>
+        <h2>⚡ Most Recent Strong Storm</h2>
+        <div class="desc">Latest hail ≥1" or wind ≥60mph in our service area.</div>
+        <div id="latest-storm"></div>
+      </section>
+    </div>
+
+    <div class="row">
+      <section>
+        <h2>🏆 Top 5 Reps (Last 12 Months)</h2>
+        <div class="desc">By signed volume in the rolling year.</div>
+        <table id="tbl-reps"></table>
+      </section>
+      <section>
+        <h2>📍 Top 5 ZIPs (All Time)</h2>
+        <div class="desc">Highest revenue.</div>
+        <table id="tbl-zips"></table>
+      </section>
+    </div>
+
+    <div class="row">
+      <section>
+        <h2>📈 Year-Over-Year Performance</h2>
+        <div class="desc">Signed jobs, completion rate, revenue.</div>
+        <table id="tbl-year"></table>
+      </section>
+      <section>
+        <h2>🏢 Top 5 Insurance Carriers</h2>
+        <div class="desc">By revenue.</div>
+        <table id="tbl-carriers"></table>
+      </section>
+    </div>
+
+    <div class="row">
+      <section>
+        <h2>🌪 Top 5 Single Storms That Drove Revenue (Lifetime)</h2>
+        <div class="desc">Single storm events that produced the most jobs.</div>
+        <table id="tbl-bigstorms"></table>
+      </section>
+      <section>
+        <h2>⚠️ Risk Flags</h2>
+        <div class="desc">Issues worth ops review.</div>
+        <div id="risks"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  bigMoney: (v) => v == null ? '—' : (v >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? '$' + (v / 1e3).toFixed(0) + 'k' : '$' + Math.round(v).toLocaleString()),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+
+async function start() {
+  const [projects, resurrection, exposure, playbook, receivables] = await Promise.all([
+    fetch('projects.json').then((r) => r.json()),
+    fetch('resurrection.json').then((r) => r.json()).catch(() => []),
+    fetch('storm-exposure.json').then((r) => r.json()).catch(() => []),
+    fetch('storm-playbook.json').then((r) => r.json()).catch(() => []),
+    fetch('receivables.json').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
+  ]);
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+
+  // Hero KPIs
+  const totalRev = projects.reduce((s, p) => s + (p.jobTotal || 0), 0);
+  const completedJobs = projects.filter(isCompleted);
+  const completedRev = completedJobs.reduce((s, p) => s + (p.jobTotal || 0), 0);
+  const dataYears = ((new Date(projects.map((p) => p.signedDate).filter(Boolean).sort().reverse()[0]) - new Date(projects.map((p) => p.signedDate).filter(Boolean).sort()[0])) / (365 * 86400000)).toFixed(1);
+  const arTotal = receivables.accounts.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0);
+
+  $('hero').innerHTML = `
+    <div><div class="big">${fmt.bigMoney(completedRev)}</div><div class="label">Completed revenue · ${dataYears}y</div></div>
+    <div><div class="big">${fmt.int(completedJobs.length)}</div><div class="label">Completed jobs</div></div>
+    <div><div class="big">${fmt.int(projects.length)}</div><div class="label">Lifetime signed jobs</div></div>
+    <div><div class="big">${fmt.bigMoney(arTotal)}</div><div class="label">Open AR · ${receivables.accounts.length} accounts</div></div>
+  `;
+
+  // Opportunities cards
+  const expRecentHail = exposure.filter((c) => {
+    const ms = c.mostRecentStorm;
+    if (!ms || !ms.valid) return false;
+    return (Date.now() - new Date(ms.valid).getTime()) / 86400000 < 90 && c.strongestStorm.type === 'HAIL';
+  }).length;
+  const roofNoSiding = countUpsell(projects, ['Roofing', 'Metal Roofing', 'Flat Roofing'], 'Siding');
+  const solarCandidates = countSolar(projects);
+  const opps = [
+    { title: 'Resurrection candidates', desc: 'Dead insurance jobs hit by new strong storms', count: resurrection.length, link: 'resurrection.html' },
+    { title: 'Warm customers w/ new damage', desc: 'Strong storm within 2mi since first contact', count: exposure.length, link: 'storm-exposure.html' },
+    { title: 'Recent hail-hit customers (90d)', desc: 'Hot warm leads to call this week', count: expRecentHail, link: 'storm-exposure.html' },
+    { title: 'Siding upsell pool', desc: 'Roof customers who never bought siding', count: roofNoSiding, link: 'upgrade-campaigns.html' },
+    { title: 'Solar candidates', desc: 'Completed roof 2018-2024 (right age for solar)', count: solarCandidates, link: 'upgrade-campaigns.html' },
+    { title: 'Open AR ($)', desc: 'Money awaiting collection right now', count: fmt.bigMoney(arTotal), link: 'receivables.html' },
+  ];
+  $('opportunities').innerHTML = opps.map((o) => `
+    <div class="opp-card">
+      <div class="left">
+        <div class="title">${o.title}</div>
+        <div class="desc">${o.desc}</div>
+        <a class="link" href="${o.link}">Open list →</a>
+      </div>
+      <div class="right"><div class="count">${typeof o.count === 'number' ? fmt.int(o.count) : o.count}</div></div>
+    </div>
+  `).join('');
+
+  // Latest storm
+  let latest = null;
+  for (const j of projects) {
+    if (!j.stormMatch || !j.stormMatch.stormDate) continue;
+    if (!latest || j.stormMatch.stormDate > latest.stormDate) latest = j.stormMatch;
+  }
+  if (latest) {
+    const days = Math.floor((Date.now() - new Date(latest.stormDate).getTime()) / 86400000);
+    $('latest-storm').innerHTML = `
+      <div style="font-size:28px;font-weight:700;color:var(--accent)">${latest.stormType} ${latest.stormMagnitude || ''} ${latest.stormUnit || ''}</div>
+      <div style="color:var(--muted);margin-top:4px">${(latest.stormDate || '').slice(0, 10)} · ${days}d ago</div>
+      <a class="link" href="storm-playbook.html" style="color:var(--accent);text-decoration:none;font-size:13px;display:inline-block;margin-top:12px">Open Playbook for outreach lists →</a>
+    `;
+  }
+
+  // Top reps last 12 months
+  const cutoff12mo = (new Date(Date.now() - 365 * 86400000)).toISOString().slice(0, 10);
+  const recent = projects.filter((p) => p.signedDate && p.signedDate >= cutoff12mo);
+  const repCounts = {};
+  for (const p of recent) {
+    if (!p.salesRep) continue;
+    if (!repCounts[p.salesRep]) repCounts[p.salesRep] = { signed: 0, completed: 0, revenue: 0 };
+    repCounts[p.salesRep].signed++;
+    if (isCompleted(p)) { repCounts[p.salesRep].completed++; repCounts[p.salesRep].revenue += p.jobTotal || 0; }
+  }
+  const topReps = Object.entries(repCounts).sort((a, b) => b[1].signed - a[1].signed).slice(0, 5);
+  $('tbl-reps').innerHTML = `
+    <thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Completed</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${topReps.map(([rep, s]) => `<tr><td>${rep}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+  `;
+
+  // Top ZIPs all time
+  const zipCounts = {};
+  for (const p of projects) {
+    if (!p.zip) continue;
+    const z = p.zip.slice(0, 5);
+    if (!zipCounts[z]) zipCounts[z] = { signed: 0, completed: 0, revenue: 0, cities: {} };
+    zipCounts[z].signed++;
+    if (p.city) zipCounts[z].cities[p.city] = (zipCounts[z].cities[p.city] || 0) + 1;
+    if (isCompleted(p)) { zipCounts[z].completed++; zipCounts[z].revenue += p.jobTotal || 0; }
+  }
+  const topZips = Object.entries(zipCounts).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+  $('tbl-zips').innerHTML = `
+    <thead><tr><th>ZIP</th><th>City</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${topZips.map(([z, s]) => `<tr><td>${z}</td><td>${Object.entries(s.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'}</td><td class="num">${s.signed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+  `;
+
+  // YoY
+  const yearAgg = {};
+  for (const p of projects) {
+    if (!p.signedDate) continue;
+    const y = p.signedDate.slice(0, 4);
+    if (!yearAgg[y]) yearAgg[y] = { signed: 0, completed: 0, revenue: 0 };
+    yearAgg[y].signed++;
+    if (isCompleted(p)) { yearAgg[y].completed++; yearAgg[y].revenue += p.jobTotal || 0; }
+  }
+  const years = Object.entries(yearAgg).sort((a, b) => b[0].localeCompare(a[0]));
+  $('tbl-year').innerHTML = `
+    <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Completed</th><th class="num">Close Rate</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${years.map(([y, s]) => {
+      const cr = s.signed > 0 ? s.completed / s.signed : 0;
+      return `<tr><td>${y}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td><td class="num">${(cr * 100).toFixed(1)}%</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`;
+    }).join('')}</tbody>
+  `;
+
+  // Carriers
+  const carrierAgg = {};
+  for (const p of projects) {
+    if (!p.insurance) continue;
+    if (!carrierAgg[p.insurance]) carrierAgg[p.insurance] = { signed: 0, completed: 0, revenue: 0 };
+    carrierAgg[p.insurance].signed++;
+    if (isCompleted(p)) { carrierAgg[p.insurance].completed++; carrierAgg[p.insurance].revenue += p.jobTotal || 0; }
+  }
+  const topCarriers = Object.entries(carrierAgg).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+  $('tbl-carriers').innerHTML = `
+    <thead><tr><th>Carrier</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${topCarriers.map(([c, s]) => `<tr><td>${c}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+  `;
+
+  // Top single storms
+  const stormAgg = {};
+  for (const p of projects) {
+    if (!p.stormMatch) continue;
+    const id = p.stormMatch.stormId;
+    if (!stormAgg[id]) stormAgg[id] = { date: p.stormMatch.stormDate, type: p.stormMatch.stormType, mag: p.stormMatch.stormMagnitude, unit: p.stormMatch.stormUnit, jobs: 0, revenue: 0 };
+    stormAgg[id].jobs++;
+    if (p.jobTotal) stormAgg[id].revenue += p.jobTotal;
+  }
+  const topStorms = Object.values(stormAgg).sort((a, b) => b.jobs - a.jobs).slice(0, 5);
+  $('tbl-bigstorms').innerHTML = `
+    <thead><tr><th>Date</th><th>Type</th><th>Mag</th><th class="num">Jobs</th><th class="num">Revenue</th></tr></thead>
+    <tbody>${topStorms.map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type}</td><td>${s.mag} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+  `;
+
+  // Risks
+  const pausedNow = projects.filter((p) => p.paused).length;
+  const balPending = receivables.accounts.filter((a) => a.status === 'Balance Pending').length;
+  const deadInWindow = projects.filter((p) => isDead(p) && p.signedDate && p.signedDate >= cutoff12mo).length;
+  const supplementsOpen = projects.filter((p) => p.hasSupplement && !isCompleted(p) && !isDead(p)).length;
+  $('risks').innerHTML = `
+    <div class="opp-card"><div class="left"><div class="title">Paused jobs</div><div class="desc">Active blockers</div></div><div class="right"><div class="count" style="color:var(--yellow)">${pausedNow}</div></div></div>
+    <div class="opp-card"><div class="left"><div class="title">Balance Pending AR</div><div class="desc">Money awaiting customer payment</div></div><div class="right"><div class="count" style="color:var(--yellow)">${balPending}</div></div></div>
+    <div class="opp-card"><div class="left"><div class="title">Open supplements</div><div class="desc">Supplement-filed, not yet closed</div></div><div class="right"><div class="count" style="color:var(--yellow)">${supplementsOpen}</div></div></div>
+    <div class="opp-card"><div class="left"><div class="title">Dead jobs (last 12 mo)</div><div class="desc">Resurrection candidates pool</div></div><div class="right"><div class="count" style="color:var(--red)">${deadInWindow}</div></div></div>
+  `;
+}
+
+function countUpsell(projects, hasTrades, missingTrade) {
+  const cust = new Map();
+  for (const p of projects) {
+    const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
+    if (!k.replace(/\|/g, '').trim()) continue;
+    if (!cust.has(k)) cust.set(k, new Set());
+    for (const t of (p.trades || [])) cust.get(k).add(t);
+  }
+  let n = 0;
+  for (const trades of cust.values()) {
+    if (hasTrades.some((t) => trades.has(t)) && !trades.has(missingTrade)) n++;
+  }
+  return n;
+}
+function countSolar(projects) {
+  const cust = new Map();
+  const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing']);
+  for (const p of projects) {
+    const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
+    if (!k.replace(/\|/g, '').trim()) continue;
+    if (!cust.has(k)) cust.set(k, { trades: new Set(), lastRoofDate: null });
+    const e = cust.get(k);
+    if (isCompleted(p) && (p.trades || []).some((t) => ROOF.has(t))) {
+      const d = p.completedDate || p.signedDate;
+      if (d && (!e.lastRoofDate || d > e.lastRoofDate)) e.lastRoofDate = d;
+      for (const t of (p.trades || [])) e.trades.add(t);
+    }
+  }
+  let n = 0;
+  for (const e of cust.values()) {
+    if (!e.lastRoofDate) continue;
+    const y = Number(e.lastRoofDate.slice(0, 4));
+    if (y >= 2018 && y <= 2024) n++;
+  }
+  return n;
+}
+
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

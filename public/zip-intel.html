@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — ZIP Intel</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .zip-list { max-height: 800px; overflow-y: auto; }
+  .zip-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .zip-item:hover { border-color: var(--accent); }
+  .zip-item.active { border-color: var(--accent); background: #342c23; }
+  .zip-item .zip { font-weight: 600; color: var(--accent); }
+  .zip-item .stats { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .filter-bar input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; width: 100%; margin-bottom: 12px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 5px 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pct { color: var(--accent); }
+  .pct.bad { color: var(--red); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .pill.hail { background: rgba(168,139,250,0.2); color: var(--purple); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .pill.wind { background: rgba(94,200,255,0.2); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .script-box { background: #342c23; border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 4px 4px 0; margin-top: 12px; font-size: 13px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 ZIP Code Intel — Knock Script Per ZIP</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-playbook.html">Playbook</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="reps.html">Reps</a>
+    <a href="zip-intel.html" class="active">ZIP Intel</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="layout">
+      <section>
+        <h2>ZIP codes</h2>
+        <div class="desc">Sorted by total revenue. Pick a ZIP to see knock script.</div>
+        <div class="filter-bar"><input id="search" placeholder="Search ZIP or city" /></div>
+        <div id="count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
+        <div class="zip-list" id="zip-list"></div>
+      </section>
+      <section id="detail">
+        <div class="loading">Pick a ZIP to see knock script</div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+let zips = [];
+
+function build(jobs) {
+  const m = new Map();
+  for (const j of jobs) {
+    if (!j.zip) continue;
+    const z = j.zip.slice(0, 5);
+    if (!m.has(z)) m.set(z, { zip: z, jobs: [], cities: {}, carriers: {}, trades: {}, reps: {}, adjusters: {}, deductibles: [], storms: [] });
+    const e = m.get(z);
+    e.jobs.push(j);
+    if (j.city) e.cities[j.city] = (e.cities[j.city] || 0) + 1;
+    if (j.insurance) {
+      if (!e.carriers[j.insurance]) e.carriers[j.insurance] = { signed: 0, completed: 0, dead: 0, rev: 0 };
+      e.carriers[j.insurance].signed++;
+      if (isCompleted(j)) { e.carriers[j.insurance].completed++; e.carriers[j.insurance].rev += j.jobTotal || 0; }
+      else if (isDead(j)) e.carriers[j.insurance].dead++;
+    }
+    for (const t of (j.trades || [])) e.trades[t] = (e.trades[t] || 0) + 1;
+    if (j.salesRep) e.reps[j.salesRep] = (e.reps[j.salesRep] || 0) + 1;
+    if (j.adjusterName) e.adjusters[j.adjusterName] = (e.adjusters[j.adjusterName] || 0) + 1;
+    if (j.deductible) e.deductibles.push(j.deductible);
+    if (j.stormMatch) e.storms.push({ ...j.stormMatch, jobId: j.id });
+  }
+  return [...m.values()].map((e) => {
+    const signed = e.jobs.length;
+    const completed = e.jobs.filter(isCompleted).length;
+    const dead = e.jobs.filter(isDead).length;
+    const revenue = e.jobs.reduce((s, j) => s + (j.jobTotal || 0), 0);
+    const completedRev = e.jobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
+    e.deductibles.sort((a, b) => a - b);
+    e.storms.sort((a, b) => (b.stormDate || '').localeCompare(a.stormDate || ''));
+    return {
+      ...e,
+      city: Object.entries(e.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '',
+      signed, completed, dead, revenue, completedRev,
+      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+      avgApprovedJob: completed ? completedRev / completed : null,
+      medianDeductible: e.deductibles.length ? e.deductibles[Math.floor(e.deductibles.length / 2)] : null,
+    };
+  });
+}
+
+function renderList() {
+  const q = ($('search').value || '').trim().toLowerCase();
+  let rows = zips;
+  if (q) rows = rows.filter((z) => z.zip.includes(q) || z.city.toLowerCase().includes(q));
+  rows.sort((a, b) => b.revenue - a.revenue);
+  $('count').textContent = `${rows.length.toLocaleString()} zips`;
+  $('zip-list').innerHTML = rows.slice(0, 300).map((z) => `
+    <div class="zip-item" data-zip="${z.zip}">
+      <div class="zip">${z.zip} — ${z.city}</div>
+      <div class="stats">${z.signed} jobs · ${z.completed} done · ${fmt.money(z.revenue)}</div>
+    </div>
+  `).join('');
+  $('zip-list').querySelectorAll('.zip-item').forEach((el) => el.addEventListener('click', () => {
+    $('zip-list').querySelectorAll('.zip-item').forEach((x) => x.classList.remove('active'));
+    el.classList.add('active');
+    showZip(el.dataset.zip);
+  }));
+}
+
+function topList(obj, n = 6) {
+  return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+function showZip(zip) {
+  const z = zips.find((x) => x.zip === zip);
+  if (!z) return;
+  const carriers = Object.entries(z.carriers).map(([name, c]) => ({
+    name, ...c,
+    closeRate: c.signed - c.dead > 0 ? c.completed / (c.signed - c.dead) : 0,
+  })).sort((a, b) => b.signed - a.signed);
+  const topCarrier = carriers[0];
+  const recentStorms = z.storms.slice(0, 5);
+  const trades = topList(z.trades, 8);
+  const reps = topList(z.reps, 5);
+  const adjusters = topList(z.adjusters, 5);
+
+  // Generate knock script
+  const scriptCarrier = topCarrier ? `${topCarrier.name} (${fmt.pct(topCarrier.closeRate)} approval rate, ${topCarrier.signed} prior jobs)` : 'an insurance carrier';
+  const scriptTrade = trades[0]?.[0] || 'roof';
+  const scriptMostRecentStorm = recentStorms[0];
+  const scriptIntro = scriptMostRecentStorm
+    ? `we've been working in your neighborhood after the ${(scriptMostRecentStorm.stormDate || '').slice(0,10)} ${scriptMostRecentStorm.stormType} (${scriptMostRecentStorm.stormMagnitude || ''} ${scriptMostRecentStorm.stormUnit || ''})`
+    : 'we've been working in your neighborhood';
+
+  $('detail').innerHTML = `
+    <h2>${z.zip} — ${z.city}</h2>
+    <div class="desc">${z.signed} jobs · ${z.completed} approved · ${fmt.money(z.revenue)} revenue · ${fmt.pct(z.closeRate)} close rate</div>
+
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Signed</div><div class="value">${z.signed}</div></div>
+      <div class="kpi"><div class="label">Approved</div><div class="value">${z.completed}</div></div>
+      <div class="kpi"><div class="label">Close rate</div><div class="value">${fmt.pct(z.closeRate)}</div></div>
+      <div class="kpi"><div class="label">Avg approved $</div><div class="value">${fmt.money(z.avgApprovedJob)}</div></div>
+      <div class="kpi"><div class="label">Median deductible</div><div class="value">${fmt.money(z.medianDeductible)}</div></div>
+      <div class="kpi"><div class="label">Storm matches</div><div class="value">${z.storms.length}</div></div>
+    </div>
+
+    <div class="script-box">
+      <strong>Suggested knock opener:</strong><br>
+      "Hi, I'm with Roof Docs — ${scriptIntro}. The most common carrier in this zip is <strong>${topCarrier?.name || 'your insurance company'}</strong>${topCarrier ? ` and we've successfully filed ${topCarrier.completed} claims with them in ${z.zip}.` : '.'} ${trades[0] ? `Most homes here need <strong>${scriptTrade}</strong> work.` : ''}"
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Carriers in this ZIP</h2>
+        <table>
+          <thead><tr><th>Carrier</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Rate</th><th class="num">Revenue</th></tr></thead>
+          <tbody>${carriers.map((c) => `
+            <tr>
+              <td>${c.name}</td>
+              <td class="num">${c.signed}</td>
+              <td class="num">${c.completed}</td>
+              <td class="num pct ${c.closeRate < 0.4 ? 'bad' : ''}">${fmt.pct(c.closeRate)}</td>
+              <td class="num money">${fmt.money(c.rev)}</td>
+            </tr>
+          `).join('')}</tbody>
+        </table>
+      </div>
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top trades</h2>
+        <table>${trades.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</table>
+      </div>
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top reps in this ZIP</h2>
+        <table>${reps.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</table>
+      </div>
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top adjusters in this ZIP</h2>
+        <table>${adjusters.length ? adjusters.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('') : '<tr><td colspan="2" style="color:var(--muted)">No adjuster data</td></tr>'}</table>
+      </div>
+    </div>
+
+    <h2 style="font-size:13px;margin-top:20px">Recent storms in this ZIP (most recent 5)</h2>
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th>Magnitude</th><th>Distance</th></tr></thead>
+      <tbody>${recentStorms.length ? recentStorms.map((s) => `
+        <tr>
+          <td>${(s.stormDate || '').slice(0, 10)}</td>
+          <td><span class="pill ${s.stormType === 'HAIL' ? 'hail' : 'wind'}">${s.stormType}</span></td>
+          <td>${s.stormMagnitude || '—'} ${s.stormUnit || ''}</td>
+          <td>${s.stormDistanceMiles?.toFixed(2) || '—'} mi</td>
+        </tr>
+      `).join('') : '<tr><td colspan="4" style="color:var(--muted)">No matched storms</td></tr>'}</tbody>
+    </table>
+  `;
+}
+
+async function start() {
+  const res = await fetch('projects.json');
+  const jobs = await res.json();
+  zips = build(jobs);
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
+  renderList();
+  setTimeout(() => $('zip-list').querySelector('.zip-item')?.click(), 50);
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

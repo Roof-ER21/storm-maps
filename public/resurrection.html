@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Resurrection List</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<style>
+  :root {
+    --bg: #1a1612;
+    --panel: #2a241e;
+    --border: #3d3528;
+    --text: #f0ebe2;
+    --muted: #a09486;
+    --accent: #f4a738;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --red: #ef4444;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 16px; text-decoration: none; font-size: 13px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 24px; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  .layout { display: grid; grid-template-columns: 1fr 520px; gap: 16px; margin-top: 16px; }
+  @media (max-width: 1200px) { .layout { grid-template-columns: 1fr; } }
+  #map { width: 100%; height: 520px; background: #342c23; border: 1px solid var(--border); border-radius: 8px; }
+  .leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); }
+  .leaflet-popup-tip { background: var(--panel); }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .btn { background: var(--accent); color: #1a1612; border: none; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  tbody tr:hover { background: #342c23; cursor: pointer; }
+  tbody tr.selected { background: rgba(94,200,255,0.15); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 720px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 4px; }
+  .pill.hail { background: rgba(168,139,250,0.2); color: #a78bfa; }
+  .pill.wind { background: rgba(94,200,255,0.2); color: var(--accent); }
+  .pill.tornado { background: rgba(239,68,68,0.2); color: var(--red); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪦 Resurrection List — Dead Jobs With New Storm Activity</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html" class="active">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-playbook.html">Playbook</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="reps.html">Reps</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading… (waiting for storm correlation to finish)</div>
+  <div id="content" style="display:none">
+    <div class="kpi-row" id="kpis"></div>
+
+    <div class="layout">
+      <section style="margin: 0">
+        <div class="filter-bar">
+          <label>Search
+            <input id="f-search" type="text" placeholder="customer / address / rep / carrier" style="width:280px" />
+          </label>
+          <label>State <select id="f-state"><option value="">All</option></select></label>
+          <label>Carrier <select id="f-carrier"><option value="">All</option></select></label>
+          <label>Storm type
+            <select id="f-stormtype"><option value="">All</option><option value="HAIL">Hail</option><option value="WND">Wind</option><option value="TORNADO">Tornado</option></select>
+          </label>
+          <label>Min hail size (in)
+            <input id="f-hail" type="number" step="0.25" placeholder="1.0" style="width:80px" />
+          </label>
+          <label>&nbsp;<button class="btn" id="btn-csv">Export CSV</button></label>
+        </div>
+        <div id="count-line" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+        <div class="scroll"><table id="tbl"></table></div>
+      </section>
+      <section style="margin: 0; padding: 8px">
+        <div id="map"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+
+let all = [];
+let activeRows = [];
+let map, cluster;
+let sortKey = 'mag', sortDir = 'desc';
+
+function sortVal(r, k) {
+  const s = r.strongestStorm;
+  if (k === 'customer') return r.customer || '';
+  if (k === 'address') return r.address || '';
+  if (k === 'state') return r.state || '';
+  if (k === 'carrier') return r.insurance || '';
+  if (k === 'lastTouch') return r.lastTouchDate || '';
+  if (k === 'stormType') return s.stormType || '';
+  if (k === 'mag') return s.stormType === 'HAIL' ? (s.stormMagnitude || 0) * 10 : (s.stormMagnitude || 0);
+  if (k === 'distance') return s.stormDistanceMiles || 0;
+  if (k === 'stormDate') return s.stormDate || '';
+  return '';
+}
+
+function pillFor(stormType) {
+  if (stormType === 'HAIL') return 'hail';
+  if (stormType === 'TORNADO' || stormType === 'FUNNEL CLOUD') return 'tornado';
+  if (stormType && stormType.includes('WND')) return 'wind';
+  return '';
+}
+
+function renderKPIs() {
+  const total = all.length;
+  const states = new Set(all.map((r) => r.state).filter(Boolean));
+  const carriers = new Set(all.map((r) => r.insurance).filter(Boolean));
+  const hail = all.filter((r) => r.strongestStorm.stormType === 'HAIL');
+  const recent = all.filter((r) => r.strongestStorm.daysSinceDead < 60);
+  $('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Resurrection candidates</div><div class="value">${fmt.int(total)}</div></div>
+    <div class="kpi"><div class="label">Hail-driven</div><div class="value">${fmt.int(hail.length)}</div></div>
+    <div class="kpi"><div class="label">Storm hit &lt;60d after dead</div><div class="value">${fmt.int(recent.length)}</div></div>
+    <div class="kpi"><div class="label">Unique carriers</div><div class="value">${carriers.size}</div></div>
+    <div class="kpi"><div class="label">States</div><div class="value">${[...states].sort().join(' / ')}</div></div>
+  `;
+}
+
+function applyFilters() {
+  let rows = all;
+  const q = $('f-search').value.trim().toLowerCase();
+  if (q) {
+    rows = rows.filter((r) =>
+      (r.customer || '').toLowerCase().includes(q) ||
+      (r.address || '').toLowerCase().includes(q) ||
+      (r.salesRep || '').toLowerCase().includes(q) ||
+      (r.insurance || '').toLowerCase().includes(q)
+    );
+  }
+  const st = $('f-state').value;
+  if (st) rows = rows.filter((r) => r.state === st);
+  const carrier = $('f-carrier').value;
+  if (carrier) rows = rows.filter((r) => r.insurance === carrier);
+  const stormType = $('f-stormtype').value;
+  if (stormType) {
+    rows = rows.filter((r) => {
+      if (stormType === 'HAIL') return r.strongestStorm.stormType === 'HAIL';
+      if (stormType === 'TORNADO') return r.strongestStorm.stormType === 'TORNADO' || r.strongestStorm.stormType === 'FUNNEL CLOUD';
+      if (stormType === 'WND') return (r.strongestStorm.stormType || '').includes('WND');
+      return true;
+    });
+  }
+  const minHail = Number($('f-hail').value || 0);
+  if (minHail) rows = rows.filter((r) =>
+    r.strongestStorm.stormType === 'HAIL' && (r.strongestStorm.stormMagnitude || 0) >= minHail
+  );
+  activeRows = rows;
+  $('count-line').textContent = `${rows.length.toLocaleString()} candidates`;
+  renderTable(rows);
+  renderMap(rows);
+}
+
+function renderTable(rows) {
+  if (rows.length === 0) {
+    $('tbl').innerHTML = '<tr><td class="empty">No candidates match.</td></tr>';
+    return;
+  }
+  rows = [...rows].sort((a, b) => {
+    const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
+    if (va == null) return 1; if (vb == null) return -1;
+    if (typeof va === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+    return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  const arrow = (k) => sortKey === k ? `<span style="color:var(--accent);margin-left:4px">${sortDir === 'asc' ? '▲' : '▼'}</span>` : '';
+  const head = `<thead><tr>
+    <th data-k="customer" style="cursor:pointer">Customer${arrow('customer')}</th>
+    <th data-k="address" style="cursor:pointer">Address${arrow('address')}</th>
+    <th data-k="state" style="cursor:pointer">State${arrow('state')}</th>
+    <th data-k="carrier" style="cursor:pointer">Carrier${arrow('carrier')}</th>
+    <th data-k="lastTouch" style="cursor:pointer">Last Touch${arrow('lastTouch')}</th>
+    <th data-k="stormType" style="cursor:pointer">Storm${arrow('stormType')}</th>
+    <th data-k="mag" class="num" style="cursor:pointer">Mag${arrow('mag')}</th>
+    <th data-k="distance" class="num" style="cursor:pointer">Dist (mi)${arrow('distance')}</th>
+    <th data-k="stormDate" style="cursor:pointer">Storm Date${arrow('stormDate')}</th>
+  </tr></thead>`;
+  const body = '<tbody>' + rows.slice(0, 1000).map((r, i) => {
+    const s = r.strongestStorm;
+    const magStr = s.stormMagnitude != null ? `${s.stormMagnitude}${s.stormUnit ? ' ' + s.stormUnit : ''}` : '—';
+    return `
+    <tr data-i="${i}">
+      <td>${r.customer || '—'}</td>
+      <td>${r.address}</td>
+      <td>${r.state || '—'}</td>
+      <td>${r.insurance || '—'}</td>
+      <td>${r.lastTouchDate || '—'}<br><span style="color:var(--muted);font-size:11px">${r.daysSinceDead}d ago</span></td>
+      <td><span class="pill ${pillFor(s.stormType)}">${s.stormType}</span> ${r.newStormCount > 1 ? `<span class="pill" style="background:#342c23">+${r.newStormCount-1} more</span>` : ''}</td>
+      <td class="num">${magStr}</td>
+      <td class="num">${s.stormDistanceMiles.toFixed(2)}</td>
+      <td>${(s.stormDate || '').slice(0, 10)}<br><span style="color:var(--muted);font-size:11px">${s.daysSinceDead}d after dead</span></td>
+      <td><a href="https://portal.theroofdocs.com/jobs/${r.jobId}" target="_blank" title="Open in portal" style="color:var(--accent);text-decoration:none">🔗 #${r.jobId}</a></td>
+    </tr>`;
+  }).join('') + '</tbody>';
+  const tbl = $('tbl');
+  tbl.innerHTML = head + body;
+  tbl.querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = k; sortDir = 'desc'; }
+    renderTable(rows);
+  }));
+  tbl.querySelectorAll('tbody tr').forEach((tr) => {
+    tr.addEventListener('click', () => {
+      tbl.querySelectorAll('tbody tr').forEach((t) => t.classList.remove('selected'));
+      tr.classList.add('selected');
+      const r = activeRows[Number(tr.dataset.i)];
+      if (r && r.lat && r.lng) {
+        map.setView([r.lat, r.lng], 14);
+      }
+    });
+  });
+}
+
+function renderMap(rows) {
+  if (cluster) cluster.clearLayers();
+  cluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+  for (const r of rows) {
+    if (r.lat == null || r.lng == null) continue;
+    const color = r.strongestStorm.stormType === 'HAIL' ? '#a78bfa' :
+      r.strongestStorm.stormType === 'TORNADO' ? '#ef4444' : '#f4a738';
+    const m = L.circleMarker([r.lat, r.lng], {
+      radius: 6, fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.85,
+    });
+    const s = r.strongestStorm;
+    m.bindPopup(`
+      <div style="font-size:13px">
+        <strong>${r.customer || '—'}</strong><br>
+        ${r.address}<br>
+        <span style="color:var(--muted)">${r.insurance || '—'} · ${r.salesRep || '—'}</span><br><br>
+        <strong>Last touch:</strong> ${r.lastTouchDate || '—'} (${r.daysSinceDead}d ago)<br>
+        <strong>Storm:</strong> ${s.stormType} ${s.stormMagnitude || ''} ${s.stormUnit || ''}<br>
+        <strong>Date:</strong> ${(s.stormDate || '').slice(0,10)} (${s.daysSinceDead}d after dead)<br>
+        <strong>Distance:</strong> ${s.stormDistanceMiles.toFixed(2)} mi<br>
+        <strong>Trades on file:</strong> ${(r.trades || []).join(', ') || '—'}<br>
+        <strong>Adjuster:</strong> ${r.adjusterName || '—'}
+      </div>
+    `);
+    cluster.addLayer(m);
+  }
+  map.addLayer(cluster);
+}
+
+function exportCSV() {
+  if (!activeRows.length) return;
+  const headers = ['Customer', 'Address', 'City', 'State', 'Zip', 'Carrier', 'Adjuster', 'Sales Rep', 'Last Touch', 'Days Since Dead', 'Storm Type', 'Storm Magnitude', 'Storm Date', 'Storm Distance (mi)', 'Days After Dead', 'New Storm Count', 'Trades on File'];
+  const lines = [headers.join(',')];
+  for (const r of activeRows) {
+    const s = r.strongestStorm;
+    const row = [
+      r.customer, r.address, r.city, r.state, r.zip, r.insurance,
+      r.adjusterName, r.salesRep, r.lastTouchDate, r.daysSinceDead,
+      s.stormType, s.stormMagnitude || '', (s.stormDate || '').slice(0, 10),
+      s.stormDistanceMiles, s.daysSinceDead, r.newStormCount,
+      (r.trades || []).join(';'),
+    ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+    lines.push(row.join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roofdocs-resurrection-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function start() {
+  let res;
+  try {
+    res = await fetch('resurrection.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+  } catch (e) {
+    $('loading').innerHTML = `Storm correlation hasn't finished yet — resurrection.json not available.<br><br>Once it's done, refresh.`;
+    return;
+  }
+  all = await res.json();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+
+  map = L.map('map', { preferCanvas: true }).setView([38.95, -77.3], 8);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
+  }).addTo(map);
+
+  // Populate filters
+  const states = new Set(), carriers = new Set();
+  for (const r of all) {
+    if (r.state) states.add(r.state);
+    if (r.insurance) carriers.add(r.insurance);
+  }
+  for (const s of [...states].sort()) {
+    const o = document.createElement('option'); o.value = s; o.textContent = s; $('f-state').appendChild(o);
+  }
+  for (const c of [...carriers].sort()) {
+    const o = document.createElement('option'); o.value = c; o.textContent = c; $('f-carrier').appendChild(o);
+  }
+  for (const id of ['f-search', 'f-state', 'f-carrier', 'f-stormtype', 'f-hail']) {
+    const el = $(id);
+    el.addEventListener(el.tagName === 'INPUT' ? 'input' : 'change', () => {
+      clearTimeout(window._t); window._t = setTimeout(applyFilters, 250);
+    });
+  }
+  $('btn-csv').addEventListener('click', exportCSV);
+  renderKPIs();
+  applyFilters();
+}
+
+start();
+</script>
+</body>
+</html>

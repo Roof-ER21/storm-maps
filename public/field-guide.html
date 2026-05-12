@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Field Guide</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1500px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--accent); }
+  section .desc { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .tab { padding: 10px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-size: 13px; }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+  .insight { background: rgba(94,200,255,0.08); border-left: 3px solid var(--accent); padding: 12px 16px; border-radius: 0 6px 6px 0; margin: 10px 0; font-size: 13px; line-height: 1.6; }
+  .insight strong { color: var(--accent); }
+  .insight.warn { background: rgba(245,158,11,0.08); border-color: var(--yellow); }
+  .insight.warn strong { color: var(--yellow); }
+  .insight.bad { background: rgba(239,68,68,0.08); border-color: var(--red); }
+  .insight.bad strong { color: var(--red); }
+  .insight.good { background: rgba(16,185,129,0.08); border-color: var(--green); }
+  .insight.good strong { color: var(--green); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pct { color: var(--accent); }
+  .scroll { max-height: 580px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .pill.good { background: rgba(16,185,129,0.2); color: var(--green); }
+  .pill.med { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .pill.bad { background: rgba(239,68,68,0.2); color: var(--red); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+  .rule { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+  .rule .label { font-weight: 700; color: var(--accent); }
+  .threshold { background: #342c23; border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+  .threshold .val { font-size: 22px; font-weight: 700; color: var(--accent); }
+  .threshold .what { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .threshold .src { color: var(--muted); font-size: 11px; margin-top: 4px; font-style: italic; }
+  .filter-bar { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📖 Roof Docs Field Guide — Patterns, Thresholds, Battle-Tested Plays</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="field-guide.html" class="active">Field Guide</a>
+    <a href="predictor.html">Predictor</a>
+    <a href="analytics.html">Analytics</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading patterns…</div>
+  <div id="content" style="display:none">
+
+    <div class="tabs">
+      <div class="tab active" data-tab="thresholds">Key Thresholds</div>
+      <div class="tab" data-tab="hail">Hail Size Approval</div>
+      <div class="tab" data-tab="speed">Speed-to-Sign</div>
+      <div class="tab" data-tab="carrier-state">Carrier × State</div>
+      <div class="tab" data-tab="carrier-zip">Carrier × ZIP</div>
+      <div class="tab" data-tab="adjusters">Adjuster Patterns</div>
+      <div class="tab" data-tab="rep-carrier">Rep Best-Match</div>
+      <div class="tab" data-tab="timing">Day &amp; Month Patterns</div>
+      <div class="tab" data-tab="plays">Battle-Tested Plays</div>
+    </div>
+
+    <div id="tab-content"></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+let patterns = null;
+
+function pillForRate(rate) {
+  if (rate >= 0.75) return 'good';
+  if (rate >= 0.5) return 'med';
+  return 'bad';
+}
+
+const TABS = {
+  thresholds() {
+    return `<section>
+      <h2>🎯 Industry-Backed Approval Thresholds</h2>
+      <div class="desc">From HAAG, NWS, NSSL, NCEI, RoofPredict, and Insurance industry research. Encode these in canvasser scripts and supplement playbooks.</div>
+      <div class="grid-2">
+        <div class="threshold"><div class="what">Hail size — asphalt 3-tab (functional)</div><div class="val">1.0"</div><div class="src">Soft threshold. State Farm uses 1.25" + 15% granule loss.</div></div>
+        <div class="threshold"><div class="what">Hail size — architectural</div><div class="val">1.25"</div><div class="src">Industry consensus (HAAG / Ridgeline).</div></div>
+        <div class="threshold"><div class="what">Hail size — Class 4 IR shingle</div><div class="val">1.75"</div><div class="src">Material spec.</div></div>
+        <div class="threshold"><div class="what">Wind speed — shingle lift</div><div class="val">50 mph</div><div class="src">NWS / NSSL — soft.</div></div>
+        <div class="threshold"><div class="what">Wind speed — significant</div><div class="val">58 mph</div><div class="src">NWS severe threshold.</div></div>
+        <div class="threshold"><div class="what">Roof age — RCV → ACV cliff</div><div class="val">10 yr</div><div class="src">Many carriers drop to ACV at 10y. Cliff at 15y.</div></div>
+        <div class="threshold"><div class="what">Roof age — non-renewal risk</div><div class="val">15-20 yr</div><div class="src">15y carrier reinspection trigger; 20y non-renewal common.</div></div>
+        <div class="threshold"><div class="what">Test square impacts (10'×10')</div><div class="val">8-10</div><div class="src">HAAG protocol. &lt;8 = repair; ≥8 = replacement.</div></div>
+        <div class="threshold"><div class="what">Days from loss to notify</div><div class="val">365</div><div class="src">Most policy max. Practical: 60-90 days.</div></div>
+        <div class="threshold"><div class="what">Suit limitation</div><div class="val">1-2 yr</div><div class="src">Per policy "Suit Against Us".</div></div>
+      </div>
+
+      <h2 style="margin-top:24px">⚡ Our Data Confirms</h2>
+      <div class="insight good"><strong>Speed-to-sign sweet spot is 31-90 days</strong> — across 5,000+ matched jobs, 31-90d window converts at <strong>82.6%</strong> vs 61.9% at 181-365d. Push the 30-90d window in canvasser scripts.</div>
+      <div class="insight"><strong>Hail tier non-linearity</strong> — 1.0-1.25" hail = 73% approval. Drops at 1.25-1.5" (52%) because carriers send to engineers. Spikes back up at 1.5"+ (76-82%). Sweet spot for fast approval: 1.0-1.25".</div>
+      <div class="insight warn"><strong>Adjuster identity > damage</strong> — Same property, different IA = opposite outcome. Track adjuster name in every appointment. See Adjuster Patterns tab.</div>
+    </section>`;
+  },
+
+  hail() {
+    return `<section>
+      <h2>🌨 Hail Magnitude → Approval Rate</h2>
+      <div class="desc">Our 16k jobs cross-referenced against IEM Local Storm Reports. Hail size is the single strongest signal for approval probability.</div>
+      <table>
+        <thead><tr><th>Hail tier</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Dead</th><th class="num">Approval rate</th></tr></thead>
+        <tbody>${patterns.hailTiers.map((t) => `
+          <tr>
+            <td>${t.bucket.replace(/_/g, '–').replace('lt', '&lt;').replace('gte', '≥')}</td>
+            <td class="num">${t.jobs}</td>
+            <td class="num">${t.completed}</td>
+            <td class="num">${t.dead}</td>
+            <td class="num"><span class="pill ${pillForRate(t.approvalRate)}">${fmt.pct(t.approvalRate)}</span></td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+      <div class="insight good" style="margin-top:14px"><strong>The 1.0-1.25" sweet spot</strong>: 1,519 jobs · 73% approval. This is the band where adjusters approve fastest without invoking engineer reports.</div>
+      <div class="insight warn"><strong>The 1.25-1.5" valley</strong>: only 52% approval (107 jobs). Counterintuitive but real — carrier engineers (HAAG/Donan) routinely deny in this range. Pre-emptively bring an independent HAAG-certified inspector if hail is in this band.</div>
+      <div class="insight good"><strong>≥2" zone</strong>: 82.9% (111 jobs). Big hail = hard-to-deny. But document slope-by-slope thoroughly because they will still try the "previous damage" angle.</div>
+    </section>`;
+  },
+
+  speed() {
+    return `<section>
+      <h2>⏱ Days from Date-of-Loss to Signed → Approval Rate</h2>
+      <div class="desc">How fast Roof Docs gets the contract relative to the storm event correlates with claim outcome.</div>
+      <table>
+        <thead><tr><th>Window</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Dead</th><th class="num">Approval rate</th><th class="num">Avg approved $</th></tr></thead>
+        <tbody>${patterns.speedToSign.map((t) => `
+          <tr>
+            <td>${t.bucket}</td>
+            <td class="num">${t.jobs}</td>
+            <td class="num">${t.completed}</td>
+            <td class="num">${t.dead}</td>
+            <td class="num"><span class="pill ${pillForRate(t.approvalRate)}">${fmt.pct(t.approvalRate)}</span></td>
+            <td class="num money">${fmt.money(t.avgApprovedJob)}</td>
+          </tr>
+        `).join('')}</tbody>
+      </table>
+      <div class="insight good"><strong>31-90 days is the sweet spot (82.6%).</strong> Reps who sign in this window beat both rushed and stale leads.</div>
+      <div class="insight warn"><strong>0-7 days = 74%</strong>. Surprising — rushed signs sometimes lack documentation. Customer may not have inspected damage themselves yet.</div>
+      <div class="insight bad"><strong>181-365 days = 61.9%</strong>. Once you're past 6 months from loss, the carrier has either already settled, denied, or is fighting harder. Get to the door fast.</div>
+    </section>`;
+  },
+
+  'carrier-state'() {
+    const rows = [...patterns.carrierByState].sort((a, b) => b.jobs - a.jobs).slice(0, 60);
+    return `<section>
+      <h2>🏢 Carrier × State — Where Each Carrier Plays Hardest</h2>
+      <div class="desc">Matching laws differ by state (PA adverse per <em>Greene v. USAA</em>; MD has strong bad-faith statute §27-303). Pair this table with the Carrier Deep Dive page.</div>
+      <div class="scroll"><table>
+        <thead><tr><th>Carrier</th><th>State</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Approval rate</th></tr></thead>
+        <tbody>${rows.map((r) => `
+          <tr>
+            <td><a href="carrier-detail.html?carrier=${encodeURIComponent(r.carrier)}" style="color:var(--accent);text-decoration:none">${r.carrier}</a></td>
+            <td>${r.state}</td>
+            <td class="num">${r.jobs}</td>
+            <td class="num">${r.completed}</td>
+            <td class="num"><span class="pill ${pillForRate(r.approvalRate)}">${fmt.pct(r.approvalRate)}</span></td>
+          </tr>
+        `).join('')}</tbody>
+      </table></div>
+    </section>`;
+  },
+
+  'carrier-zip'() {
+    return `<section>
+      <h2>🗺 Carrier × ZIP — Highest-Confidence Combos (≥10 jobs)</h2>
+      <div class="desc">When you canvas a zip, this tells you which carriers Roof Docs has the best track record with in that exact area.</div>
+      <div class="filter-bar">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">Search<input id="cz-search" placeholder="zip / city / carrier" style="width:240px" /></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">Sort by
+          <select id="cz-sort">
+            <option value="approval-desc">Approval rate (high)</option>
+            <option value="approval-asc">Approval rate (low)</option>
+            <option value="jobs-desc">Jobs (high)</option>
+            <option value="zip-asc">ZIP (a-z)</option>
+          </select>
+        </label>
+      </div>
+      <div class="scroll" id="cz-content"></div>
+    </section>`;
+  },
+
+  adjusters() {
+    const rows = [...patterns.adjusters].filter((a) => a.jobs >= 3).sort((a, b) => b.approvalRate - a.approvalRate);
+    return `<section>
+      <h2>📋 Adjuster Approval Patterns (≥3 jobs)</h2>
+      <div class="desc">Named adjusters with ≥3 jobs in our book. <strong>Adjuster identity > damage</strong> per industry research — same property, different IA, opposite outcomes.</div>
+      <div class="filter-bar">
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">Search<input id="adj-search" placeholder="adjuster / carrier" style="width:240px" /></label>
+        <label style="display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)">Sort by
+          <select id="adj-sort">
+            <option value="approval-desc">Approval rate (high)</option>
+            <option value="approval-asc">Approval rate (low)</option>
+            <option value="completed-desc">Approved jobs (high)</option>
+            <option value="uplift-desc">Supplement uplift (high)</option>
+          </select>
+        </label>
+      </div>
+      <div class="scroll" id="adj-content"></div>
+    </section>`;
+  },
+
+  'rep-carrier'() {
+    const rows = patterns.reps.filter((r) => r.bestCarrier).slice(0, 80);
+    return `<section>
+      <h2>🎯 Rep × Best Carrier Match</h2>
+      <div class="desc">For each rep with ≥5 jobs: which carrier they have the best approval rate with (min 5 jobs/carrier). Use this for territory and assignment decisions.</div>
+      <div class="scroll"><table>
+        <thead><tr><th>Rep</th><th class="num">Total Jobs</th><th class="num">Approval %</th><th>Best Carrier</th><th class="num">w/ that carrier</th><th class="num">Approval there</th></tr></thead>
+        <tbody>${rows.map((r) => `
+          <tr>
+            <td>${r.name}</td>
+            <td class="num">${r.jobs}</td>
+            <td class="num"><span class="pill ${pillForRate(r.approvalRate)}">${fmt.pct(r.approvalRate)}</span></td>
+            <td>${r.bestCarrier.carrier}</td>
+            <td class="num">${r.bestCarrier.signed}</td>
+            <td class="num"><span class="pill ${pillForRate(r.bestCarrier.approvalRate)}">${fmt.pct(r.bestCarrier.approvalRate)}</span></td>
+          </tr>
+        `).join('')}</tbody>
+      </table></div>
+    </section>`;
+  },
+
+  timing() {
+    return `<section>
+      <h2>📅 Day-of-Week &amp; Month-of-Year Patterns</h2>
+      <div class="grid-2">
+        <div>
+          <h2 style="font-size:13px">Day of week — when reps sign</h2>
+          <table>
+            <thead><tr><th>Day</th><th class="num">Signed</th><th class="num">Approval %</th></tr></thead>
+            <tbody>${patterns.dayOfWeek.map((d) => `
+              <tr>
+                <td>${d.day}</td>
+                <td class="num">${d.jobs}</td>
+                <td class="num"><span class="pill ${pillForRate(d.approvalRate)}">${fmt.pct(d.approvalRate)}</span></td>
+              </tr>
+            `).join('')}</tbody>
+          </table>
+        </div>
+        <div>
+          <h2 style="font-size:13px">Month — seasonal signal</h2>
+          <table>
+            <thead><tr><th>Month</th><th class="num">Signed</th><th class="num">Approval %</th><th class="num">Avg $</th></tr></thead>
+            <tbody>${patterns.monthOfYear.map((m) => `
+              <tr>
+                <td>${m.month}</td>
+                <td class="num">${m.jobs}</td>
+                <td class="num"><span class="pill ${pillForRate(m.approvalRate)}">${fmt.pct(m.approvalRate)}</span></td>
+                <td class="num money">${fmt.money(m.avgApprovedJob)}</td>
+              </tr>
+            `).join('')}</tbody>
+          </table>
+        </div>
+      </div>
+    </section>`;
+  },
+
+  plays() {
+    return `<section>
+      <h2>⚔️ Battle-Tested Plays (research-validated)</h2>
+      <div class="desc">From property insurance attorneys, public adjusters, and supplement experts. Each tactic moves the outcome in our favor.</div>
+
+      <div class="rule"><span class="label">1. Meet the adjuster on the roof.</span> Industry baseline: contractor-attended inspections = ~25% higher first-pass approval. Non-negotiable for first inspections.</div>
+      <div class="rule"><span class="label">2. Pre-document with drone + chalk + macros</span> before they arrive. Eliminates ~80% of "pre-existing" disputes.</div>
+      <div class="rule"><span class="label">3. Demand Xactimate "Restoration" pricing, not "New Construction."</span> State Farm routinely defaults to "New Construction" (~15-25% lower). Cite trial precedent on first email.</div>
+      <div class="rule"><span class="label">4. Itemize permits, code upgrade, ice/water shield, drip edge, starter, ridge vent, O&amp;P.</span> Desk adjusters approve what's spelled out — they don't add lines. VA &amp; MD now both require ice/water + drip edge.</div>
+      <div class="rule"><span class="label">5. File supplements within 24-48 hrs of tear-off discovery.</span> Original estimate + annotated photos + manufacturer install specs. Aggressive timing = approved supplements.</div>
+      <div class="rule"><span class="label">6. Request reinspection</span> when scope ≠ damage. Almost every policy grants it. CAT adjusters in particular under-document — re-inspections favor us.</div>
+      <div class="rule"><span class="label">7. Escalate properly</span>: supervisor → desk manager → claims manager → DOI complaint. Three rungs before regulator. Each step shifts behavior.</div>
+      <div class="rule"><span class="label">8. Invoke appraisal</span> when $/scope gap &gt; ~$15-25K AND coverage is undisputed. Cost: $500-1,500/appraiser. Favors insureds heavily.</div>
+      <div class="rule"><span class="label">9. File DOI complaint in MD citing §27-303</span> ("arbitrary or capricious" denial, $2,500-$125,000 penalty). MD has the strongest bad-faith statute of VA/MD/PA. Sharp behavioral shift once filed.</div>
+      <div class="rule"><span class="label">10. Code-upgrade leverage</span>: get written notice from the building inspector listing required upgrades. Forces Ordinance/Law coverage activation — typically 10-25% of Coverage A.</div>
+
+      <h2 style="margin-top:24px;font-size:14px">🚨 State Differences That Matter</h2>
+      <div class="insight bad"><strong>PA: matching is adverse.</strong> Per <em>Greene v. USAA</em> (2007), "damaged part" = damaged shingles only, no full-roof match obligation. Build slope-only estimates first, then push for matching exception via <em>Collins</em> doctrine if applicable.</div>
+      <div class="insight good"><strong>MD: strongest bad-faith statute (§27-303).</strong> $2,500-$125,000 per violation. Use the complaint threat early in disputes.</div>
+      <div class="insight warn"><strong>VA: long 5-yr SOL but weak bad-faith leverage.</strong> §38.2-209 requires "not in good faith" — high bar. Lean on procedural escalation, not statute.</div>
+      <div class="insight bad"><strong>PA: 2-year SOL — shortest.</strong> File and serve fast on disputed claims.</div>
+
+      <h2 style="margin-top:24px;font-size:14px">🎲 Counterintuitive Findings</h2>
+      <div class="insight warn"><strong>MRMS hail often overshoots ground truth by 25-40%.</strong> Carriers know this. Cross-corroborate with IEM LSR + NCEI Storm Events on every claim — single-source radar is not enough.</div>
+      <div class="insight warn"><strong>≥2" hail can actually approve LESS often than 1.25-1.5"</strong> because carriers auto-route to engineering reports (HAAG/Donan), which lean denial. Counter with independent inspector + structural engineer rebuttal.</div>
+      <div class="insight bad"><strong>Cosmetic damage endorsement is silent.</strong> Often added at renewal without homeowner attention. $40/yr premium vs $25k loss. Check carrier's recent declarations before estimating.</div>
+      <div class="insight warn"><strong>Roof age cliff is at 15yr, not gradual.</strong> 14→16yr swing is more predictive than 8→12. The 15-year carrier reinspection trigger drives decisions, not literal age.</div>
+      <div class="insight"><strong>EXIF metadata is now scanned.</strong> Verisk ClaimSearch image forensics flag date-stamp mismatches as fraud. Train field reps to use the official app camera, not the gallery.</div>
+    </section>`;
+  },
+};
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.tab === tab));
+  $('tab-content').innerHTML = TABS[tab]();
+  if (tab === 'carrier-zip') wireCZ();
+  if (tab === 'adjusters') wireAdj();
+}
+
+function wireCZ() {
+  function render() {
+    let rows = [...patterns.carrierByZip];
+    const q = $('cz-search').value.trim().toLowerCase();
+    if (q) rows = rows.filter((r) => `${r.carrier} ${r.zip} ${r.city || ''}`.toLowerCase().includes(q));
+    const sort = $('cz-sort').value;
+    if (sort === 'approval-desc') rows.sort((a, b) => b.approvalRate - a.approvalRate);
+    else if (sort === 'approval-asc') rows.sort((a, b) => a.approvalRate - b.approvalRate);
+    else if (sort === 'jobs-desc') rows.sort((a, b) => b.jobs - a.jobs);
+    else if (sort === 'zip-asc') rows.sort((a, b) => a.zip.localeCompare(b.zip));
+    $('cz-content').innerHTML = `<table>
+      <thead><tr><th>Carrier</th><th>ZIP</th><th>City</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Dead</th><th class="num">Approval rate</th></tr></thead>
+      <tbody>${rows.slice(0, 300).map((r) => `
+        <tr>
+          <td>${r.carrier}</td>
+          <td><strong>${r.zip}</strong></td>
+          <td>${r.city || '—'}</td>
+          <td class="num">${r.jobs}</td>
+          <td class="num">${r.completed}</td>
+          <td class="num">${r.dead}</td>
+          <td class="num"><span class="pill ${pillForRate(r.approvalRate)}">${fmt.pct(r.approvalRate)}</span></td>
+        </tr>
+      `).join('')}</tbody></table>`;
+  }
+  $('cz-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(render, 200); });
+  $('cz-sort').addEventListener('change', render);
+  render();
+}
+
+function wireAdj() {
+  function render() {
+    let rows = patterns.adjusters.filter((a) => a.jobs >= 3);
+    const q = $('adj-search').value.trim().toLowerCase();
+    if (q) rows = rows.filter((r) => `${r.name} ${r.carrier}`.toLowerCase().includes(q));
+    const sort = $('adj-sort').value;
+    if (sort === 'approval-desc') rows.sort((a, b) => b.approvalRate - a.approvalRate);
+    else if (sort === 'approval-asc') rows.sort((a, b) => a.approvalRate - b.approvalRate);
+    else if (sort === 'completed-desc') rows.sort((a, b) => b.completed - a.completed);
+    else if (sort === 'uplift-desc') rows.sort((a, b) => (b.medianUplift || 0) - (a.medianUplift || 0));
+    $('adj-content').innerHTML = `<table>
+      <thead><tr><th>Adjuster</th><th>Carrier</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Dead</th><th class="num">Approval rate</th><th class="num">Avg approved</th><th class="num">Median uplift</th></tr></thead>
+      <tbody>${rows.slice(0, 300).map((r) => `
+        <tr>
+          <td>${r.name}</td>
+          <td>${r.carrier}</td>
+          <td class="num">${r.jobs}</td>
+          <td class="num">${r.completed}</td>
+          <td class="num">${r.dead}</td>
+          <td class="num"><span class="pill ${pillForRate(r.approvalRate)}">${fmt.pct(r.approvalRate)}</span></td>
+          <td class="num money">${fmt.money(r.avgApprovedJob)}</td>
+          <td class="num">${r.medianUplift != null ? (r.medianUplift * 100).toFixed(1) + '%' : '—'}</td>
+        </tr>
+      `).join('')}</tbody></table>`;
+  }
+  $('adj-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(render, 200); });
+  $('adj-sort').addEventListener('change', render);
+  render();
+}
+
+async function start() {
+  patterns = await fetch('patterns.json').then((r) => r.json());
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => switchTab(t.dataset.tab)));
+  switchTab('thresholds');
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

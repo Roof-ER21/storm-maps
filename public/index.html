@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Intelligence Command Center</title>
+<link rel="icon" href="data:," />
+<style>
+  :root {
+    --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2;
+    --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b;
+    --red:#ef4444; --purple:#a78bfa; --orange:#fb923c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: linear-gradient(135deg, #342c23 0%, #2a241e 100%); border-bottom: 1px solid var(--border); padding: 24px 32px; }
+  header .top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+  header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+  header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  header .meta { color: var(--muted); font-size: 12px; text-align: right; }
+  header .meta strong { color: var(--accent); }
+  .hero { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; }
+  .hero .stat { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; }
+  .hero .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .hero .stat .value { font-size: 26px; font-weight: 800; margin-top: 4px; color: var(--accent); line-height: 1.1; }
+  .hero .stat .sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  main { padding: 28px 32px; max-width: 1700px; margin: 0 auto; }
+  .quick { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 28px; padding: 14px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+  .quick input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 14px; width: 100%; }
+  .quick .results { display: none; position: absolute; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 0; max-height: 400px; overflow-y: auto; min-width: 400px; margin-top: 4px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .quick .results.show { display: block; }
+  .quick .results .item { padding: 8px 14px; cursor: pointer; }
+  .quick .results .item:hover { background: #342c23; }
+  .quick .results .item .name { color: var(--accent); font-size: 13px; font-weight: 600; }
+  .quick .results .item .sub { color: var(--muted); font-size: 11px; }
+  .quick .badge { background: rgba(94,200,255,0.15); color: var(--accent); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .category { margin-bottom: 32px; }
+  .category h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 0 0 14px; font-weight: 600; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
+  .tile { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; text-decoration: none; color: inherit; transition: all 0.15s; display: flex; flex-direction: column; gap: 4px; }
+  .tile:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .tile .icon { font-size: 22px; margin-bottom: 4px; }
+  .tile .title { font-weight: 700; font-size: 15px; color: var(--text); }
+  .tile .desc { color: var(--muted); font-size: 12px; line-height: 1.4; flex-grow: 1; }
+  .tile .kpi { margin-top: 10px; display: flex; justify-content: space-between; align-items: flex-end; }
+  .tile .kpi .v { font-size: 24px; font-weight: 800; color: var(--accent); line-height: 1; }
+  .tile .kpi .l { color: var(--muted); font-size: 11px; }
+  .tile.exec { border-left: 4px solid var(--accent); }
+  .tile.outreach { border-left: 4px solid var(--yellow); }
+  .tile.outreach .kpi .v { color: var(--yellow); }
+  .tile.intel { border-left: 4px solid var(--purple); }
+  .tile.intel .kpi .v { color: var(--purple); }
+  .tile.ops { border-left: 4px solid var(--green); }
+  .tile.ops .kpi .v { color: var(--green); }
+  .tile.geo { border-left: 4px solid var(--orange); }
+  .tile.geo .kpi .v { color: var(--orange); }
+  .loading { padding: 60px; text-align: center; color: var(--accent); }
+  .footer { padding: 20px 32px; text-align: center; color: var(--muted); font-size: 11px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top">
+    <div>
+      <h1>🏠 RIQ 21 · Roofing IQ</h1>
+      <div class="sub">Internal command center · all data sourced from portal.theroofdocs.com</div>
+    </div>
+    <div class="meta">
+      <div>Data pulled <strong id="meta-pulled">…</strong></div>
+      <div>Token expires <strong id="meta-expires">…</strong></div>
+    </div>
+  </div>
+  <div class="hero" id="hero">
+    <div class="stat"><div class="label">Loading…</div></div>
+  </div>
+</header>
+
+<main>
+  <div class="quick">
+    <div style="position:relative; flex:1">
+      <input id="qsearch" placeholder="🔎 Search any customer, address, ZIP, rep, carrier…" />
+      <div class="results" id="qresults"></div>
+    </div>
+    <a href="lead-score.html" class="badge">→ Top Lead Score Pool</a>
+  </div>
+
+  <div class="category">
+    <h2>📊 Executive — Bird's eye view</h2>
+    <div class="tiles">
+      <a class="tile exec" href="exec.html">
+        <div class="icon">📈</div>
+        <div class="title">Exec Snapshot</div>
+        <div class="desc">One-page overview for leadership: revenue, top opportunities, recent storm, year-over-year, risks.</div>
+        <div class="kpi"><div><div class="v" id="kpi-exec">—</div><div class="l">Completed revenue</div></div></div>
+      </a>
+      <a class="tile exec" href="analytics.html">
+        <div class="icon">📊</div>
+        <div class="title">Analytics Dashboard</div>
+        <div class="desc">20+ sections: types, reps, carriers, cities, ZIPs, trades, adjusters, deductibles, speed, friction, ACV/depreciation, supplement uplift, storm correlation.</div>
+        <div class="kpi"><div><div class="v" id="kpi-anal">—</div><div class="l">Lifetime signed jobs</div></div></div>
+      </a>
+      <a class="tile exec" href="lead-score.html">
+        <div class="icon">🎯</div>
+        <div class="title">Lead Score</div>
+        <div class="desc">Every customer ranked 0-100 by composite priority: storm × close rate × trade gap × zip × value × recency.</div>
+        <div class="kpi"><div><div class="v" id="kpi-lead">—</div><div class="l">Customers scored</div></div></div>
+      </a>
+      <a class="tile exec" href="predictor.html">
+        <div class="icon">🔮</div>
+        <div class="title">Claim Outcome Predictor</div>
+        <div class="desc">Input carrier + ZIP + hail + adjuster + days — get approval probability + research-backed playbook moves.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Score any lead</div></div></div>
+      </a>
+      <a class="tile exec" href="field-guide.html">
+        <div class="icon">📖</div>
+        <div class="title">Field Guide</div>
+        <div class="desc">9 tabs: thresholds, hail-size→approval, speed-to-sign, carrier×state, carrier×ZIP, adjuster patterns, rep best-match, timing, battle-tested plays.</div>
+        <div class="kpi"><div><div class="v">336</div><div class="l">Combos tracked</div></div></div>
+      </a>
+      <a class="tile exec" href="weekly-recap.html">
+        <div class="icon">📰</div>
+        <div class="title">Weekly Recap</div>
+        <div class="desc">Monday-morning auto-recap. Top storms, new resurrection candidates, AR aging, top reps. Print/email/HTML.</div>
+        <div class="kpi"><div><div class="v">7d</div><div class="l">Or 14 / 30</div></div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <h2>🗺 Maps &amp; Geographic Intel</h2>
+    <div class="tiles">
+      <a class="tile geo" href="roofdocs-map.html">
+        <div class="icon">📍</div>
+        <div class="title">Project Map</div>
+        <div class="desc">Every signed job pinned. Color by stage or job type. Storm-of-record shown on each pin. Filters: year, insurance, rep, lead source, state.</div>
+        <div class="kpi"><div><div class="v" id="kpi-map">—</div><div class="l">Pins on the map</div></div></div>
+      </a>
+      <a class="tile geo" href="hot-zips.html">
+        <div class="icon">🔥</div>
+        <div class="title">Hot ZIPs</div>
+        <div class="desc">Where to knock right now. Ranked by storm activity × close rate × job size × Roof Docs density.</div>
+        <div class="kpi"><div><div class="v" id="kpi-hotzips">—</div><div class="l">High-score ZIPs</div></div></div>
+      </a>
+      <a class="tile geo" href="zip-intel.html">
+        <div class="icon">📋</div>
+        <div class="title">ZIP Intel</div>
+        <div class="desc">Knock script per ZIP — dominant carrier, top trades, top reps, recent storms. Auto-generates an opening line.</div>
+        <div class="kpi"><div><div class="v" id="kpi-zips">—</div><div class="l">ZIPs we operate in</div></div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <h2>📞 Outreach Lists — Pre-Built Campaigns</h2>
+    <div class="tiles">
+      <a class="tile outreach" href="resurrection.html">
+        <div class="icon">🪦</div>
+        <div class="title">Resurrection</div>
+        <div class="desc">Dead insurance jobs (2023+) hit by NEW strong storms after they died. Storm-anchored re-engagement.</div>
+        <div class="kpi"><div><div class="v" id="kpi-res">—</div><div class="l">Candidates</div></div></div>
+      </a>
+      <a class="tile outreach" href="storm-exposure.html">
+        <div class="icon">⚡</div>
+        <div class="title">Storm Exposure</div>
+        <div class="desc">Every customer whose home was hit by ≥0.75" hail or ≥55mph wind since first contact. Warm follow-ups.</div>
+        <div class="kpi"><div><div class="v" id="kpi-exp">—</div><div class="l">Exposed customers</div></div></div>
+      </a>
+      <a class="tile outreach" href="storm-playbook.html">
+        <div class="icon">🎯</div>
+        <div class="title">Storm Playbook</div>
+        <div class="desc">Pick a strong storm in last 2 years → pick a trade gap → instant call list with email/phone/carrier for every affected customer.</div>
+        <div class="kpi"><div><div class="v" id="kpi-play">—</div><div class="l">Recent storms (2yr)</div></div></div>
+      </a>
+      <a class="tile outreach" href="storm-intel.html">
+        <div class="icon">🌪</div>
+        <div class="title">Storm Intel Panel</div>
+        <div class="desc">Pick ANY storm (filter by date/type/mag) → see all customers in radius bucketed by status (signed/dead/open) with one-click CSV pitch list.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Click any storm</div></div></div>
+      </a>
+      <a class="tile outreach" href="upgrade-campaigns.html">
+        <div class="icon">📨</div>
+        <div class="title">Upgrade Campaigns</div>
+        <div class="desc">9 pre-built segments: siding upsell, solar candidates, gutter upsell, high-deductible, premium follow-up, multi-job repeat, full-stack.</div>
+        <div class="kpi"><div><div class="v" id="kpi-camp">—</div><div class="l">Siding upsell pool</div></div></div>
+      </a>
+      <a class="tile outreach" href="customers.html">
+        <div class="icon">👥</div>
+        <div class="title">Customer Rollup</div>
+        <div class="desc">Lifetime view: deduped by name+address. Multi-job detection, total revenue, trades portfolio, time-since-last-contact buckets.</div>
+        <div class="kpi"><div><div class="v" id="kpi-cust">—</div><div class="l">Unique customers</div></div></div>
+      </a>
+      <a class="tile outreach" href="customer-detail.html">
+        <div class="icon">👤</div>
+        <div class="title">Customer Detail</div>
+        <div class="desc">Single-customer deep dive: full job timeline, storms hitting their property, contact info, lead score, recommended next pitch.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Search any</div></div></div>
+      </a>
+      <a class="tile outreach" href="solar.html">
+        <div class="icon">☀️</div>
+        <div class="title">Solar Funnel</div>
+        <div class="desc">Customers with completed roofs aged 1–7 years — ideal for solar mount partnerships. Full contact info, sortable by age.</div>
+        <div class="kpi"><div><div class="v">2,517</div><div class="l">Ideal candidates</div></div></div>
+      </a>
+      <a class="tile outreach" href="property-lookup.html">
+        <div class="icon">🔍</div>
+        <div class="title">Property Lookup</div>
+        <div class="desc">Type ANY address (in or out of book). See all jobs at that property, storms in last 5y, neighbor density, recommendation.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Any address</div></div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <h2>🧠 Intelligence — Deep Dives</h2>
+    <div class="tiles">
+      <a class="tile intel" href="adjusters.html">
+        <div class="icon">📋</div>
+        <div class="title">Adjuster Directory</div>
+        <div class="desc">Every adjuster we've worked with — name, email, phone, carrier, approval rate, avg approved $. The relationship intel page.</div>
+        <div class="kpi"><div><div class="v" id="kpi-adj">—</div><div class="l">Adjusters</div></div></div>
+      </a>
+      <a class="tile intel" href="adjuster-detail.html">
+        <div class="icon">📋</div>
+        <div class="title">Adjuster Detail</div>
+        <div class="desc">Per-adjuster deep dive: top ZIPs they handle, top reps working them, year-over-year, recent jobs, contact methods.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Click any</div></div></div>
+      </a>
+      <a class="tile intel" href="carrier-detail.html">
+        <div class="icon">🏢</div>
+        <div class="title">Carrier Deep Dive</div>
+        <div class="desc">Per-carrier deep dive: top ZIPs, top trades, top adjusters, top reps, deductibles, supplement uplift, YoY trend.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Click any</div></div></div>
+      </a>
+      <a class="tile intel" href="reps.html">
+        <div class="icon">🎯</div>
+        <div class="title">Rep Deep Dive</div>
+        <div class="desc">Per-rep scorecard: trade mix, top zips, top carriers, biggest wins, speed metrics.</div>
+        <div class="kpi"><div><div class="v" id="kpi-reps">—</div><div class="l">Reps tracked</div></div></div>
+      </a>
+      <a class="tile intel" href="ops-team.html">
+        <div class="icon">👥</div>
+        <div class="title">Ops Team</div>
+        <div class="desc">Project Coordinators (34), Estimators (4), Field Techs (5). Per-person workload, trade mix, biggest jobs.</div>
+        <div class="kpi"><div><div class="v">43</div><div class="l">Ops people</div></div></div>
+      </a>
+      <a class="tile intel" href="rep-response.html">
+        <div class="icon">⏱</div>
+        <div class="title">Rep Storm Response Time</div>
+        <div class="desc">Median days from storm-of-record to signed agreement, per rep. Fast vs slow responders ranked.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Fast vs slow</div></div></div>
+      </a>
+      <a class="tile intel" href="carrier-trades.html">
+        <div class="icon">🧾</div>
+        <div class="title">Carrier × Trade Profile</div>
+        <div class="desc">Heatmap: which carriers pay the most for which trades. 18 carriers × 10 trades = ~180 cells.</div>
+        <div class="kpi"><div><div class="v">—</div><div class="l">Heatmap</div></div></div>
+      </a>
+      <a class="tile intel" href="notes.html">
+        <div class="icon">📝</div>
+        <div class="title">Notes Search</div>
+        <div class="desc">Full-text search across 9,775 jobs with notes — install gotchas, upsell hints, customer red flags, status updates.</div>
+        <div class="kpi"><div><div class="v" id="kpi-notes">—</div><div class="l">Jobs with notes</div></div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category">
+    <h2>💰 Operations — Money &amp; Workflow</h2>
+    <div class="tiles">
+      <a class="tile ops" href="receivables.html">
+        <div class="icon">💸</div>
+        <div class="title">Money on the Table</div>
+        <div class="desc">Open AR (157 accounts pending CF/Balance) + Pending Downpayments (61 active). Total $ live.</div>
+        <div class="kpi"><div><div class="v" id="kpi-ar">—</div><div class="l">Open AR value</div></div></div>
+      </a>
+      <a class="tile ops" href="sms-reminders.html">
+        <div class="icon">📱</div>
+        <div class="title">SMS Reminders</div>
+        <div class="desc">Auto-generated SMS reminder scripts for: downpayments pending, AR balance pending, resurrection candidates. Click-to-send.</div>
+        <div class="kpi"><div><div class="v">3</div><div class="l">Reminder templates</div></div></div>
+      </a>
+    </div>
+  </div>
+</main>
+
+<div class="footer">
+  Generated locally from /Users/a21/Desktop/storm-maps · serves at http://127.0.0.1:8765 · all data PII-stripped where possible
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null ? '—' : (v >= 1e6 ? '$' + (v / 1e6).toFixed(1) + 'M' : v >= 1e3 ? '$' + (v / 1e3).toFixed(0) + 'k' : '$' + Math.round(v).toLocaleString()),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+
+async function load() {
+  const [projects, resurrection, exposure, playbook, receivables] = await Promise.all([
+    fetch('projects.json').then((r) => r.json()),
+    fetch('resurrection.json').then((r) => r.json()).catch(() => []),
+    fetch('storm-exposure.json').then((r) => r.json()).catch(() => []),
+    fetch('storm-playbook.json').then((r) => r.json()).catch(() => []),
+    fetch('receivables.json').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
+  ]);
+  // Stats
+  const total = projects.length;
+  const completed = projects.filter((p) => /completed|finalized/i.test(p.stage || ''));
+  const completedRev = completed.reduce((s, p) => s + (p.jobTotal || 0), 0);
+  const totalRev = projects.reduce((s, p) => s + (p.jobTotal || 0), 0);
+  const cust = new Set(projects.map((p) => ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase()).filter((k) => k.replace(/\|/g, '').trim()));
+  const zips = new Set(projects.map((p) => p.zip ? p.zip.slice(0, 5) : null).filter(Boolean));
+  const reps = new Set(projects.map((p) => p.salesRep).filter(Boolean));
+  const carriers = new Set(projects.map((p) => p.insurance).filter(Boolean));
+  const adjusters = new Set();
+  for (const p of projects) if (p.adjusterName) adjusters.add(p.adjusterName + '|' + (p.insurance || ''));
+  const stormMatched = projects.filter((p) => p.stormMatch).length;
+  const arTotal = receivables.accounts.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0);
+  // Compute siding upsell
+  const cm = new Map();
+  for (const p of projects) {
+    const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
+    if (!k.replace(/\|/g, '').trim()) continue;
+    if (!cm.has(k)) cm.set(k, new Set());
+    for (const t of (p.trades || [])) cm.get(k).add(t);
+  }
+  const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing']);
+  let siding = 0;
+  for (const trades of cm.values()) {
+    if ([...trades].some((t) => ROOF.has(t)) && !trades.has('Siding')) siding++;
+  }
+  // Hot ZIPs computation (60+)
+  const zipAgg = {};
+  for (const p of projects) {
+    if (!p.zip) continue;
+    const z = p.zip.slice(0, 5);
+    if (!zipAgg[z]) zipAgg[z] = { signed: 0, completed: 0, dead: 0, revenue: 0, recentStorms: 0 };
+    zipAgg[z].signed++;
+    if (/completed|finalized/i.test(p.stage || '')) { zipAgg[z].completed++; zipAgg[z].revenue += p.jobTotal || 0; }
+    else if (/dead|cancel/i.test(p.stage || '')) zipAgg[z].dead++;
+    if (p.stormMatch && p.stormMatch.stormDate) {
+      if ((Date.now() - new Date(p.stormMatch.stormDate).getTime()) / 86400000 < 180) zipAgg[z].recentStorms++;
+    }
+  }
+  const zipRows = Object.values(zipAgg);
+  const maxStorms = Math.max(1, ...zipRows.map((r) => r.recentStorms));
+  const maxJobs = Math.max(1, ...zipRows.map((r) => r.signed));
+  const maxAvg = Math.max(1, ...zipRows.map((r) => r.completed ? r.revenue / r.completed : 0));
+  let hotZips60 = 0;
+  for (const r of zipRows) {
+    const cr = (r.signed - r.dead) > 0 ? r.completed / (r.signed - r.dead) : 0;
+    const avgJob = r.completed ? r.revenue / r.completed : 0;
+    const score = 100 * (0.40 * (r.recentStorms / maxStorms) + 0.25 * cr + 0.20 * (avgJob / maxAvg) + 0.15 * (r.signed / maxJobs));
+    if (score >= 60) hotZips60++;
+  }
+
+  // Hero
+  $('hero').innerHTML = `
+    <div class="stat"><div class="label">Lifetime revenue</div><div class="value">${fmt.money(totalRev)}</div><div class="sub">all signed jobs</div></div>
+    <div class="stat"><div class="label">Completed revenue</div><div class="value">${fmt.money(completedRev)}</div><div class="sub">${completed.length.toLocaleString()} jobs</div></div>
+    <div class="stat"><div class="label">Mapped projects</div><div class="value">${fmt.int(total)}</div><div class="sub">${fmt.int(stormMatched)} matched to storms</div></div>
+    <div class="stat"><div class="label">Unique customers</div><div class="value">${fmt.int(cust.size)}</div><div class="sub">deduped by name+address</div></div>
+    <div class="stat"><div class="label">ZIPs we work</div><div class="value">${fmt.int(zips.size)}</div></div>
+    <div class="stat"><div class="label">Adjusters in book</div><div class="value">${fmt.int(adjusters.size)}</div></div>
+  `;
+
+  // Tile KPIs
+  $('kpi-exec').textContent = fmt.money(completedRev);
+  $('kpi-anal').textContent = fmt.int(total);
+  $('kpi-lead').textContent = fmt.int(cust.size);
+  $('kpi-map').textContent = fmt.int(total);
+  $('kpi-hotzips').textContent = fmt.int(hotZips60);
+  $('kpi-zips').textContent = fmt.int(zips.size);
+  $('kpi-res').textContent = fmt.int(resurrection.length);
+  $('kpi-exp').textContent = fmt.int(exposure.length);
+  $('kpi-play').textContent = fmt.int(playbook.length);
+  $('kpi-camp').textContent = fmt.int(siding);
+  $('kpi-cust').textContent = fmt.int(cust.size);
+  $('kpi-adj').textContent = fmt.int(adjusters.size);
+  $('kpi-reps').textContent = fmt.int(reps.size);
+  $('kpi-notes').textContent = '9,775';
+  $('kpi-ar').textContent = fmt.money(arTotal);
+
+  $('meta-pulled').textContent = new Date(2026, 4, 12).toLocaleDateString();
+  $('meta-expires').textContent = 'Fri 2026-05-15';
+
+  // Quick search
+  window.__index = { projects, exposure, customers: cm };
+  $('qsearch').addEventListener('input', quickSearch);
+  $('qsearch').addEventListener('focus', quickSearch);
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.quick')) $('qresults').classList.remove('show');
+  });
+}
+
+function quickSearch() {
+  const q = $('qsearch').value.trim().toLowerCase();
+  const r = $('qresults');
+  if (q.length < 2) { r.classList.remove('show'); return; }
+  const items = [];
+  // ZIP exact match
+  if (/^\d{5}$/.test(q)) {
+    items.push({ name: `Open ZIP ${q} in ZIP Intel`, sub: 'View knock script for this zip', href: `zip-intel.html` });
+  }
+  // Customer / address search
+  let n = 0;
+  const seen = new Set();
+  for (const p of __index.projects) {
+    if (n >= 20) break;
+    const matchStr = `${p.customer || ''} ${p.addressLine1 || ''} ${p.city || ''}`.toLowerCase();
+    if (matchStr.includes(q)) {
+      const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      items.push({
+        name: p.customer || '(unknown)',
+        sub: `${p.addressLine1 || ''}, ${p.city || ''} ${p.state || ''} · ${p.insurance || ''} · ${p.salesRep || ''}`,
+        href: `customers.html`,
+      });
+      n++;
+    }
+  }
+  r.innerHTML = items.length > 0
+    ? items.map((i) => `<a class="item" href="${i.href}"><div class="name">${i.name}</div><div class="sub">${i.sub}</div></a>`).join('')
+    : '<div class="item" style="color:var(--muted)">No matches</div>';
+  r.classList.add('show');
+}
+
+load().catch((e) => {
+  $('hero').innerHTML = `<div class="stat"><div class="label">Error</div><div class="value" style="color:var(--red)">Failed to load: ${e}</div></div>`;
+});
+</script>
+</body>
+</html>

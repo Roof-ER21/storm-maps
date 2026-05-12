@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Single Storm Intel</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .top-row { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .top-row { grid-template-columns: 1fr; } }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .btn { background: var(--accent); color: #1a1612; border: none; border-radius: 4px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .storm-list { max-height: 540px; overflow-y: auto; }
+  .storm-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .storm-item:hover { border-color: var(--accent); }
+  .storm-item.active { border-color: var(--accent); background: #342c23; }
+  .storm-item .date { color: var(--accent); font-weight: 600; font-size: 13px; }
+  .storm-item .stats { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .pill.hail { background: rgba(168,139,250,0.2); color: var(--purple); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .pill.wind { background: rgba(94,200,255,0.2); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .pill.tornado { background: rgba(239,68,68,0.2); color: var(--red); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  #map { width: 100%; height: 540px; background: #342c23; border: 1px solid var(--border); border-radius: 6px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 8px 16px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-size: 12px; }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  th .arrow { color: var(--accent); margin-left: 4px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .scroll { max-height: 540px; overflow-y: auto; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
+  .badge.signed { background: rgba(94,200,255,0.2); color: var(--accent); }
+  .badge.completed { background: rgba(16,185,129,0.2); color: var(--green); }
+  .badge.dead { background: rgba(239,68,68,0.2); color: var(--red); }
+  .badge.virgin { background: rgba(168,139,250,0.2); color: var(--purple); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌪 Single Storm Intel</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="storm-playbook.html">Playbook</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-intel.html" class="active">Storm Intel</a>
+    <a href="resurrection.html">Resurrection</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <section>
+      <div class="filter-bar">
+        <label>Storm window (months back)
+          <input id="f-window" type="number" value="24" min="1" max="96" style="width:90px" />
+        </label>
+        <label>Storm type
+          <select id="f-type">
+            <option value="">All</option>
+            <option value="HAIL">Hail</option>
+            <option value="WND">Wind</option>
+            <option value="TORNADO">Tornado</option>
+          </select>
+        </label>
+        <label>Min hail (in)
+          <input id="f-hail" type="number" step="0.25" value="1.0" style="width:80px" />
+        </label>
+        <label>Min wind (mph)
+          <input id="f-wind" type="number" value="60" style="width:80px" />
+        </label>
+        <label>State
+          <select id="f-state"><option value="">All</option><option>VA</option><option>MD</option><option>PA</option><option>DC</option></select>
+        </label>
+      </div>
+      <div class="top-row">
+        <div>
+          <h2 id="storm-count">— storms in window</h2>
+          <div class="storm-list" id="storms"></div>
+        </div>
+        <div>
+          <div id="map"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="detail" style="display:none">
+      <h2 id="detail-title">—</h2>
+      <div class="kpi-row" id="detail-kpis"></div>
+      <div class="tabs">
+        <div class="tab active" data-bucket="all">All customers in storm area</div>
+        <div class="tab" data-bucket="completed">Completed (proof carrier paid)</div>
+        <div class="tab" data-bucket="dead">Dead (resurrection candidates)</div>
+        <div class="tab" data-bucket="open">Open / In-progress</div>
+      </div>
+      <div class="filter-bar">
+        <label>Search <input id="f-cust-search" placeholder="customer / address / carrier" style="width:280px" /></label>
+        <label>Radius (mi) <input id="f-radius" type="number" value="3" step="0.5" style="width:80px" /></label>
+        <label>&nbsp;<button class="btn" id="btn-csv">Export pitch list CSV</button></label>
+      </div>
+      <div id="customer-count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
+      <div class="scroll"><table id="tbl-customers"></table></div>
+    </section>
+  </div>
+</main>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+
+function haversine(lat1, lng1, lat2, lng2) {
+  const R = 3958.7613;
+  const φ1 = lat1 * Math.PI / 180, φ2 = lat2 * Math.PI / 180;
+  const dφ = (lat2 - lat1) * Math.PI / 180, dλ = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(dλ / 2) ** 2;
+  return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+let allStorms = [], allJobs = [], filteredStorms = [], activeStorm = null;
+let activeBucket = 'all', activeCustomers = [];
+let mapInst = null, stormCircle = null;
+let sortKey = 'distance', sortDir = 'asc';
+
+function pillFor(t) {
+  if (t === 'HAIL') return 'hail';
+  if (t === 'TORNADO' || t === 'FUNNEL CLOUD') return 'tornado';
+  if ((t || '').includes('WND')) return 'wind';
+  return 'wind';
+}
+
+function applyStormFilters() {
+  const months = Number($('f-window').value || 24);
+  const type = $('f-type').value;
+  const minHail = Number($('f-hail').value || 0);
+  const minWind = Number($('f-wind').value || 0);
+  const state = $('f-state').value;
+  const cutoff = Date.now() - months * 30 * 86400000;
+  filteredStorms = allStorms.filter((s) => {
+    if (!s.valid) return false;
+    const ts = new Date(s.valid).getTime();
+    if (!Number.isFinite(ts) || ts < cutoff || ts > Date.now()) return false;
+    if (state && s.state !== state) return false;
+    if (type === 'HAIL' && s.type !== 'HAIL') return false;
+    if (type === 'WND' && !(s.type || '').includes('WND')) return false;
+    if (type === 'TORNADO' && s.type !== 'TORNADO') return false;
+    const mag = s.mag || 0;
+    if (s.type === 'HAIL' && mag < minHail) return false;
+    if ((s.type || '').includes('WND') && mag < minWind) return false;
+    return true;
+  });
+  filteredStorms.sort((a, b) => (b.valid || '').localeCompare(a.valid || ''));
+  renderStormList();
+  if (filteredStorms.length > 0 && !filteredStorms.find((s) => s === activeStorm)) {
+    showStorm(filteredStorms[0]);
+  } else if (filteredStorms.length === 0) {
+    $('detail').style.display = 'none';
+  }
+}
+
+function renderStormList() {
+  $('storm-count').textContent = `${filteredStorms.length.toLocaleString()} storms in window`;
+  const $list = $('storms');
+  $list.innerHTML = filteredStorms.slice(0, 400).map((s, i) => `
+    <div class="storm-item ${s === activeStorm ? 'active' : ''}" data-i="${i}">
+      <div class="date">${(s.valid || '').slice(0, 10)}</div>
+      <div class="stats">
+        <span class="pill ${pillFor(s.type)}">${s.type}</span>
+        ${s.mag || '—'} ${s.unit || ''} · ${s.city || ''}, ${s.state || ''}
+      </div>
+    </div>
+  `).join('');
+  $list.querySelectorAll('.storm-item').forEach((el) => el.addEventListener('click', () => {
+    showStorm(filteredStorms[Number(el.dataset.i)]);
+    $list.querySelectorAll('.storm-item').forEach((x) => x.classList.remove('active'));
+    el.classList.add('active');
+  }));
+}
+
+function showStorm(s) {
+  activeStorm = s;
+  const radius = Number($('f-radius').value || 3);
+  // Find all jobs within radius
+  const nearby = [];
+  for (const j of allJobs) {
+    if (j.lat == null || j.lng == null) continue;
+    const d = haversine(s.lat, s.lng, j.lat, j.lng);
+    if (d <= radius) nearby.push({ ...j, distance: d });
+  }
+  // Bucket
+  const completed = nearby.filter(isCompleted);
+  const dead = nearby.filter(isDead);
+  const open = nearby.filter((j) => !isCompleted(j) && !isDead(j));
+  const revenue = completed.reduce((sum, j) => sum + (j.jobTotal || 0), 0);
+
+  $('detail').style.display = '';
+  $('detail-title').innerHTML = `${(s.valid || '').slice(0, 10)} · <span class="pill ${pillFor(s.type)}">${s.type}</span> ${s.mag || ''} ${s.unit || ''} · ${s.city || ''}, ${s.state || ''}`;
+  $('detail-kpis').innerHTML = `
+    <div class="kpi"><div class="label">Customers within ${radius}mi</div><div class="value">${nearby.length}</div></div>
+    <div class="kpi"><div class="label">Already approved</div><div class="value" style="color:var(--green)">${completed.length}</div></div>
+    <div class="kpi"><div class="label">Dead / cancelled</div><div class="value" style="color:var(--red)">${dead.length}</div></div>
+    <div class="kpi"><div class="label">In progress</div><div class="value" style="color:var(--accent)">${open.length}</div></div>
+    <div class="kpi"><div class="label">Revenue (approved)</div><div class="value" style="color:var(--green)">${fmt.money(revenue)}</div></div>
+  `;
+  activeCustomers = nearby;
+  renderCustomers();
+  renderMap(s, nearby);
+}
+
+function bucketStatus(j) {
+  if (isCompleted(j)) return 'completed';
+  if (isDead(j)) return 'dead';
+  return 'open';
+}
+
+function renderCustomers() {
+  let rows = activeCustomers;
+  if (activeBucket !== 'all') rows = rows.filter((j) => bucketStatus(j) === activeBucket);
+  const q = $('f-cust-search').value.trim().toLowerCase();
+  if (q) rows = rows.filter((j) =>
+    (j.customer || '').toLowerCase().includes(q) ||
+    (j.addressLine1 || '').toLowerCase().includes(q) ||
+    (j.insurance || '').toLowerCase().includes(q)
+  );
+  rows.sort((a, b) => {
+    let va = a[sortKey], vb = b[sortKey];
+    if (sortKey === 'distance') { va = a.distance; vb = b.distance; }
+    if (va == null) return 1; if (vb == null) return -1;
+    if (typeof va === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+    return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  $('customer-count').textContent = `${rows.length} customers · ${activeBucket} bucket`;
+  const COLS = [
+    { k: 'customer', l: 'Customer' },
+    { k: 'addressLine1', l: 'Address' },
+    { k: 'insurance', l: 'Carrier' },
+    { k: 'salesRep', l: 'Rep' },
+    { k: 'stage', l: 'Stage' },
+    { k: 'distance', l: 'Dist (mi)', num: true },
+    { k: 'jobTotal', l: 'Total', num: true, money: true },
+  ];
+  const head = '<thead><tr>' + COLS.map((c) => `<th data-k="${c.k}" class="${c.num ? 'num' : ''}">${c.l}${sortKey === c.k ? `<span class="arrow">${sortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</th>`).join('') + '<th>Contact</th></tr></thead>';
+  const body = '<tbody>' + rows.slice(0, 500).map((j) => `
+    <tr>
+      <td><a href="customer-detail.html?k=${encodeURIComponent(((j.customer || '').toLowerCase() + '|' + (j.addressLine1 || '').toLowerCase() + '|' + (j.city || '').toLowerCase()))}" style="color:var(--text);text-decoration:none"><strong>${j.customer || '—'}</strong></a> <a href="https://portal.theroofdocs.com/jobs/${j.id}" target="_blank" title="Open in portal" style="color:var(--accent);text-decoration:none;font-size:11px">🔗</a><br><span class="badge ${bucketStatus(j)}">${bucketStatus(j).toUpperCase()}</span></td>
+      <td>${[j.addressLine1, j.city, j.state, j.zip].filter(Boolean).join(', ')}</td>
+      <td>${j.insurance || '—'}</td>
+      <td>${j.salesRep || '—'}</td>
+      <td>${j.stage || '—'}</td>
+      <td class="num">${j.distance.toFixed(2)}</td>
+      <td class="num money">${fmt.money(j.jobTotal)}</td>
+      <td><span style="font-size:11px">${j.customerEmail || ''}${j.customerEmail && j.customerCell ? '<br>' : ''}${j.customerCell || ''}</span></td>
+    </tr>
+  `).join('') + '</tbody>';
+  $('tbl-customers').innerHTML = head + body;
+  $('tbl-customers').querySelectorAll('th').forEach((th) => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.k; if (!k) return;
+      if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortKey = k; sortDir = 'asc'; }
+      renderCustomers();
+    });
+  });
+}
+
+function renderMap(s, nearby) {
+  if (!mapInst) {
+    mapInst = L.map('map', { preferCanvas: true });
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OSM &copy; CARTO', maxZoom: 19,
+    }).addTo(mapInst);
+  }
+  mapInst.eachLayer((l) => { if (l.options && (l.options.fillColor || l.options.color === '#ef4444')) mapInst.removeLayer(l); });
+  // Storm center
+  L.circleMarker([s.lat, s.lng], { radius: 12, fillColor: '#ef4444', color: '#fff', weight: 2, fillOpacity: 0.95 })
+    .bindPopup(`<strong>${s.type} ${s.mag || ''} ${s.unit || ''}</strong><br>${(s.valid || '').slice(0, 16)}<br>${s.city || ''}, ${s.state || ''}`)
+    .addTo(mapInst);
+  // Customers
+  for (const j of nearby) {
+    const cls = isCompleted(j) ? '#10b981' : isDead(j) ? '#ef4444' : '#f4a738';
+    L.circleMarker([j.lat, j.lng], { radius: 4, fillColor: cls, color: cls, weight: 1, fillOpacity: 0.8 })
+      .bindPopup(`<strong>${j.customer || '—'}</strong><br>${j.addressLine1 || ''}<br>${j.insurance || ''}`)
+      .addTo(mapInst);
+  }
+  mapInst.setView([s.lat, s.lng], 11);
+}
+
+function exportCSV() {
+  let rows = activeCustomers;
+  if (activeBucket !== 'all') rows = rows.filter((j) => bucketStatus(j) === activeBucket);
+  if (!rows.length) return;
+  const s = activeStorm;
+  const headers = ['Customer', 'Email', 'Phone', 'Address', 'City', 'State', 'Zip', 'Carrier', 'Rep', 'Stage', 'DistanceMi', 'JobTotal', 'Trades', 'StormDate', 'StormType', 'StormMag'];
+  const lines = [headers.join(',')];
+  for (const j of rows) {
+    const row = [j.customer, j.customerEmail, j.customerCell, j.addressLine1, j.city, j.state, j.zip,
+      j.insurance, j.salesRep, j.stage, j.distance.toFixed(2), Math.round(j.jobTotal || 0),
+      (j.trades || []).join(';'), (s.valid || '').slice(0, 10), s.type, s.mag]
+      .map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+    lines.push(row.join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `storm-${(s.valid || '').slice(0,10)}-${s.type}-${activeBucket}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function start() {
+  const [r1, r2] = await Promise.all([
+    fetch('projects.json').then((r) => r.json()),
+    fetch('storms-light.json').then((r) => r.json()),
+  ]);
+  allJobs = r1;
+  // Filter to strong storms only
+  allStorms = r2.filter((s) => {
+    if (s.type === 'HAIL' && (s.mag || 0) >= 0.75) return true;
+    if ((s.type || '').includes('WND') && (s.mag || 0) >= 55) return true;
+    if (s.type === 'TORNADO' || s.type === 'FUNNEL CLOUD') return true;
+    return false;
+  });
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  for (const f of ['f-window', 'f-hail', 'f-wind']) $(f).addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyStormFilters, 200); });
+  for (const f of ['f-type', 'f-state']) $(f).addEventListener('change', applyStormFilters);
+  $('f-cust-search').addEventListener('input', () => { clearTimeout(window._u); window._u = setTimeout(renderCustomers, 200); });
+  $('f-radius').addEventListener('input', () => { clearTimeout(window._v); window._v = setTimeout(() => activeStorm && showStorm(activeStorm), 250); });
+  $('btn-csv').addEventListener('click', exportCSV);
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+    t.classList.add('active');
+    activeBucket = t.dataset.bucket;
+    renderCustomers();
+  }));
+  applyStormFilters();
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

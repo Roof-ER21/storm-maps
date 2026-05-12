@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Ops Team Performance</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 22px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-size: 13px; }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  section h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .person-list { max-height: 760px; overflow-y: auto; }
+  .item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .item:hover { border-color: var(--accent); }
+  .item.active { border-color: var(--accent); background: #342c23; }
+  .item .name { font-weight: 600; color: var(--text); }
+  .item .stats { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .filter-bar input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; width: 100%; margin-bottom: 10px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 5px 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pct { color: var(--accent); }
+  .scroll { max-height: 320px; overflow-y: auto; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>👥 Ops Team Performance</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="reps.html">Reps</a>
+    <a href="ops-team.html" class="active">Ops Team</a>
+    <a href="rep-response.html">Response Time</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="tabs">
+      <div class="tab active" data-role="projectCoordinator">Project Coordinators (34)</div>
+      <div class="tab" data-role="estimator">Estimators (4)</div>
+      <div class="tab" data-role="fieldTechId">Field Techs (5)</div>
+    </div>
+    <div class="layout">
+      <section>
+        <h2 id="role-title">People</h2>
+        <div class="filter-bar"><input id="search" placeholder="Search" /></div>
+        <div id="count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
+        <div class="person-list" id="list"></div>
+      </section>
+      <section id="detail">
+        <div class="loading">Pick someone</div>
+      </section>
+    </div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+let jobs = [];
+let role = 'projectCoordinator';
+
+function build() {
+  const m = new Map();
+  for (const j of jobs) {
+    let key = j[role];
+    if (!key) continue;
+    if (!m.has(key)) m.set(key, { name: key, jobs: [] });
+    m.get(key).jobs.push(j);
+  }
+  return [...m.values()].map((p) => {
+    const signed = p.jobs.length;
+    const completed = p.jobs.filter(isCompleted).length;
+    const dead = p.jobs.filter(isDead).length;
+    const revenue = p.jobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
+    return { ...p, signed, completed, dead, revenue,
+      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+      avgJob: completed ? revenue / completed : 0 };
+  }).sort((a, b) => b.signed - a.signed);
+}
+
+function renderList() {
+  const people = build();
+  const q = ($('search').value || '').trim().toLowerCase();
+  let rows = people;
+  if (q) rows = rows.filter((p) => p.name.toLowerCase().includes(q));
+  $('count').textContent = `${rows.length} people`;
+  $('list').innerHTML = rows.map((p) => `
+    <div class="item" data-k="${String(p.name).replace(/"/g, '&quot;')}">
+      <div class="name">${role === 'fieldTechId' ? 'FT ' + String(p.name).slice(0, 8) : p.name}</div>
+      <div class="stats">${p.signed} jobs · ${p.completed} done · ${fmt.money(p.revenue)}</div>
+    </div>
+  `).join('');
+  $('list').querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => {
+    $('list').querySelectorAll('.item').forEach((x) => x.classList.remove('active'));
+    el.classList.add('active');
+    show(el.dataset.k);
+  }));
+}
+
+function topList(obj, n = 8) {
+  return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+function show(key) {
+  const peopleJobs = jobs.filter((j) => String(j[role]) === String(key));
+  if (peopleJobs.length === 0) return;
+  const signed = peopleJobs.length;
+  const completed = peopleJobs.filter(isCompleted).length;
+  const dead = peopleJobs.filter(isDead).length;
+  const open = signed - completed - dead;
+  const revenue = peopleJobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
+
+  const cities = {}, carriers = {}, reps = {}, trades = {}, zips = {};
+  const completeDays = [];
+  for (const j of peopleJobs) {
+    if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
+    if (j.insurance) carriers[j.insurance] = (carriers[j.insurance] || 0) + 1;
+    if (j.salesRep) reps[j.salesRep] = (reps[j.salesRep] || 0) + 1;
+    for (const t of (j.trades || [])) trades[t] = (trades[t] || 0) + 1;
+    if (j.zip) zips[j.zip.slice(0, 5)] = (zips[j.zip.slice(0, 5)] || 0) + 1;
+    if (j.daysToComplete != null && j.daysToComplete >= 0 && j.daysToComplete < 730) completeDays.push(j.daysToComplete);
+  }
+  completeDays.sort((a, b) => a - b);
+  const med = completeDays.length ? completeDays[Math.floor(completeDays.length / 2)] : null;
+  const big = peopleJobs.filter((j) => j.jobTotal).sort((a, b) => (b.jobTotal || 0) - (a.jobTotal || 0)).slice(0, 10);
+
+  const displayName = role === 'fieldTechId' ? `Field Tech ${String(key).slice(0, 12)}…` : key;
+
+  $('detail').innerHTML = `
+    <h2>${displayName}</h2>
+    <div class="desc">${signed} jobs · ${completed} done · ${fmt.money(revenue)} closed revenue</div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Jobs</div><div class="value">${fmt.int(signed)}</div></div>
+      <div class="kpi"><div class="label">Completed</div><div class="value">${fmt.int(completed)}</div></div>
+      <div class="kpi"><div class="label">Dead</div><div class="value">${fmt.int(dead)}</div></div>
+      <div class="kpi"><div class="label">Open</div><div class="value">${fmt.int(open)}</div></div>
+      <div class="kpi"><div class="label">Revenue</div><div class="value">${fmt.money(revenue)}</div></div>
+      <div class="kpi"><div class="label">Median sign→done</div><div class="value">${med != null ? med + 'd' : '—'}</div></div>
+    </div>
+    <div class="grid-2">
+      <div><h2 style="font-size:13px;margin-top:0">Top cities</h2><div class="scroll"><table>${topList(cities).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top carriers</h2><div class="scroll"><table>${topList(carriers).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top reps paired</h2><div class="scroll"><table>${topList(reps).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>${topList(trades).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+    </div>
+    <h2 style="font-size:13px;margin-top:20px">Top 10 biggest jobs</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Customer</th><th>Address</th><th>Stage</th><th>Signed</th><th class="num">Total</th></tr></thead>
+      <tbody>${big.map((j) => `<tr><td>${j.customer || '—'}</td><td>${[j.addressLine1, j.city, j.state].filter(Boolean).join(', ')}</td><td>${j.stage || '—'}</td><td>${j.signedDate || '—'}</td><td class="num money">${fmt.money(j.jobTotal)}</td></tr>`).join('')}</tbody>
+    </table></div>
+  `;
+}
+
+function activateTab(tab) {
+  role = tab;
+  document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.role === tab));
+  $('role-title').textContent = { projectCoordinator: 'Project Coordinators', estimator: 'Estimators', fieldTechId: 'Field Techs' }[tab];
+  renderList();
+  setTimeout(() => $('list').querySelector('.item')?.click(), 50);
+}
+
+async function start() {
+  const res = await fetch('projects.json');
+  jobs = await res.json();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => activateTab(t.dataset.role)));
+  activateTab('projectCoordinator');
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

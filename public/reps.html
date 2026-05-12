@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Rep Deep Dive</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 12px; text-decoration: none; font-size: 13px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .rep-list { max-height: 760px; overflow-y: auto; }
+  .rep-item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .rep-item:hover { border-color: var(--accent); }
+  .rep-item.active { border-color: var(--accent); background: #342c23; }
+  .rep-item .name { font-weight: 600; color: var(--text); }
+  .rep-item .stats { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; width: 100%; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 5px 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pct { color: var(--accent); }
+  .scroll { max-height: 320px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 3px; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Sales Rep Deep Dive</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-playbook.html">Playbook</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="reps.html" class="active">Reps</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="layout">
+      <section>
+        <h2>Sales reps</h2>
+        <div class="filter-bar"><input id="rep-search" placeholder="Search reps" /></div>
+        <div id="rep-count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
+        <div class="rep-list" id="rep-list"></div>
+      </section>
+      <section id="rep-detail">
+        <div class="loading">Pick a rep to see their book of business</div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+let jobs = [], reps = [];
+
+function buildReps() {
+  const m = new Map();
+  for (const j of jobs) {
+    const rep = j.salesRep;
+    if (!rep) continue;
+    if (!m.has(rep)) m.set(rep, { name: rep, jobs: [] });
+    m.get(rep).jobs.push(j);
+  }
+  return [...m.values()].map((r) => {
+    let signed = 0, completed = 0, dead = 0, open = 0;
+    let revenue = 0, compRev = 0;
+    const trades = {}, carriers = {}, cities = {}, zips = {};
+    const speedDays = [];
+    const completeDays = [];
+    for (const j of r.jobs) {
+      signed++;
+      if (isCompleted(j)) { completed++; compRev += j.jobTotal || 0; }
+      else if (isDead(j)) dead++;
+      else open++;
+      if (j.jobTotal) revenue += j.jobTotal;
+      for (const t of (j.trades || [])) trades[t] = (trades[t] || 0) + 1;
+      if (j.insurance) carriers[j.insurance] = (carriers[j.insurance] || 0) + 1;
+      if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
+      if (j.zip) zips[j.zip] = (zips[j.zip] || 0) + 1;
+      if (j.daysLossToSign != null && j.daysLossToSign >= 0 && j.daysLossToSign < 365) speedDays.push(j.daysLossToSign);
+      if (j.daysToComplete != null && j.daysToComplete >= 0 && j.daysToComplete < 730) completeDays.push(j.daysToComplete);
+    }
+    speedDays.sort((a, b) => a - b);
+    completeDays.sort((a, b) => a - b);
+    return {
+      name: r.name, signed, completed, dead, open,
+      revenue, completedRevenue: compRev,
+      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+      avgApprovedJob: completed ? compRev / completed : null,
+      trades, carriers, cities, zips,
+      jobs: r.jobs,
+      medianSpeedDays: speedDays.length ? speedDays[Math.floor(speedDays.length / 2)] : null,
+      medianCompleteDays: completeDays.length ? completeDays[Math.floor(completeDays.length / 2)] : null,
+      topBy: (obj, n = 5) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n),
+    };
+  }).sort((a, b) => b.signed - a.signed);
+}
+
+function renderRepList() {
+  const q = ($('rep-search').value || '').trim().toLowerCase();
+  let rows = reps;
+  if (q) rows = rows.filter((r) => r.name.toLowerCase().includes(q));
+  $('rep-count').textContent = `${rows.length} reps`;
+  $('rep-list').innerHTML = rows.map((r) => `
+    <div class="rep-item" data-rep="${r.name.replace(/"/g, '&quot;')}">
+      <div class="name">${r.name}</div>
+      <div class="stats">${r.signed} signed · ${r.completed} done · ${fmt.money(r.completedRevenue)}</div>
+    </div>
+  `).join('');
+  $('rep-list').querySelectorAll('.rep-item').forEach((el) => el.addEventListener('click', () => {
+    $('rep-list').querySelectorAll('.rep-item').forEach((x) => x.classList.remove('active'));
+    el.classList.add('active');
+    showRep(el.dataset.rep);
+  }));
+}
+
+function topByList(obj, n = 8) {
+  return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
+}
+
+function showRep(name) {
+  const r = reps.find((x) => x.name === name);
+  if (!r) return;
+  const tradeTop = topByList(r.trades, 12);
+  const carrierTop = topByList(r.carriers, 12);
+  const cityTop = topByList(r.cities, 12);
+  const zipTop = topByList(r.zips, 12);
+  // Top biggest jobs (by jobTotal, completed)
+  const bigJobs = [...r.jobs].filter((j) => j.jobTotal).sort((a, b) => (b.jobTotal || 0) - (a.jobTotal || 0)).slice(0, 10);
+  $('rep-detail').innerHTML = `
+    <h2>${r.name}</h2>
+    <div class="desc">Full book of business · ${r.signed} signed · ${r.completed} completed · ${fmt.money(r.completedRevenue)} closed revenue</div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Signed</div><div class="value">${fmt.int(r.signed)}</div></div>
+      <div class="kpi"><div class="label">Completed</div><div class="value">${fmt.int(r.completed)}</div></div>
+      <div class="kpi"><div class="label">Dead</div><div class="value">${fmt.int(r.dead)}</div></div>
+      <div class="kpi"><div class="label">Close rate</div><div class="value">${fmt.pct(r.closeRate)}</div></div>
+      <div class="kpi"><div class="label">Closed revenue</div><div class="value">${fmt.money(r.completedRevenue)}</div></div>
+      <div class="kpi"><div class="label">Avg approved job</div><div class="value">${fmt.money(r.avgApprovedJob)}</div></div>
+      <div class="kpi"><div class="label">Median loss→sign</div><div class="value">${r.medianSpeedDays != null ? r.medianSpeedDays + 'd' : '—'}</div></div>
+      <div class="kpi"><div class="label">Median sign→complete</div><div class="value">${r.medianCompleteDays != null ? r.medianCompleteDays + 'd' : '—'}</div></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top trades</h2>
+        <table>${tradeTop.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</table>
+      </div>
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top carriers</h2>
+        <table>${carrierTop.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</table>
+      </div>
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top cities</h2>
+        <table>${cityTop.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</table>
+      </div>
+      <div>
+        <h2 style="font-size:13px;margin-top:0">Top ZIPs</h2>
+        <table>${zipTop.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</table>
+      </div>
+    </div>
+    <h2 style="font-size:13px;margin-top:20px">Top 10 biggest jobs</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Customer</th><th>Address</th><th>Carrier</th><th>Stage</th><th>Signed</th><th class="num">Total</th></tr></thead>
+      <tbody>${bigJobs.map((j) => `
+        <tr>
+          <td>${j.customer || '—'}</td>
+          <td>${[j.addressLine1, j.city, j.state].filter(Boolean).join(', ')}</td>
+          <td>${j.insurance || '—'}</td>
+          <td>${j.stage || '—'}</td>
+          <td>${j.signedDate || '—'}</td>
+          <td class="num money">${fmt.money(j.jobTotal)}</td>
+        </tr>
+      `).join('')}</tbody>
+    </table></div>
+  `;
+}
+
+async function start() {
+  const res = await fetch('projects.json');
+  jobs = await res.json();
+  reps = buildReps();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  $('rep-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderRepList, 200); });
+  renderRepList();
+  if (reps.length > 0) {
+    // auto-select first
+    setTimeout(() => $('rep-list').querySelector('.rep-item')?.click(), 50);
+  }
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

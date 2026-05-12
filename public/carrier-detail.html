@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Carrier Deep Dive</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .layout { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  section h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .carrier-list { max-height: 800px; overflow-y: auto; }
+  .item { padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: border-color 0.15s; }
+  .item:hover { border-color: var(--accent); }
+  .item.active { border-color: var(--accent); background: #342c23; }
+  .item .name { font-weight: 600; color: var(--text); }
+  .item .stats { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .filter-bar input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; width: 100%; margin-bottom: 10px; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 800px) { .grid-2 { grid-template-columns: 1fr; } }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  th .arrow { color: var(--accent); margin-left: 4px; }
+  td { padding: 5px 6px; border-bottom: 1px solid #342c23; }
+  tbody tr:hover { background: #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pct { color: var(--accent); }
+  .scroll { max-height: 360px; overflow-y: auto; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🏢 Carrier Deep Dive</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="carrier-trades.html">Carrier×Trade</a>
+    <a href="carrier-detail.html" class="active">Carrier Detail</a>
+    <a href="analytics.html">Analytics</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="layout">
+      <section>
+        <h2>Carriers</h2>
+        <div class="desc">Sorted by signed volume. Click any to see deep dive.</div>
+        <div class="filter-bar"><input id="search" placeholder="Search carrier" /></div>
+        <div id="count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
+        <div class="carrier-list" id="list"></div>
+      </section>
+      <section id="detail">
+        <div class="loading">Pick a carrier</div>
+      </section>
+    </div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+let jobs = [], carriers = [];
+
+function buildCarriers() {
+  const m = new Map();
+  for (const j of jobs) {
+    if (!j.insurance) continue;
+    if (!m.has(j.insurance)) m.set(j.insurance, { name: j.insurance, jobs: [] });
+    m.get(j.insurance).jobs.push(j);
+  }
+  return [...m.values()].map((c) => {
+    const signed = c.jobs.length;
+    const completed = c.jobs.filter(isCompleted);
+    const dead = c.jobs.filter(isDead).length;
+    const revenue = completed.reduce((s, j) => s + (j.jobTotal || 0), 0);
+    return {
+      ...c,
+      signed, completed: completed.length, dead, revenue,
+      closeRate: signed - dead > 0 ? completed.length / (signed - dead) : 0,
+      avgApprovedJob: completed.length ? revenue / completed.length : 0,
+    };
+  }).sort((a, b) => b.signed - a.signed);
+}
+
+function renderList() {
+  const q = ($('search').value || '').trim().toLowerCase();
+  let rows = carriers;
+  if (q) rows = rows.filter((c) => c.name.toLowerCase().includes(q));
+  $('count').textContent = `${rows.length} carriers`;
+  $('list').innerHTML = rows.map((c) => `
+    <div class="item" data-name="${c.name.replace(/"/g, '&quot;')}">
+      <div class="name">${c.name}</div>
+      <div class="stats">${c.signed} signed · ${c.completed} done · ${fmt.money(c.revenue)}</div>
+    </div>
+  `).join('');
+  $('list').querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => {
+    $('list').querySelectorAll('.item').forEach((x) => x.classList.remove('active'));
+    el.classList.add('active');
+    showCarrier(el.dataset.name);
+  }));
+}
+
+function topList(obj, n = 8) {
+  return Object.entries(obj).sort((a, b) => (b[1].signed || b[1]) - (a[1].signed || a[1])).slice(0, n);
+}
+
+function showCarrier(name) {
+  const c = carriers.find((x) => x.name === name);
+  if (!c) return;
+
+  // Aggregations
+  const trades = {}, zips = {}, cities = {}, reps = {}, adjusters = {};
+  const deductibles = [];
+  const upliftValues = [];
+  const yearAgg = {};
+  const stormAgg = {};
+
+  for (const j of c.jobs) {
+    for (const t of (j.trades || [])) {
+      trades[t] = trades[t] || { signed: 0, completed: 0, revenue: 0 };
+      trades[t].signed++;
+      if (isCompleted(j)) { trades[t].completed++; trades[t].revenue += (j.jobTotal || 0) / (j.trades.length || 1); }
+    }
+    if (j.zip) {
+      const z = j.zip.slice(0, 5);
+      zips[z] = zips[z] || { signed: 0, completed: 0, revenue: 0, cities: {} };
+      zips[z].signed++;
+      if (j.city) zips[z].cities[j.city] = (zips[z].cities[j.city] || 0) + 1;
+      if (isCompleted(j)) { zips[z].completed++; zips[z].revenue += j.jobTotal || 0; }
+    }
+    if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
+    if (j.salesRep) {
+      reps[j.salesRep] = reps[j.salesRep] || { signed: 0, completed: 0, revenue: 0 };
+      reps[j.salesRep].signed++;
+      if (isCompleted(j)) { reps[j.salesRep].completed++; reps[j.salesRep].revenue += j.jobTotal || 0; }
+    }
+    if (j.adjusterName) {
+      adjusters[j.adjusterName] = adjusters[j.adjusterName] || { signed: 0, completed: 0, dead: 0 };
+      adjusters[j.adjusterName].signed++;
+      if (isCompleted(j)) adjusters[j.adjusterName].completed++;
+      else if (isDead(j)) adjusters[j.adjusterName].dead++;
+    }
+    if (j.deductible && j.deductible > 0 && j.deductible <= 50000) deductibles.push(j.deductible);
+    if (j.initialEstimate && j.revisedEstimate && j.initialEstimate > 0) {
+      upliftValues.push((j.revisedEstimate - j.initialEstimate) / j.initialEstimate);
+    }
+    if (j.signedDate) {
+      const y = j.signedDate.slice(0, 4);
+      yearAgg[y] = yearAgg[y] || { signed: 0, completed: 0, revenue: 0 };
+      yearAgg[y].signed++;
+      if (isCompleted(j)) { yearAgg[y].completed++; yearAgg[y].revenue += j.jobTotal || 0; }
+    }
+    if (j.stormMatch) {
+      const sid = j.stormMatch.stormId;
+      stormAgg[sid] = stormAgg[sid] || { date: j.stormMatch.stormDate, type: j.stormMatch.stormType, mag: j.stormMatch.stormMagnitude, unit: j.stormMatch.stormUnit, jobs: 0, revenue: 0 };
+      stormAgg[sid].jobs++;
+      if (j.jobTotal) stormAgg[sid].revenue += j.jobTotal;
+    }
+  }
+
+  deductibles.sort((a, b) => a - b);
+  const medDeductible = deductibles[Math.floor(deductibles.length / 2)];
+  upliftValues.sort((a, b) => a - b);
+  const medUplift = upliftValues[Math.floor(upliftValues.length / 2)];
+
+  const topTrades = Object.entries(trades).map(([t, s]) => ({ t, ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.signed - a.signed).slice(0, 10);
+  const topZips = Object.entries(zips).map(([z, s]) => ({ z, city: Object.entries(s.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '', ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.signed - a.signed).slice(0, 12);
+  const topReps = Object.entries(reps).map(([n, s]) => ({ n, ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.completed - a.completed).slice(0, 10);
+  const topAdjusters = Object.entries(adjusters).map(([n, s]) => ({ n, ...s, approvalRate: s.signed - s.dead > 0 ? s.completed / (s.signed - s.dead) : 0 })).sort((a, b) => b.completed - a.completed).slice(0, 10);
+  const years = Object.entries(yearAgg).map(([y, s]) => ({ y, ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.y.localeCompare(a.y));
+  const topStorms = Object.values(stormAgg).sort((a, b) => b.jobs - a.jobs).slice(0, 8);
+
+  $('detail').innerHTML = `
+    <h2>${c.name}</h2>
+    <div class="desc">${c.signed} signed · ${c.completed} approved · ${fmt.money(c.revenue)} revenue · ${fmt.pct(c.closeRate)} close rate</div>
+    <div class="kpi-row">
+      <div class="kpi"><div class="label">Signed</div><div class="value">${fmt.int(c.signed)}</div></div>
+      <div class="kpi"><div class="label">Approved</div><div class="value">${fmt.int(c.completed)}</div></div>
+      <div class="kpi"><div class="label">Dead</div><div class="value">${fmt.int(c.dead)}</div></div>
+      <div class="kpi"><div class="label">Close rate</div><div class="value">${fmt.pct(c.closeRate)}</div></div>
+      <div class="kpi"><div class="label">Avg approved</div><div class="value">${fmt.money(c.avgApprovedJob)}</div></div>
+      <div class="kpi"><div class="label">Median deductible</div><div class="value">${fmt.money(medDeductible)}</div></div>
+      <div class="kpi"><div class="label">Median supplement uplift</div><div class="value">${medUplift != null ? (medUplift * 100).toFixed(1) + '%' : '—'}</div></div>
+    </div>
+
+    <div class="grid-2">
+      <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>
+        <thead><tr><th>Trade</th><th class="num">Jobs</th><th class="num">Close%</th></tr></thead>
+        <tbody>${topTrades.map((r) => `<tr><td>${r.t}</td><td class="num">${r.signed}</td><td class="num pct">${fmt.pct(r.closeRate)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top ZIPs</h2><div class="scroll"><table>
+        <thead><tr><th>ZIP</th><th>City</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>
+        <tbody>${topZips.map((r) => `<tr><td>${r.z}</td><td>${r.city}</td><td class="num">${r.signed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top reps for this carrier</h2><div class="scroll"><table>
+        <thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Revenue</th></tr></thead>
+        <tbody>${topReps.map((r) => `<tr><td>${r.n}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top adjusters</h2><div class="scroll"><table>
+        <thead><tr><th>Adjuster</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Approval %</th></tr></thead>
+        <tbody>${topAdjusters.map((r) => `<tr><td>${r.n}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Year-over-year</h2><div class="scroll"><table>
+        <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Close%</th><th class="num">Revenue</th></tr></thead>
+        <tbody>${years.map((r) => `<tr><td>${r.y}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.closeRate)}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top storms (this carrier)</h2><div class="scroll"><table>
+        <thead><tr><th>Date</th><th>Type</th><th>Mag</th><th class="num">Jobs</th><th class="num">Revenue</th></tr></thead>
+        <tbody>${topStorms.map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type}</td><td>${s.mag || '—'} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+      </table></div></div>
+    </div>
+  `;
+}
+
+async function start() {
+  const res = await fetch('projects.json');
+  jobs = await res.json();
+  carriers = buildCarriers();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
+  renderList();
+  // Auto-select first
+  setTimeout(() => $('list').querySelector('.item')?.click(), 50);
+  // Allow direct linking
+  const params = new URLSearchParams(location.search);
+  const c = params.get('carrier');
+  if (c) {
+    const target = [...$('list').querySelectorAll('.item')].find((el) => el.dataset.name === c);
+    if (target) target.click();
+  }
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

@@ -27,9 +27,12 @@ const MODE = (process.env.AUTH_REQUIRED ?? "optional").toLowerCase() as "off" | 
 const OPEN_PREFIXES = [
   "/api/auth/",
   "/health",
-  "/api/stats",       // public landing-page widget
+  "/api/health",                  // Hail Yes health endpoint path
+  "/api/stats",                   // public landing-page widget
   "/api/regions",
   "/evidence/",
+  "/api/reports/verify",          // public adjuster verify endpoint
+  "/api/push/vapid-public",       // push subscribe needs the public key pre-auth
 ];
 
 function isOpen(path: string, headers: Request["headers"]): boolean {

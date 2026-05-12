@@ -1,0 +1,30 @@
+/* RIQ 21 design tokens.
+   Warm charcoal + amber gold + Roof Docs orange accent.
+   Used by every intel component + the static HTML pages.
+   Change values here to recolor the entire platform. */
+
+:root {
+  /* Surfaces — warm dark, no blue */
+  --riq-bg: #1a1612;            /* page body */
+  --riq-surface: #2a241e;       /* panels, cards */
+  --riq-surface-elev: #342c23;  /* hover, active */
+  --riq-border: #3d3528;        /* subtle dividers */
+  --riq-border-strong: #5a4d3c; /* emphasized borders */
+
+  /* Text */
+  --riq-text: #f0ebe2;          /* primary text — warm cream */
+  --riq-text-muted: #a09486;    /* secondary text — warm taupe */
+  --riq-text-dim: #6e6353;      /* tertiary / disabled */
+
+  /* Accents */
+  --riq-accent: #f4a738;        /* amber gold — primary accent */
+  --riq-accent-hot: #ffc56b;    /* brighter amber for hover */
+  --riq-orange: #f97316;        /* Roof Docs orange — CTAs / highlights */
+  --riq-orange-soft: #fb9651;   /* hover state of orange */
+
+  /* Semantic */
+  --riq-success: #8fbc8f;       /* sage green */
+  --riq-warn: #e0a04f;          /* amber warning */
+  --riq-danger: #e07b5a;        /* warm coral */
+  --riq-info: var(--riq-accent);
+}

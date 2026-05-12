@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Storm Playbook</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 12px; text-decoration: none; font-size: 13px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .layout { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+  @media (max-width: 1100px) { .layout { grid-template-columns: 1fr; } }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .storm-list { max-height: 720px; overflow-y: auto; }
+  .storm-item { padding: 12px; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s; }
+  .storm-item:hover { border-color: var(--accent); }
+  .storm-item.active { border-color: var(--accent); background: #342c23; }
+  .storm-item .header { display: flex; justify-content: space-between; align-items: center; }
+  .storm-item .date { font-weight: 600; color: var(--accent); font-size: 14px; }
+  .storm-item .count { background: rgba(94,200,255,0.2); color: var(--accent); padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .storm-item .detail { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .storm-item .where { color: var(--text); font-size: 12px; margin-top: 2px; }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .btn { background: var(--accent); color: #1a1612; border: none; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .tab { padding: 8px 14px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-size: 12px; }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+  .tab .count { color: var(--muted); margin-left: 4px; font-size: 11px; }
+  .tab.active .count { color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  tbody tr:hover { background: #342c23; }
+  .pill.hail { background: rgba(168,139,250,0.2); color: var(--purple); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .pill.wind { background: rgba(94,200,255,0.2); color: var(--accent); padding: 2px 6px; border-radius: 4px; font-size: 11px; }
+  .pill.done { background: rgba(16,185,129,0.2); color: var(--green); padding: 1px 6px; border-radius: 4px; font-size: 11px; margin-right: 2px; }
+  .scroll-table { max-height: 600px; overflow-y: auto; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎯 Storm Playbook — Pre-Built Outreach Lists by Storm × Trade Gap</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-playbook.html" class="active">Playbook</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div style="color:var(--muted); font-size:13px; margin-bottom:12px">
+      Last 180 days of strong storms (hail ≥0.75" / wind ≥55mph). Pick a storm, then a trade gap → instant call list of customers in the storm's path who don't yet have that trade.
+    </div>
+
+    <div class="layout">
+      <section>
+        <h2>Recent strong storms</h2>
+        <div class="desc"><span id="storm-count">—</span> storms · sorted by customers affected</div>
+        <div class="storm-list" id="storm-list"></div>
+      </section>
+
+      <section>
+        <div id="storm-header"></div>
+        <div class="tabs" id="trade-tabs"></div>
+        <div class="filter-bar">
+          <label>Search <input id="f-search" placeholder="customer / address / carrier / rep" style="width:280px" /></label>
+          <label>State <select id="f-state"><option value="">All</option></select></label>
+          <label>&nbsp;<button class="btn" id="btn-csv">Export CSV</button></label>
+        </div>
+        <div id="count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+        <div class="scroll-table"><table id="tbl"></table></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let playbook = [];
+let activeStormIdx = 0;
+let activeTrade = null;
+
+function renderStormList() {
+  const list = $('storm-list');
+  list.innerHTML = '';
+  $('storm-count').textContent = playbook.length;
+  playbook.forEach((s, idx) => {
+    const el = document.createElement('div');
+    el.className = 'storm-item' + (idx === activeStormIdx ? ' active' : '');
+    const date = (s.stormDate || '').slice(0, 10);
+    const days = Math.floor((Date.now() - new Date(s.stormDate).getTime()) / 86400000);
+    const typeCls = s.stormType === 'HAIL' ? 'hail' : 'wind';
+    el.innerHTML = `
+      <div class="header">
+        <span class="date">${date}</span>
+        <span class="count">${s.affectedCustomers} customers</span>
+      </div>
+      <div class="detail"><span class="pill ${typeCls}">${s.stormType}</span> ${s.stormMagnitude} ${s.stormUnit || ''} · ${days}d ago</div>
+      <div class="where">${s.stormCity || ''}, ${s.stormCounty || ''}, ${s.stormState}</div>
+    `;
+    el.addEventListener('click', () => { activeStormIdx = idx; activeTrade = null; renderStormList(); renderStorm(); });
+    list.appendChild(el);
+  });
+}
+
+function renderStorm() {
+  if (!playbook[activeStormIdx]) return;
+  const s = playbook[activeStormIdx];
+  const date = (s.stormDate || '').slice(0, 10);
+  const days = Math.floor((Date.now() - new Date(s.stormDate).getTime()) / 86400000);
+  $('storm-header').innerHTML = `
+    <h2>${date} — ${s.stormType} ${s.stormMagnitude} ${s.stormUnit || ''}</h2>
+    <div class="desc">${s.stormCity || ''}, ${s.stormCounty || ''}, ${s.stormState} · ${days} days ago · ${s.affectedCustomers} customers within 2 miles</div>
+  `;
+  const trades = Object.keys(s.tradeGapBuckets).sort((a, b) => s.tradeGapBuckets[b].length - s.tradeGapBuckets[a].length);
+  const tabs = $('trade-tabs');
+  if (!activeTrade) activeTrade = trades[0];
+  tabs.innerHTML = trades.map((t) =>
+    `<div class="tab ${t === activeTrade ? 'active' : ''}" data-trade="${t}">${t} <span class="count">${s.tradeGapBuckets[t].length}</span></div>`
+  ).join('');
+  tabs.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => {
+    activeTrade = tab.dataset.trade; renderStorm();
+  }));
+  applyFilters();
+}
+
+function applyFilters() {
+  const s = playbook[activeStormIdx];
+  if (!s || !activeTrade) return;
+  let rows = s.tradeGapBuckets[activeTrade] || [];
+  const q = $('f-search').value.trim().toLowerCase();
+  if (q) rows = rows.filter((r) =>
+    (r.customer || '').toLowerCase().includes(q) ||
+    (r.address || '').toLowerCase().includes(q) ||
+    (r.carrier || '').toLowerCase().includes(q) ||
+    (r.rep || '').toLowerCase().includes(q)
+  );
+  const st = $('f-state').value;
+  if (st) rows = rows.filter((r) => r.state === st);
+  $('count').textContent = `${rows.length} customers missing ${activeTrade}`;
+  const head = `<thead><tr><th>Customer</th><th>Address</th><th>State</th><th>Carrier</th><th>Phone / Email</th><th>Rep</th><th>Trades on file</th></tr></thead>`;
+  const body = '<tbody>' + rows.map((r) => `
+    <tr>
+      <td><strong>${r.customer || '—'}</strong></td>
+      <td>${r.address || '—'}<br><span style="color:var(--muted);font-size:11px">${r.city || ''} ${r.zip || ''}</span></td>
+      <td>${r.state || '—'}</td>
+      <td>${r.carrier || '—'}</td>
+      <td><span style="font-size:12px">${r.phone || ''}</span><br><span style="color:var(--muted);font-size:11px">${r.email || ''}</span></td>
+      <td>${r.rep || '—'}</td>
+      <td>${(r.trades || []).map((t) => `<span class="pill done">${t}</span>`).join('')}</td>
+    </tr>
+  `).join('') + '</tbody>';
+  $('tbl').innerHTML = head + body;
+  // populate state filter once
+  if ($('f-state').options.length === 1) {
+    const states = new Set();
+    for (const r of (s.tradeGapBuckets[activeTrade] || [])) if (r.state) states.add(r.state);
+    for (const st of [...states].sort()) {
+      const o = document.createElement('option'); o.value = st; o.textContent = st; $('f-state').appendChild(o);
+    }
+  }
+}
+
+function exportCSV() {
+  const s = playbook[activeStormIdx];
+  if (!s || !activeTrade) return;
+  const rows = s.tradeGapBuckets[activeTrade] || [];
+  const headers = ['Customer', 'Address', 'City', 'State', 'Zip', 'Phone', 'Email', 'Carrier', 'Rep', 'Trades', 'Lat', 'Lng'];
+  const lines = [headers.join(',')];
+  for (const r of rows) {
+    const row = [r.customer, r.address, r.city, r.state, r.zip, r.phone, r.email, r.carrier, r.rep, (r.trades || []).join(';'), r.lat, r.lng]
+      .map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+    lines.push(row.join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const tag = `${(s.stormDate || '').slice(0,10)}-${activeTrade.replace(/[^a-z0-9]+/gi, '_')}`;
+  a.download = `storm-playbook-${tag}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function start() {
+  const res = await fetch('storm-playbook.json');
+  playbook = await res.json();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  if (playbook.length === 0) {
+    $('content').innerHTML = '<div class="empty">No recent storms with ≥3 affected customers.</div>';
+    return;
+  }
+  $('f-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 250); });
+  $('f-state').addEventListener('change', applyFilters);
+  $('btn-csv').addEventListener('click', exportCSV);
+  renderStormList();
+  renderStorm();
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

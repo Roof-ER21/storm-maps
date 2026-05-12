@@ -1,3 +1,9 @@
+# PII — never commit Roof Docs portal pull data
+data/roofdocs-pull/
+data/*.jsonl
+data/*.csv
+/tmp/roofdocs-*.json
+
 # Logs
 logs
 *.log
@@ -23,3 +29,46 @@ dist-ssr
 *.sln
 *.sw?
 .env.local
+.logs/
+
+# RIQ 21: portal data files (huge + PII)
+data/projects.json
+data/projects.jsonl
+data/roofdocs-pull/
+data/roofdocs-invoices/
+data/roofdocs-reference/
+data/notes.json
+data/storm-exposure.json
+data/storm-playbook.json
+data/resurrection.json
+data/job-storms.json
+data/receivables.json
+data/patterns.json
+data/geocoded.json
+data/carrier-orphans.json
+data/storms/
+
+# Public mirror of intel data — same reason
+public/projects.json
+public/patterns.json
+public/notes.json
+public/storm-exposure.json
+public/storm-playbook.json
+public/resurrection.json
+public/job-storms.json
+public/receivables.json
+public/carrier-orphans.json
+
+# Playwright + screenshots
+.playwright-mcp/
+*.png
+
+# Backup files
+src/LegacyApp.tsx.bak
+server/index-legacy.ts.bak
+
+# Logs
+.logs/
+
+# Dist
+dist/

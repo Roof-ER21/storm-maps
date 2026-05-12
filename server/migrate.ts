@@ -1,6 +1,6 @@
 import postgres from 'postgres';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { ensureAiTables } from './ai/migrate.js';
+// drizzle + ai/migrate imports removed with the legacy storm-maps strip (2026-05-12).
+// AI property-analysis tables were used only by the old Hail Yes shell.
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/hailyes';
 // Same onnotice handler as server/db.ts — suppresses the wall of
@@ -382,13 +382,7 @@ async function migrate() {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scans_this_month INTEGER DEFAULT 0`;
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS ai_scan_reset_at TIMESTAMP`;
 
-  console.log('[migrate] All 11 core tables created successfully.');
-
-  // Create AI property analysis tables
-  const aiDb = drizzle(sql);
-  await ensureAiTables(aiDb);
-
-  console.log('[migrate] All tables created successfully.');
+  console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)
   const adminEmail = 'ahmed@theroofdocs.com';

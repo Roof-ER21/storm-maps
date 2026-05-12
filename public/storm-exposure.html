@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Customer Storm Exposure</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 14px; text-decoration: none; font-size: 13px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 24px; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .btn { background: var(--accent); color: #1a1612; border: none; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  th .arrow { color: var(--accent); margin-left: 4px; }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  tbody tr:hover { background: #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .scroll { max-height: 760px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 3px; margin-bottom: 2px; }
+  .pill.hail { background: rgba(168,139,250,0.2); color: var(--purple); }
+  .pill.wind { background: rgba(94,200,255,0.2); color: var(--accent); }
+  .pill.gap { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .pill.done { background: rgba(16,185,129,0.2); color: var(--green); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚡ Customer Storm Exposure — Warm Leads with New Damage Potential</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html" class="active">Exposure</a>
+    <a href="storm-playbook.html">Playbook</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="kpi-row" id="kpis"></div>
+
+    <section>
+      <h2>Customers hit by strong storms since first contact</h2>
+      <div class="desc">Every customer in our book whose home has been hit by hail ≥0.75" or wind ≥55mph within 2 miles since they first signed. Warm leads with possible new damage — perfect for follow-up call/email/text.</div>
+      <div class="filter-bar">
+        <label>Search <input id="f-search" placeholder="customer / address / carrier / rep" style="width:280px" /></label>
+        <label>State <select id="f-state"><option value="">All</option></select></label>
+        <label>Min storm hits <input id="f-minhits" type="number" placeholder="1" style="width:80px" /></label>
+        <label>Strongest storm
+          <select id="f-strongest"><option value="">Any</option><option value="HAIL">Hail</option><option value="WND">Wind</option></select>
+        </label>
+        <label>Min hail (in) <input id="f-hail" type="number" step="0.25" placeholder="0.75" style="width:80px" /></label>
+        <label>Trade gap <select id="f-gap"><option value="">Any</option></select></label>
+        <label>Has carrier <select id="f-carrier"><option value="">Any</option></select></label>
+        <label>&nbsp;<button class="btn" id="btn-csv">Export CSV</button></label>
+      </div>
+      <div id="count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+      <div class="scroll"><table id="tbl"></table></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+let all = [], active = [];
+let sortKey = 'strongestStorm', sortDir = 'desc';
+
+function renderKPIs() {
+  const hailHits = all.filter((c) => c.strongestStorm.type === 'HAIL').length;
+  const recentlyHit = all.filter((c) => {
+    const d = c.mostRecentStorm.valid;
+    if (!d) return false;
+    return (Date.now() - new Date(d).getTime()) / 86400000 < 90;
+  }).length;
+  const multi = all.filter((c) => c.stormCount >= 3).length;
+  const totalRev = all.reduce((s, c) => s + (c.totalRev || 0), 0);
+  $('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Customers exposed</div><div class="value">${fmt.int(all.length)}</div></div>
+    <div class="kpi"><div class="label">Hail strongest</div><div class="value">${fmt.int(hailHits)}</div></div>
+    <div class="kpi"><div class="label">Hit in last 90d</div><div class="value">${fmt.int(recentlyHit)}</div></div>
+    <div class="kpi"><div class="label">3+ storm hits</div><div class="value">${fmt.int(multi)}</div></div>
+    <div class="kpi"><div class="label">Total prior revenue</div><div class="value">${fmt.money(totalRev)}</div></div>
+  `;
+}
+
+function sortVal(c) {
+  if (sortKey === 'strongestStorm') {
+    const m = c.strongestStorm.mag || 0;
+    return c.strongestStorm.type === 'HAIL' ? m * 10 : m;
+  }
+  if (sortKey === 'mostRecentStorm') return new Date(c.mostRecentStorm.valid).getTime();
+  return c[sortKey];
+}
+
+function applyFilters() {
+  let rows = all;
+  const q = $('f-search').value.trim().toLowerCase();
+  if (q) rows = rows.filter((c) =>
+    (c.customer || '').toLowerCase().includes(q) ||
+    (c.addressLine1 || '').toLowerCase().includes(q) ||
+    c.carriers.some((x) => (x || '').toLowerCase().includes(q)) ||
+    c.reps.some((x) => (x || '').toLowerCase().includes(q)) ||
+    c.trades.some((x) => (x || '').toLowerCase().includes(q))
+  );
+  const st = $('f-state').value;
+  if (st) rows = rows.filter((c) => c.state === st);
+  const minHits = Number($('f-minhits').value || 0);
+  if (minHits) rows = rows.filter((c) => c.stormCount >= minHits);
+  const strongest = $('f-strongest').value;
+  if (strongest) rows = rows.filter((c) => {
+    if (strongest === 'HAIL') return c.strongestStorm.type === 'HAIL';
+    if (strongest === 'WND') return (c.strongestStorm.type || '').includes('WND');
+    return true;
+  });
+  const minHail = Number($('f-hail').value || 0);
+  if (minHail) rows = rows.filter((c) => c.strongestStorm.type === 'HAIL' && (c.strongestStorm.mag || 0) >= minHail);
+  const gap = $('f-gap').value;
+  if (gap) rows = rows.filter((c) => c.tradeGaps.includes(gap));
+  const carrier = $('f-carrier').value;
+  if (carrier) rows = rows.filter((c) => c.carriers.includes(carrier));
+  rows.sort((a, b) => {
+    const va = sortVal(a), vb = sortVal(b);
+    if (va == null) return 1; if (vb == null) return -1;
+    return sortDir === 'asc' ? (va > vb ? 1 : -1) : (va < vb ? 1 : -1);
+  });
+  active = rows;
+  $('count').textContent = `${rows.length.toLocaleString()} customers · ${fmt.money(rows.reduce((s, c) => s + c.totalRev, 0))} prior revenue`;
+  render(rows);
+}
+
+function render(rows) {
+  const cols = [
+    { k: 'customer', label: 'Customer' },
+    { k: 'addr', label: 'Address' },
+    { k: 'state', label: 'St' },
+    { k: 'stormCount', label: 'Storm hits', num: true },
+    { k: 'strongestStorm', label: 'Strongest', num: true },
+    { k: 'mostRecentStorm', label: 'Most recent', num: true },
+    { k: 'tradesDone', label: 'Trades done' },
+    { k: 'tradeGaps', label: 'Trade gaps' },
+    { k: 'carriers', label: 'Carrier(s)' },
+    { k: 'reps', label: 'Rep(s)' },
+    { k: 'totalRev', label: 'Prior $', num: true },
+  ];
+  const head = '<thead><tr>' + cols.map((c) => `<th data-k="${c.k}" class="${c.num ? 'num' : ''}">${c.label}${sortKey === c.k ? `<span class="arrow">${sortDir === 'asc' ? '▲' : '▼'}</span>` : ''}</th>`).join('') + '</tr></thead>';
+  const body = '<tbody>' + rows.slice(0, 1000).map((c) => {
+    const ss = c.strongestStorm;
+    const ms = c.mostRecentStorm;
+    return `<tr>
+      <td><strong>${c.customer || '—'}</strong><br><span style="color:var(--muted);font-size:11px">${c.customerEmail || ''}</span></td>
+      <td>${[c.addressLine1, c.city].filter(Boolean).join(', ')}</td>
+      <td>${c.state || '—'}</td>
+      <td class="num">${c.stormCount}</td>
+      <td class="num"><span class="pill ${ss.type === 'HAIL' ? 'hail' : 'wind'}">${ss.type}</span><br>${ss.mag} ${ss.unit || ''}<br><span style="color:var(--muted);font-size:11px">${(ss.valid || '').slice(0,10)}</span></td>
+      <td class="num">${(ms.valid || '').slice(0,10)}<br><span style="color:var(--muted);font-size:11px">${ms.type} ${ms.mag} ${ms.unit || ''}</span></td>
+      <td>${c.trades.map((t) => `<span class="pill done">${t}</span>`).join('')}</td>
+      <td>${c.tradeGaps.slice(0, 4).map((t) => `<span class="pill gap">${t}</span>`).join('')}${c.tradeGaps.length > 4 ? `<span class="pill">+${c.tradeGaps.length - 4}</span>` : ''}</td>
+      <td><span style="font-size:11px">${c.carriers.join(', ') || '—'}</span></td>
+      <td><span style="font-size:11px">${c.reps.join(', ') || '—'}</span></td>
+      <td class="num money">${fmt.money(c.totalRev)}</td>
+    </tr>`;
+  }).join('') + '</tbody>';
+  $('tbl').innerHTML = head + body;
+  $('tbl').querySelectorAll('th').forEach((th) => {
+    th.addEventListener('click', () => {
+      const k = th.dataset.k;
+      if (!k) return;
+      if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+      else { sortKey = k; sortDir = 'desc'; }
+      applyFilters();
+    });
+  });
+}
+
+function exportCSV() {
+  if (!active.length) return;
+  const headers = ['Customer', 'Email', 'Phone', 'Address', 'City', 'State', 'Zip', 'StormHits', 'StrongestType', 'StrongestMag', 'StrongestDate', 'MostRecentDate', 'TradesDone', 'TradeGaps', 'Carriers', 'Reps', 'PriorRevenue', 'Lat', 'Lng'];
+  const lines = [headers.join(',')];
+  for (const c of active) {
+    const ss = c.strongestStorm; const ms = c.mostRecentStorm;
+    const row = [c.customer, c.customerEmail, c.customerCell, c.addressLine1, c.city, c.state, c.zip,
+      c.stormCount, ss.type, ss.mag, (ss.valid || '').slice(0,10), (ms.valid || '').slice(0,10),
+      c.trades.join(';'), c.tradeGaps.join(';'), c.carriers.join(';'), c.reps.join(';'),
+      Math.round(c.totalRev || 0), c.lat, c.lng,
+    ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+    lines.push(row.join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roofdocs-storm-exposure-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function start() {
+  const res = await fetch('storm-exposure.json');
+  all = await res.json();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  // Filter dropdowns
+  const states = new Set(), gaps = new Set(), carriers = new Set();
+  for (const c of all) {
+    if (c.state) states.add(c.state);
+    for (const g of c.tradeGaps) gaps.add(g);
+    for (const cc of c.carriers) carriers.add(cc);
+  }
+  for (const s of [...states].sort()) { const o = document.createElement('option'); o.value = s; o.textContent = s; $('f-state').appendChild(o); }
+  for (const g of [...gaps].sort()) { const o = document.createElement('option'); o.value = g; o.textContent = g; $('f-gap').appendChild(o); }
+  for (const c of [...carriers].sort()) { const o = document.createElement('option'); o.value = c; o.textContent = c; $('f-carrier').appendChild(o); }
+  for (const f of ['f-search', 'f-minhits', 'f-hail']) $(f).addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 250); });
+  for (const f of ['f-state', 'f-strongest', 'f-gap', 'f-carrier']) $(f).addEventListener('change', applyFilters);
+  $('btn-csv').addEventListener('click', exportCSV);
+  renderKPIs();
+  applyFilters();
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

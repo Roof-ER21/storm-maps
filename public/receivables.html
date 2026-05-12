@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Money on the Table</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 16px; text-decoration: none; font-size: 13px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+  .kpi { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 26px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .kpi .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .btn { background: var(--accent); color: #1a1612; border: none; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  th .arrow { color: var(--accent); margin-left: 4px; }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  tbody tr:hover { background: #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .scroll { max-height: 760px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+  .pill.cf-pending { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .pill.balance-pending { background: rgba(94,200,255,0.2); color: var(--accent); }
+  .pill.cf-received { background: rgba(16,185,129,0.2); color: var(--green); }
+  .pill.cf-sent { background: rgba(168,139,250,0.2); color: #a78bfa; }
+  .pill.paying-online { background: rgba(94,200,255,0.2); color: var(--accent); }
+  .pill.pending-acv { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .pill.pending-mortgage { background: rgba(239,68,68,0.2); color: var(--red); }
+  .pill.collected { background: rgba(16,185,129,0.2); color: var(--green); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 18px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-size: 13px; }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>💰 Money on the Table — Receivables &amp; Downpayments</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html" class="active">AR</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="kpi-row" id="kpis"></div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="ar">Open AR (Completion + Final)</div>
+      <div class="tab" data-tab="dp">Pending Downpayments</div>
+    </div>
+
+    <section id="sec-ar">
+      <div class="filter-bar">
+        <label>Search <input id="ar-search" placeholder="customer / address / carrier / rep" style="width:280px" /></label>
+        <label>Status <select id="ar-status"><option value="">All</option></select></label>
+        <label>State <select id="ar-state"><option value="">All</option></select></label>
+        <label>Min $ <input id="ar-min" type="number" placeholder="0" style="width:100px" /></label>
+        <label>&nbsp;<button class="btn" id="ar-csv">Export CSV</button></label>
+      </div>
+      <div id="ar-count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+      <div class="scroll"><table id="tbl-ar"></table></div>
+    </section>
+
+    <section id="sec-dp" style="display:none">
+      <div class="filter-bar">
+        <label>Search <input id="dp-search" placeholder="customer / address / carrier" style="width:280px" /></label>
+        <label>Status <select id="dp-status"><option value="">All</option></select></label>
+        <label>&nbsp;<button class="btn" id="dp-csv">Export CSV</button></label>
+      </div>
+      <div id="dp-count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+      <div class="scroll"><table id="tbl-dp"></table></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+const slug = (s) => (s || '').toLowerCase().replace(/[^a-z]+/g, '-');
+
+let accounts = [], downpayments = [];
+let arRows = [], dpRows = [];
+let arSortKey = 'jobTotal', arSortDir = 'desc';
+let dpSortKey = 'jobTotal', dpSortDir = 'desc';
+
+function arSortVal(a, k) {
+  if (k === 'customer') return ((a.customer?.firstName || '') + ' ' + (a.customer?.lastName || '')).trim();
+  if (k === 'phone') return a.customer?.cellPhoneNumber || a.customer?.homePhoneNumber || '';
+  if (k === 'address') return a.job?.addressLine1 || '';
+  if (k === 'carrier') return a.insurance?.company || '';
+  if (k === 'status') return a.status || '';
+  if (k === 'lastModified') return a.lastModified || '';
+  if (k === 'rep') return a.proj?.salesRep || '';
+  if (k === 'jobTotal') return a.proj?.jobTotal || a.job?.jobTotal || 0;
+  return '';
+}
+function dpSortVal(d, k) {
+  if (k === 'customer') return ((d.customer?.firstName || '') + ' ' + (d.customer?.lastName || '')).trim();
+  if (k === 'phone') return d.customer?.cellPhoneNumber || d.customer?.homePhoneNumber || '';
+  if (k === 'address') return d.job?.addressLine1 || '';
+  if (k === 'carrier') return d.insurance?.company || '';
+  if (k === 'status') return d.status || '';
+  if (k === 'dateAdded') return d.dateAdded || '';
+  if (k === 'lastModified') return d.lastModified || '';
+  if (k === 'jobTotal') return d.job?.jobTotal || 0;
+  return '';
+}
+
+function renderKPIs() {
+  const arTotal = accounts.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0);
+  const cfPending = accounts.filter((a) => a.status === 'CF Pending' || a.status === 'CF Sent');
+  const balPending = accounts.filter((a) => a.status === 'Balance Pending');
+  const dpTotal = downpayments.reduce((s, d) => s + (d.job?.jobTotal || 0), 0);
+  const dpPending = downpayments.filter((d) => d.status !== 'Collected');
+  $('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Open AR accounts</div><div class="value">${accounts.length}</div><div class="sub">Completion + Final payment side</div></div>
+    <div class="kpi"><div class="label">Total job value (AR)</div><div class="value">${fmt.money(arTotal)}</div></div>
+    <div class="kpi"><div class="label">CF Pending/Sent</div><div class="value">${cfPending.length}</div><div class="sub">${fmt.money(cfPending.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0))}</div></div>
+    <div class="kpi"><div class="label">Balance Pending</div><div class="value">${balPending.length}</div><div class="sub">${fmt.money(balPending.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0))}</div></div>
+    <div class="kpi"><div class="label">Downpayments tracked</div><div class="value">${downpayments.length}</div><div class="sub">${fmt.money(dpTotal)} total job value</div></div>
+    <div class="kpi"><div class="label">Downpayments not yet collected</div><div class="value">${dpPending.length}</div></div>
+  `;
+}
+
+function applyAR() {
+  let rows = [...accounts];
+  const q = $('ar-search').value.trim().toLowerCase();
+  if (q) rows = rows.filter((a) =>
+    (a.customer?.firstName + ' ' + a.customer?.lastName || '').toLowerCase().includes(q) ||
+    (a.job?.addressLine1 || '').toLowerCase().includes(q) ||
+    (a.insurance?.company || '').toLowerCase().includes(q) ||
+    (a.proj?.salesRep || '').toLowerCase().includes(q)
+  );
+  const status = $('ar-status').value;
+  if (status) rows = rows.filter((a) => a.status === status);
+  const state = $('ar-state').value;
+  if (state) rows = rows.filter((a) => a.job?.state === state);
+  const min = Number($('ar-min').value || 0);
+  if (min) rows = rows.filter((a) => (a.proj?.jobTotal || a.job?.jobTotal || 0) >= min);
+  rows.sort((a, b) => {
+    const va = arSortVal(a, arSortKey), vb = arSortVal(b, arSortKey);
+    if (typeof va === 'number') return arSortDir === 'asc' ? va - vb : vb - va;
+    return arSortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  arRows = rows;
+  $('ar-count').textContent = `${rows.length} accounts · ${fmt.money(rows.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0))} on the table`;
+  const arArrow = (k) => arSortKey === k ? `<span style="color:var(--accent);margin-left:4px">${arSortDir === 'asc' ? '▲' : '▼'}</span>` : '';
+  const head = `<thead><tr><th data-k="customer" style="cursor:pointer">Customer${arArrow('customer')}</th><th data-k="phone" style="cursor:pointer">Phone${arArrow('phone')}</th><th data-k="address" style="cursor:pointer">Address${arArrow('address')}</th><th data-k="carrier" style="cursor:pointer">Carrier${arArrow('carrier')}</th><th data-k="status" style="cursor:pointer">Status${arArrow('status')}</th><th data-k="lastModified" style="cursor:pointer">Last Modified${arArrow('lastModified')}</th><th data-k="rep" style="cursor:pointer">Sales Rep${arArrow('rep')}</th><th data-k="jobTotal" class="num" style="cursor:pointer">Job Total${arArrow('jobTotal')}</th></tr></thead>`;
+  const body = '<tbody>' + rows.map((a) => `
+    <tr>
+      <td>${(a.customer?.firstName || '') + ' ' + (a.customer?.lastName || '')}<br><span style="color:var(--muted);font-size:11px">${a.customer?.email || ''}</span></td>
+      <td>${a.customer?.cellPhoneNumber || a.customer?.homePhoneNumber || '—'}</td>
+      <td>${[a.job?.addressLine1, a.job?.city, a.job?.state, a.job?.zipCode].filter(Boolean).join(', ')}</td>
+      <td>${a.insurance?.company || '—'}</td>
+      <td><span class="pill ${slug(a.status)}">${a.status || '—'}</span></td>
+      <td>${a.lastModified || '—'}</td>
+      <td>${a.proj?.salesRep || '—'}</td>
+      <td class="num money">${fmt.money(a.proj?.jobTotal || a.job?.jobTotal)}</td>
+    </tr>
+  `).join('') + '</tbody>';
+  $('tbl-ar').innerHTML = head + body;
+  $('tbl-ar').querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (arSortKey === k) arSortDir = arSortDir === 'asc' ? 'desc' : 'asc';
+    else { arSortKey = k; arSortDir = 'desc'; }
+    applyAR();
+  }));
+}
+
+function applyDP() {
+  let rows = [...downpayments];
+  const q = $('dp-search').value.trim().toLowerCase();
+  if (q) rows = rows.filter((d) =>
+    ((d.customer?.firstName || '') + ' ' + (d.customer?.lastName || '')).toLowerCase().includes(q) ||
+    (d.job?.addressLine1 || '').toLowerCase().includes(q) ||
+    (d.insurance?.company || '').toLowerCase().includes(q)
+  );
+  const status = $('dp-status').value;
+  if (status) rows = rows.filter((d) => d.status === status);
+  rows.sort((a, b) => {
+    const va = dpSortVal(a, dpSortKey), vb = dpSortVal(b, dpSortKey);
+    if (typeof va === 'number') return dpSortDir === 'asc' ? va - vb : vb - va;
+    return dpSortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  dpRows = rows;
+  $('dp-count').textContent = `${rows.length} downpayments tracked · ${fmt.money(rows.reduce((s, d) => s + (d.job?.jobTotal || 0), 0))} total job value`;
+  const dpArrow = (k) => dpSortKey === k ? `<span style="color:var(--accent);margin-left:4px">${dpSortDir === 'asc' ? '▲' : '▼'}</span>` : '';
+  const head = `<thead><tr><th data-k="customer" style="cursor:pointer">Customer${dpArrow('customer')}</th><th data-k="phone" style="cursor:pointer">Phone${dpArrow('phone')}</th><th data-k="address" style="cursor:pointer">Address${dpArrow('address')}</th><th data-k="carrier" style="cursor:pointer">Carrier${dpArrow('carrier')}</th><th data-k="status" style="cursor:pointer">Status${dpArrow('status')}</th><th data-k="dateAdded" style="cursor:pointer">Date Added${dpArrow('dateAdded')}</th><th data-k="lastModified" style="cursor:pointer">Last Modified${dpArrow('lastModified')}</th><th data-k="jobTotal" class="num" style="cursor:pointer">Job Total${dpArrow('jobTotal')}</th></tr></thead>`;
+  const body = '<tbody>' + rows.map((d) => `
+    <tr>
+      <td>${(d.customer?.firstName || '') + ' ' + (d.customer?.lastName || '')}<br><span style="color:var(--muted);font-size:11px">${d.customer?.email || ''}</span></td>
+      <td>${d.customer?.cellPhoneNumber || d.customer?.homePhoneNumber || '—'}</td>
+      <td>${[d.job?.addressLine1, d.job?.city, d.job?.state].filter(Boolean).join(', ')}</td>
+      <td>${d.insurance?.company || '—'}</td>
+      <td><span class="pill ${slug(d.status)}">${d.status || '—'}</span></td>
+      <td>${d.dateAdded || '—'}</td>
+      <td>${d.lastModified || '—'}</td>
+      <td class="num money">${fmt.money(d.job?.jobTotal)}</td>
+    </tr>
+  `).join('') + '</tbody>';
+  $('tbl-dp').innerHTML = head + body;
+  $('tbl-dp').querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (dpSortKey === k) dpSortDir = dpSortDir === 'asc' ? 'desc' : 'asc';
+    else { dpSortKey = k; dpSortDir = 'desc'; }
+    applyDP();
+  }));
+}
+
+function exportCSV(rows, name, type) {
+  if (!rows.length) return;
+  let lines;
+  if (type === 'ar') {
+    lines = ['Customer,Email,Phone,Address,City,State,Zip,Carrier,Status,LastModified,SalesRep,JobTotal'];
+    for (const a of rows) {
+      const row = [
+        ((a.customer?.firstName || '') + ' ' + (a.customer?.lastName || '')).trim(),
+        a.customer?.email || '', a.customer?.cellPhoneNumber || a.customer?.homePhoneNumber || '',
+        a.job?.addressLine1, a.job?.city, a.job?.state, a.job?.zipCode,
+        a.insurance?.company, a.status, a.lastModified, a.proj?.salesRep, a.proj?.jobTotal || a.job?.jobTotal,
+      ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+      lines.push(row.join(','));
+    }
+  } else {
+    lines = ['Customer,Email,Phone,Address,City,State,Carrier,Status,DateAdded,LastModified,JobTotal'];
+    for (const d of rows) {
+      const row = [
+        ((d.customer?.firstName || '') + ' ' + (d.customer?.lastName || '')).trim(),
+        d.customer?.email || '', d.customer?.cellPhoneNumber || d.customer?.homePhoneNumber || '',
+        d.job?.addressLine1, d.job?.city, d.job?.state,
+        d.insurance?.company, d.status, d.dateAdded, d.lastModified, d.job?.jobTotal,
+      ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+      lines.push(row.join(','));
+    }
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${name}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function start() {
+  const res = await fetch('receivables.json');
+  const data = await res.json();
+  accounts = data.accounts || [];
+  downpayments = data.downpayments || [];
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+
+  // Populate filter selects
+  const arStatuses = new Set();
+  const arStates = new Set();
+  for (const a of accounts) {
+    if (a.status) arStatuses.add(a.status);
+    if (a.job?.state) arStates.add(a.job.state);
+  }
+  for (const s of [...arStatuses].sort()) {
+    const o = document.createElement('option'); o.value = s; o.textContent = s; $('ar-status').appendChild(o);
+  }
+  for (const s of [...arStates].sort()) {
+    const o = document.createElement('option'); o.value = s; o.textContent = s; $('ar-state').appendChild(o);
+  }
+  const dpStatuses = new Set();
+  for (const d of downpayments) if (d.status) dpStatuses.add(d.status);
+  for (const s of [...dpStatuses].sort()) {
+    const o = document.createElement('option'); o.value = s; o.textContent = s; $('dp-status').appendChild(o);
+  }
+  for (const f of ['ar-search', 'ar-min']) $(f).addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyAR, 250); });
+  for (const f of ['ar-status', 'ar-state']) $(f).addEventListener('change', applyAR);
+  $('dp-search').addEventListener('input', () => { clearTimeout(window._u); window._u = setTimeout(applyDP, 250); });
+  $('dp-status').addEventListener('change', applyDP);
+  $('ar-csv').addEventListener('click', () => exportCSV(arRows, 'roofdocs-AR', 'ar'));
+  $('dp-csv').addEventListener('click', () => exportCSV(dpRows, 'roofdocs-downpayments', 'dp'));
+
+  document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach((x) => x.classList.remove('active'));
+    t.classList.add('active');
+    $('sec-ar').style.display = t.dataset.tab === 'ar' ? '' : 'none';
+    $('sec-dp').style.display = t.dataset.tab === 'dp' ? '' : 'none';
+  }));
+
+  renderKPIs();
+  applyAR();
+  applyDP();
+}
+
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

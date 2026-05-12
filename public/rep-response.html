@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Rep Storm Response</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1600px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); cursor: pointer; }
+  th:hover { color: var(--accent); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; }
+  tbody tr:hover { background: #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 760px; overflow-y: auto; }
+  .pill { font-weight: 700; padding: 4px 10px; border-radius: 4px; display: inline-block; }
+  .pill.fast { background: rgba(16,185,129,0.25); color: var(--green); }
+  .pill.med { background: rgba(245,158,11,0.25); color: var(--yellow); }
+  .pill.slow { background: rgba(239,68,68,0.25); color: var(--red); }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>⏱ Rep Storm Response Time</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="exec.html">Exec</a>
+    <a href="reps.html">Reps</a>
+    <a href="rep-response.html" class="active">Response Time</a>
+    <a href="analytics.html">Analytics</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <section>
+      <h2>Median days from storm-of-record to signed agreement</h2>
+      <div class="desc">For each rep: of their storm-matched jobs (loss within ±30 days of a real storm), how fast did they get the signature? Lower = faster responder. Excludes jobs with no storm match or with daysLossToSign &lt; 0.</div>
+      <div class="filter-bar">
+        <label>Min jobs <input id="f-minjobs" type="number" placeholder="5" value="5" style="width:80px" /></label>
+        <label>Year
+          <select id="f-year"><option value="">All</option></select>
+        </label>
+      </div>
+      <div id="count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+      <div class="scroll"><table id="tbl"></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+let allJobs = [], reps = [];
+
+function build(year) {
+  const m = new Map();
+  for (const j of allJobs) {
+    if (!j.salesRep) continue;
+    if (j.daysLossToSign == null || j.daysLossToSign < 0 || j.daysLossToSign > 365) continue;
+    if (!j.stormMatch) continue;
+    if (year && (j.signedDate || '').slice(0, 4) !== year) continue;
+    if (!m.has(j.salesRep)) m.set(j.salesRep, { name: j.salesRep, daysList: [], jobs: 0, completed: 0, revenue: 0 });
+    const e = m.get(j.salesRep);
+    e.daysList.push(j.daysLossToSign);
+    e.jobs++;
+    if (isCompleted(j)) { e.completed++; e.revenue += j.jobTotal || 0; }
+  }
+  const rows = [];
+  for (const e of m.values()) {
+    e.daysList.sort((a, b) => a - b);
+    const median = e.daysList[Math.floor(e.daysList.length / 2)];
+    const fast30 = e.daysList.filter((d) => d <= 30).length;
+    rows.push({
+      name: e.name, jobs: e.jobs, completed: e.completed, revenue: e.revenue,
+      medianDays: median, p25: e.daysList[Math.floor(e.daysList.length * 0.25)],
+      p75: e.daysList[Math.floor(e.daysList.length * 0.75)],
+      pctFast30: e.daysList.length ? fast30 / e.daysList.length : 0,
+    });
+  }
+  return rows;
+}
+
+function applyFilters() {
+  const minJobs = Number($('f-minjobs').value || 0);
+  const year = $('f-year').value;
+  let rows = build(year);
+  if (minJobs) rows = rows.filter((r) => r.jobs >= minJobs);
+  rows.sort((a, b) => a.medianDays - b.medianDays);
+  $('count').textContent = `${rows.length} reps · median across all: ${Math.round(rows.reduce((s, r) => s + r.medianDays, 0) / rows.length)}d`;
+  render(rows);
+}
+
+function render(rows) {
+  const head = `<thead><tr>
+    <th>Rep</th>
+    <th class="num">Storm-matched jobs</th>
+    <th class="num">Completed</th>
+    <th class="num">Median days loss→sign</th>
+    <th class="num">25th pct</th>
+    <th class="num">75th pct</th>
+    <th class="num">% signed within 30d</th>
+    <th class="num">Revenue</th>
+  </tr></thead>`;
+  const body = '<tbody>' + rows.map((r) => {
+    const cls = r.medianDays <= 30 ? 'fast' : r.medianDays <= 90 ? 'med' : 'slow';
+    return `<tr>
+      <td><strong>${r.name}</strong></td>
+      <td class="num">${r.jobs}</td>
+      <td class="num">${r.completed}</td>
+      <td class="num"><span class="pill ${cls}">${r.medianDays}d</span></td>
+      <td class="num">${r.p25}d</td>
+      <td class="num">${r.p75}d</td>
+      <td class="num">${(r.pctFast30 * 100).toFixed(1)}%</td>
+      <td class="num" style="color:var(--green)">${fmt.money(r.revenue)}</td>
+    </tr>`;
+  }).join('') + '</tbody>';
+  $('tbl').innerHTML = head + body;
+}
+
+async function start() {
+  const res = await fetch('projects.json');
+  allJobs = await res.json();
+  const years = new Set();
+  for (const j of allJobs) if (j.signedDate) years.add(j.signedDate.slice(0, 4));
+  for (const y of [...years].sort().reverse()) {
+    const o = document.createElement('option'); o.value = y; o.textContent = y; $('f-year').appendChild(o);
+  }
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  $('f-minjobs').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 200); });
+  $('f-year').addEventListener('change', applyFilters);
+  applyFilters();
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

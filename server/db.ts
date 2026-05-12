@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema.js';
-import * as aiSchema from './ai/schema.js';
+// AI schema removed with the legacy storm-maps strip (2026-05-12).
 
 const connectionString = process.env.DATABASE_URL || 'postgresql://localhost:5432/hailyes';
 
@@ -46,7 +46,7 @@ export const sql = postgres(connectionString, {
     }
   },
 });
-export const db = drizzle(sql, { schema: { ...schema, ...aiSchema } });
+export const db = drizzle(sql, { schema });
 export type DB = typeof db;
 /** postgres.js client type — used by /server/auth/services.ts ported from storm-archive */
 export type Sql = typeof sql;

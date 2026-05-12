@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Carrier × Trade Profile</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; text-align: left; position: sticky; top: 0; background: var(--panel); }
+  th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:hover { background: #342c23; }
+  td.carrier { font-weight: 600; color: var(--accent); position: sticky; left: 0; background: var(--panel); z-index: 1; }
+  tbody tr:hover td.carrier { background: #342c23; }
+  .cell { padding: 4px 6px; border-radius: 3px; }
+  .cell.hot { background: rgba(16,185,129,0.3); color: var(--green); }
+  .cell.warm { background: rgba(245,158,11,0.25); color: var(--yellow); }
+  .cell.cool { background: rgba(94,200,255,0.15); color: var(--accent); }
+  .cell .v { font-weight: 700; }
+  .cell .n { color: var(--muted); font-size: 10px; }
+  .scroll { overflow-x: auto; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🧾 Carrier × Trade Profile — Who Pays Best For What</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="zip-intel.html">ZIP Intel</a>
+    <a href="carrier-trades.html" class="active">Carrier×Trade</a>
+    <a href="analytics.html">Analytics</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <section>
+      <h2>Avg approved $ per trade per carrier</h2>
+      <div class="desc">For every completed job: split by carrier × trade. Cell color: 🟢 hot = avg approved $ in top tercile · 🟡 warm = middle · 🔵 cool = bottom. Number = avg approved $ for that carrier × trade combo. Below it: number of jobs we have on file.</div>
+      <div class="scroll"><table id="tbl"></table></div>
+    </section>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v / 1000) + 'k',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+
+async function start() {
+  const res = await fetch('projects.json');
+  const allJobs = await res.json();
+
+  // Aggregate carrier × trade
+  const agg = new Map(); // carrier -> trade -> { jobs, revenue }
+  const carrierTotals = {};
+  const tradeTotals = {};
+  for (const j of allJobs) {
+    if (!isCompleted(j)) continue;
+    if (!j.insurance || !j.trades || j.trades.length === 0) continue;
+    if (!j.jobTotal) continue;
+    const perTrade = j.jobTotal / j.trades.length;  // split revenue evenly across trades on the job
+    for (const t of j.trades) {
+      const key = j.insurance;
+      if (!agg.has(key)) agg.set(key, {});
+      if (!agg.get(key)[t]) agg.get(key)[t] = { jobs: 0, revenue: 0 };
+      agg.get(key)[t].jobs++;
+      agg.get(key)[t].revenue += perTrade;
+      carrierTotals[key] = (carrierTotals[key] || 0) + 1;
+      tradeTotals[t] = (tradeTotals[t] || 0) + 1;
+    }
+  }
+  // Top 12 carriers + top 8 trades
+  const topCarriers = Object.entries(carrierTotals).sort((a, b) => b[1] - a[1]).slice(0, 18).map((p) => p[0]);
+  const topTrades = Object.entries(tradeTotals).sort((a, b) => b[1] - a[1]).slice(0, 10).map((p) => p[0]);
+
+  // Compute avg per cell
+  const cells = {};
+  const allValues = [];
+  for (const c of topCarriers) {
+    for (const t of topTrades) {
+      const x = agg.get(c)?.[t];
+      if (!x || x.jobs < 2) continue;
+      const avg = x.revenue / x.jobs;
+      cells[`${c}|${t}`] = { avg, jobs: x.jobs };
+      allValues.push(avg);
+    }
+  }
+  // Tercile thresholds
+  allValues.sort((a, b) => a - b);
+  const t1 = allValues[Math.floor(allValues.length / 3)];
+  const t2 = allValues[Math.floor(allValues.length * 2 / 3)];
+
+  // Build table
+  const head = '<thead><tr><th>Carrier (jobs)</th>' + topTrades.map((t) => `<th class="num">${t}</th>`).join('') + '</tr></thead>';
+  const body = '<tbody>' + topCarriers.map((c) => {
+    return `<tr>
+      <td class="carrier">${c}<br><span style="color:var(--muted);font-size:10px;font-weight:400">${carrierTotals[c]} trade-jobs</span></td>
+      ${topTrades.map((t) => {
+        const cell = cells[`${c}|${t}`];
+        if (!cell) return `<td class="num" style="color:var(--muted)">—</td>`;
+        const cls = cell.avg >= t2 ? 'hot' : cell.avg >= t1 ? 'warm' : 'cool';
+        return `<td class="num"><span class="cell ${cls}"><span class="v">${fmt.money(cell.avg)}</span><br><span class="n">${cell.jobs}j</span></span></td>`;
+      }).join('')}
+    </tr>`;
+  }).join('') + '</tbody>';
+  $('tbl').innerHTML = head + body;
+
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

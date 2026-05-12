@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Customer Detail</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1700px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .filter-bar input { flex: 1; background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 14px; }
+  .results { display: none; position: absolute; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 0; max-height: 400px; overflow-y: auto; min-width: 500px; margin-top: 4px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+  .results.show { display: block; }
+  .results .item { padding: 8px 14px; cursor: pointer; }
+  .results .item:hover { background: #342c23; }
+  .results .item .name { color: var(--accent); font-size: 13px; font-weight: 600; }
+  .results .item .sub { color: var(--muted); font-size: 11px; }
+  .hero { background: linear-gradient(135deg, #342c23 0%, #2a241e 100%); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; display: grid; grid-template-columns: 1fr auto; gap: 20px; align-items: center; }
+  .hero .name { font-size: 26px; font-weight: 800; color: var(--accent); }
+  .hero .addr { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .hero .contact { font-size: 13px; margin-top: 8px; }
+  .hero .contact a { color: var(--accent); text-decoration: none; margin-right: 16px; }
+  .hero .score { text-align: center; }
+  .hero .score .big { font-size: 56px; font-weight: 900; line-height: 1; }
+  .hero .score .big.high { color: var(--green); }
+  .hero .score .big.med { color: var(--yellow); }
+  .hero .score .big.low { color: var(--accent); }
+  .hero .score .label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 1000px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 12px; }
+  .kpi { background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; }
+  .kpi .value { font-size: 20px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .recommendation { background: rgba(94,200,255,0.08); border-left: 3px solid var(--accent); padding: 14px 18px; border-radius: 0 6px 6px 0; margin: 12px 0; font-size: 14px; line-height: 1.5; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; padding: 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pill { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin-right: 3px; margin-bottom: 2px; }
+  .pill.done { background: rgba(16,185,129,0.2); color: var(--green); }
+  .pill.gap { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .pill.hail { background: rgba(168,139,250,0.2); color: var(--purple); }
+  .pill.wind { background: rgba(94,200,255,0.2); color: var(--accent); }
+  .pill.dead { background: rgba(239,68,68,0.2); color: var(--red); }
+  .scroll { max-height: 360px; overflow-y: auto; }
+  #map { width: 100%; height: 320px; background: #342c23; border: 1px solid var(--border); border-radius: 6px; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .empty { padding: 30px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>👤 Customer Detail</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="customers.html">Customers</a>
+    <a href="customer-detail.html" class="active">Detail</a>
+    <a href="lead-score.html">Lead Score</a>
+    <a href="storm-exposure.html">Exposure</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <section>
+      <div style="position:relative">
+        <input id="search" placeholder="🔎 Search any customer or address…" class="filter-bar" />
+        <div class="results" id="results"></div>
+      </div>
+    </section>
+
+    <div id="detail">
+      <div class="empty">Search for a customer above to load their full profile</div>
+    </div>
+  </div>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing']);
+const UPSELL = ['Siding', 'Gutters & Downspouts', 'Skylights', 'Trim', 'Windows', 'Soffit & Ventilation'];
+
+let allJobs = [], allExposure = [], byCust = new Map(), mapInst = null;
+
+function custKey(r) {
+  return ((r.customer || '').trim().toLowerCase() + '|' +
+          (r.addressLine1 || '').trim().toLowerCase() + '|' +
+          (r.city || '').trim().toLowerCase());
+}
+
+function quickSearch() {
+  const q = $('search').value.trim().toLowerCase();
+  const r = $('results');
+  if (q.length < 2) { r.classList.remove('show'); return; }
+  const seen = new Set();
+  const items = [];
+  for (const p of allJobs) {
+    if (items.length >= 30) break;
+    const matchStr = `${p.customer || ''} ${p.addressLine1 || ''} ${p.city || ''}`.toLowerCase();
+    if (matchStr.includes(q)) {
+      const k = custKey(p);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      items.push({ key: k, name: p.customer || '(unknown)', sub: [p.addressLine1, p.city, p.state, p.zip].filter(Boolean).join(', ') + ' · ' + (p.insurance || '—') });
+    }
+  }
+  r.innerHTML = items.length > 0
+    ? items.map((i) => `<div class="item" data-k="${i.key.replace(/"/g, '&quot;')}"><div class="name">${i.name}</div><div class="sub">${i.sub}</div></div>`).join('')
+    : '<div class="item" style="color:var(--muted)">No matches</div>';
+  r.classList.add('show');
+  r.querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => {
+    const k = el.dataset.k;
+    showCustomer(k);
+    r.classList.remove('show');
+    history.replaceState(null, '', `?k=${encodeURIComponent(k)}`);
+  }));
+}
+
+function showCustomer(key) {
+  const jobs = byCust.get(key);
+  if (!jobs || jobs.length === 0) {
+    $('detail').innerHTML = '<section><div class="empty">Customer not found</div></section>';
+    return;
+  }
+  const j0 = jobs[0];
+  // Trades
+  const trades = new Set();
+  for (const j of jobs) for (const t of (j.trades || [])) trades.add(t);
+  const tradesArr = [...trades];
+  const tradeGaps = UPSELL.filter((t) => !trades.has(t));
+  const hasRoof = tradesArr.some((t) => ROOF.has(t));
+  const carriers = [...new Set(jobs.map((j) => j.insurance).filter(Boolean))];
+  const reps = [...new Set(jobs.map((j) => j.salesRep).filter(Boolean))];
+  const adjusters = [...new Set(jobs.map((j) => j.adjusterName).filter(Boolean))];
+  const totalRev = jobs.reduce((s, j) => s + (j.jobTotal || 0), 0);
+  const completed = jobs.filter(isCompleted).length;
+  const dead = jobs.filter(isDead).length;
+  // Storm exposure for this customer
+  const exposure = allExposure.find((e) =>
+    (e.customer || '').toLowerCase() === (j0.customer || '').toLowerCase() &&
+    (e.addressLine1 || '').toLowerCase() === (j0.addressLine1 || '').toLowerCase()
+  );
+  const storms = exposure?.allStorms || [];
+  // Compute simple score
+  const stormScore = Math.min(100, (storms.length / 10) * 100);
+  const tradeGapScore = hasRoof ? Math.min(100, tradeGaps.length * 20) : 30;
+  const score = Math.round(0.4 * stormScore + 0.3 * tradeGapScore + 0.3 * (completed > 0 ? 80 : 40));
+  const scoreCls = score >= 60 ? 'high' : score >= 35 ? 'med' : 'low';
+
+  // Recommendation
+  let rec = '';
+  if (storms.length > 0 && hasRoof && tradeGaps.length > 0) {
+    rec = `Recent storms hit this address. Customer has completed roof work. Pitch <strong>${tradeGaps.slice(0, 3).join(', ')}</strong> with storm hook — strongest storm: ${storms[0].type} ${storms[0].mag || ''} ${storms[0].unit || ''} on ${(storms[0].date || '').slice(0,10)}.`;
+  } else if (storms.length > 0 && !hasRoof) {
+    rec = `Recent strong storms (${storms.length}) hit this address. Customer has never had roof work with us. <strong>Re-inspect roof for storm damage.</strong>`;
+  } else if (dead > 0) {
+    rec = `Has dead/cancelled job(s). ${storms.length > 0 ? `BUT recent storms hit. Resurrection candidate.` : 'No new storm activity yet — watch this address.'}`;
+  } else if (hasRoof && tradeGaps.length > 0) {
+    rec = `Completed roof customer with trade gaps: <strong>${tradeGaps.slice(0, 3).join(', ')}</strong>. Cross-sell candidate.`;
+  } else {
+    rec = `${jobs.length} job(s) on file. ${completed} completed. Standard follow-up.`;
+  }
+
+  const addr = [j0.addressLine1, j0.city, j0.state, j0.zip].filter(Boolean).join(', ');
+
+  $('detail').innerHTML = `
+    <section class="hero">
+      <div>
+        <div class="name">${j0.customer || '(unknown)'}</div>
+        <div class="addr">${addr}</div>
+        <div style="margin-top:6px"><a href="https://portal.theroofdocs.com/jobs/${jobs[0].id}" target="_blank" style="background:rgba(94,200,255,0.15);color:var(--accent);text-decoration:none;padding:6px 14px;border-radius:4px;font-size:12px;font-weight:600;display:inline-block">📷 Open in Portal — view photos &amp; docs</a></div>
+        <div class="contact">
+          ${j0.customerEmail ? `<a href="mailto:${j0.customerEmail}">📧 ${j0.customerEmail}</a>` : ''}
+          ${j0.customerCell ? `<a href="tel:${j0.customerCell.replace(/\D/g, '')}">📱 ${j0.customerCell}</a>` : ''}
+          ${j0.customerHome ? `<a href="tel:${j0.customerHome.replace(/\D/g, '')}">☎️ ${j0.customerHome}</a>` : ''}
+        </div>
+      </div>
+      <div class="score">
+        <div class="big ${scoreCls}">${score}</div>
+        <div class="label">Lead Score</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="recommendation"><strong>📌 Recommended action:</strong> ${rec}</div>
+      <div class="kpi-row">
+        <div class="kpi"><div class="label">Total jobs</div><div class="value">${jobs.length}</div></div>
+        <div class="kpi"><div class="label">Completed</div><div class="value">${completed}</div></div>
+        <div class="kpi"><div class="label">Dead</div><div class="value">${dead}</div></div>
+        <div class="kpi"><div class="label">Lifetime revenue</div><div class="value">${fmt.money(totalRev)}</div></div>
+        <div class="kpi"><div class="label">Trades on file</div><div class="value">${tradesArr.length}</div></div>
+        <div class="kpi"><div class="label">Trade gaps</div><div class="value">${tradeGaps.length}</div></div>
+        <div class="kpi"><div class="label">Strong storms hit</div><div class="value">${storms.length}</div></div>
+      </div>
+      <div style="margin-top:8px">
+        <strong>Trades done:</strong> ${tradesArr.map((t) => `<span class="pill done">${t}</span>`).join('') || '<span style="color:var(--muted)">—</span>'}<br>
+        <strong>Trade gaps:</strong> ${tradeGaps.map((t) => `<span class="pill gap">${t}</span>`).join('') || '<span style="color:var(--muted)">—</span>'}<br>
+        ${carriers.length ? `<strong>Carriers:</strong> ${carriers.join(', ')}<br>` : ''}
+        ${reps.length ? `<strong>Reps:</strong> ${reps.join(', ')}<br>` : ''}
+        ${adjusters.length ? `<strong>Adjusters:</strong> ${adjusters.join(', ')}` : ''}
+      </div>
+    </section>
+
+    <div class="grid-2">
+      <section>
+        <h2>Job Timeline</h2>
+        <div class="scroll"><table>
+          <thead><tr><th>Date</th><th>Type</th><th>Stage</th><th>Trades</th><th class="num">Total</th></tr></thead>
+          <tbody>${jobs.sort((a, b) => (b.signedDate || '').localeCompare(a.signedDate || '')).map((j) => `
+            <tr>
+              <td>${j.signedDate || '—'} <a href="https://portal.theroofdocs.com/jobs/${j.id}" target="_blank" title="Open in portal (see photos)" style="color:var(--accent);text-decoration:none;font-size:11px;margin-left:4px">🔗</a></td>
+              <td>${j.jobType || '—'}</td>
+              <td>${j.stage || '—'} ${isDead(j) ? '<span class="pill dead">DEAD</span>' : ''}</td>
+              <td><span style="font-size:11px">${(j.trades || []).join(', ') || '—'}</span></td>
+              <td class="num money">${fmt.money(j.jobTotal)}</td>
+            </tr>
+          `).join('')}</tbody>
+        </table></div>
+      </section>
+      <section>
+        <h2>Storms hitting this property (since first contact)</h2>
+        ${storms.length === 0 ? '<div class="empty">No strong storms matched within 2 miles</div>' : `
+          <div class="scroll"><table>
+            <thead><tr><th>Date</th><th>Type</th><th>Mag</th><th class="num">Distance</th></tr></thead>
+            <tbody>${storms.slice(0, 20).map((s) => `
+              <tr>
+                <td>${(s.date || '').slice(0, 10)}</td>
+                <td><span class="pill ${s.type === 'HAIL' ? 'hail' : 'wind'}">${s.type}</span></td>
+                <td>${s.mag || '—'} ${s.unit || ''}</td>
+                <td class="num">${s.distance?.toFixed(2) || '—'} mi</td>
+              </tr>
+            `).join('')}</tbody>
+          </table></div>
+        `}
+      </section>
+    </div>
+
+    <section>
+      <h2>Property location</h2>
+      <div id="map"></div>
+    </section>
+  `;
+
+  // Draw map
+  if (mapInst) { mapInst.remove(); mapInst = null; }
+  if (j0.lat && j0.lng) {
+    mapInst = L.map('map', { preferCanvas: true }).setView([j0.lat, j0.lng], 14);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OSM &copy; CARTO', maxZoom: 19,
+    }).addTo(mapInst);
+    L.circleMarker([j0.lat, j0.lng], { radius: 10, fillColor: '#10b981', color: '#fff', weight: 2, fillOpacity: 0.95 })
+      .bindPopup(`<strong>${j0.customer || '—'}</strong><br>${addr}`).addTo(mapInst);
+    // Add storms around them
+    for (const s of storms) {
+      if (!s.distance) continue;
+      // We don't have storm lat/lng in the exposure feed; approximate with circles around property
+    }
+  }
+}
+
+async function start() {
+  const [r1, r2] = await Promise.all([
+    fetch('projects.json').then((r) => r.json()),
+    fetch('storm-exposure.json').then((r) => r.json()).catch(() => []),
+  ]);
+  allJobs = r1;
+  allExposure = r2;
+  for (const j of allJobs) {
+    const k = custKey(j);
+    if (!k.replace(/\|/g, '').trim()) continue;
+    if (!byCust.has(k)) byCust.set(k, []);
+    byCust.get(k).push(j);
+  }
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+  $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(quickSearch, 200); });
+  $('search').addEventListener('focus', quickSearch);
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('section')) $('results').classList.remove('show');
+  });
+  // URL param
+  const params = new URLSearchParams(location.search);
+  const k = params.get('k');
+  if (k && byCust.has(k)) {
+    showCustomer(k);
+    $('search').value = byCust.get(k)[0].customer || '';
+  }
+}
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>

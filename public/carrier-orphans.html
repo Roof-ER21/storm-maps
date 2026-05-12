@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Carrier Orphans — RIQ 21</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; background: #1a1612; color: #f0ebe2; margin: 0; padding: 24px 32px; }
+  h1 { font-size: 24px; margin: 0 0 6px; color: #f4a738; font-weight: 800; }
+  .sub { color: #a09486; font-size: 13px; margin-bottom: 24px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat { background: #2a241e; border: 1px solid #3d3528; border-radius: 8px; padding: 12px 16px; }
+  .stat .n { font-size: 22px; font-weight: 800; color: #f4a738; }
+  .stat .l { font-size: 11px; color: #a09486; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .controls { background: #2a241e; border: 1px solid #3d3528; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .controls label { font-size: 12px; color: #a09486; }
+  .controls select, .controls input { background: #1a1612; color: #f0ebe2; border: 1px solid #3d3528; border-radius: 4px; padding: 6px 10px; font-size: 13px; font-family: inherit; }
+  table { width: 100%; border-collapse: collapse; background: #2a241e; border-radius: 8px; overflow: hidden; }
+  th, td { padding: 8px 12px; text-align: left; font-size: 12px; border-bottom: 1px solid #3d3528; }
+  th { background: #342c23; color: #f4a738; font-weight: 700; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; cursor: pointer; user-select: none; }
+  th:hover { background: #342c23; }
+  tr:hover { background: #342c23; }
+  .stage { padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .stage-dead { background: #3a2018; color: #e07b5a; }
+  .stage-completed { background: #2a3a1f; color: #9ed27a; }
+  .stage-pending { background: #3a2c18; color: #f4a738; }
+  .stage-other { background: #2a2a2a; color: #aaa; }
+  .badge { background: #3d3528; color: #a09486; padding: 2px 6px; border-radius: 3px; font-size: 10px; }
+  .badge-yes { background: #2a3a1f; color: #9ed27a; }
+  a { color: #f4a738; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .priority { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { text-align: center; padding: 40px; color: #a09486; }
+</style>
+</head>
+<body>
+<h1>🚧 Carrier Orphans — Insurance jobs missing a carrier</h1>
+<p class="sub">Insurance-typed jobs with no carrier on file. Most are dead leads (let go); the rest are real customers who need the carrier backfilled in the portal so resurrection campaigns + storm playbooks + adjuster pre-calls work properly.</p>
+
+<div class="stats" id="stats"></div>
+
+<div class="controls">
+  <label>Stage:
+    <select id="filterStage">
+      <option value="">All</option>
+      <option value="actionable">Actionable (not Dead)</option>
+      <option value="completed">Job Completed only</option>
+      <option value="Dead">Dead only</option>
+    </select>
+  </label>
+  <label>Rep:
+    <select id="filterRep"><option value="">All reps</option></select>
+  </label>
+  <label>Has docs:
+    <select id="filterDocs">
+      <option value="">Any</option>
+      <option value="yes">Has adjuster or claim#</option>
+      <option value="no">No backfill hints</option>
+    </select>
+  </label>
+  <span style="flex:1"></span>
+  <span id="count" style="color:#a09486;font-size:12px"></span>
+</div>
+
+<table>
+  <thead>
+    <tr>
+      <th data-sort="priority" data-dir="desc">Priority</th>
+      <th data-sort="stage">Stage</th>
+      <th data-sort="customer">Customer</th>
+      <th data-sort="address">Address</th>
+      <th data-sort="salesRep">Rep</th>
+      <th data-sort="signedDate">Signed</th>
+      <th data-sort="jobTotal" data-dir="desc">$ Total</th>
+      <th>Docs</th>
+      <th>Portal</th>
+    </tr>
+  </thead>
+  <tbody id="rows"></tbody>
+</table>
+
+<script>
+let DATA;
+let view = [];
+const sortState = { key: 'priority', dir: 'desc' };
+const filterEls = { stage: 'filterStage', rep: 'filterRep', docs: 'filterDocs' };
+
+async function load() {
+  DATA = await (await fetch('/carrier-orphans.json')).json();
+  renderStats();
+  populateRepFilter();
+  refresh();
+  attachHandlers();
+}
+
+function renderStats() {
+  const html = [
+    ['Total orphans', DATA.totalOrphans],
+    ['Actionable (not Dead)', DATA.actionable.length],
+    ['Have adjuster or claim#', DATA.withDocs],
+    ['Completed (urgent)', DATA.all.filter(j => j.stage === 'Job Completed').length],
+  ].map(([l, n]) => `<div class="stat"><div class="n">${n}</div><div class="l">${l}</div></div>`).join('');
+  document.getElementById('stats').innerHTML = html;
+}
+
+function populateRepFilter() {
+  const sel = document.getElementById('filterRep');
+  for (const { rep, count } of DATA.byRep) {
+    const opt = document.createElement('option');
+    opt.value = rep;
+    opt.textContent = `${rep} (${count})`;
+    sel.appendChild(opt);
+  }
+}
+
+function attachHandlers() {
+  for (const id of Object.values(filterEls)) {
+    document.getElementById(id).addEventListener('change', refresh);
+  }
+  document.querySelectorAll('th[data-sort]').forEach(th => th.addEventListener('click', () => {
+    const k = th.dataset.sort;
+    sortState.dir = (sortState.key === k && sortState.dir === 'desc') ? 'asc' : 'desc';
+    sortState.key = k;
+    refresh();
+  }));
+}
+
+function refresh() {
+  const stage = document.getElementById('filterStage').value;
+  const rep = document.getElementById('filterRep').value;
+  const docs = document.getElementById('filterDocs').value;
+
+  view = DATA.all.filter(j => {
+    if (stage === 'actionable' && j.stage === 'Dead') return false;
+    if (stage === 'completed' && j.stage !== 'Job Completed') return false;
+    if (stage && stage !== 'actionable' && stage !== 'completed' && j.stage !== stage) return false;
+    if (rep && j.salesRep !== rep) return false;
+    if (docs === 'yes' && !j.hasDocs) return false;
+    if (docs === 'no' && j.hasDocs) return false;
+    return true;
+  });
+
+  view.sort((a, b) => {
+    const k = sortState.key;
+    const av = a[k] ?? '';
+    const bv = b[k] ?? '';
+    const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+    return sortState.dir === 'desc' ? -cmp : cmp;
+  });
+
+  document.getElementById('count').textContent = `${view.length} jobs shown`;
+  renderRows();
+}
+
+function stageClass(s) {
+  if (s === 'Dead') return 'stage-dead';
+  if (s === 'Job Completed') return 'stage-completed';
+  if (/Pending/.test(s)) return 'stage-pending';
+  return 'stage-other';
+}
+
+function renderRows() {
+  const tbody = document.getElementById('rows');
+  if (!view.length) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty">No matches</td></tr>';
+    return;
+  }
+  tbody.innerHTML = view.slice(0, 500).map(j => `
+    <tr>
+      <td class="priority">${j.priority.toFixed(1)}</td>
+      <td><span class="stage ${stageClass(j.stage)}">${j.stage || ''}</span></td>
+      <td>${j.customer || ''}</td>
+      <td>${j.address || ''}</td>
+      <td>${j.salesRep || '<em>unassigned</em>'}</td>
+      <td>${(j.signedDate || '').slice(0, 10)}</td>
+      <td class="priority">${j.jobTotal ? '$' + Math.round(j.jobTotal).toLocaleString() : ''}</td>
+      <td>${j.hasDocs ? `<span class="badge badge-yes">${[j.hasAdjuster && 'adj', j.hasClaim && 'claim#'].filter(Boolean).join('+')}</span>` : '<span class="badge">—</span>'}</td>
+      <td><a href="${j.portalUrl}" target="_blank">🔗 Open</a></td>
+    </tr>
+  `).join('');
+  if (view.length > 500) {
+    tbody.innerHTML += `<tr><td colspan="9" class="empty">+ ${view.length - 500} more (refine filters)</td></tr>`;
+  }
+}
+
+load();
+</script>
+</body>
+</html>

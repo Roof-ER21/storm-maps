@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Upgrade Campaigns</title>
+<link rel="icon" href="data:," />
+<style>
+  :root {
+    --bg: #1a1612;
+    --panel: #2a241e;
+    --border: #3d3528;
+    --text: #f0ebe2;
+    --muted: #a09486;
+    --accent: #f4a738;
+    --green: #10b981;
+    --yellow: #f59e0b;
+    --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 16px; text-decoration: none; font-size: 13px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1600px; margin: 0 auto; }
+  .campaigns { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-bottom: 24px; }
+  .campaign { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px; cursor: pointer; transition: border-color 0.15s, transform 0.15s; }
+  .campaign:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .campaign.active { border-color: var(--accent); background: #342c23; }
+  .campaign .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .campaign .count { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .campaign .desc { font-size: 12px; color: var(--text); margin-top: 6px; line-height: 1.4; }
+  .campaign .rev { font-size: 12px; color: var(--green); margin-top: 4px; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 16px; }
+  section h2 { margin: 0 0 4px; font-size: 15px; font-weight: 600; }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+  .toolbar { display: flex; gap: 8px; }
+  .btn { background: var(--accent); color: #1a1612; border: none; border-radius: 4px; padding: 6px 12px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn:hover { opacity: 0.85; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 6px; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: var(--panel); cursor: pointer; user-select: none; }
+  th:hover { color: var(--accent); }
+  th .arrow { color: var(--accent); margin-left: 4px; }
+  td { padding: 6px; border-bottom: 1px solid #342c23; }
+  tbody tr:hover { background: #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .scroll { max-height: 640px; overflow-y: auto; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; background: #342c23; color: var(--text); margin-right: 4px; }
+  .empty { padding: 40px; text-align: center; color: var(--muted); }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Upgrade Campaigns — Customer Segmentation for Marketing</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="roofdocs-map.html">Map</a>
+    <a href="analytics.html">Analytics</a>
+    <a href="customers.html">Customers</a>
+    <a href="upgrade-campaigns.html" class="active">Campaigns</a>
+    <a href="resurrection.html">Resurrection</a>
+    <a href="receivables.html">AR</a>
+    <a href="storm-exposure.html">Exposure</a>
+    <a href="storm-playbook.html">Playbook</a>
+    <a href="adjusters.html">Adjusters</a>
+    <a href="reps.html">Reps</a>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+    <div class="campaigns" id="campaigns"></div>
+
+    <section>
+      <h2 id="cmp-title">Pick a campaign above</h2>
+      <div class="desc" id="cmp-desc"></div>
+      <div class="filter-bar">
+        <label>Search
+          <input id="f-search" type="text" placeholder="customer / address / rep / carrier" style="width:340px" />
+        </label>
+        <label>State
+          <select id="f-state"><option value="">All</option></select>
+        </label>
+        <label>Min total job value
+          <input id="f-minval" type="number" placeholder="0" style="width:120px" />
+        </label>
+        <label>&nbsp;
+          <div class="toolbar">
+            <button class="btn" id="btn-csv">Export CSV</button>
+            <button class="btn secondary" id="btn-emails">Copy Emails (TODO)</button>
+          </div>
+        </label>
+      </div>
+      <div id="cmp-count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
+      <div class="scroll"><table id="tbl"></table></div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ROOF_TRADES = ['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing'];
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
+const isDead = (r) => /dead|cancel/i.test(r.stage || '');
+const yearOf = (s) => s && s.length >= 4 ? Number(s.slice(0, 4)) : null;
+
+let allJobs = [];
+let customers = [];   // [{ key, name, addr, jobs[], trades:Set, totalRev, lastDate }]
+let currentCampaign = null;
+let activeRows = [];
+let sortKey = 'totalRev', sortDir = 'desc';
+
+function custKey(r) {
+  const name = (r.customer || '').trim().toLowerCase();
+  const a1 = (r.addressLine1 || '').trim().toLowerCase();
+  const city = (r.city || '').trim().toLowerCase();
+  return name + '|' + a1 + '|' + city;
+}
+
+function buildCustomers() {
+  const map = new Map();
+  for (const j of allJobs) {
+    const k = custKey(j);
+    if (!k.replace(/\|/g, '').trim()) continue;
+    if (!map.has(k)) map.set(k, {
+      key: k,
+      name: j.customer || '(unknown)',
+      addr: [j.addressLine1, j.city, j.state, j.zip].filter(Boolean).join(', '),
+      city: j.city, state: j.state, zip: j.zip,
+      addressLine1: j.addressLine1,
+      lat: j.lat, lng: j.lng,
+      jobs: [],
+      trades: new Set(),
+      carriers: new Set(),
+      reps: new Set(),
+      totalRev: 0,
+      lastDate: '',
+      firstDate: '',
+      hasCompletedRoof: false,
+      lastCompletedRoofDate: '',
+      anyDead: false,
+      anyOpen: false,
+    });
+    const c = map.get(k);
+    c.jobs.push(j);
+    for (const t of (j.trades || [])) c.trades.add(t);
+    if (j.insurance) c.carriers.add(j.insurance);
+    if (j.salesRep) c.reps.add(j.salesRep);
+    if (j.jobTotal) c.totalRev += j.jobTotal;
+    const d = j.completedDate || j.signedDate;
+    if (d) {
+      if (!c.lastDate || d > c.lastDate) c.lastDate = d;
+      if (!c.firstDate || d < c.firstDate) c.firstDate = d;
+    }
+    if (isCompleted(j) && (j.trades || []).some((t) => ROOF_TRADES.includes(t))) {
+      c.hasCompletedRoof = true;
+      const cd = j.completedDate || j.signedDate;
+      if (cd && (!c.lastCompletedRoofDate || cd > c.lastCompletedRoofDate)) {
+        c.lastCompletedRoofDate = cd;
+      }
+    }
+    if (isDead(j)) c.anyDead = true;
+    else if (!isCompleted(j)) c.anyOpen = true;
+  }
+  return [...map.values()];
+}
+
+const CAMPAIGNS = {
+  'siding-upsell': {
+    label: 'Siding Upsell — Roof done, no Siding',
+    desc: 'Customers who have completed roofing work with Roof Docs but never had siding done. Pitch matching siding upgrade.',
+    filter: (c) => [...c.trades].some((t) => ROOF_TRADES.includes(t)) && !c.trades.has('Siding'),
+  },
+  'roof-upsell': {
+    label: 'Roof Upsell — Siding done, no Roof',
+    desc: 'Customers who had siding work but never a roof. Could be a roof-only siding job; review for re-engagement.',
+    filter: (c) => c.trades.has('Siding') && ![...c.trades].some((t) => ROOF_TRADES.includes(t)),
+  },
+  'solar': {
+    label: 'Solar Candidates — Completed roof 2018-2024',
+    desc: 'Customers with a completed Roof Docs roof installed 1-7 years ago. Mature roof in solid condition, ideal for solar mount partnerships.',
+    filter: (c) => {
+      if (!c.hasCompletedRoof) return false;
+      const y = yearOf(c.lastCompletedRoofDate);
+      return y && y >= 2018 && y <= 2024;
+    },
+  },
+  'gutter-upsell': {
+    label: 'Gutter Upsell — Roof done, no Gutters',
+    desc: 'Roof customers who never added gutters/downspouts. Easy add-on if roof was installed within last 5 years.',
+    filter: (c) => [...c.trades].some((t) => ROOF_TRADES.includes(t)) && !c.trades.has('Gutters & Downspouts'),
+  },
+  'skylight-upsell': {
+    label: 'Skylight Upsell — Roof done, no Skylights',
+    desc: 'Existing roof customers who never installed skylights. Good for spring outreach.',
+    filter: (c) => [...c.trades].some((t) => ROOF_TRADES.includes(t)) && !c.trades.has('Skylights'),
+  },
+  'premium-followup': {
+    label: 'Premium Customer Follow-up — Total >$30k',
+    desc: 'High-value customers who have spent $30k+ with Roof Docs. Pitch additional services, warranty extensions, or referral incentives.',
+    filter: (c) => c.totalRev >= 30000,
+  },
+  'multi-job-repeat': {
+    label: 'Repeat Customers — 2+ jobs',
+    desc: 'Customers who came back for more work. Strongest referral candidates and warmest leads for new offerings.',
+    filter: (c) => c.jobs.length >= 2,
+  },
+  'multi-trade-complete': {
+    label: 'Full Stack Customers — Roof + Siding + Gutter',
+    desc: 'Customers who got the full exterior treatment. Premium service tier and best brand advocates.',
+    filter: (c) => [...c.trades].some((t) => ROOF_TRADES.includes(t)) && c.trades.has('Siding') && c.trades.has('Gutters & Downspouts'),
+  },
+  'high-deductible': {
+    label: 'High Deductible — $2500+',
+    desc: 'Customers whose insurance had a $2,500+ deductible. Good fits for financing programs.',
+    filter: (c) => c.jobs.some((j) => j.deductible && j.deductible >= 2500),
+  },
+};
+
+function renderCampaigns() {
+  const list = $('campaigns');
+  list.innerHTML = '';
+  for (const [id, cmp] of Object.entries(CAMPAIGNS)) {
+    const matches = customers.filter(cmp.filter);
+    const rev = matches.reduce((s, c) => s + c.totalRev, 0);
+    const el = document.createElement('div');
+    el.className = 'campaign' + (currentCampaign === id ? ' active' : '');
+    el.innerHTML = `
+      <div class="label">${cmp.label.split(' — ')[0]}</div>
+      <div class="count">${matches.length.toLocaleString()}</div>
+      <div class="desc">${cmp.label.split(' — ')[1] || cmp.label}</div>
+      <div class="rev">${fmt.money(rev)} prior revenue</div>
+    `;
+    el.addEventListener('click', () => selectCampaign(id));
+    list.appendChild(el);
+  }
+}
+
+function selectCampaign(id) {
+  currentCampaign = id;
+  const cmp = CAMPAIGNS[id];
+  $('cmp-title').textContent = cmp.label;
+  $('cmp-desc').textContent = cmp.desc;
+  renderCampaigns();
+  applyFilters();
+}
+
+function applyFilters() {
+  if (!currentCampaign) return;
+  const cmp = CAMPAIGNS[currentCampaign];
+  let rows = customers.filter(cmp.filter);
+  const q = $('f-search').value.trim().toLowerCase();
+  if (q) {
+    rows = rows.filter((c) =>
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.addr || '').toLowerCase().includes(q) ||
+      [...c.reps].some((r) => r.toLowerCase().includes(q)) ||
+      [...c.carriers].some((c2) => c2.toLowerCase().includes(q))
+    );
+  }
+  const st = $('f-state').value;
+  if (st) rows = rows.filter((c) => c.state === st);
+  const minVal = Number($('f-minval').value || 0);
+  if (minVal) rows = rows.filter((c) => c.totalRev >= minVal);
+  activeRows = rows;
+  $('cmp-count').textContent = `${rows.length.toLocaleString()} customers · ${fmt.money(rows.reduce((s, c) => s + c.totalRev, 0))} prior revenue`;
+  renderTable(rows);
+}
+
+function sortVal(c, k) {
+  if (k === 'name') return c.name || '';
+  if (k === 'addr') return c.addr || '';
+  if (k === 'state') return c.state || '';
+  if (k === 'trades') return [...c.trades].sort().join(',');
+  if (k === 'carriers') return [...c.carriers].sort().join(',');
+  if (k === 'jobCount') return c.jobs.length;
+  if (k === 'totalRev') return c.totalRev || 0;
+  if (k === 'lastDate') return c.lastDate || '';
+  return '';
+}
+
+function renderTable(rows) {
+  const tbl = $('tbl');
+  if (rows.length === 0) {
+    tbl.innerHTML = '<tr><td class="empty">No customers match this campaign + filters.</td></tr>';
+    return;
+  }
+  rows = [...rows].sort((a, b) => {
+    const va = sortVal(a, sortKey), vb = sortVal(b, sortKey);
+    if (typeof va === 'number') return sortDir === 'asc' ? va - vb : vb - va;
+    return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+  });
+  const arrow = (k) => sortKey === k ? `<span style="color:var(--accent);margin-left:4px">${sortDir === 'asc' ? '▲' : '▼'}</span>` : '';
+  const head = `<thead><tr>
+    <th data-k="name" style="cursor:pointer">Customer${arrow('name')}</th>
+    <th data-k="addr" style="cursor:pointer">Address${arrow('addr')}</th>
+    <th data-k="state" style="cursor:pointer">State${arrow('state')}</th>
+    <th data-k="trades" style="cursor:pointer">Trades on file${arrow('trades')}</th>
+    <th data-k="carriers" style="cursor:pointer">Carriers${arrow('carriers')}</th>
+    <th data-k="jobCount" class="num" style="cursor:pointer">Jobs${arrow('jobCount')}</th>
+    <th data-k="totalRev" class="num" style="cursor:pointer">Prior Revenue${arrow('totalRev')}</th>
+    <th data-k="lastDate" class="num" style="cursor:pointer">Last contact${arrow('lastDate')}</th>
+  </tr></thead>`;
+  const body = '<tbody>' + rows.slice(0, 2000).map((c) => `
+    <tr>
+      <td>${c.name}</td>
+      <td>${c.addr || '—'}</td>
+      <td>${c.state || '—'}</td>
+      <td><span style="font-size:11px">${[...c.trades].sort().join(', ') || '—'}</span></td>
+      <td><span style="font-size:11px">${[...c.carriers].sort().join(', ') || '—'}</span></td>
+      <td class="num">${c.jobs.length}</td>
+      <td class="num money">${fmt.money(c.totalRev)}</td>
+      <td class="num">${c.lastDate || '—'}</td>
+    </tr>
+  `).join('') + '</tbody>';
+  tbl.innerHTML = head + body;
+  tbl.querySelectorAll('th[data-k]').forEach((th) => th.addEventListener('click', () => {
+    const k = th.dataset.k;
+    if (sortKey === k) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    else { sortKey = k; sortDir = 'desc'; }
+    renderTable(activeRows);
+  }));
+}
+
+function exportCSV() {
+  if (!activeRows.length) return;
+  const headers = ['Customer', 'Address', 'City', 'State', 'Zip', 'Trades', 'Carriers', 'Reps', 'Jobs', 'Prior Revenue', 'Last Contact', 'Lat', 'Lng'];
+  const lines = [headers.join(',')];
+  for (const c of activeRows) {
+    const trades = [...c.trades].sort().join(';');
+    const carriers = [...c.carriers].sort().join(';');
+    const reps = [...c.reps].sort().join(';');
+    const row = [
+      c.name, c.addressLine1, c.city, c.state, c.zip, trades, carriers, reps,
+      c.jobs.length, Math.round(c.totalRev), c.lastDate, c.lat, c.lng,
+    ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
+    lines.push(row.join(','));
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `roofdocs-${currentCampaign}-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function start() {
+  const res = await fetch('projects.json');
+  allJobs = await res.json();
+  customers = buildCustomers();
+  $('loading').style.display = 'none';
+  $('content').style.display = '';
+
+  // Populate state filter
+  const states = new Set();
+  for (const c of customers) if (c.state) states.add(c.state);
+  for (const s of [...states].sort()) {
+    const o = document.createElement('option'); o.value = s; o.textContent = s; $('f-state').appendChild(o);
+  }
+  $('f-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 250); });
+  $('f-state').addEventListener('change', applyFilters);
+  $('f-minval').addEventListener('input', () => { clearTimeout(window._u); window._u = setTimeout(applyFilters, 250); });
+  $('btn-csv').addEventListener('click', exportCSV);
+
+  renderCampaigns();
+  selectCampaign('siding-upsell');
+}
+
+start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
+</script>
+</body>
+</html>
