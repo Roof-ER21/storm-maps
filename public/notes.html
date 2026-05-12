@@ -84,6 +84,25 @@
         <label>State <select id="f-state"><option value="">All</option></select></label>
         <label>Sales Rep <select id="f-rep"><option value="">All</option></select></label>
         <label>Carrier <select id="f-carrier"><option value="">All</option></select></label>
+        <label>Job Type <select id="f-jobtype">
+          <option value="">All</option>
+          <option>Insurance</option>
+          <option>Insurance Conversion</option>
+          <option>Retail</option>
+          <option>Repair</option>
+          <option>Public Adjuster</option>
+        </select></label>
+        <label>Stage <select id="f-stage">
+          <option value="">All</option>
+          <option>Job Completed</option>
+          <option>Pending Approval</option>
+          <option>Appointment Pending</option>
+          <option>Inspection Pending</option>
+          <option>Dead</option>
+          <option>Scheduled</option>
+          <option>Downpayment</option>
+        </select></label>
+        <label>Signed since <input type="date" id="f-since" style="width:130px" /></label>
       </div>
       <div id="count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
       <div class="scroll" id="results"></div>
@@ -131,6 +150,12 @@ function applyFilters() {
   if (rep) rows = rows.filter((r) => r.salesRep === rep);
   const ins = $('f-carrier').value;
   if (ins) rows = rows.filter((r) => r.insurance === ins);
+  const jobType = $('f-jobtype').value;
+  if (jobType) rows = rows.filter((r) => r.jobType === jobType);
+  const stage = $('f-stage').value;
+  if (stage) rows = rows.filter((r) => r.stage === stage);
+  const since = $('f-since').value;
+  if (since) rows = rows.filter((r) => r.signedDate && r.signedDate >= since);
   active = rows;
   $('count').textContent = `${rows.length.toLocaleString()} matching jobs`;
   render(rows.slice(0, 300), q);
@@ -173,7 +198,7 @@ async function start() {
   for (const r of [...reps].sort()) { const o = document.createElement('option'); o.value = r; o.textContent = r; $('f-rep').appendChild(o); }
   for (const c of [...carriers].sort()) { const o = document.createElement('option'); o.value = c; o.textContent = c; $('f-carrier').appendChild(o); }
   $('f-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 250); });
-  for (const id of ['f-type', 'f-state', 'f-rep', 'f-carrier']) $(id).addEventListener('change', applyFilters);
+  for (const id of ['f-type', 'f-state', 'f-rep', 'f-carrier', 'f-jobtype', 'f-stage', 'f-since']) $(id).addEventListener('change', applyFilters);
   renderKPIs();
   applyFilters();
 }

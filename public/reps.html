@@ -195,7 +195,7 @@ function showRep(name) {
   // Top biggest jobs (by jobTotal, completed)
   const bigJobs = [...r.jobs].filter((j) => j.jobTotal).sort((a, b) => (b.jobTotal || 0) - (a.jobTotal || 0)).slice(0, 10);
   $('rep-detail').innerHTML = `
-    <h2>${r.name}</h2>
+    <h2>${r.name} <a class="riq-link" href="cheat-sheet.html?type=rep&name=${encodeURIComponent(r.name)}" style="font-size:13px;margin-left:8px">🎓 Open Cheat Sheet →</a></h2>
     <div class="desc">Full book of business · ${r.signed} signed · ${r.completed} completed · ${fmt.money(r.completedRevenue)} closed revenue</div>
     <div class="kpi-row">
       <div class="kpi"><div class="label">Signed</div><div class="value">${fmt.int(r.signed)}</div></div>

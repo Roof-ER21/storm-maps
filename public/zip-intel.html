@@ -71,7 +71,28 @@
       <section>
         <h2>ZIP codes</h2>
         <div class="desc">Sorted by total revenue. Pick a ZIP to see knock script.</div>
-        <div class="filter-bar"><input id="search" placeholder="Search ZIP or city" /></div>
+        <div class="filter-bar" style="display:flex;flex-wrap:wrap;gap:8px;align-items:end;margin-bottom:12px">
+          <input id="search" placeholder="Search ZIP or city" style="flex:1;min-width:160px;margin-bottom:0" />
+          <label style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px">State
+            <select id="f-state" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:13px">
+              <option value="">All</option><option>VA</option><option>MD</option><option>PA</option><option>DC</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Min jobs
+            <select id="f-min" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:13px">
+              <option value="0">All</option><option value="5">5+</option><option value="10">10+</option><option value="25">25+</option><option value="50">50+</option><option value="100">100+</option>
+            </select>
+          </label>
+          <label style="font-size:11px;color:var(--muted);display:flex;flex-direction:column;gap:3px">Sort by
+            <select id="f-sort" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:13px">
+              <option value="revenue">Revenue</option>
+              <option value="signed">Job count</option>
+              <option value="closeRate">Close rate</option>
+              <option value="avgApprovedJob">Avg job $</option>
+              <option value="hailHits">Hail hits</option>
+            </select>
+          </label>
+        </div>
         <div id="count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
         <div class="zip-list" id="zip-list"></div>
       </section>
@@ -136,14 +157,22 @@ function build(jobs) {
 
 function renderList() {
   const q = ($('search').value || '').trim().toLowerCase();
+  const stateF = $('f-state').value;
+  const minJobs = parseInt($('f-min').value, 10) || 0;
+  const sortBy = $('f-sort').value;
   let rows = zips;
   if (q) rows = rows.filter((z) => z.zip.includes(q) || z.city.toLowerCase().includes(q));
-  rows.sort((a, b) => b.revenue - a.revenue);
-  $('count').textContent = `${rows.length.toLocaleString()} zips`;
+  if (stateF) {
+    // Approximate state filter — first prevalent state in the zip's jobs.
+    rows = rows.filter((z) => z.jobs.some((j) => j.state === stateF));
+  }
+  if (minJobs > 0) rows = rows.filter((z) => z.signed >= minJobs);
+  rows.sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
+  $('count').textContent = `${rows.length.toLocaleString()} zips · sorted by ${sortBy}`;
   $('zip-list').innerHTML = rows.slice(0, 300).map((z) => `
     <div class="zip-item" data-zip="${z.zip}">
       <div class="zip">${z.zip} — ${z.city}</div>
-      <div class="stats">${z.signed} jobs · ${z.completed} done · ${fmt.money(z.revenue)}</div>
+      <div class="stats">${z.signed} jobs · ${z.completed} done · ${fmt.money(z.revenue)} · ${fmt.pct(z.closeRate)}</div>
     </div>
   `).join('');
   $('zip-list').querySelectorAll('.zip-item').forEach((el) => el.addEventListener('click', () => {
@@ -179,7 +208,7 @@ function showZip(zip) {
     : "we've been working in your neighborhood";
 
   $('detail').innerHTML = `
-    <h2>${z.zip} — ${z.city}</h2>
+    <h2>${z.zip} — ${z.city} <a class="riq-link" href="cheat-sheet.html?type=zip&name=${encodeURIComponent(z.zip)}" style="font-size:13px;margin-left:8px">🎓 Cheat Sheet →</a></h2>
     <div class="desc">${z.signed} jobs · ${z.completed} approved · ${fmt.money(z.revenue)} revenue · ${fmt.pct(z.closeRate)} close rate</div>
 
     <div class="kpi-row">
@@ -248,6 +277,7 @@ async function start() {
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
+  ['f-state', 'f-min', 'f-sort'].forEach((id) => $(id).addEventListener('change', renderList));
   renderList();
   setTimeout(() => $('zip-list').querySelector('.zip-item')?.click(), 50);
 }

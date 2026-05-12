@@ -157,7 +157,7 @@ function show(key) {
   const recent = a.jobs.sort((x, y) => (y.signedDate || '').localeCompare(x.signedDate || '')).slice(0, 20);
 
   $('detail').innerHTML = `
-    <h2>${a.name} · <span style="color:var(--muted);font-weight:400">${a.carrier}</span></h2>
+    <h2>${a.name} · <span style="color:var(--muted);font-weight:400">${a.carrier}</span> <a class="riq-link" href="cheat-sheet.html?type=adjuster&name=${encodeURIComponent(a.name)}" style="font-size:13px;margin-left:8px">🎓 Cheat Sheet →</a></h2>
     <div class="desc">${a.signed} signed · ${a.completed} approved · ${fmt.pct(a.approvalRate)} approval rate</div>
     ${[...a.emails].length || [...a.phones].length ? `<div class="contact">
       ${[...a.emails].map((e) => `<a href="mailto:${e}">📧 ${e}</a>`).join('')}

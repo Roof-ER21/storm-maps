@@ -72,3 +72,5 @@ server/index-legacy.ts.bak
 
 # Dist
 dist/
+public/cheat-sheets.json
+data/cheat-sheets.json
