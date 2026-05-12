@@ -1,8 +1,18 @@
 #!/bin/bash
-# Nightly Roof Docs Intel refresh wrapper.
-# Called by launchd: ~/Library/LaunchAgents/com.theroofdocs.intel-refresh.plist
-# Fires at 3:33 AM ET every day. Skips if the last successful run was within 22h
-# (so a manual mid-day refresh doesn't trigger a redundant nightly).
+# Stealth cron wrapper for RIQ 21 intel refresh.
+#
+# OPSEC profile:
+#   • Runs ONLY on weekdays (Mon-Fri) — weekends skipped
+#   • Adds random jitter 0–180 min before doing work — actual execution time
+#     varies day-to-day so the access log doesn't show a perfect cadence
+#   • Skips if last successful run was within ~72h — typical cadence is
+#     ~3x/week, not nightly
+#   • NEVER hits portal.theroofdocs.com — only IEM (NOAA) + Railway Postgres
+#     (the heavy /admin/exports pull is manual-only via ./refresh-all.sh)
+#
+# Called by ~/Library/LaunchAgents/com.theroofdocs.intel-refresh.plist which
+# fires weekday mornings; this wrapper does the random delay + skip-window
+# logic so the actual API traffic looks like organic business-hour usage.
 
 set -u
 
@@ -12,35 +22,44 @@ LOG="$LOG_DIR/cron-refresh.log"
 LAST_OK="$LOG_DIR/last-ok.txt"
 
 mkdir -p "$LOG_DIR"
-
-# Initialize PATH so node + curl are found under launchd
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
+# Weekday check (1=Mon, 7=Sun on macOS date)
+dow=$(date +%u)
+if [ "$dow" -ge 6 ]; then
+  echo "[$(date -Iseconds)] Skipped — weekend ($dow)" >> "$LOG"
+  exit 0
+fi
+
+# Skip if we ran successfully in the last 72h. Combined with the random jitter
+# below, actual runs fall into a ~3x/week cadence at varying weekday times.
 now=$(date -u +%s)
 last_ok=0
 if [ -f "$LAST_OK" ]; then
   last_ok=$(cat "$LAST_OK" 2>/dev/null || echo 0)
 fi
-
-# 22h skip window (one hour of jitter so daily fires aren't blocked by manual runs)
 since_last=$(( now - last_ok ))
-if [ "$since_last" -lt $(( 22 * 3600 )) ]; then
-  echo "[$(date -Iseconds)] Skipped — last success was ${since_last}s ago (< 22h)" >> "$LOG"
+if [ "$since_last" -lt $(( 72 * 3600 )) ]; then
+  echo "[$(date -Iseconds)] Skipped — last success ${since_last}s ago (< 72h)" >> "$LOG"
   exit 0
 fi
 
-echo "" >> "$LOG"
-echo "=== [$(date -Iseconds)] Nightly Intel refresh starting ===" >> "$LOG"
+# Random jitter 0–180 min so the actual fire time varies day-to-day.
+# launchd fires at e.g. 9:17am; this stretches actual execution across
+# 9:17am–12:17pm in a way that doesn't pattern-match scraping.
+jitter=$(( RANDOM % (180 * 60) ))
+echo "[$(date -Iseconds)] Sleeping ${jitter}s ($((jitter/60)) min) of jitter before stealth refresh…" >> "$LOG"
+sleep "$jitter"
 
-# Token must be present + non-expired; refresh-all.sh checks this and exits early.
-"$BASE/scripts/roofdocs/refresh-all.sh" >> "$LOG" 2>&1
+echo "" >> "$LOG"
+echo "=== [$(date -Iseconds)] Stealth refresh starting ===" >> "$LOG"
+
+"$BASE/scripts/roofdocs/refresh-stealth.sh" >> "$LOG" 2>&1
 rc=$?
 
 if [ "$rc" -eq 0 ]; then
-  echo "=== [$(date -Iseconds)] Refresh OK — pushing to Railway Postgres ===" >> "$LOG"
+  echo "=== [$(date -Iseconds)] Local stealth refresh OK — pushing to Railway Postgres ===" >> "$LOG"
 
-  # Push fresh data → Railway Postgres so the live RIQ 21 service sees it.
-  # Uses the public proxy URL because the cron runs on the Mac, not inside Railway.
   RIQ_DB_URL="${RIQ_DB_PUBLIC_URL:-postgresql://postgres:zpIxviFXCPpsQJvcGibGwKhBBjTHJbSx@gondola.proxy.rlwy.net:48564/railway}"
   DATABASE_URL="$RIQ_DB_URL" node "$BASE/scripts/roofdocs/import-to-postgres.mjs" >> "$LOG" 2>&1
   push_rc=$?
@@ -49,14 +68,14 @@ if [ "$rc" -eq 0 ]; then
     echo "$now" > "$LAST_OK"
     echo "=== [$(date -Iseconds)] Railway push OK ===" >> "$LOG"
   else
-    echo "=== [$(date -Iseconds)] Railway push FAILED (exit $push_rc) — local files still updated ===" >> "$LOG"
+    echo "=== [$(date -Iseconds)] Railway push FAILED (exit $push_rc) ===" >> "$LOG"
     rc=$push_rc
   fi
 else
-  echo "=== [$(date -Iseconds)] Refresh FAILED (exit $rc) ===" >> "$LOG"
+  echo "=== [$(date -Iseconds)] Stealth refresh FAILED (exit $rc) ===" >> "$LOG"
 fi
 
-# Tail the log so it doesn't grow forever (keep last 5000 lines).
+# Tail the log so it doesn't grow forever.
 if [ "$(wc -l < "$LOG")" -gt 5000 ]; then
   tail -3000 "$LOG" > "$LOG.tmp" && mv "$LOG.tmp" "$LOG"
 fi
