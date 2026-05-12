@@ -37,8 +37,21 @@ echo "=== [$(date -Iseconds)] Nightly Intel refresh starting ===" >> "$LOG"
 rc=$?
 
 if [ "$rc" -eq 0 ]; then
-  echo "$now" > "$LAST_OK"
-  echo "=== [$(date -Iseconds)] Refresh OK (exit $rc) ===" >> "$LOG"
+  echo "=== [$(date -Iseconds)] Refresh OK — pushing to Railway Postgres ===" >> "$LOG"
+
+  # Push fresh data → Railway Postgres so the live RIQ 21 service sees it.
+  # Uses the public proxy URL because the cron runs on the Mac, not inside Railway.
+  RIQ_DB_URL="${RIQ_DB_PUBLIC_URL:-postgresql://postgres:zpIxviFXCPpsQJvcGibGwKhBBjTHJbSx@gondola.proxy.rlwy.net:48564/railway}"
+  DATABASE_URL="$RIQ_DB_URL" node "$BASE/scripts/roofdocs/import-to-postgres.mjs" >> "$LOG" 2>&1
+  push_rc=$?
+
+  if [ "$push_rc" -eq 0 ]; then
+    echo "$now" > "$LAST_OK"
+    echo "=== [$(date -Iseconds)] Railway push OK ===" >> "$LOG"
+  else
+    echo "=== [$(date -Iseconds)] Railway push FAILED (exit $push_rc) — local files still updated ===" >> "$LOG"
+    rc=$push_rc
+  fi
 else
   echo "=== [$(date -Iseconds)] Refresh FAILED (exit $rc) ===" >> "$LOG"
 fi
