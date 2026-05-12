@@ -90,10 +90,15 @@ const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 let jobs = [], reps = [];
 
+// jobType buckets — matches Field Portal's "Sales" splits.
+const INS_TYPES = new Set(['Insurance', 'Insurance Conversion']);
+const RETAIL_TYPES = new Set(['Retail']);
+
 function buildReps() {
   const m = new Map();
   for (const j of jobs) {
-    const rep = j.salesRep;
+    // Trim trailing whitespace — fixes 'Jason Brown ' miscategorization.
+    const rep = (j.salesRep || '').trim();
     if (!rep) continue;
     if (!m.has(rep)) m.set(rep, { name: rep, jobs: [] });
     m.get(rep).jobs.push(j);
@@ -101,6 +106,10 @@ function buildReps() {
   return [...m.values()].map((r) => {
     let signed = 0, completed = 0, dead = 0, open = 0;
     let revenue = 0, compRev = 0;
+    // Field Portal-matching totals: insurance uses insuranceTotal on SIGNED jobs;
+    // retail uses jobTotal on SIGNED jobs. Both restricted by jobType.
+    let insSalesTotal = 0, retailSalesTotal = 0;
+    let insSignedCount = 0, retailSignedCount = 0;
     const trades = {}, carriers = {}, cities = {}, zips = {};
     const speedDays = [];
     const completeDays = [];
@@ -110,6 +119,16 @@ function buildReps() {
       else if (isDead(j)) dead++;
       else open++;
       if (j.jobTotal) revenue += j.jobTotal;
+      // Field Portal-style Sales: only count signed jobs by jobType, use insuranceTotal for insurance.
+      if (j.signedDate) {
+        if (INS_TYPES.has(j.jobType)) {
+          insSalesTotal += j.insuranceTotal || 0;
+          insSignedCount++;
+        } else if (RETAIL_TYPES.has(j.jobType)) {
+          retailSalesTotal += j.jobTotal || 0;
+          retailSignedCount++;
+        }
+      }
       for (const t of (j.trades || [])) trades[t] = (trades[t] || 0) + 1;
       if (j.insurance) carriers[j.insurance] = (carriers[j.insurance] || 0) + 1;
       if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
@@ -122,6 +141,10 @@ function buildReps() {
     return {
       name: r.name, signed, completed, dead, open,
       revenue, completedRevenue: compRev,
+      // Field Portal-style splits — match what reps see in the iOS app.
+      insSalesTotal, retailSalesTotal,
+      insSignedCount, retailSignedCount,
+      totalSalesAllTime: insSalesTotal + retailSalesTotal,
       closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
       avgApprovedJob: completed ? compRev / completed : null,
       trades, carriers, cities, zips,
@@ -130,7 +153,7 @@ function buildReps() {
       medianCompleteDays: completeDays.length ? completeDays[Math.floor(completeDays.length / 2)] : null,
       topBy: (obj, n = 5) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n),
     };
-  }).sort((a, b) => b.signed - a.signed);
+  }).sort((a, b) => b.totalSalesAllTime - a.totalSalesAllTime);
 }
 
 function renderRepList() {
@@ -141,7 +164,13 @@ function renderRepList() {
   $('rep-list').innerHTML = rows.map((r) => `
     <div class="rep-item" data-rep="${r.name.replace(/"/g, '&quot;')}">
       <div class="name">${r.name}</div>
-      <div class="stats">${r.signed} signed · ${r.completed} done · ${fmt.money(r.completedRevenue)}</div>
+      <div class="stats">
+        ${r.signed} signed · ${r.completed} done<br>
+        <span style="color: var(--accent, #f4a738); font-weight:600">${fmt.money(r.totalSalesAllTime)}</span>
+        <span style="color: var(--muted, #a09486); font-size: 11px;">
+          (Ins ${fmt.money(r.insSalesTotal)} + Retail ${fmt.money(r.retailSalesTotal)})
+        </span>
+      </div>
     </div>
   `).join('');
   $('rep-list').querySelectorAll('.rep-item').forEach((el) => el.addEventListener('click', () => {

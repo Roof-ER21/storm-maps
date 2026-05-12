@@ -92,6 +92,7 @@
   </div>
 </main>
 
+<script src="/riq-links.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const ROOF_TRADES = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing']);
@@ -231,7 +232,10 @@ function renderTable(rows) {
     <tr>
       ${COLUMNS.map((col) => {
         let v = c[col.key];
-        if (col.money) v = fmt.money(v);
+        if (col.key === 'name') {
+          // Click customer name → open their profile (customer-detail.html)
+          v = window.RIQ ? window.RIQ.custLink({ customer: c.name, addressLine1: c.addressLine1, city: c.city }) : (v ?? '—');
+        } else if (col.money) v = fmt.money(v);
         else if (col.num) v = v == null ? '—' : fmt.int(v);
         else v = v ?? '—';
         return `<td class="${col.num ? 'num' : ''} ${col.money ? 'money' : ''}">${v}</td>`;
