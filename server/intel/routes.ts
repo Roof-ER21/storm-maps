@@ -109,6 +109,14 @@ router.get('/api/intel/health', async (_req, res) => {
   });
 });
 
+/** Client-visible config (e.g. Google Maps key). Safe to expose — key is
+ * HTTP-referrer-restricted to RIQ origins. */
+router.get('/api/intel/_config', (_req, res) => {
+  res.json({
+    googleMapsKey: process.env.GOOGLE_MAPS_API_KEY || process.env.VITE_GOOGLE_MAPS_API_KEY || '',
+  });
+});
+
 /** Endpoint discovery — what's available + how to use it. */
 router.get('/api/intel/_meta', (_req, res) => {
   res.json({

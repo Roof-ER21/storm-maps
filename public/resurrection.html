@@ -5,9 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Roof Docs — Resurrection List</title>
 <link rel="icon" href="data:," />
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
 <style>
   :root {
     --bg: #1a1612;
@@ -35,8 +32,6 @@
   .layout { display: grid; grid-template-columns: 1fr 520px; gap: 16px; margin-top: 16px; }
   @media (max-width: 1200px) { .layout { grid-template-columns: 1fr; } }
   #map { width: 100%; height: 520px; background: #342c23; border: 1px solid var(--border); border-radius: 8px; }
-  .leaflet-popup-content-wrapper { background: var(--panel); color: var(--text); }
-  .leaflet-popup-tip { background: var(--panel); }
   .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
   .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
   .filter-bar label { font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
@@ -101,13 +96,15 @@
       </section>
       <section style="margin: 0; padding: 8px">
         <div id="map"></div>
+        <div id="job-detail" style="margin-top: 10px; background: #342c23; border: 1px solid var(--border); border-radius: 6px; padding: 14px 16px; font-size: 13px; display: none">
+          <div id="job-detail-content"></div>
+        </div>
       </section>
     </div>
   </div>
 </main>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/@googlemaps/markerclusterer@2/dist/index.min.js"></script>
 <script src="/riq-links.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
@@ -244,40 +241,101 @@ function renderTable(rows) {
       tbl.querySelectorAll('tbody tr').forEach((t) => t.classList.remove('selected'));
       tr.classList.add('selected');
       const r = activeRows[Number(tr.dataset.i)];
-      if (r && r.lat && r.lng) {
-        map.setView([r.lat, r.lng], 14);
-      }
+      if (r && r.lat && r.lng) selectRow(r);
     });
   });
 }
 
+// Zoom to the row's address (street level). If multiple resurrection candidates
+// share the exact lat/lng (same property, multiple jobs), they all get fanned out
+// into a cluster at this zoom level so you can tell them apart. Job detail
+// renders in the panel below the map.
+function selectRow(r) {
+  if (!map) return;
+  map.setCenter({ lat: r.lat, lng: r.lng });
+  map.setZoom(19); // ~rooftop level
+  // Drop a temporary pin so the highlighted property is unmistakable
+  if (window._riqHighlight) window._riqHighlight.setMap(null);
+  window._riqHighlight = new google.maps.Marker({
+    position: { lat: r.lat, lng: r.lng },
+    map,
+    icon: {
+      path: google.maps.SymbolPath.CIRCLE,
+      scale: 14,
+      fillColor: '#f4a738',
+      fillOpacity: 0.85,
+      strokeColor: '#fff',
+      strokeWeight: 2,
+    },
+    animation: google.maps.Animation.DROP,
+    zIndex: 9999,
+  });
+  // Render detail below the map
+  const s = r.strongestStorm || {};
+  const trades = (r.trades || []).join(', ') || '—';
+  const portalLink = `https://portal.theroofdocs.com/jobs/${r.jobId}`;
+  $('job-detail').style.display = 'block';
+  $('job-detail-content').innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px">
+      <div>
+        <div style="font-size:16px;font-weight:600;color:var(--accent)">${window.RIQ ? window.RIQ.custLink(r) : (r.customer || '—')}</div>
+        <div style="color:var(--muted);font-size:12px;margin-top:2px">${r.address}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <a href="${portalLink}" target="_blank" class="riq-link" style="font-size:12px">🔗 Portal #${r.jobId}</a>
+        <a href="customer-detail.html?k=${encodeURIComponent(window.RIQ ? window.RIQ.custKey(r) : '')}" class="riq-link" style="font-size:12px">👤 Profile</a>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px;font-size:12px">
+      <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase">Sales Rep</div><div>${r.salesRep || '—'}</div></div>
+      <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase">Carrier</div><div>${r.insurance || '—'}</div></div>
+      <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase">Adjuster</div><div>${r.adjusterName || '—'}</div></div>
+      <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase">Deductible</div><div>${r.deductible ? '$' + r.deductible.toLocaleString() : '—'}</div></div>
+      <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase">Last touch</div><div>${r.lastTouchDate || '—'} <span style="color:var(--muted)">(${r.daysSinceDead}d ago)</span></div></div>
+      <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase">Trades</div><div>${trades}</div></div>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;background:#1a1612;border-left:3px solid var(--purple);border-radius:0 4px 4px 0;font-size:12px">
+      <strong>Strongest storm since dead:</strong>
+      ${s.stormType} ${s.stormMagnitude ? s.stormMagnitude + (s.stormUnit ? ' ' + s.stormUnit : '') : ''}
+      on <strong>${(s.stormDate || '').slice(0, 10)}</strong>
+      · <strong>${s.stormDistanceMiles?.toFixed(2)} mi</strong> away
+      · <strong>${s.daysSinceDead}d after death</strong>
+      ${r.newStormCount > 1 ? `<br><span style="color:var(--muted)">+${r.newStormCount - 1} more storm event${r.newStormCount > 2 ? 's' : ''} have hit this property</span>` : ''}
+    </div>
+  `;
+  $('job-detail').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
 function renderMap(rows) {
-  if (cluster) cluster.clearLayers();
-  cluster = L.markerClusterGroup({ chunkedLoading: true, maxClusterRadius: 50 });
+  if (!map || !google?.maps) return;
+  // Clear prior markers
+  if (window._riqMarkers) {
+    for (const m of window._riqMarkers) m.setMap(null);
+  }
+  if (window._riqCluster) window._riqCluster.clearMarkers();
+
+  const markers = [];
   for (const r of rows) {
     if (r.lat == null || r.lng == null) continue;
-    const color = r.strongestStorm.stormType === 'HAIL' ? '#a78bfa' :
-      r.strongestStorm.stormType === 'TORNADO' ? '#ef4444' : '#f4a738';
-    const m = L.circleMarker([r.lat, r.lng], {
-      radius: 6, fillColor: color, color: '#fff', weight: 1, fillOpacity: 0.85,
+    const color = r.strongestStorm?.stormType === 'HAIL' ? '#a78bfa' :
+      r.strongestStorm?.stormType === 'TORNADO' ? '#ef4444' : '#f4a738';
+    const m = new google.maps.Marker({
+      position: { lat: r.lat, lng: r.lng },
+      icon: {
+        path: google.maps.SymbolPath.CIRCLE,
+        scale: 6, fillColor: color, fillOpacity: 0.85,
+        strokeColor: '#fff', strokeWeight: 1,
+      },
     });
-    const s = r.strongestStorm;
-    m.bindPopup(`
-      <div style="font-size:13px">
-        <strong>${r.customer || '—'}</strong><br>
-        ${r.address}<br>
-        <span style="color:var(--muted)">${r.insurance || '—'} · ${r.salesRep || '—'}</span><br><br>
-        <strong>Last touch:</strong> ${r.lastTouchDate || '—'} (${r.daysSinceDead}d ago)<br>
-        <strong>Storm:</strong> ${s.stormType} ${s.stormMagnitude || ''} ${s.stormUnit || ''}<br>
-        <strong>Date:</strong> ${(s.stormDate || '').slice(0,10)} (${s.daysSinceDead}d after dead)<br>
-        <strong>Distance:</strong> ${s.stormDistanceMiles.toFixed(2)} mi<br>
-        <strong>Trades on file:</strong> ${(r.trades || []).join(', ') || '—'}<br>
-        <strong>Adjuster:</strong> ${r.adjusterName || '—'}
-      </div>
-    `);
-    cluster.addLayer(m);
+    m.addListener('click', () => selectRow(r));
+    markers.push(m);
   }
-  map.addLayer(cluster);
+  window._riqMarkers = markers;
+  if (window.markerClusterer && window.markerClusterer.MarkerClusterer) {
+    window._riqCluster = new window.markerClusterer.MarkerClusterer({ map, markers });
+  } else {
+    for (const m of markers) m.setMap(map);
+  }
 }
 
 function exportCSV() {
@@ -317,10 +375,23 @@ async function start() {
   $('loading').style.display = 'none';
   $('content').style.display = '';
 
-  map = L.map('map', { preferCanvas: true }).setView([38.95, -77.3], 8);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19,
-  }).addTo(map);
+  // Load Google Maps with key from server, then init.
+  await loadGoogleMaps();
+  map = new google.maps.Map(document.getElementById('map'), {
+    center: { lat: 38.95, lng: -77.3 },
+    zoom: 8,
+    mapTypeId: google.maps.MapTypeId.ROADMAP,
+    mapTypeControl: true,
+    mapTypeControlOptions: {
+      style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+      position: google.maps.ControlPosition.TOP_RIGHT,
+      mapTypeIds: ['roadmap', 'satellite', 'hybrid'],
+    },
+    streetViewControl: true,
+    fullscreenControl: true,
+    zoomControl: true,
+    gestureHandling: 'greedy',
+  });
 
   // Populate filters
   const states = new Set(), carriers = new Set();
@@ -343,6 +414,25 @@ async function start() {
   $('btn-csv').addEventListener('click', exportCSV);
   renderKPIs();
   applyFilters();
+}
+
+// Google Maps JS loader — uses key from server. Cached after first call.
+let _gmapsPromise = null;
+function loadGoogleMaps() {
+  if (window.google?.maps) return Promise.resolve();
+  if (_gmapsPromise) return _gmapsPromise;
+  _gmapsPromise = fetch('/api/intel/_config').then((r) => r.json()).then((cfg) => {
+    return new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.async = true;
+      s.defer = true;
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(cfg.googleMapsKey)}&v=quarterly&libraries=marker`;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  });
+  return _gmapsPromise;
 }
 
 start();
