@@ -6,11 +6,13 @@
 
 import fs from 'node:fs';
 
-const PROJECTS_FILE = '/Users/a21/Desktop/storm-maps/data/projects.json';
-const STORMS_FILE = '/Users/a21/Desktop/storm-maps/data/storms/iem-hail-wind-2018-2026.json';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
 
-const OUT_JOB_STORMS = '/Users/a21/Desktop/storm-maps/data/job-storms.json';
-const OUT_RESURRECTION = '/Users/a21/Desktop/storm-maps/data/resurrection.json';
+const PROJECTS_FILE = `${RIQ_BASE}/data/projects.json`;
+const STORMS_FILE = `${RIQ_BASE}/data/storms/iem-hail-wind-2018-2026.json`;
+
+const OUT_JOB_STORMS = `${RIQ_BASE}/data/job-storms.json`;
+const OUT_RESURRECTION = `${RIQ_BASE}/data/resurrection.json`;
 
 const MILES_PER_DEG_LAT = 69.0;
 function milesPerDegLng(lat) { return 69.172 * Math.cos((lat * Math.PI) / 180); }

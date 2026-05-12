@@ -5,7 +5,9 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 
-const OUT_DIR = '/Users/a21/Desktop/storm-maps/data/storms';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const OUT_DIR = `${RIQ_BASE}/data/storms`;
 const STATES = 'VA,MD,PA,DC,DE,NJ,WV';
 const START_YEAR = 2018;
 const END_YEAR = 2026;

@@ -6,9 +6,11 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const DETAIL_DIR = '/Users/a21/Desktop/storm-maps/data/roofdocs-pull';
-const PROJECTS_FILE = '/Users/a21/Desktop/storm-maps/data/projects.json';
-const OUT = '/Users/a21/Desktop/storm-maps/data/notes.json';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const DETAIL_DIR = `${RIQ_BASE}/data/roofdocs-pull`;
+const PROJECTS_FILE = `${RIQ_BASE}/data/projects.json`;
+const OUT = `${RIQ_BASE}/data/notes.json`;
 
 const projects = JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8'));
 const projById = new Map(projects.map((p) => [p.id, p]));

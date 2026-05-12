@@ -3,8 +3,10 @@
 
 import fs from 'node:fs';
 
-const FAILED = '/Users/a21/Desktop/storm-maps/data/geocoded-failed.jsonl';
-const OUT = '/Users/a21/Desktop/storm-maps/data/geocoded.json';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const FAILED = `${RIQ_BASE}/data/geocoded-failed.jsonl`;
+const OUT = `${RIQ_BASE}/data/geocoded.json`;
 
 const existing = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};
 

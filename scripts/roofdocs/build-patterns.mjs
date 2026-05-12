@@ -4,8 +4,10 @@
 
 import fs from 'node:fs';
 
-const PROJECTS = '/Users/a21/Desktop/storm-maps/data/projects.json';
-const OUT = '/Users/a21/Desktop/storm-maps/data/patterns.json';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const PROJECTS = `${RIQ_BASE}/data/projects.json`;
+const OUT = `${RIQ_BASE}/data/patterns.json`;
 
 const projects = JSON.parse(fs.readFileSync(PROJECTS, 'utf8'));
 console.log(`Loaded ${projects.length} projects`);

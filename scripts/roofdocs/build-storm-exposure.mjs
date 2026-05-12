@@ -8,10 +8,12 @@
 
 import fs from 'node:fs';
 
-const PROJECTS = '/Users/a21/Desktop/storm-maps/data/projects.json';
-const STORMS = '/Users/a21/Desktop/storm-maps/data/storms/iem-hail-wind-2018-2026.json';
-const OUT = '/Users/a21/Desktop/storm-maps/data/storm-exposure.json';
-const OUT_PLAYBOOK = '/Users/a21/Desktop/storm-maps/data/storm-playbook.json';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const PROJECTS = `${RIQ_BASE}/data/projects.json`;
+const STORMS = `${RIQ_BASE}/data/storms/iem-hail-wind-2018-2026.json`;
+const OUT = `${RIQ_BASE}/data/storm-exposure.json`;
+const OUT_PLAYBOOK = `${RIQ_BASE}/data/storm-playbook.json`;
 
 const ROOF_TRADES = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing']);
 const ALL_UPSELL_TRADES = ['Siding', 'Gutters & Downspouts', 'Skylights', 'Trim', 'Windows', 'Soffit & Ventilation'];

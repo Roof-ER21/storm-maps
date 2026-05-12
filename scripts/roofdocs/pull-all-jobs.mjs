@@ -6,9 +6,11 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
 const SESSION_FILE = '/Users/a21/web-recon/data/sessions/theroofdocs.json';
 const EXPORT_CACHE = '/tmp/jobs-export.json';
-const OUT_DIR = '/Users/a21/Desktop/storm-maps/data/roofdocs-pull';
+const OUT_DIR = `${RIQ_BASE}/data/roofdocs-pull`;
 const PROGRESS_FILE = path.join(OUT_DIR, '_progress.json');
 const FAILED_FILE = path.join(OUT_DIR, '_failed.jsonl');
 

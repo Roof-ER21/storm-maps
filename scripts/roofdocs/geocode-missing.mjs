@@ -6,9 +6,11 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const DETAIL_DIR = '/Users/a21/Desktop/storm-maps/data/roofdocs-pull';
-const OUT = '/Users/a21/Desktop/storm-maps/data/geocoded.json';
-const FAILED = '/Users/a21/Desktop/storm-maps/data/geocoded-failed.jsonl';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const DETAIL_DIR = `${RIQ_BASE}/data/roofdocs-pull`;
+const OUT = `${RIQ_BASE}/data/geocoded.json`;
+const FAILED = `${RIQ_BASE}/data/geocoded-failed.jsonl`;
 const CONCURRENCY = 12;
 
 const existing = fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, 'utf8')) : {};

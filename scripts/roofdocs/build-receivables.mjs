@@ -3,9 +3,11 @@
 
 import fs from 'node:fs';
 
-const IN = '/Users/a21/Desktop/storm-maps/data/roofdocs-reference/receivables-open.json';
-const PROJECTS = '/Users/a21/Desktop/storm-maps/data/projects.json';
-const OUT = '/Users/a21/Desktop/storm-maps/data/receivables.json';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const IN = `${RIQ_BASE}/data/roofdocs-reference/receivables-open.json`;
+const PROJECTS = `${RIQ_BASE}/data/projects.json`;
+const OUT = `${RIQ_BASE}/data/receivables.json`;
 
 const raw = JSON.parse(fs.readFileSync(IN, 'utf8')).data;
 const projects = JSON.parse(fs.readFileSync(PROJECTS, 'utf8'));

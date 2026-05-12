@@ -249,7 +249,7 @@ async function runRefresh(): Promise<void> {
   const fs = await import('node:fs');
 
   const repoRoot = path.resolve(__dirname, '..', '..');
-  const script = path.join(repoRoot, 'scripts/roofdocs/refresh-stealth.sh');
+  const script = path.join(repoRoot, 'scripts/roofdocs/refresh-railway.mjs');
 
   if (!fs.existsSync(script)) {
     refreshState.state = 'error';
@@ -258,8 +258,11 @@ async function runRefresh(): Promise<void> {
     return;
   }
 
-  refreshState.log.push(`[${new Date().toISOString()}] Spawning ${path.basename(script)}…`);
-  const proc = spawn('/bin/bash', [script], { cwd: repoRoot });
+  refreshState.log.push(`[${new Date().toISOString()}] Spawning refresh-railway.mjs…`);
+  const proc = spawn('node', [script], {
+    cwd: repoRoot,
+    env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL ?? '' },
+  });
   proc.stdout.on('data', (chunk) => {
     for (const line of chunk.toString().split('\n').filter(Boolean)) {
       refreshState.log.push(line);
@@ -272,32 +275,10 @@ async function runRefresh(): Promise<void> {
       if (refreshState.log.length > 200) refreshState.log.shift();
     }
   });
-  proc.on('close', async (code) => {
-    if (code !== 0) {
-      refreshState.state = 'error';
-      refreshState.error = `refresh-stealth.sh exited ${code}`;
-      refreshState.finishedAt = new Date().toISOString();
-      return;
-    }
-
-    // Push to Postgres
-    refreshState.log.push(`[${new Date().toISOString()}] Pushing to Postgres…`);
-    const importer = path.join(repoRoot, 'scripts/roofdocs/import-to-postgres.mjs');
-    const importProc = spawn('node', [importer], {
-      cwd: repoRoot,
-      env: { ...process.env, DATABASE_URL: process.env.DATABASE_URL ?? '' },
-    });
-    importProc.stdout.on('data', (chunk) => {
-      for (const line of chunk.toString().split('\n').filter(Boolean)) {
-        refreshState.log.push(line);
-        if (refreshState.log.length > 200) refreshState.log.shift();
-      }
-    });
-    importProc.on('close', (importCode) => {
-      refreshState.state = importCode === 0 ? 'success' : 'error';
-      refreshState.error = importCode === 0 ? null : `import-to-postgres exited ${importCode}`;
-      refreshState.finishedAt = new Date().toISOString();
-    });
+  proc.on('close', (code) => {
+    refreshState.state = code === 0 ? 'success' : 'error';
+    refreshState.error = code === 0 ? null : `refresh-railway.mjs exited ${code}`;
+    refreshState.finishedAt = new Date().toISOString();
   });
 }
 

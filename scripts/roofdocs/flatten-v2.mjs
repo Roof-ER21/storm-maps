@@ -6,10 +6,12 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const DETAIL_DIR = '/Users/a21/Desktop/storm-maps/data/roofdocs-pull';
-const INVOICE_DIR = '/Users/a21/Desktop/storm-maps/data/roofdocs-invoices';
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+
+const DETAIL_DIR = `${RIQ_BASE}/data/roofdocs-pull`;
+const INVOICE_DIR = `${RIQ_BASE}/data/roofdocs-invoices`;
 const EXPORT_FILE = '/tmp/jobs-export.json';
-const OUT_FILE = '/Users/a21/Desktop/storm-maps/data/projects.json';
+const OUT_FILE = `${RIQ_BASE}/data/projects.json`;
 
 const stateMap = { virginia: 'VA', maryland: 'MD', pennsylvania: 'PA' };
 function normState(s) {
