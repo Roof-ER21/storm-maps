@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T06:00:46.320Z",
+  "generated": "2026-05-13T06:06:41.968Z",
   "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
   "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {
@@ -227,7 +227,7 @@
       ]
     },
     "Travelers": {
-      "denialCount": 2,
+      "denialCount": 3,
       "phrases": [
         {
           "phrase": "virginia-carolina claim center,",
@@ -262,9 +262,10 @@
         {
           "phrase": "Your estimate includes depreciation which is based on the age and condition of the damaged items",
           "sources": [
-            "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter"
+            "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "it is recoverable",
@@ -307,6 +308,34 @@
             "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration"
           ],
           "occurrences": 1
+        },
+        {
+          "phrase": "the hail consideration to the shingles was determined to not be from hail",
+          "sources": [
+            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "instead was a result of granule loss and blistering",
+          "sources": [
+            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "I am standing by my decision that he is pointing out normal wear and tear to the shingles rather than damage due to hail",
+          "sources": [
+            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Hover report showing where our measurements come from",
+          "sources": [
+            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+          ],
+          "occurrences": 1
         }
       ],
       "strategies": [
@@ -321,6 +350,13 @@
           "rooferTactic": "Homeowner-led reconsideration letter (more weight than contractor-led for PA-warning reasons). Emphasizes loyalty + dignity + 'detailed documentation' from contractor. Roof + siding both requested.",
           "patentMapping": "Travelers operates the largest insurance drone program (700+ FAA-certified pilots). Their 'wear and tear' classifier is the same engine documented in WO2018156846 (Dolphin AI) and US20190304026 (Betterview) which both define wear-and-tear visual signatures (granular wear contrast, uniform asphalt loss, edge curvature). Lauren Cook is invoking the AI-trained eye, not her own opinion.",
           "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration"
+        },
+        {
+          "carrierTactic": "Travelers VA-Carolina Claim Center uses a standardized template across ~11 known adjusters. Wear-and-tear classification is the default for granule loss/blistering. ACV-first payment structure with depreciation held until completion. Hover.com aerial measurements as scope basis. Drone-based inspections (Travelers operates 700+ FAA-certified drone pilots).",
+          "rooferTactic": "Know which manager to escalate to per adjuster (each has a documented manager email in their sig block). Use Chris Aycock's manufacturer-spec counter (see TravCo JEE8887 dump) for slope-coverage disputes — bypass damage classification, argue manufacturer installation requirements. For depreciation/ACV disputes, request the depreciation schedule basis.",
+          "lessonForAnalyzer": "Travelers denial pattern: (1) Identify which Claim Center (VA-Carolina vs Mid-Atlantic vs other) — manager hierarchy differs. (2) Same template language across adjusters = strong boilerplate match signal even on new adjuster names. (3) For coverage scope disputes, prefer manufacturer-spec arguments over damage-classification challenges. (4) For payment disputes, ACV-first + depreciation withholding is standard — request line-item Xactimate + depreciation methodology basis.",
+          "patentMapping": "Travelers is one of the top 3 P&C AI patent holders per Insurance Journal 2025 (238 patents filed Sept 2024, 72 issued in last 5 years). Their AI determination of roof condition from aerial imagery + 700+ FAA-certified drone pilots = patent-driven scoping. Per-adjuster phone routing keeps the same template language stable across the team — strong boilerplate-match opportunity.",
+          "source": "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
         }
       ]
     },
@@ -911,5 +947,5 @@
   },
   "totalCarriers": 13,
   "totalNgramPhrases": 10,
-  "totalCuratedPhrases": 77
+  "totalCuratedPhrases": 81
 }

@@ -1,0 +1,44 @@
+{
+  "threadId": "reese-travelers-roster",
+  "subject": "Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads",
+  "carrier": "Travelers",
+  "denialCategory": "adjuster-roster",
+  "dateOfDenial": "2025-11-12 to 2026-01-15",
+  "outcome": "reference-data",
+  "denialText": "Travelers Virginia-Carolina Claim Center is staffed with a known roster. Template letters use the same phrasing across adjusters: '24/7 access to your claim online via MyTravelers' + 'PO Box 430, Buffalo NY 14240-0430' + manager-escalation pattern + per-adjuster phone routing. The patent-disclosed automation (Travelers operates 700+ FAA-certified drone pilots and is one of the top 3 P&C AI patent holders per Insurance Journal 2025) handles initial scoping; adjusters confirm + adjust per script.",
+  "adjusterRoster": [
+    { "name": "Jessica Beall", "title": "Claim Adjuster", "email": "JBEALL@travelers.com", "region": "Virginia-Carolina Claim Center", "exampleClaim": "JEP9005" },
+    { "name": "Brendon Myer", "title": "Claim Professional", "email": "BMYER@travelers.com", "region": "Virginia-Carolina Claim Center", "exampleClaim": "I7M4883", "phone": "202.207.8675", "manager": "MCVICTOR@travelers.com" },
+    { "name": "Lauren Cook", "title": "Outside Claim Representative - Property", "email": "lcook4@travelers.com", "region": "Virginia-Carolina Claim Center", "exampleClaim": "I9G2378", "phone": "571.596.1933" },
+    { "name": "Kirkland Nelms", "title": "Property Claim Professional", "email": "KNelms@travelers.com", "region": "Virginia-Carolina Claim Center / Property", "exampleClaim": "JGC5679 / JEE6666 / JEE8887", "phone": "571.623.9034", "manager": "Lisa Eisele <Leisele@travelers.com>" },
+    { "name": "Tammy Lemanski", "title": "Claim Adjuster Property Claims", "email": "TLEMANSK@travelers.com", "region": "Virginia-Carolina Claim Center", "exampleClaim": "JEE2786", "phone": "615-660-6587", "manager": "Kim Blake <kmblake@travelers.com>" },
+    { "name": "Kara Mastriano", "title": "Claim Professional - Claim Response Team", "email": "KMASTRIA@travelers.com", "region": "Mid-Atlantic Claim Center", "exampleClaim": "JEP0083", "location": "Dallas TX PO Box 650293" },
+    { "name": "Peter Fouche", "title": "Claim Professional - Claim Response Team", "email": "PFOUCHE@travelers.com", "region": "Claim Response Team", "exampleClaim": "JEE9334 (The Automobile Insurance Company of Hartford CT)", "phone": "860-954-4463", "manager": "Ally Johnson <ANJOHNS5@travelers.com>" },
+    { "name": "J.J. de Leon", "title": "Claim Professional - Property", "email": "jdeleon4@travelers.com", "region": "Mid-Atlantic Claim Center", "exampleClaim": "JEP7912 (Fard)", "phone": "443-401-7242" },
+    { "name": "Christopher Clark", "title": "Claim Professional", "email": "cdclark2@travelers.com", "exampleClaim": "I9G0203 (Stilwell)" },
+    { "name": "Matthew Birski", "title": "Claim Professional", "email": "MBIRSKI@travelers.com", "exampleClaim": "I7M4396 (Phan)" },
+    { "name": "Adam Whitehead", "title": "Claim Professional", "email": "AWHITEHE@travelers.com", "exampleClaim": "I7M2639 (Cai)" }
+  ],
+  "templatePhrases": [
+    "Everything You Need at Your Fingertips",
+    "With 24/7 access to your claim online via MyTravelers®; you can check your claim status, view your deductible, interact with us and upload documents.",
+    "If further assistance is required, please contact my manager [...]",
+    "Available to Insureds and Contractors - To upload documents to your claim, please use this link: Claim Upload Center",
+    "This message (including any attachments) may contain confidential, proprietary, privileged and/or private information",
+    "PO Box 430, Buffalo, NY 14240-0430",
+    "Per the Loss Settlement provision of the policy, we pay no more than the actual cash value (ACV) until the actual repair or replacement is complete",
+    "The initial payment is based on the age of the materials",
+    "TRVDiscDefault::1201"
+  ],
+  "keyDenialLanguage": [
+    "the hail consideration to the shingles was determined to not be from hail",
+    "instead was a result of granule loss and blistering",
+    "I am standing by my decision that he is pointing out normal wear and tear to the shingles rather than damage due to hail",
+    "Your estimate includes depreciation which is based on the age and condition of the damaged items",
+    "Hover report showing where our measurements come from"
+  ],
+  "carrierTactic": "Travelers VA-Carolina Claim Center uses a standardized template across ~11 known adjusters. Wear-and-tear classification is the default for granule loss/blistering. ACV-first payment structure with depreciation held until completion. Hover.com aerial measurements as scope basis. Drone-based inspections (Travelers operates 700+ FAA-certified drone pilots).",
+  "rooferTactic": "Know which manager to escalate to per adjuster (each has a documented manager email in their sig block). Use Chris Aycock's manufacturer-spec counter (see TravCo JEE8887 dump) for slope-coverage disputes — bypass damage classification, argue manufacturer installation requirements. For depreciation/ACV disputes, request the depreciation schedule basis.",
+  "patentMapping": "Travelers is one of the top 3 P&C AI patent holders per Insurance Journal 2025 (238 patents filed Sept 2024, 72 issued in last 5 years). Their AI determination of roof condition from aerial imagery + 700+ FAA-certified drone pilots = patent-driven scoping. Per-adjuster phone routing keeps the same template language stable across the team — strong boilerplate-match opportunity.",
+  "lessonForAnalyzer": "Travelers denial pattern: (1) Identify which Claim Center (VA-Carolina vs Mid-Atlantic vs other) — manager hierarchy differs. (2) Same template language across adjusters = strong boilerplate match signal even on new adjuster names. (3) For coverage scope disputes, prefer manufacturer-spec arguments over damage-classification challenges. (4) For payment disputes, ACV-first + depreciation withholding is standard — request line-item Xactimate + depreciation methodology basis."
+}
