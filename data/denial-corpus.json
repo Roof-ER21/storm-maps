@@ -1,11 +1,11 @@
 {
-  "generated": "2026-05-13T03:16:52.438Z",
+  "generated": "2026-05-13T03:47:38.613Z",
   "stats": {
-    "totalEntries": 292,
+    "totalEntries": 299,
     "byCarrier": {
       "Nationwide": 4,
       "(unknown)": 217,
-      "State Farm": 10,
+      "State Farm": 11,
       "Travelers": 15,
       "Erie": 6,
       "Geico": 2,
@@ -13,15 +13,19 @@
       "Allstate": 15,
       "Progressive": 1,
       "Chubb": 2,
-      "Liberty Mutual": 1,
+      "American Modern Insurance Group (AMIG)": 1,
+      "Liberty Mutual": 2,
+      "Liberty Mutual Insurance": 1,
       "Encompass Insurance Company": 1,
-      "Erie Insurance": 1
+      "Erie Insurance": 2,
+      "Nationwide Property & Casualty Insurance Company": 1,
+      "Utica National Insurance Group": 1
     },
     "bySource": {
       "pdf-archive": 1,
       "rep-chatter": 218,
       "rd-canon": 63,
-      "gmail-thread": 10
+      "gmail-thread": 17
     }
   },
   "entries": [
@@ -36,7 +40,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-08-29",
       "caseRef": "957275-GP / Kym Gully",
-      "dateAdded": "2026-05-13T03:16:51.961Z"
+      "dateAdded": "2026-05-13T03:47:38.173Z"
     },
     {
       "id": "gm:2026-04-27 17:52:30:Carlos-Ferna",
@@ -49,7 +53,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2026-04-27",
       "reportedBy": "Carlos Fernando Davila",
-      "dateAdded": "2026-05-13T03:16:52.415Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-26 15:36:30:Daniel-Alons",
@@ -62,7 +66,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-04-26",
       "reportedBy": "Daniel Alonso",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-24 16:33:50:Chris-Aycock",
@@ -75,7 +79,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2026-04-24",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-23 01:24:50:Christian-Br",
@@ -88,7 +92,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2026-04-23",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-17 17:35:34:Christian-Br",
@@ -101,7 +105,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-04-17",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-16 15:15:01:Kerouls-Gaye",
@@ -114,7 +118,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-04-16",
       "reportedBy": "Kerouls Gayed",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-16 12:14:11:Chris-Aycock",
@@ -127,7 +131,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-04-16",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-10 14:21:52:Ben-Salgado",
@@ -140,7 +144,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-04-10",
       "reportedBy": "Ben Salgado",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.588Z"
     },
     {
       "id": "gm:2026-04-10 14:16:19:Christian-Br",
@@ -153,7 +157,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-04-10",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-04-10 14:12:23:Ryan-Kiely",
@@ -166,7 +170,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-04-10",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-04-03 11:24:20:Oliver-Brown",
@@ -179,7 +183,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2026-04-03",
       "reportedBy": "Oliver Brown",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-27 21:40:30:Steve-McKim-",
@@ -192,7 +196,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-03-27",
       "reportedBy": "Steve McKim 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-26 01:53:58:Mattias-Kasp",
@@ -205,7 +209,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-03-26",
       "reportedBy": "Mattias Kasparian",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-20 14:35:52:Richie",
@@ -218,7 +222,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-03-20",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-19 16:39:58:Shane-Santan",
@@ -231,7 +235,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-03-19",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-16 14:43:10:Shane-Santan",
@@ -244,7 +248,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-03-16",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-12 13:59:00:Christian-Br",
@@ -257,7 +261,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-03-12",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-12 01:29:12:Ben-Salgado",
@@ -270,7 +274,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-03-12",
       "reportedBy": "Ben Salgado",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-04 23:06:53:Ryan-Kiely",
@@ -283,7 +287,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-03-04",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-04 23:03:48:Ryan-Kiely",
@@ -296,7 +300,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-03-04",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-03-04 19:07:36:Ryan-Kiely",
@@ -309,7 +313,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-03-04",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-02-28 13:43:49:Colin-Koos",
@@ -322,7 +326,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-02-28",
       "reportedBy": "Colin Koos",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-02-14 20:47:45:Jonny-Alquij",
@@ -335,7 +339,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-02-14",
       "reportedBy": "Jonny Alquijay",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-02-11 23:40:22:Basel-Halim-",
@@ -348,7 +352,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-02-11",
       "reportedBy": "Basel Halim 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-02-03 18:49:10:Christian-Br",
@@ -361,7 +365,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-02-03",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-02-03 02:16:07:Chris-Aycock",
@@ -374,7 +378,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-02-03",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-27 15:48:41:Basel-Halim-",
@@ -387,7 +391,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-01-27",
       "reportedBy": "Basel Halim 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-24 16:35:02:Christian-Br",
@@ -400,7 +404,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2026-01-24",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-20 20:12:41:Christian-Br",
@@ -413,7 +417,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2026-01-20",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-18 20:38:01:Michael-Gabr",
@@ -426,7 +430,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-01-18",
       "reportedBy": "Michael Gabriel",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-18 19:24:09:Ryan-Kiely",
@@ -439,7 +443,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-01-18",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-14 18:56:33:Christian-Br",
@@ -452,7 +456,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-01-14",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-12 18:17:25:Basel-Halim-",
@@ -465,7 +469,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-01-12",
       "reportedBy": "Basel Halim 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-07 21:59:34:Christian-Br",
@@ -478,7 +482,7 @@
       "denialCategory": null,
       "dateOfDenial": "2026-01-07",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2026-01-04 21:36:15:Steve-McKim-",
@@ -491,7 +495,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2026-01-04",
       "reportedBy": "Steve McKim 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-12-10 01:15:23:Mike-Swearin",
@@ -504,7 +508,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-12-10",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-12-05 16:33:31:Ryan-Kiely",
@@ -517,7 +521,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-12-05",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-12-04 16:22:02:Ryan-Kiely",
@@ -530,7 +534,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-12-04",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-12-02 18:29:22:Christian-Br",
@@ -543,7 +547,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-12-02",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-21 22:18:46:Christian-Br",
@@ -556,7 +560,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-21",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-21 19:32:20:Christian-Br",
@@ -569,7 +573,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-21",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-20 17:30:09:Christian-Br",
@@ -582,7 +586,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-20",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-13 19:27:51:Mike-Swearin",
@@ -595,7 +599,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-13",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-11 17:32:20:Ian-Thrash",
@@ -608,7 +612,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-11-11",
       "reportedBy": "Ian Thrash",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-11 17:29:51:Martín-Trave",
@@ -621,7 +625,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-11",
       "reportedBy": "Martín Travezano",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-08 01:33:32:Shane-Santan",
@@ -634,7 +638,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-11-08",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-07 16:47:34:Nick-Bourdin",
@@ -647,7 +651,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-07",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-06 21:25:36:Christian-Br",
@@ -660,7 +664,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-11-06",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-06 16:12:19:Jay-Waseem",
@@ -673,7 +677,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-06",
       "reportedBy": "Jay Waseem",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-04 01:11:08:Eric-Rickel-",
@@ -686,7 +690,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-11-04",
       "reportedBy": "Eric Rickel 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-11-03 15:56:05:Basel-Halim-",
@@ -699,7 +703,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-11-03",
       "reportedBy": "Basel Halim 2",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-29 14:31:56:Jimmy-Brown-",
@@ -712,7 +716,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-10-29",
       "reportedBy": "Jimmy Brown (Evan's Dad)",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-22 18:33:45:Michael-Gabr",
@@ -725,7 +729,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-10-22",
       "reportedBy": "Michael Gabriel",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-22 01:11:27:Navid-Javid",
@@ -738,7 +742,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-10-22",
       "reportedBy": "Navid Javid",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-21 11:40:47:Ben-Salgado",
@@ -751,7 +755,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-10-21",
       "reportedBy": "Ben Salgado",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-20 21:01:38:Michael-Gabr",
@@ -764,7 +768,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-10-20",
       "reportedBy": "Michael Gabriel",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-16 14:14:54:Ben-Salgado",
@@ -777,7 +781,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-10-16",
       "reportedBy": "Ben Salgado",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-15 16:20:48:Ryan-Kiely",
@@ -790,7 +794,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-10-15",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.416Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-11 22:42:52:Jay-Waseem",
@@ -803,7 +807,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-10-11",
       "reportedBy": "Jay Waseem",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-09 20:19:35:Gabe-Long",
@@ -816,7 +820,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-10-09",
       "reportedBy": "Gabe Long",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-09 01:31:05:Reese-Samala",
@@ -829,7 +833,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-10-09",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-08 16:40:36:Richie",
@@ -842,7 +846,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-10-08",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-10-02 14:30:08:Ben-Salgado",
@@ -855,7 +859,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-10-02",
       "reportedBy": "Ben Salgado",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-30 18:25:42:Navid-Javid",
@@ -868,7 +872,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-30",
       "reportedBy": "Navid Javid",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-30 15:09:32:Mike-Swearin",
@@ -881,7 +885,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-09-30",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-26 22:17:29:Christian-Br",
@@ -894,7 +898,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-26",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-23 13:46:26:Mike-Swearin",
@@ -907,7 +911,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-23",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-22 17:18:19:Walid-Saidan",
@@ -920,7 +924,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-22",
       "reportedBy": "Walid Saidani",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-19 10:56:49:Reese-Samala",
@@ -933,7 +937,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-09-19",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-18 19:54:19:Richie",
@@ -946,7 +950,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-18",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.589Z"
     },
     {
       "id": "gm:2025-09-16 01:34:29:Shane-Santan",
@@ -959,7 +963,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-16",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-09-13 21:06:23:Mattias-Kasp",
@@ -972,7 +976,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-13",
       "reportedBy": "Mattias Kasparian",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-09-11 16:44:29:Christian-Br",
@@ -985,7 +989,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-11",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-09-11 15:11:54:Christian-Br",
@@ -998,7 +1002,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-11",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-09-05 21:23:20:Christian-Br",
@@ -1011,7 +1015,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-05",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-09-04 19:42:45:Johnnie-Walk",
@@ -1024,7 +1028,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-04",
       "reportedBy": "Johnnie Walker",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-09-02 21:24:08:Basel-Halim-",
@@ -1037,7 +1041,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-09-02",
       "reportedBy": "Basel Halim 2",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-29 13:13:14:Jamie-Armel",
@@ -1050,7 +1054,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-29",
       "reportedBy": "Jamie Armel",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-29 13:08:00:Ryan-Kiely",
@@ -1063,7 +1067,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-29",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-26 19:18:44:Eric-Rickel-",
@@ -1076,7 +1080,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-26",
       "reportedBy": "Eric Rickel 2",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-23 17:50:31:Shane-Conton",
@@ -1089,7 +1093,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-23",
       "reportedBy": "Shane Conton",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-21 13:48:04:Chris-Aycock",
@@ -1102,7 +1106,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-21",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-21 13:42:54:Luis-Esteves",
@@ -1115,7 +1119,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-21",
       "reportedBy": "Luis Esteves",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-19 22:01:32:Joseph-Boyd",
@@ -1128,7 +1132,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-19",
       "reportedBy": "Joseph Boyd",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-19 20:45:34:Navid-Javid",
@@ -1141,7 +1145,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-08-19",
       "reportedBy": "Navid Javid",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-12 20:39:33:Ryan-Kiely",
@@ -1154,7 +1158,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-12",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-12 18:17:58:Chris-Aycock",
@@ -1167,7 +1171,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-12",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-12 12:37:36:Christian-Br",
@@ -1180,7 +1184,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-12",
       "reportedBy": "Christian Bratton",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-10 19:36:08:Reese-Samala",
@@ -1193,7 +1197,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-10",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-10 16:51:39:Reese-Samala",
@@ -1206,7 +1210,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-10",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-10 14:11:23:Richie",
@@ -1219,7 +1223,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-10",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-06 23:25:12:Steve-McKim-",
@@ -1232,7 +1236,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-08-06",
       "reportedBy": "Steve McKim 2",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-08-01 20:07:34:Mike-Swearin",
@@ -1245,7 +1249,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-08-01",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-30 15:27:41:Ryan-Kiely",
@@ -1258,7 +1262,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-30",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-30 15:14:48:Ryan-Kiely",
@@ -1271,7 +1275,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-30",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-30 14:50:53:Chris-Aycock",
@@ -1284,7 +1288,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-30",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-29 12:57:05:Jimmy-Brown-",
@@ -1297,7 +1301,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-29",
       "reportedBy": "Jimmy Brown (Evan's Dad)",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-28 14:56:49:Ryan-Kiely",
@@ -1310,7 +1314,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-28",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-27 01:08:58:Navid-Javid",
@@ -1323,7 +1327,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-27",
       "reportedBy": "Navid Javid",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-24 18:14:09:Shane-Santan",
@@ -1336,7 +1340,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-07-24",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-24 14:20:42:Eric-Rickel-",
@@ -1349,7 +1353,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-07-24",
       "reportedBy": "Eric Rickel 2",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-23 21:33:51:Chris-Aycock",
@@ -1362,7 +1366,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-07-23",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-23 00:38:04:Richie",
@@ -1375,7 +1379,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-07-23",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-21 15:42:58:Chris-Aycock",
@@ -1388,7 +1392,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-07-21",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-16 17:03:45:John-Floyd-2",
@@ -1401,7 +1405,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-07-16",
       "reportedBy": "John Floyd 2",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-07-11 22:34:59:Ryan-Kiely",
@@ -1414,7 +1418,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-07-11",
       "reportedBy": "Ryan Kiely",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-06-23 15:03:44:Steve-McKim-",
@@ -1427,7 +1431,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-06-23",
       "reportedBy": "Steve McKim 2",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-06-23 01:29:55:Shilongo-Shi",
@@ -1440,7 +1444,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-06-23",
       "reportedBy": "Shilongo Shilongo",
-      "dateAdded": "2026-05-13T03:16:52.417Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-06-13 19:40:46:AmberCouch",
@@ -1453,7 +1457,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-06-13",
       "reportedBy": "AmberCouch",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-05-26 20:38:06:Andre-Mealy",
@@ -1466,7 +1470,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-05-26",
       "reportedBy": "Andre Mealy",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-05-26 15:38:56:Chris-Aycock",
@@ -1479,7 +1483,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-05-26",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-05-21 18:16:34:Nick-Bourdin",
@@ -1492,7 +1496,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-05-21",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-05-21 02:25:51:Kyler-Wiest",
@@ -1505,7 +1509,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-05-21",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-05-14 15:41:36:Jamie-Armel",
@@ -1518,7 +1522,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-05-14",
       "reportedBy": "Jamie Armel",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-05-02 23:29:37:Shilongo-Shi",
@@ -1531,7 +1535,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-05-02",
       "reportedBy": "Shilongo Shilongo",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-30 14:07:17:Richie",
@@ -1544,7 +1548,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-04-30",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-30 14:06:56:Richie",
@@ -1557,7 +1561,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-04-30",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-14 21:46:22:Kyler-Wiest",
@@ -1570,7 +1574,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-04-14",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-14 20:26:40:Shane-Santan",
@@ -1583,7 +1587,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-04-14",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-04 11:36:01:Richie",
@@ -1596,7 +1600,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-04-04",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-02 15:02:25:Richie",
@@ -1609,7 +1613,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-04-02",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-04-01 13:19:12:Jimmy-Brown-",
@@ -1622,7 +1626,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-04-01",
       "reportedBy": "Jimmy Brown (Evan's Dad)",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-03-29 23:20:47:Miguel-O-Cam",
@@ -1635,7 +1639,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-03-29",
       "reportedBy": "Miguel O Campo",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-03-27 18:26:19:Shane-Santan",
@@ -1648,7 +1652,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-03-27",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-03-25 21:21:42:Richie",
@@ -1661,7 +1665,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-03-25",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.590Z"
     },
     {
       "id": "gm:2025-03-15 18:51:22:Richie",
@@ -1674,7 +1678,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-03-15",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-15 18:49:38:Richie",
@@ -1687,7 +1691,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-03-15",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-14 19:21:43:Kyler-Wiest",
@@ -1700,7 +1704,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-03-14",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-14 17:03:11:Richie",
@@ -1713,7 +1717,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-03-14",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-14 16:35:26:Shane-Santan",
@@ -1726,7 +1730,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-03-14",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-10 19:55:28:Richie",
@@ -1739,7 +1743,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-03-10",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-09 01:00:48:Mike-Swearin",
@@ -1752,7 +1756,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-03-09",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-07 22:23:24:Shane-Santan",
@@ -1765,7 +1769,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-03-07",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-06 14:38:54:Chris-Aycock",
@@ -1778,7 +1782,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-03-06",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-03-03 16:25:30:Jimmy-Brown-",
@@ -1791,7 +1795,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-03-03",
       "reportedBy": "Jimmy Brown (Evan's Dad)",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-02-28 14:27:02:Elijah-Hicks",
@@ -1804,7 +1808,7 @@
       "denialCategory": null,
       "dateOfDenial": "2025-02-28",
       "reportedBy": "Elijah Hicks",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-02-19 23:16:24:Carlos-Ferna",
@@ -1817,7 +1821,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-02-19",
       "reportedBy": "Carlos Fernando Davila",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-02-14 02:57:01:Mike-Swearin",
@@ -1830,7 +1834,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-02-14",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-02-11 19:42:09:Kyler-Wiest",
@@ -1843,7 +1847,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-02-11",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-01-30 17:54:16:Chris-Aycock",
@@ -1856,7 +1860,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-01-30",
       "reportedBy": "Chris Aycock",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-01-19 19:15:58:Reese-Samala",
@@ -1869,7 +1873,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2025-01-19",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-01-10 18:37:50:Mike-Swearin",
@@ -1882,7 +1886,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-01-10",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2025-01-03 22:40:46:Jason-brown",
@@ -1895,7 +1899,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2025-01-03",
       "reportedBy": "Jason brown",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-12-25 17:00:36:Nick-Bourdin",
@@ -1908,7 +1912,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-12-25",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-12-20 15:01:43:Luis-Esteves",
@@ -1921,7 +1925,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-12-20",
       "reportedBy": "Luis Esteves",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-12-07 22:02:55:Ross-Renzi",
@@ -1934,7 +1938,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-12-07",
       "reportedBy": "Ross Renzi",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-12-05 15:02:23:Richie",
@@ -1947,7 +1951,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-12-05",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-12-02 13:18:58:Ross-Renzi",
@@ -1960,7 +1964,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-12-02",
       "reportedBy": "Ross Renzi",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-27 00:38:55:Kyler-Wiest",
@@ -1973,7 +1977,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-11-27",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-26 21:39:18:Reese-Samala",
@@ -1986,7 +1990,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-11-26",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-21 20:56:03:Ben-Salgado",
@@ -1999,7 +2003,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-11-21",
       "reportedBy": "Ben Salgado",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-21 20:21:36:Ross-Renzi",
@@ -2012,7 +2016,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-11-21",
       "reportedBy": "Ross Renzi",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-20 20:26:32:Richie",
@@ -2025,7 +2029,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-11-20",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-14 00:43:33:Kyler-Wiest",
@@ -2038,7 +2042,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-11-14",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.418Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-14 00:06:55:Kyler-Wiest",
@@ -2051,7 +2055,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-11-14",
       "reportedBy": "Kyler Wiest",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-11-05 14:35:15:Mike-Swearin",
@@ -2064,7 +2068,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-11-05",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-31 19:27:42:Nick-Bourdin",
@@ -2077,7 +2081,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-10-31",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-28 19:34:44:Mike-Swearin",
@@ -2090,7 +2094,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-10-28",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-25 20:18:15:Elijah-Hicks",
@@ -2103,7 +2107,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-10-25",
       "reportedBy": "Elijah Hicks",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-25 20:15:23:Elijah-Hicks",
@@ -2116,7 +2120,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-10-25",
       "reportedBy": "Elijah Hicks",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-25 19:12:53:Mike-Swearin",
@@ -2129,7 +2133,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-10-25",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-10 16:17:04:Navid-Javid",
@@ -2142,7 +2146,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-10-10",
       "reportedBy": "Navid Javid",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-09 00:38:21:Shane-Santan",
@@ -2155,7 +2159,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-10-09",
       "reportedBy": "Shane Santangelo",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-10-06 01:25:20:Richie",
@@ -2168,7 +2172,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-10-06",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-09-25 21:05:28:Nick-Bourdin",
@@ -2181,7 +2185,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-09-25",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-09-20 11:21:32:Jason-brown",
@@ -2194,7 +2198,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-09-20",
       "reportedBy": "Jason brown",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-09-05 13:34:42:Ross-Renzi",
@@ -2207,7 +2211,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-09-05",
       "reportedBy": "Ross Renzi",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-08-30 22:28:43:Nahom",
@@ -2220,7 +2224,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-08-30",
       "reportedBy": "Nahom",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-08-29 00:17:43:Nahom",
@@ -2233,7 +2237,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-08-29",
       "reportedBy": "Nahom",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-08-13 21:19:55:Brandon-Pern",
@@ -2246,7 +2250,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-08-13",
       "reportedBy": "Brandon Pernot",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-08-13 20:44:23:Nahom",
@@ -2259,7 +2263,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-08-13",
       "reportedBy": "Nahom",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-31 01:10:41:Nick-Bourdin",
@@ -2272,7 +2276,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-07-31",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-29 13:33:13:Nick-Bourdin",
@@ -2285,7 +2289,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-07-29",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-25 12:24:28:Mike-Swearin",
@@ -2298,7 +2302,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-07-25",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-17 21:13:45:Nick-Bourdin",
@@ -2311,7 +2315,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-07-17",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-13 01:20:21:Ahmed-Mahmou",
@@ -2324,7 +2328,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-07-13",
       "reportedBy": "Ahmed Mahmoud",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-01 18:02:39:Brandon-Pern",
@@ -2337,7 +2341,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-07-01",
       "reportedBy": "Brandon Pernot",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-07-01 18:00:10:Brandon-Pern",
@@ -2350,7 +2354,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-07-01",
       "reportedBy": "Brandon Pernot",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-06-18 18:00:27:Mike-Swearin",
@@ -2363,7 +2367,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-06-18",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-06-01 18:00:32:Ford-Barsi",
@@ -2376,7 +2380,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-06-01",
       "reportedBy": "Ford Barsi",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-05-23 17:45:45:Cody-Warshau",
@@ -2389,7 +2393,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-05-23",
       "reportedBy": "Cody Warshauer",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-05-20 15:04:59:Cody-Warshau",
@@ -2402,7 +2406,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-05-20",
       "reportedBy": "Cody Warshauer",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-05-13 01:16:13:Richie",
@@ -2415,7 +2419,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-05-13",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-05-06 23:38:40:Navid-Javid",
@@ -2428,7 +2432,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-05-06",
       "reportedBy": "Navid Javid",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-05-06 22:36:44:Jason-brown",
@@ -2441,7 +2445,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-05-06",
       "reportedBy": "Jason brown",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-05-01 18:39:05:Richie",
@@ -2454,7 +2458,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-05-01",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-30 20:00:55:Richie",
@@ -2467,7 +2471,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-04-30",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-26 15:47:39:Carlos-Ferna",
@@ -2480,7 +2484,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-04-26",
       "reportedBy": "Carlos Fernando Davila",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-24 11:08:17:Richie",
@@ -2493,7 +2497,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-04-24",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-22 11:56:17:Oliver-Brown",
@@ -2506,7 +2510,7 @@
       "denialCategory": null,
       "dateOfDenial": "2024-04-22",
       "reportedBy": "Oliver Brown",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-19 20:48:02:Nicholas-Ack",
@@ -2519,7 +2523,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-04-19",
       "reportedBy": "Nicholas Acker",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-16 16:44:49:Mike-Swearin",
@@ -2532,7 +2536,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-04-16",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-05 16:38:09:Jason-brown",
@@ -2545,7 +2549,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-04-05",
       "reportedBy": "Jason brown",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-04-02 22:02:03:Nick-Bourdin",
@@ -2558,7 +2562,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-04-02",
       "reportedBy": "Nick Bourdin",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-03-28 22:21:23:Carlos-Ferna",
@@ -2571,7 +2575,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2024-03-28",
       "reportedBy": "Carlos Fernando Davila",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-03-11 16:57:40:Mike-Swearin",
@@ -2584,7 +2588,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-03-11",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-03-10 23:21:39:Mike-Swearin",
@@ -2597,7 +2601,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-03-10",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-02-26 16:43:15:Jason-brown",
@@ -2610,7 +2614,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-02-26",
       "reportedBy": "Jason brown",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-02-21 00:55:00:Richie",
@@ -2623,7 +2627,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-02-21",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-02-14 22:17:44:Mike-Swearin",
@@ -2636,7 +2640,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-02-14",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-02-01 14:52:44:Mike-Swearin",
@@ -2649,7 +2653,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-02-01",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-02-01 12:53:11:Reese-Samala",
@@ -2662,7 +2666,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-02-01",
       "reportedBy": "Reese Samala",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-01-24 15:54:30:Peyton",
@@ -2675,7 +2679,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-01-24",
       "reportedBy": "Peyton",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2024-01-22 21:18:04:Mike-Swearin",
@@ -2688,7 +2692,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2024-01-22",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.591Z"
     },
     {
       "id": "gm:2023-12-13 21:55:11:Richie",
@@ -2701,7 +2705,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-12-13",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-11-22 17:16:18:Richie",
@@ -2714,7 +2718,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-11-22",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-11-15 16:01:56:Richie",
@@ -2727,7 +2731,7 @@
       "denialCategory": null,
       "dateOfDenial": "2023-11-15",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-11-06 15:56:18:Richie",
@@ -2740,7 +2744,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-11-06",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-11-01 17:55:28:Steven-W",
@@ -2753,7 +2757,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2023-11-01",
       "reportedBy": "Steven W",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-11-01 14:19:02:Mike-Swearin",
@@ -2766,7 +2770,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-11-01",
       "reportedBy": "Mike Swearingen",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-10-25 00:31:53:Steven-W",
@@ -2779,7 +2783,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-10-25",
       "reportedBy": "Steven W",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-10-16 19:43:56:Richie",
@@ -2792,7 +2796,7 @@
       "denialCategory": null,
       "dateOfDenial": "2023-10-16",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-10-16 19:43:19:Richie",
@@ -2805,7 +2809,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-10-16",
       "reportedBy": "Richie",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-09-26 22:14:11:Asel-Tuleshe",
@@ -2818,7 +2822,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-09-26",
       "reportedBy": "Asel Tulesheva",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-07-12 14:49:35:AmberCouch",
@@ -2831,7 +2835,7 @@
       "denialCategory": "full-denial",
       "dateOfDenial": "2023-07-12",
       "reportedBy": "AmberCouch",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-06-21 14:51:35:Oliver-Brown",
@@ -2844,7 +2848,7 @@
       "denialCategory": null,
       "dateOfDenial": "2023-06-21",
       "reportedBy": "Oliver Brown",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-06-16 19:22:06:Ford-Barsi",
@@ -2857,7 +2861,7 @@
       "denialCategory": "partial",
       "dateOfDenial": "2023-06-16",
       "reportedBy": "Ford Barsi",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "gm:2023-05-30 21:22:33:Ford-Barsi",
@@ -2870,7 +2874,7 @@
       "denialCategory": null,
       "dateOfDenial": "2023-05-30",
       "reportedBy": "Ford Barsi",
-      "dateAdded": "2026-05-13T03:16:52.419Z"
+      "dateAdded": "2026-05-13T03:47:38.592Z"
     },
     {
       "id": "susan:1412",
@@ -2883,7 +2887,7 @@
       "outcome": null,
       "denialCategory": "insurance",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1477",
@@ -2896,7 +2900,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1478",
@@ -2909,7 +2913,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1479",
@@ -2922,7 +2926,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1480",
@@ -2935,7 +2939,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1481",
@@ -2948,7 +2952,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1482",
@@ -2961,7 +2965,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1483",
@@ -2974,7 +2978,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1484",
@@ -2987,7 +2991,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1485",
@@ -3000,7 +3004,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1486",
@@ -3013,7 +3017,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1487",
@@ -3026,7 +3030,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1488",
@@ -3039,7 +3043,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1489",
@@ -3052,7 +3056,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1490",
@@ -3065,7 +3069,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1491",
@@ -3078,7 +3082,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1492",
@@ -3091,7 +3095,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1493",
@@ -3104,7 +3108,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1494",
@@ -3117,7 +3121,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1495",
@@ -3130,7 +3134,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1496",
@@ -3143,7 +3147,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1497",
@@ -3156,7 +3160,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1498",
@@ -3169,7 +3173,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1499",
@@ -3182,7 +3186,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1500",
@@ -3195,7 +3199,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1501",
@@ -3208,7 +3212,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1502",
@@ -3221,7 +3225,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1503",
@@ -3234,7 +3238,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1504",
@@ -3247,7 +3251,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1505",
@@ -3260,7 +3264,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1506",
@@ -3273,7 +3277,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1507",
@@ -3286,7 +3290,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1508",
@@ -3299,7 +3303,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1509",
@@ -3312,7 +3316,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1510",
@@ -3325,7 +3329,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1511",
@@ -3338,7 +3342,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1512",
@@ -3351,7 +3355,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1513",
@@ -3364,7 +3368,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1514",
@@ -3377,7 +3381,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.434Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1515",
@@ -3390,7 +3394,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1516",
@@ -3403,7 +3407,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1517",
@@ -3416,7 +3420,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1518",
@@ -3429,7 +3433,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.608Z"
     },
     {
       "id": "susan:1519",
@@ -3442,7 +3446,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1520",
@@ -3455,7 +3459,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1521",
@@ -3468,7 +3472,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1522",
@@ -3481,7 +3485,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1523",
@@ -3494,7 +3498,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1524",
@@ -3507,7 +3511,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1525",
@@ -3520,7 +3524,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1526",
@@ -3533,7 +3537,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1527",
@@ -3546,7 +3550,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1528",
@@ -3559,7 +3563,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1529",
@@ -3572,7 +3576,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1530",
@@ -3585,7 +3589,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1531",
@@ -3598,7 +3602,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1532",
@@ -3611,7 +3615,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1533",
@@ -3624,7 +3628,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1534",
@@ -3637,7 +3641,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1535",
@@ -3650,7 +3654,7 @@
       "outcome": null,
       "denialCategory": "sales_scripts",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1536",
@@ -3663,7 +3667,7 @@
       "outcome": null,
       "denialCategory": "email_templates",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1537",
@@ -3676,7 +3680,7 @@
       "outcome": null,
       "denialCategory": "email_templates",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "susan:1538",
@@ -3689,7 +3693,7 @@
       "outcome": null,
       "denialCategory": "email_templates",
       "dateOfDenial": null,
-      "dateAdded": "2026-05-13T03:16:52.435Z"
+      "dateAdded": "2026-05-13T03:47:38.609Z"
     },
     {
       "id": "gm-email:190e1d2bf82ec5eb",
@@ -3702,8 +3706,17 @@
       "outcome": "appeal-requested",
       "denialCategory": "partial-closed",
       "dateOfDenial": "2024-07-23",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.436Z"
+      "caseRef": "000758479307",
+      "keyDenialLanguage": [
+        "estimates that are higher than the Replacement Cost amount on my estimate",
+        "If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand",
+        "review for possible supplement"
+      ],
+      "carrierTactic": null,
+      "rooferTactic": "Carlos's appeal letter shows the classic 'good standing member' + 'request reinspection with different adjuster' play. Counter is to deploy iTel report + Repair Agreement to force a second look.",
+      "patentMapping": "Allstate's 'Replacement Cost' framing matches their patents US10685400 (mobile claims assessment), US10157445 (property image), US11257132 (surface dimension AI). The auto-issued estimate is patent-driven — the supplement request is how you re-engage human review.",
+      "lessonForAnalyzer": null,
+      "dateAdded": "2026-05-13T03:47:38.610Z"
     },
     {
       "id": "gm-email:18fee15e31b06898",
@@ -3716,8 +3729,18 @@
       "outcome": "estimate-issued",
       "denialCategory": "estimate-with-depreciation",
       "dateOfDenial": "2024-05-31",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.436Z"
+      "caseRef": "I7M4883",
+      "keyDenialLanguage": [
+        "Your estimate includes depreciation which is based on the age and condition of the damaged items",
+        "it is recoverable",
+        "once the work is finished please upload the final invoice to me and I will release the payment for depreciation",
+        "If you or your contractor have any issues with the estimate please contact me before the work is started"
+      ],
+      "carrierTactic": "Travelers' Brendon Myer follows the same template as Lauren Cook — minimal explanation in email, full detail in attached settlement letter + estimate PDF. Key levers: recoverable depreciation held back until invoice; contractor disputes must come BEFORE work starts (lock-in tactic).",
+      "rooferTactic": null,
+      "patentMapping": "Travelers' standardized claim handling per their 238 filed patents (72 issued in last 5 years). The 'contact me before work is started' language is the supplement-gate — designed to keep all changes flowing through one channel.",
+      "lessonForAnalyzer": "Travelers Virginia-Carolina Claim Center uses identical template across adjusters (Lauren Cook + Brendon Myer + Christopher Clark + Matthew Birski + Adam Whitehead all sign with similar copy). The boilerplate detector should flag this template — when 5+ adjusters use identical phrasing, that's the AI/template fingerprint.",
+      "dateAdded": "2026-05-13T03:47:38.611Z"
     },
     {
       "id": "gm-email:1934597fe86028f2",
@@ -3730,8 +3753,40 @@
       "outcome": "pending",
       "denialCategory": "partial-repair",
       "dateOfDenial": "2024-11-21",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.436Z"
+      "caseRef": "065417-GQ",
+      "keyDenialLanguage": [
+        "do not effectively prove that this roof is in an unrepairable condition",
+        "not seeing the clear creasing and/or granule loss to the surrounding shingles",
+        "shingles appeared to be pliable enough to us to proceed with the repair per shingle"
+      ],
+      "carrierTactic": "shifts the goalposts from 'damage' to 'unrepairability' — requires specific visual proof (creasing + granule loss in surrounding shingles)",
+      "rooferTactic": "brittle test demonstration with before/after photos to prove irreparability",
+      "patentMapping": "Nationwide's photographic test (creasing + granule loss in surrounding shingles) closely matches the imageFeaturesScanned in Accurence US10089396 and WO2018156846. The carrier is invoking the patent-documented inspection criteria.",
+      "lessonForAnalyzer": null,
+      "dateAdded": "2026-05-13T03:47:38.611Z"
+    },
+    {
+      "id": "gm-email:reese-173980AB",
+      "source": "Gmail: American Modern (AMIG / Cincinnati) Claim 173980AB — Shawn Krause — Roof Approved + Cosmetic Gutter Denial",
+      "sourceType": "gmail-thread",
+      "carrier": "American Modern Insurance Group (AMIG)",
+      "adjuster": "Thomas Gardner, Adjuster III - Field, American Modern (+1 843-302-6319, TGardner@amig.com)",
+      "denialText": "Shawn, I have attached a copy of the estimate for the damage and replacement cost letter (depreciation applied is available for reimbursement if the actual cost is incurred). We wrote to replace the roof of the home, right front corner metal trim and garage door trim. There is some cosmetic damage to gutters and down spouts which is not covered – we will send a separate letter addressing no coverage for cosmetic damage to the roof components. The net payment amount is $10,268.74. ... I am notifying Eric with The Roof Docs that we issued payment, you can share our estimate with them if you like.",
+      "counterText": null,
+      "outcome": "partial-approval-cosmetic-denial",
+      "denialCategory": "roof-approved-cosmetic-gutter-denied",
+      "dateOfDenial": "2026-05-12",
+      "caseRef": "173980AB",
+      "keyDenialLanguage": [
+        "There is some cosmetic damage to gutters and down spouts which is not covered",
+        "we will send a separate letter addressing no coverage for cosmetic damage to the roof components",
+        "depreciation applied is available for reimbursement if the actual cost is incurred"
+      ],
+      "carrierTactic": "ROOF APPROVAL + COSMETIC EXCLUSION — Approve the roof (where the AI's confidence is high) but write a SEPARATE cosmetic-damage-exclusion letter for gutters/downspouts. This separation creates two formal documents the carrier can defend independently if appealed.",
+      "rooferTactic": null,
+      "patentMapping": "AMIG/Cincinnati uses vendor AI (likely Accurence US10089396 or Verisk Tractable). The 'cosmetic damage exclusion' is carrier-specific policy language that maps to vendor patent's exclusions field. The two-letter approach (estimate letter + cosmetic exclusion letter) is documented in patent claims handling workflows.",
+      "lessonForAnalyzer": "AMIG/Cincinnati Financial cosmetic-only denial on gutters/downspouts: counter-letter must (1) argue functional vs cosmetic distinction with specific evidence (dent depth, dimensional impact), (2) request the cosmetic exclusion policy language verbatim, (3) cite NRCA/IICRC guidelines that hail-damaged gutters lose drainage performance over time (functional, not cosmetic), (4) request the AI/vendor reviewer's identity and confidence threshold.",
+      "dateAdded": "2026-05-13T03:47:38.611Z"
     },
     {
       "id": "gm-email:196ee30dcb24ecc1",
@@ -3744,8 +3799,18 @@
       "outcome": "partial-paid",
       "denialCategory": "partial-approval",
       "dateOfDenial": "2025-05-20",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.436Z"
+      "caseRef": "059304720-01",
+      "keyDenialLanguage": [
+        "industry market standards for most licensed contractors",
+        "if your chosen contractor's estimate is more they can submit for a supplement request",
+        "Please do not submit any estimates to us from contractors that you do not choose to complete the repairs",
+        "Recoverable Depreciation will be released only when proof of repairs has been received"
+      ],
+      "carrierTactic": "Forces homeowner to choose contractor first BEFORE submitting estimates. Pricing tied to 'industry market standards' (typically meaning Xactimate baseline, not regional roofer pricing). Holds depreciation hostage until completion.",
+      "rooferTactic": "Required: file supplement request via property-supplements.libertymutual.com. Resolution Specialist Brett Beatty (mobile 804-997-5698, FL Adjuster G043685) is the contact point. Must work directly through contractor.",
+      "patentMapping": "Liberty Mutual is one of the 'big 3' carriers in AI patents per the Insurance Journal 2025 report. The 'industry market standards' language likely maps to their automated pricing engine — supplements require breaking the AI baseline with case-specific evidence.",
+      "lessonForAnalyzer": null,
+      "dateAdded": "2026-05-13T03:47:38.611Z"
     },
     {
       "id": "gm-email:1936f37bf085dcd2",
@@ -3758,8 +3823,17 @@
       "outcome": "reconsideration-requested",
       "denialCategory": "wear-and-tear-denial",
       "dateOfDenial": "2024-08-21",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.437Z"
+      "caseRef": "I9G2378",
+      "keyDenialLanguage": [
+        "based on what he provided me I am standing by my decision",
+        "he is pointing out normal wear and tear to the shingles rather than damage due to hail",
+        "Attached to this email is your settlement letter and copy of your estimate"
+      ],
+      "carrierTactic": "Travelers' Lauren Cook reclassifies contractor-documented damage as 'normal wear and tear' to dismiss roof replacement. Standard playbook — re-characterize hail damage as pre-existing condition. Travelers patents emphasize aerial imagery + drone-based damage assessment (top P&C AI patent holder).",
+      "rooferTactic": "Homeowner-led reconsideration letter (more weight than contractor-led for PA-warning reasons). Emphasizes loyalty + dignity + 'detailed documentation' from contractor. Roof + siding both requested.",
+      "patentMapping": "Travelers operates the largest insurance drone program (700+ FAA-certified pilots). Their 'wear and tear' classifier is the same engine documented in WO2018156846 (Dolphin AI) and US20190304026 (Betterview) which both define wear-and-tear visual signatures (granular wear contrast, uniform asphalt loss, edge curvature). Lauren Cook is invoking the AI-trained eye, not her own opinion.",
+      "lessonForAnalyzer": null,
+      "dateAdded": "2026-05-13T03:47:38.611Z"
     },
     {
       "id": "gm-email:192ba1e299eab8e2",
@@ -3772,8 +3846,38 @@
       "outcome": "denial-shared-with-roofer",
       "denialCategory": "no-hail-roof-denial",
       "dateOfDenial": "2024-09-03",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.437Z"
+      "caseRef": "4673B816T",
+      "keyDenialLanguage": [
+        "No Hail RFG Denial"
+      ],
+      "carrierTactic": "State Farm classifies the entire roof claim as 'No Hail' — the AI-driven binary determination from their patent US10565658 (Storm event roof damage detection) and US20220414781 (Probable Roof Loss Confidence Scores). When the AI's hail-confidence score doesn't cross threshold, the claim is automatically routed to a generic no-hail denial template.",
+      "rooferTactic": null,
+      "patentMapping": "State Farm patents US10565658 (Storm event roof damage detection) + US20220414781 (Probable Roof Loss Confidence Scores) drive this binary classification. The 'No Hail RFG Denial' template suggests AI confidence below threshold — the homeowner can rebut by showing patent-mapped evidence (creasing on surrounding shingles, soft metal damage, neighbor approvals).",
+      "lessonForAnalyzer": "When a State Farm denial uses 'No Hail' framing, the counter-letter should: (1) cite specific hail evidence the AI scanner likely missed (test square hits per pattern in carrier-specific patent), (2) request the underlying confidence score under emerging AI disclosure rules, (3) reference neighbor approvals if available (forces adjuster to explain why same storm = different outcome).",
+      "dateAdded": "2026-05-13T03:47:38.611Z"
+    },
+    {
+      "id": "gm-email:reese-061143908-01",
+      "source": "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)",
+      "sourceType": "gmail-thread",
+      "carrier": "Liberty Mutual Insurance",
+      "adjuster": "Michael Vi, Sr. Field Claim Resolution Spec. I, Property, FL Adjuster License #W917298 (Direct 571-289-2582, Toll-Free 844-325-2467, Michael.Vi@LibertyMutual.com)",
+      "denialText": "Good afternoon Neena, I hope all is well. I just tried giving you a call, it went to voicemail and I was unable to leave a message due to the mailbox being full. We were able to conduct the roof inspection yesterday, I received all of the information and was able to finalize coverage for your claim. I have attached a copy of the estimate for replacement of your roof and repairs to your kitchen ceiling. There is no coverage for your siding due the damage pre-existing the date of loss this claim was filed for. I'm happy to say that an initial check for $7,924.67 is on its way via USPS and should arrive in 5-7 days.",
+      "counterText": null,
+      "outcome": "roof-approved-siding-denied",
+      "denialCategory": "partial-approval-siding-pre-existing-denial",
+      "dateOfDenial": "2026-03-31",
+      "caseRef": "061143908-01",
+      "keyDenialLanguage": [
+        "There is no coverage for your siding due the damage pre-existing the date of loss this claim was filed for",
+        "the total repair costs is $11,969.65. The policy deductible for this claim is $1,000",
+        "Your mortgage company is named on your claim payment, please contact your mortgage company about releasing the funds to you for repairs before attempting to cash the payment"
+      ],
+      "carrierTactic": "MIXED OUTCOME — Approve roof fully but EXCLUDE siding citing 'pre-existing damage prior to date of loss.' This is the partial-denial template Liberty Mutual uses to lower payouts. No specific evidence offered for the pre-existing claim. Plus mortgage-co payee adds friction to the homeowner's cash flow.",
+      "rooferTactic": "Compare siding photos from claim submission against any prior available photos to dispute pre-existing claim. Request specific evidence basis for pre-existing determination. Often the carrier has no actual evidence — just declares it.",
+      "patentMapping": "Liberty Mutual uses similar AI-based pre-existing damage scoring as Allstate (carrier-side patents) and vendor patents (US20190304026 Betterview, US20150228031 BuildFax roof-age modeling). The 'pre-existing' classification is the AI's pattern-recognition for what looks like older-vs-newer damage based on surrounding shingle condition.",
+      "lessonForAnalyzer": "Liberty Mutual 'no coverage for [component] due damage pre-existing': counter-letter must (1) request specific evidence basis for pre-existing determination, (2) ask for any prior inspections/photos referenced, (3) request the AI/algorithm methodology if vendor AI was used, (4) cite that absent evidence of when damage occurred, carrier must default to current claim DOL per most state contract-of-adhesion doctrine.",
+      "dateAdded": "2026-05-13T03:47:38.612Z"
     },
     {
       "id": "gm-email:19dff4a2e9aae9e4",
@@ -3786,8 +3890,44 @@
       "outcome": "pending-bad-faith-documented",
       "denialCategory": "pre-policy-inception-no-hail-storm-data-withheld",
       "dateOfDenial": "2026-05-06",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.437Z"
+      "caseRef": "260257861",
+      "keyDenialLanguage": [
+        "based on the available weather data",
+        "earliest hail event capable of producing the level of damage observed occurred in July 2025",
+        "prior to the policy inception date",
+        "we use a variety of weather reports",
+        "we use weather reports"
+      ],
+      "carrierTactic": "ASYMMETRIC EVIDENCE BAD-FAITH PATTERN. Carrier (1) cites 'available weather data' to deny, (2) refuses to share or identify which sources, (3) deflects 3 separate explicit requests to share, (4) closes with 'Have a great day' to terminate. This is textbook bad faith — adjuster MUST be able to produce the underlying basis for a coverage decision per most states' unfair claim settlement practices statutes (e.g. Maryland § 27-303, Virginia § 38.2-510).",
+      "rooferTactic": "Christian Bratton submitted 12 federal-source cross-referenced storm reports — well-documented. Now systematically requesting the underlying carrier source 4+ times to build the bad-faith record. Each ignored request becomes evidence. Next escalation: written formal demand for AI/automated decision system disclosure under emerging state regulations + DOI complaint.",
+      "patentMapping": "Allstate (Encompass's parent) operates under patents US11720971, US11798095, US11257132, US11348134 — ML-driven claim assessment. The 'we use a variety of weather reports' answer is consistent with an AI weather-correlation engine where the adjuster doesn't actually know which sources fired the denial. ShaJerrica may genuinely not have access to the underlying data — the model emitted a confidence score and template letter without surfacing sources.",
+      "lessonForAnalyzer": "CRITICAL bad-faith signal: when carrier denial cites 'weather data' / 'available data' / 'reports' but refuses to identify or share sources after 2+ requests, this is patent-disclosed AI automation with no human-reviewable trail. Counter-letter should: (1) cite state-specific unfair claim settlement statute requiring disclosure of denial basis, (2) request the AI/automated decision system disclosure under emerging state regs (CA AB-3030, CO AI Act, etc.), (3) document each refused request with timestamps for DOI complaint, (4) escalate to supervisor/manager in writing — 'I am requesting in writing the specific weather data sources cited in the denial, and reserve all rights including filing a DOI complaint for failure to disclose the basis of the coverage decision.'",
+      "dateAdded": "2026-05-13T03:47:38.612Z"
+    },
+    {
+      "id": "gm-email:reese-A00007555686",
+      "source": "Gmail: Erie Claim A00007555686 — Hongyan Hang — Partial Denial w/ Reinspection Refusal",
+      "sourceType": "gmail-thread",
+      "carrier": "Erie Insurance",
+      "adjuster": null,
+      "denialText": "This email is to follow up your request for a re-inspection of your property at the above mentioned address. Although we have the utmost confidence in the investigation conducted by Yolanda Morrison, we have reviewed your claim file documents for potential re-inspection. Sufficient photographs were available for review, and we respectfully decline your request for a physical re-inspection. While some of your soft metals did exhibit hail damage, the shingles did not. The roof did display blistering and granule loss, consistent with wear and tear. A partial denial citing the applicable policy exclusions will be sent to you. ... However, if you feel that our assessment is incorrect, you have the option, at your own expense, to hire a professional engineer or similar expert who is qualified to identify hail damage for an assessment. If you do choose to hire an expert, please have them forward a copy of their detailed report which should include photographs of reported hail damages to my attention for review. We do reserve the right to conduct future inspection ourselves or by an engineer we may hire. Please note your policy contains the following provision found in Section RIGHTS AND DUTIES -- CONDITIONS -- SECTION I. LAWSUITS AGAINST US 'We' may not be sued unless there is full compliance with all the terms of this policy. Suit must be brought within two years after the loss or damage occurs.",
+      "counterText": null,
+      "outcome": "reinspection-refused-pending-engineer-or-public-adjuster",
+      "denialCategory": "partial-denial-shingles-wear-and-tear-soft-metals-only",
+      "dateOfDenial": "2026-04-17",
+      "caseRef": "A00007555686",
+      "keyDenialLanguage": [
+        "Sufficient photographs were available for review, and we respectfully decline your request for a physical re-inspection",
+        "While some of your soft metals did exhibit hail damage, the shingles did not",
+        "The roof did display blistering and granule loss, consistent with wear and tear",
+        "you have the option, at your own expense, to hire a professional engineer or similar expert",
+        "Suit must be brought within two years after the loss or damage occurs"
+      ],
+      "carrierTactic": "SPLIT-CLASSIFICATION DENIAL — acknowledge hail damage to soft metals (which is hard to deny) BUT classify shingle damage as wear-and-tear (blistering + granule loss). Decline physical reinspection by citing 'sufficient photographs.' Push burden of proof onto homeowner at their own expense via engineer requirement. Cite 2-year suit-against-us provision early to discourage litigation.",
+      "rooferTactic": "Homeowner cites NEIGHBORS APPROVED for same damage — pattern-of-approvals argument. Reese suggests filing under different DOL when first DOL is disputed. Internal Roof-ER suggestion: involve PA early for significant damage.",
+      "patentMapping": "Erie uses Verisk/CoreLogic vendor-based AI (Accurence US10089396, US10546264). The 'blistering + granule loss → wear and tear' classification is straight from the patent's documented decision rules. Vendor AI doesn't distinguish well between thermal blistering and hail-induced granule loss — they exploit this ambiguity in the AI's confidence threshold.",
+      "lessonForAnalyzer": "Erie split-classification denials (soft metals YES / shingles NO): counter-letter should argue (1) pattern of soft-metal hail damage is impossible without corresponding shingle hits — physics-based argument, (2) neighbor approvals for same storm with identical damage type, (3) granule loss VS blistering distinction (granule loss with displaced asphalt vs thermal blistering pattern), (4) reinspection demand with internal staff adjuster — and if denied, file Virginia/MD state DOI complaint citing inadequate investigation.",
+      "dateAdded": "2026-05-13T03:47:38.612Z"
     },
     {
       "id": "gm-email:192b9eb5fd4c75ff",
@@ -3800,8 +3940,38 @@
       "outcome": "pending",
       "denialCategory": "estimate-issued",
       "dateOfDenial": "2024-10-23",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.437Z"
+      "caseRef": "015826705-800",
+      "keyDenialLanguage": [
+        "I have attached the estimate per your request",
+        "If you need to provide documentation, you can attach documents to your email"
+      ],
+      "carrierTactic": "USAA's terse delivery model — minimal explanation. Estimate attached as PDF. Supplement requests via email reply only.",
+      "rooferTactic": null,
+      "patentMapping": "USAA patents US11410230 (aerial imagery → claim generation) and US11216889 (property items detection) drive this auto-estimate workflow. The lack of detailed reasoning in the email itself is consistent with patent-described automation.",
+      "lessonForAnalyzer": null,
+      "dateAdded": "2026-05-13T03:47:38.612Z"
+    },
+    {
+      "id": "gm-email:reese-000883-GR",
+      "source": "Gmail: Nationwide Claim 000883-GR — Kevin Melton — Full Denial",
+      "sourceType": "gmail-thread",
+      "carrier": "Nationwide Property & Casualty Insurance Company",
+      "adjuster": "Ryan Graham, FL Lic W848638, Nationwide Claims Associate (W 866-425-9200 x15638)",
+      "denialText": "Greetings Kevin, This is Ryan from Nationwide Insurance. Per our conversation I've attached a full denial letter that goes into more detail on why we were unable to provide coverage for the damages found. I will close the claim (as is part of our claims process), but as mentioned in our call, if you have any questions, please reach out using my information below!",
+      "counterText": null,
+      "outcome": "claim-closed",
+      "denialCategory": "full-denial",
+      "dateOfDenial": "2026-03-19",
+      "caseRef": "000883-GR",
+      "keyDenialLanguage": [
+        "attached a full denial letter that goes into more detail on why we were unable to provide coverage for the damages found",
+        "I will close the claim (as is part of our claims process)"
+      ],
+      "carrierTactic": "Nationwide standard close-after-denial pattern. Specific denial rationale is in the attached PDF (not transcribed in this email). The 'as is part of our claims process' framing presents closing as routine, not adversarial.",
+      "rooferTactic": null,
+      "patentMapping": "Nationwide's claim handling automation. The denial PDF likely follows the same format as the Nationwide PL Property Full Denial captured earlier for KYM GULLY (also under Thomes Buchanan adjuster) — which used wear/tear/deterioration template citation to policy provisions.",
+      "lessonForAnalyzer": "Nationwide denials always have the substantive content in the attached PDF — the email itself is a thin wrapper. Counter-letter requires homeowner to forward the PDF for analysis. Reach out to Ryan Graham specifically asking for the underlying inspection report + weather data sources.",
+      "dateAdded": "2026-05-13T03:47:38.612Z"
     },
     {
       "id": "gm-email:19bfb74445326613",
@@ -3814,8 +3984,66 @@
       "outcome": "clarification-letter-sent",
       "denialCategory": "partial-approval-pa-pushback",
       "dateOfDenial": "2026-01-22",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.438Z"
+      "caseRef": "002384565-803",
+      "keyDenialLanguage": [
+        "warning of acting like a Public Adjuster",
+        "interpreting policy coverage",
+        "negotiating his claim settlement",
+        "acting as an intermediary between the insured and USAA",
+        "requires public adjuster licensing"
+      ],
+      "carrierTactic": "USAA adjuster (James Robinson) deflects contractor advocacy by invoking unauthorized practice of public adjusting. Tactic shuts down further roofer-led arguments unless reframed strictly as contractor-technical-assessment.",
+      "rooferTactic": "Reframe as CONTRACTOR'S TECHNICAL ASSESSMENT (building code + manufacturer warranty + material matching + industry standard). Explicit non-PA disclaimer. Decline-project leverage if partial approved. Joint inspection offer.",
+      "patentMapping": "USAA patents US11410230 + US11216889 are about automated claim generation from aerial imagery and property item detection. The PA pushback is a HUMAN escalation tactic — when AI auto-denials get challenged, carriers fall back on regulatory technicalities to limit contractor advocacy.",
+      "lessonForAnalyzer": "When drafting counter-letters for USAA (and likely other carriers), AVOID: 'we respectfully request', 'negotiate', 'on behalf of', 'represent', 'advocate', 'matching requirements', 'state law requires'. USE: 'as the licensed contractor', 'technical/construction challenges', 'manufacturer warranty', 'code compliance', 'decline the project', 'joint inspection'.",
+      "dateAdded": "2026-05-13T03:47:38.612Z"
+    },
+    {
+      "id": "gm-email:reese-060253156-01",
+      "source": "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear",
+      "sourceType": "gmail-thread",
+      "carrier": "Liberty Mutual",
+      "adjuster": "Michael Andress, Field Claims Resolution Specialist III, FL Adjuster #W576254 (Mobile 571-597-8629, Michael.Andress@LibertyMutual.com)",
+      "denialText": "We completed an additional inspection of your roof this morning with your contractor. We utilized a different inspection company to provide an additional perspective. The results of that inspection were that no storm-related damage was found on the roof. As was noted with the prior inspection, the condition of the roof is due to wear and tear or deterioration. In addition to the deterioration previously noted, our inspector also noted that there is granule loss and marring around some of the solar panels that was likely caused by footfall or other movement during the installation of the panels. He noted that this damage is not consistent with storm damage. He went on to note that there is no pattern of damage to any of the soft metals on the roof that would indicate hail damage. ... I would also like to reiterate that the only measurable hailstorm at your location since your policy started with us was recorded on 8/20/2019, with a hailstone size of .75\". This size hail typically is not large enough to cause significant damage to shingles or gutters. Therefore, currently our coverage position has not changed and there is unfortunately no coverage for the condition of your roof.",
+      "counterText": null,
+      "outcome": "denied-twice",
+      "denialCategory": "wear-and-tear-second-denial",
+      "dateOfDenial": "2025-10-29",
+      "caseRef": "060253156-01",
+      "keyDenialLanguage": [
+        "no storm-related damage was found on the roof",
+        "the condition of the roof is due to wear and tear or deterioration",
+        "granule loss and marring around some of the solar panels that was likely caused by footfall or other movement during the installation of the panels",
+        "no pattern of damage to any of the soft metals on the roof that would indicate hail damage",
+        "the only measurable hailstorm at your location since your policy started with us was recorded on 8/20/2019, with a hailstone size of .75\"",
+        "This size hail typically is not large enough to cause significant damage to shingles or gutters"
+      ],
+      "carrierTactic": "DOUBLE-INSPECTION pattern — carrier sends second inspector, frames findings as 'different perspective' to reinforce denial. Attributes granule loss to SOLAR PANEL INSTALLATION FOOTFALL (a novel deflection — blames the homeowner's contractor for the damage). References only the carrier's own weather history (8/20/2019 .75\" hail), ignores any subsequent storms. Standard Liberty Mutual pattern: granule loss + soft-metals-test = wear and tear.",
+      "rooferTactic": null,
+      "patentMapping": "Liberty Mutual is one of the 'big 3' P&C carriers per Insurance Journal 2025 — their wear-and-tear classifier maps directly to WO2018156846 (Dolphin AI) and US20190304026 (Betterview) weather-damage criteria. The 'soft metals test' (looking for matching impact patterns on gutters/downspouts to corroborate roof hail) is the AI-trained inspector checklist.",
+      "lessonForAnalyzer": "For Liberty Mutual denials citing 'no pattern of damage to soft metals': counter with (1) photos of clear soft-metals impact, (2) third-party hail report covering ALL storms since policy inception (not just one cherry-picked event), (3) cite that 0.75\" hail can absolutely damage shingles per NRCA standards, (4) request the inspection company's name + license + report under the right to coverage basis disclosure.",
+      "dateAdded": "2026-05-13T03:47:38.613Z"
+    },
+    {
+      "id": "gm-email:reese-46-99F9-92W",
+      "source": "Gmail: State Farm 46-99F9-92W — Silvia Snyder — Partial Denial Letter",
+      "sourceType": "gmail-thread",
+      "carrier": "State Farm",
+      "adjuster": "Ian Swanson, Claim Specialist – WCCS Deployed (866-787-8676 Ext:8254, statefarmfireclaims@statefarm.com)",
+      "denialText": "Please open the attachment(s) for more claim information or next steps. For your protection, please do not include sensitive personal information such as Social Security Number, credit/debit card number (financial account number), driver's license number, or health/medical information in an email. If you must send this type of information to State Farm, please contact your claim associate to request a secure email channel.",
+      "counterText": null,
+      "outcome": "partial-denial-letter-sent",
+      "denialCategory": "partial-denial",
+      "dateOfDenial": "2026-04-30",
+      "caseRef": "46-99F9-92W",
+      "keyDenialLanguage": [
+        "Partial Denial Letter (full content in attached PDF)"
+      ],
+      "carrierTactic": "Standard State Farm template — denial substance in attached PDF, email body is thin wrapper. WCCS = Workforce Claims Customer Service deployed (catastrophe response unit).",
+      "rooferTactic": null,
+      "patentMapping": "State Farm patents US10565658, US20220414781 (roof loss confidence). The 'WCCS Deployed' designation = catastrophe-response team where AI scoring is more central. Rushed in-person inspection consistent with adjuster confirming the AI's pre-determined denial scope rather than independent assessment.",
+      "lessonForAnalyzer": "State Farm partial denials via WCCS Deployed unit: request specific reinspection by NON-WCCS adjuster, ideally local field staff. Document inspector's behavior if rushed (timestamped photos, recording if state allows). Cite adjuster inadequate-investigation under VA/MD unfair claim settlement practices statutes.",
+      "dateAdded": "2026-05-13T03:47:38.613Z"
     },
     {
       "id": "gm-email:19308b38f99cb9cb",
@@ -3828,8 +4056,36 @@
       "outcome": "estimate-shared-with-roofer",
       "denialCategory": "estimate-issued",
       "dateOfDenial": "2024-11-07",
-      "caseRef": null,
-      "dateAdded": "2026-05-13T03:16:52.438Z"
+      "caseRef": "A00006258004",
+      "keyDenialLanguage": [],
+      "carrierTactic": "Erie's standard settlement delivery — direct to homeowner. No adjuster name in this thread (would be on the PDF).",
+      "rooferTactic": null,
+      "patentMapping": "Erie was not in the Insurance Journal top-3 patent holders. Likely uses Verisk/CoreLogic vendor patents (US10089396 Accurence, US20190304026 Betterview) rather than in-house ML. Erie tends to have shorter/simpler estimates — less AI-driven boilerplate, more human-adjuster-driven.",
+      "lessonForAnalyzer": "Erie thread is THIN — only the homeowner forward exists, the actual estimate is in the attached PDF. For full intel, the PDF needs OCR (which we now have via the transcribe endpoint). Future improvement: when a homeowner forwards a claim PDF, auto-transcribe and store.",
+      "dateAdded": "2026-05-13T03:47:38.613Z"
+    },
+    {
+      "id": "gm-email:reese-0020059596",
+      "source": "Gmail: Utica National Claim 0020059596 — Sandra Valenti — Elevation-Specific Approval + Matching Denial",
+      "sourceType": "gmail-thread",
+      "carrier": "Utica National Insurance Group",
+      "adjuster": "Jason Hood, AIC, Property Claims Specialist (704-501-9323 or 800-598-8422 ext 5019323, www.uticanational.com)",
+      "denialText": "Andre & Sandra Valenti, Kate has taken another position, and the file was transferred to me for handling. We will be handling/adjusting the damages under claim 0020059596 (newly placed claim on 03/26/26) as this claim's DOL is more accurate. That being said I reviewed the documents associated with the claims. There is visible hail damage present on the siding and gutters of some of the home's elevations and the additional information Andre provided does document the presence of hail within the policy period. We are able to provide coverage for the damaged elevations. We would not be able to provide coverage for elevations that were not damaged by the event. I have attached the sketch completed by our adjuster during his visit to the property that notes the damaged areas. While it is possible that the exact siding may no longer be available Utica does not owe to match the existing siding. Additionally, by replacing the entire damaged elevation to the corner trim leaking will not be an issue. Andre, if you would like to provide an estimate for review of the damaged elevations only, please forward to me directly.",
+      "counterText": null,
+      "outcome": "partial-approval-elevations-only",
+      "denialCategory": "elevation-specific-approval-matching-denial",
+      "dateOfDenial": "2026-05-12",
+      "caseRef": "0020059596",
+      "keyDenialLanguage": [
+        "We are able to provide coverage for the damaged elevations. We would not be able to provide coverage for elevations that were not damaged by the event",
+        "While it is possible that the exact siding may no longer be available Utica does not owe to match the existing siding",
+        "by replacing the entire damaged elevation to the corner trim leaking will not be an issue"
+      ],
+      "carrierTactic": "ELEVATION-SPECIFIC LIMITATION — Cover only the elevations the inspector noted hail on. EXPLICITLY refuse to match existing siding. Argue 'corner trim to corner trim replacement' is sufficient to prevent functional issues (leaking) — pushing back on matching requirements.",
+      "rooferTactic": "MATCHING REQUIREMENT argument — Maryland, Virginia, and many states have matching requirements that contradict 'corner-to-corner' partial siding repair. Cite NRCA standards + state regs.",
+      "patentMapping": "Utica is a smaller regional carrier — likely uses Accurence (US10089396) for vendor AI scoping. The 'elevation-specific damage' approach is documented in Accurence patents as the cell-by-cell scoping logic.",
+      "lessonForAnalyzer": "Utica National elevation-specific partial: counter-letter MUST cite (1) state-specific matching requirements (VA § 38.2-510, MD Ins. Code § 27-303 unfair claim settlement practices, etc.), (2) NRCA standards on aged-vs-new material mismatch, (3) manufacturer warranty void if existing siding can't be matched, (4) cite that 'corner-to-corner' replacement creates visual mismatch that affects property value — request appraisal-based valuation of mismatch damage if matching denied.",
+      "dateAdded": "2026-05-13T03:47:38.613Z"
     }
   ]
 }

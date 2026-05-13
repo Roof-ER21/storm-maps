@@ -173,21 +173,36 @@ function pullGmailDump() {
   for (const f of files) {
     try {
       const thread = JSON.parse(fs.readFileSync(path.join(SOURCES_DIR, f), 'utf8'));
-      // Expected: { threadId, subject, carrier, messages: [{sender, body, date}] }
-      const allText = (thread.messages || []).map((m) => `[${m.sender} ${m.date}]\n${m.body}`).join('\n\n');
+      // Two schemas supported:
+      //   v1: { messages: [{sender, body, date}] } — joined into one denialText
+      //   v2: { denialText, counterText } — flat fields, used directly
+      let allText = '';
+      if (Array.isArray(thread.messages) && thread.messages.length > 0) {
+        allText = thread.messages.map((m) => `[${m.sender || m.role || ''} ${m.date || ''}]\n${m.body || ''}`).join('\n\n');
+      }
+      // v2 fallback / supplement
+      if (!allText && thread.denialText) {
+        allText = thread.denialText;
+        if (thread.counterText) allText += '\n\n---COUNTER---\n' + thread.counterText;
+      }
       if (!allText) continue;
       entries.push({
-        id: 'gm-email:' + thread.threadId,
+        id: 'gm-email:' + (thread.threadId || f.replace(/\.json$/, '')),
         source: 'Gmail: ' + (thread.subject || f),
         sourceType: 'gmail-thread',
         carrier: thread.carrier || guessCarrierFromText(allText),
         adjuster: thread.adjuster || extractAdjusterFromText(allText),
-        denialText: cleanText(allText).slice(0, 12000),
+        denialText: cleanText(allText).slice(0, 14000),
         counterText: thread.counterText || null,
         outcome: thread.outcome || null,
         denialCategory: thread.denialCategory || null,
         dateOfDenial: thread.dateOfDenial || null,
-        caseRef: thread.caseRef || null,
+        caseRef: thread.caseRef || thread.claimNumber || null,
+        keyDenialLanguage: thread.keyDenialLanguage || null,
+        carrierTactic: thread.carrierTactic || null,
+        rooferTactic: thread.rooferTactic || null,
+        patentMapping: thread.patentMapping || null,
+        lessonForAnalyzer: thread.lessonForAnalyzer || null,
         dateAdded: new Date().toISOString(),
       });
       kept++;

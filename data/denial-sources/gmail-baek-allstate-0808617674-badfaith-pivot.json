@@ -1,0 +1,57 @@
+{
+  "threadId": "reese-0808617674",
+  "subject": "Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)",
+  "carrier": "Allstate Indemnity Company",
+  "adjuster": "Sarah Sowers (Phone 757-901-2565, claims@claims.allstate.com)",
+  "secondaryAdjuster": "Milton Williams (covering during bereavement)",
+  "claimNumber": "0808617674",
+  "denialCategory": "pre-policy-pivot-then-deductible-pivot-impasse",
+  "dateOfDenial": "2026-03-28",
+  "outcome": "carrier-stood-firm-impasse-pivoted-3-times",
+  "policyInception": "2025-04-24",
+  "claimedDOL": "2025-05-16",
+  "homeowner": "Sue Baek",
+  "rooferRep": "Christian Bratton, Senior Field Rep (Roof-ER, 703-239-3199)",
+  "carrierPivots": [
+    {
+      "pivot": 1,
+      "claim": "Damage is from pre-policy 2.25 inch hailstorm in 2022. The seller told the insured she could file for it after purchase. 'This is not how insurance works.'",
+      "rooferResponse": "Submitted forensic storm report. No 2.5\" hail ever reported at location. Damages I found are PENNY SIZED (~1\" hail max)."
+    },
+    {
+      "pivot": 2,
+      "claim": "'There was a hail storm in 2022 that was 2.25 inches. This is what the insured was talking about when she said all the houses in the area have had their roofs replaced. The insured advised that knew there was hail damage to the roof when the house was purchased and this is why the claim was denied.'",
+      "rooferResponse": "Submitted 3 photos with hail size/damage chart showing dents are NOWHERE NEAR 2.25\". Damages consistent with ≤1\" hail."
+    },
+    {
+      "pivot": 3,
+      "claim": "'Your policy for this property started 4/24/2025 and the date of loss was reported as 5/16/2025. In those 23 days, no hail larger than .25 inches was reported. .25 inch (pea-sized) hail rarely causes immediate, functional damage to a standard roof. Hail typically needs to be 1 inch (quarter-sized) or larger to cause significant damage.'",
+      "rooferResponse": "Submitted: (1) OneSite Forensic weather report showing 5/16/25 DOL hail was at least 1 inch. (2) Another report citing NOAA, Storm Prediction Center, NWS local storm report, NEXRAD radar, and CoCoRaHS observer ALL recorded up to 1.5\" hail at this location on this date. Five source IDs listed; carrier can pull them."
+    },
+    {
+      "pivot": 4,
+      "claim": "'It seems we have reached an impasse regarding this. In light of this, I would like to direct your attention to the dispute resolution process outlined in the homeowners policy.'",
+      "rooferResponse": null
+    }
+  ],
+  "homeownerCounter": "I clearly filed for the 5/16/2025 storm that hit my house. I want it to be clear that this storm caused damages. Christian has submitted the storm data as well as numerous damage photos supporting this. I kindly ask you explain how you came to the conclusion the damages are from a much larger storm and not this one. From the storm data we submitted a 2.5 inch storm has never even hit this area. If there is evidence you found of 2.5 inch hail damage to my property, please send photos on this chain.",
+  "keyDenialLanguage": [
+    "this is not how insurance works",
+    "no hail larger than .25 inches was reported",
+    ".25 inch (pea-sized) hail rarely causes immediate, functional damage to a standard roof",
+    "Hail typically needs to be 1 inch (quarter-sized) or larger to cause significant damage",
+    "We discussed that you replaced your roof components due to significant hail damage when you purchased the home",
+    "we have reached an impasse regarding this",
+    "I would like to direct your attention to the dispute resolution process outlined in the homeowners policy"
+  ],
+  "carrierTactic": "FOUR-PIVOT BAD-FAITH PATTERN: (1) Blame pre-policy hail, (2) Cite 2.25\" magnitude that doesn't match photo evidence, (3) Once disproven, pivot to 'no hail >0.25\" in 23 days', (4) Declare 'impasse' and direct to dispute resolution. The carrier never produces evidence for the 2.25\" claim — it's a verbal report from seller laundered into an official-sounding denial basis.",
+  "rooferTactic": "5-source forensic storm report cross-referenced from federal sources (NOAA, SPC, NWS LSR, NEXRAD, CoCoRaHS). Hail size/damage chart photographic comparison. Visual contradiction of carrier's stated magnitude.",
+  "patentMapping": "Allstate patents US11720971 (ML-based assessment), US11257132 (surface dimension AI), US11348134 (data processing ML) all support automated denial decisions. The pivoting suggests an AI confidence score that the human adjuster is back-rationalizing — when one rationale falls, another is substituted from the AI's ranked-reason list.",
+  "badFaithEvidence": [
+    "Carrier shifted reasoning 3 times without acknowledging previous contradictions",
+    "Cited 2.25\" hail magnitude with no source — refused to produce evidence",
+    "Pivoted to 'discussed' verbal statement when forensic data contradicted first denial",
+    "Closed with dispute-resolution invocation rather than addressing 5 federal sources"
+  ],
+  "lessonForAnalyzer": "When Allstate cites 'we have reached an impasse' or 'dispute resolution process' — that's the bad-faith escape hatch. Counter-letter should: (1) document each contradictory carrier position with timestamps, (2) demand specific evidence basis for each cited storm/magnitude, (3) cite VA Bureau of Insurance / State Corporation Commission complaint pathway, (4) request the carrier's automated decision rationale per emerging AI disclosure rules."
+}

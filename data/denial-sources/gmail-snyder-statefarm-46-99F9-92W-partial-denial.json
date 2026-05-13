@@ -1,0 +1,20 @@
+{
+  "threadId": "reese-46-99F9-92W",
+  "subject": "State Farm 46-99F9-92W — Silvia Snyder — Partial Denial Letter",
+  "carrier": "State Farm",
+  "adjuster": "Ian Swanson, Claim Specialist – WCCS Deployed (866-787-8676 Ext:8254, statefarmfireclaims@statefarm.com)",
+  "claimNumber": "46-99F9-92W",
+  "denialCategory": "partial-denial",
+  "dateOfDenial": "2026-04-30",
+  "outcome": "partial-denial-letter-sent",
+  "homeowner": "Silvia Snyder",
+  "forwardedBy": "Mattias Kasparian (Roof-ER): 'Hi Amber, Just received this from the homeowner. Partial denial letter. The inspector that showed up that day was taking pictures while he was walking around the last thing you wanted to do is be there. Unbelievable. We'll have to request a re-inspection.'",
+  "denialText": "Please open the attachment(s) for more claim information or next steps. For your protection, please do not include sensitive personal information such as Social Security Number, credit/debit card number (financial account number), driver's license number, or health/medical information in an email. If you must send this type of information to State Farm, please contact your claim associate to request a secure email channel.",
+  "keyDenialLanguage": [
+    "Partial Denial Letter (full content in attached PDF)"
+  ],
+  "carrierTactic": "Standard State Farm template — denial substance in attached PDF, email body is thin wrapper. WCCS = Workforce Claims Customer Service deployed (catastrophe response unit).",
+  "rooferStrategyNote": "Mattias's qualitative complaint about adjuster behavior: 'taking pictures while he was walking around the last thing you wanted to do is be there' — suggests rushed, low-effort inspection. This is a potential bad-faith signal (inadequate investigation under state unfair-claim-settlement statutes).",
+  "patentMapping": "State Farm patents US10565658, US20220414781 (roof loss confidence). The 'WCCS Deployed' designation = catastrophe-response team where AI scoring is more central. Rushed in-person inspection consistent with adjuster confirming the AI's pre-determined denial scope rather than independent assessment.",
+  "lessonForAnalyzer": "State Farm partial denials via WCCS Deployed unit: request specific reinspection by NON-WCCS adjuster, ideally local field staff. Document inspector's behavior if rushed (timestamped photos, recording if state allows). Cite adjuster inadequate-investigation under VA/MD unfair claim settlement practices statutes."
+}

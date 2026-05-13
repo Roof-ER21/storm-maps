@@ -1,0 +1,50 @@
+{
+  "threadId": "reese-usaa-threshold-pattern",
+  "subject": "USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+  "carrier": "USAA / USAA General Indemnity Company / USAA Casualty Insurance Company",
+  "denialCategory": "below-deductible-threshold",
+  "patternSummary": "USAA's go-to denial pattern is 'loss does not exceed the deductible' — they confirm coverage type but cap payout to be just under the deductible. Standard template across multiple adjusters and claims.",
+  "examples": [
+    {
+      "claimNumber": "034296315-801",
+      "homeowner": "Atiphat Wongsuriyawat",
+      "deductible": 2000,
+      "dateOfLoss": "2025-05-05",
+      "address": "2024 STATE ROOM DR, STAFFORD, VA 22554",
+      "dateOfDenial": "2026-03-09",
+      "adjuster": "Jean Paul Ruz, Dedicated Catastrophe Claims, USAA General Indemnity Company",
+      "forwardedBy": "Kerouls Gayed"
+    },
+    {
+      "claimNumber": "040039705-801",
+      "homeowner": "Marshall Pearson (Chief Pearson — military)",
+      "deductible": 1000,
+      "dateOfLoss": "2026-04-01",
+      "address": "8008 CLIFTON ST, MANASSAS, VA 20109",
+      "dateOfDenial": "2026-04-07",
+      "adjuster": "David Henley, Property Claims Catastrophe, United Services Automobile Association",
+      "forwardedBy": "Bennett Cooper"
+    },
+    {
+      "claimNumber": "007198374-803",
+      "homeowner": "Jeffrey Kinnick",
+      "dateOfDenial": "2026-04-08",
+      "adjuster": "Brandon Levey, PROP CAT Unit 18, USAA Casualty Insurance Company",
+      "forwardedBy": "Christian Bratton",
+      "specialNote": "Adjuster TOLD Bratton off-record: 'since an iA denied it initially there's nothing he can do to approve it (he went out to the property and we inspected it together). He thinks the shingles are still available, the only option is to do an iTel if they're available.' KEY REVEAL: iA = Initial AI (likely Tractable or Verisk vendor AI) — the cascading effect where human adjusters can't override an AI denial."
+    }
+  ],
+  "denialTemplate": "Dear [Member], Thank you for trusting us with your insurance needs. This type of loss is covered under your homeowners policy; however, the loss doesn't exceed your $[X,000.00] deductible. Your policy only pays if a loss exceeds your deductible. If you find additional damage, please submit the supporting documentation and we will re-evaluate the loss. Although the damage is less than the deductible, please make sure that all necessary repairs are completed. If the reported damage is not repaired, this could result in the denial of a future claim for the same or related damage. ... Important Legal Information: Your policy's Suit Against Us Provision prohibits you from taking any action against us unless you have given us notice of the loss, complied with all policy provisions, and started legal action within two (2) years after the date of loss.",
+  "specificCarrierQuote_Kinnick": "Christian, What's up man. I rereviewed everything and added everything that I can find that's hail damage. The roof isn't old, the shingle is still available, no hail to the shingles and the hail to the eye was like 1/4 inch. The estimate still fell below the deductible.",
+  "keyDenialLanguage": [
+    "the loss doesn't exceed your $[deductible] deductible",
+    "Your policy only pays if a loss exceeds your deductible",
+    "If the reported damage is not repaired, this could result in the denial of a future claim for the same or related damage",
+    "the hail to the eye was like 1/4 inch",
+    "since an iA denied it initially there's nothing he can do to approve it"
+  ],
+  "carrierTactic": "BELOW-DEDUCTIBLE ESTIMATE — USAA writes the estimate just below the deductible amount so it 'technically' covers the loss but pays $0. The 'future claim denial' warning is meant to scare homeowners into not pursuing further documentation. iA = Initial AI cascade means the human adjuster's hands are tied by the vendor's algorithmic first decision.",
+  "rooferTactic": "iTel sample for shingle availability test. Reinspection with new documentation. Pre-inspect heavy. Critical: get additional documentation BEFORE the initial AI fires the threshold-deny decision — once it's done, hard to flip.",
+  "patentMapping": "USAA patents US11410230 (aerial imagery → claim generation) and US11216889 (property items detection). The 'initial AI' (iA) the adjuster mentioned is likely Tractable AI (Verisk partner — see Verisk press release Mar 2023) which feeds USAA's claim ingestion. Vendor patent: US20190304026 (Betterview) wear-and-tear scoring drives whether the estimate crosses the deductible threshold.",
+  "lessonForAnalyzer": "When facing USAA below-deductible denial: (1) iTel shingle availability test, (2) pre-inspect more thoroughly than initial AI scope, (3) document EVERY hail mark to push estimate above deductible, (4) recognize the iA cascade and request 'human-only review' explicitly under emerging AI disclosure rules, (5) request adjuster's photo report + AI confidence score per pending state regulations."
+}

@@ -1,0 +1,24 @@
+{
+  "threadId": "reese-0020059596",
+  "subject": "Utica National Claim 0020059596 — Sandra Valenti — Elevation-Specific Approval + Matching Denial",
+  "carrier": "Utica National Insurance Group",
+  "adjuster": "Jason Hood, AIC, Property Claims Specialist (704-501-9323 or 800-598-8422 ext 5019323, www.uticanational.com)",
+  "previousAdjuster": "Kate (took another position, file transferred)",
+  "claimNumber": "0020059596",
+  "previousClaimNumber": "0020032939",
+  "denialCategory": "elevation-specific-approval-matching-denial",
+  "dateOfDenial": "2026-05-12",
+  "outcome": "partial-approval-elevations-only",
+  "homeowner": "Sandra Valenti (smu1956@aol.com)",
+  "forwardedBy": "Andre Mealy (Roof-ER)",
+  "denialText": "Andre & Sandra Valenti, Kate has taken another position, and the file was transferred to me for handling. We will be handling/adjusting the damages under claim 0020059596 (newly placed claim on 03/26/26) as this claim's DOL is more accurate. That being said I reviewed the documents associated with the claims. There is visible hail damage present on the siding and gutters of some of the home's elevations and the additional information Andre provided does document the presence of hail within the policy period. We are able to provide coverage for the damaged elevations. We would not be able to provide coverage for elevations that were not damaged by the event. I have attached the sketch completed by our adjuster during his visit to the property that notes the damaged areas. While it is possible that the exact siding may no longer be available Utica does not owe to match the existing siding. Additionally, by replacing the entire damaged elevation to the corner trim leaking will not be an issue. Andre, if you would like to provide an estimate for review of the damaged elevations only, please forward to me directly.",
+  "keyDenialLanguage": [
+    "We are able to provide coverage for the damaged elevations. We would not be able to provide coverage for elevations that were not damaged by the event",
+    "While it is possible that the exact siding may no longer be available Utica does not owe to match the existing siding",
+    "by replacing the entire damaged elevation to the corner trim leaking will not be an issue"
+  ],
+  "carrierTactic": "ELEVATION-SPECIFIC LIMITATION — Cover only the elevations the inspector noted hail on. EXPLICITLY refuse to match existing siding. Argue 'corner trim to corner trim replacement' is sufficient to prevent functional issues (leaking) — pushing back on matching requirements.",
+  "rooferTactic": "MATCHING REQUIREMENT argument — Maryland, Virginia, and many states have matching requirements that contradict 'corner-to-corner' partial siding repair. Cite NRCA standards + state regs.",
+  "patentMapping": "Utica is a smaller regional carrier — likely uses Accurence (US10089396) for vendor AI scoping. The 'elevation-specific damage' approach is documented in Accurence patents as the cell-by-cell scoping logic.",
+  "lessonForAnalyzer": "Utica National elevation-specific partial: counter-letter MUST cite (1) state-specific matching requirements (VA § 38.2-510, MD Ins. Code § 27-303 unfair claim settlement practices, etc.), (2) NRCA standards on aged-vs-new material mismatch, (3) manufacturer warranty void if existing siding can't be matched, (4) cite that 'corner-to-corner' replacement creates visual mismatch that affects property value — request appraisal-based valuation of mismatch damage if matching denied."
+}

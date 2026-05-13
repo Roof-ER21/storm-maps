@@ -1,0 +1,24 @@
+{
+  "threadId": "reese-173980AB",
+  "subject": "American Modern (AMIG / Cincinnati) Claim 173980AB — Shawn Krause — Roof Approved + Cosmetic Gutter Denial",
+  "carrier": "American Modern Insurance Group (AMIG)",
+  "carrierParent": "Cincinnati Financial Corporation",
+  "adjuster": "Thomas Gardner, Adjuster III - Field, American Modern (+1 843-302-6319, TGardner@amig.com)",
+  "claimNumber": "173980AB",
+  "denialCategory": "roof-approved-cosmetic-gutter-denied",
+  "dateOfDenial": "2026-05-12",
+  "outcome": "partial-approval-cosmetic-denial",
+  "netPaymentAmount": 10268.74,
+  "propertyAddress": "4992 Pheasant Run Ct",
+  "homeowner": "Shawn Krause (with father James Krause on deed)",
+  "forwardedBy": "Eric Philippeau (Roof-ER)",
+  "denialText": "Shawn, I have attached a copy of the estimate for the damage and replacement cost letter (depreciation applied is available for reimbursement if the actual cost is incurred). We wrote to replace the roof of the home, right front corner metal trim and garage door trim. There is some cosmetic damage to gutters and down spouts which is not covered – we will send a separate letter addressing no coverage for cosmetic damage to the roof components. The net payment amount is $10,268.74. ... I am notifying Eric with The Roof Docs that we issued payment, you can share our estimate with them if you like.",
+  "keyDenialLanguage": [
+    "There is some cosmetic damage to gutters and down spouts which is not covered",
+    "we will send a separate letter addressing no coverage for cosmetic damage to the roof components",
+    "depreciation applied is available for reimbursement if the actual cost is incurred"
+  ],
+  "carrierTactic": "ROOF APPROVAL + COSMETIC EXCLUSION — Approve the roof (where the AI's confidence is high) but write a SEPARATE cosmetic-damage-exclusion letter for gutters/downspouts. This separation creates two formal documents the carrier can defend independently if appealed.",
+  "patentMapping": "AMIG/Cincinnati uses vendor AI (likely Accurence US10089396 or Verisk Tractable). The 'cosmetic damage exclusion' is carrier-specific policy language that maps to vendor patent's exclusions field. The two-letter approach (estimate letter + cosmetic exclusion letter) is documented in patent claims handling workflows.",
+  "lessonForAnalyzer": "AMIG/Cincinnati Financial cosmetic-only denial on gutters/downspouts: counter-letter must (1) argue functional vs cosmetic distinction with specific evidence (dent depth, dimensional impact), (2) request the cosmetic exclusion policy language verbatim, (3) cite NRCA/IICRC guidelines that hail-damaged gutters lose drainage performance over time (functional, not cosmetic), (4) request the AI/vendor reviewer's identity and confidence threshold."
+}

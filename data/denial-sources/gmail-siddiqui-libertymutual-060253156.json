@@ -1,0 +1,25 @@
+{
+  "threadId": "reese-060253156-01",
+  "subject": "Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear",
+  "carrier": "Liberty Mutual",
+  "carrierUnderwriter": "Montgomery Mutual Insurance Company",
+  "adjuster": "Michael Andress, Field Claims Resolution Specialist III, FL Adjuster #W576254 (Mobile 571-597-8629, Michael.Andress@LibertyMutual.com)",
+  "claimNumber": "060253156-01",
+  "denialCategory": "wear-and-tear-second-denial",
+  "dateOfDenial": "2025-10-29",
+  "outcome": "denied-twice",
+  "forwardedBy": "Benjamin Salgado (Roof-ER, takeover claim)",
+  "denialText": "We completed an additional inspection of your roof this morning with your contractor. We utilized a different inspection company to provide an additional perspective. The results of that inspection were that no storm-related damage was found on the roof. As was noted with the prior inspection, the condition of the roof is due to wear and tear or deterioration. In addition to the deterioration previously noted, our inspector also noted that there is granule loss and marring around some of the solar panels that was likely caused by footfall or other movement during the installation of the panels. He noted that this damage is not consistent with storm damage. He went on to note that there is no pattern of damage to any of the soft metals on the roof that would indicate hail damage. ... I would also like to reiterate that the only measurable hailstorm at your location since your policy started with us was recorded on 8/20/2019, with a hailstone size of .75\". This size hail typically is not large enough to cause significant damage to shingles or gutters. Therefore, currently our coverage position has not changed and there is unfortunately no coverage for the condition of your roof.",
+  "counterText": null,
+  "keyDenialLanguage": [
+    "no storm-related damage was found on the roof",
+    "the condition of the roof is due to wear and tear or deterioration",
+    "granule loss and marring around some of the solar panels that was likely caused by footfall or other movement during the installation of the panels",
+    "no pattern of damage to any of the soft metals on the roof that would indicate hail damage",
+    "the only measurable hailstorm at your location since your policy started with us was recorded on 8/20/2019, with a hailstone size of .75\"",
+    "This size hail typically is not large enough to cause significant damage to shingles or gutters"
+  ],
+  "carrierTactic": "DOUBLE-INSPECTION pattern — carrier sends second inspector, frames findings as 'different perspective' to reinforce denial. Attributes granule loss to SOLAR PANEL INSTALLATION FOOTFALL (a novel deflection — blames the homeowner's contractor for the damage). References only the carrier's own weather history (8/20/2019 .75\" hail), ignores any subsequent storms. Standard Liberty Mutual pattern: granule loss + soft-metals-test = wear and tear.",
+  "patentMapping": "Liberty Mutual is one of the 'big 3' P&C carriers per Insurance Journal 2025 — their wear-and-tear classifier maps directly to WO2018156846 (Dolphin AI) and US20190304026 (Betterview) weather-damage criteria. The 'soft metals test' (looking for matching impact patterns on gutters/downspouts to corroborate roof hail) is the AI-trained inspector checklist.",
+  "lessonForAnalyzer": "For Liberty Mutual denials citing 'no pattern of damage to soft metals': counter with (1) photos of clear soft-metals impact, (2) third-party hail report covering ALL storms since policy inception (not just one cherry-picked event), (3) cite that 0.75\" hail can absolutely damage shingles per NRCA standards, (4) request the inspection company's name + license + report under the right to coverage basis disclosure."
+}

@@ -1,0 +1,26 @@
+{
+  "threadId": "reese-061143908-01",
+  "subject": "Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)",
+  "carrier": "Liberty Mutual Insurance",
+  "adjuster": "Michael Vi, Sr. Field Claim Resolution Spec. I, Property, FL Adjuster License #W917298 (Direct 571-289-2582, Toll-Free 844-325-2467, Michael.Vi@LibertyMutual.com)",
+  "claimNumber": "061143908-01",
+  "denialCategory": "partial-approval-siding-pre-existing-denial",
+  "dateOfDenial": "2026-03-31",
+  "outcome": "roof-approved-siding-denied",
+  "totalApproved": 11969.65,
+  "deductible": 1000,
+  "initialCheck": 7924.67,
+  "recoverableDepreciation": 3044.98,
+  "homeowner": "Neena Florio",
+  "forwardedBy": "Ross Renzi via Kevin Fitzpatrick (Roof-ER): 'Kevin Fitzpatrick client: Neena Florio Full roof approval'",
+  "denialText": "Good afternoon Neena, I hope all is well. I just tried giving you a call, it went to voicemail and I was unable to leave a message due to the mailbox being full. We were able to conduct the roof inspection yesterday, I received all of the information and was able to finalize coverage for your claim. I have attached a copy of the estimate for replacement of your roof and repairs to your kitchen ceiling. There is no coverage for your siding due the damage pre-existing the date of loss this claim was filed for. I'm happy to say that an initial check for $7,924.67 is on its way via USPS and should arrive in 5-7 days.",
+  "keyDenialLanguage": [
+    "There is no coverage for your siding due the damage pre-existing the date of loss this claim was filed for",
+    "the total repair costs is $11,969.65. The policy deductible for this claim is $1,000",
+    "Your mortgage company is named on your claim payment, please contact your mortgage company about releasing the funds to you for repairs before attempting to cash the payment"
+  ],
+  "carrierTactic": "MIXED OUTCOME — Approve roof fully but EXCLUDE siding citing 'pre-existing damage prior to date of loss.' This is the partial-denial template Liberty Mutual uses to lower payouts. No specific evidence offered for the pre-existing claim. Plus mortgage-co payee adds friction to the homeowner's cash flow.",
+  "rooferTactic": "Compare siding photos from claim submission against any prior available photos to dispute pre-existing claim. Request specific evidence basis for pre-existing determination. Often the carrier has no actual evidence — just declares it.",
+  "patentMapping": "Liberty Mutual uses similar AI-based pre-existing damage scoring as Allstate (carrier-side patents) and vendor patents (US20190304026 Betterview, US20150228031 BuildFax roof-age modeling). The 'pre-existing' classification is the AI's pattern-recognition for what looks like older-vs-newer damage based on surrounding shingle condition.",
+  "lessonForAnalyzer": "Liberty Mutual 'no coverage for [component] due damage pre-existing': counter-letter must (1) request specific evidence basis for pre-existing determination, (2) ask for any prior inspections/photos referenced, (3) request the AI/algorithm methodology if vendor AI was used, (4) cite that absent evidence of when damage occurred, carrier must default to current claim DOL per most state contract-of-adhesion doctrine."
+}

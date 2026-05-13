@@ -1,0 +1,20 @@
+{
+  "threadId": "reese-000883-GR",
+  "subject": "Nationwide Claim 000883-GR — Kevin Melton — Full Denial",
+  "carrier": "Nationwide Property & Casualty Insurance Company",
+  "adjuster": "Ryan Graham, FL Lic W848638, Nationwide Claims Associate (W 866-425-9200 x15638)",
+  "claimNumber": "000883-GR",
+  "denialCategory": "full-denial",
+  "dateOfDenial": "2026-03-19",
+  "outcome": "claim-closed",
+  "forwardedBy": "Kerouls Gayed (Roof-ER): 'This is a denial from Kevin Melton.'",
+  "denialText": "Greetings Kevin, This is Ryan from Nationwide Insurance. Per our conversation I've attached a full denial letter that goes into more detail on why we were unable to provide coverage for the damages found. I will close the claim (as is part of our claims process), but as mentioned in our call, if you have any questions, please reach out using my information below!",
+  "counterText": null,
+  "keyDenialLanguage": [
+    "attached a full denial letter that goes into more detail on why we were unable to provide coverage for the damages found",
+    "I will close the claim (as is part of our claims process)"
+  ],
+  "carrierTactic": "Nationwide standard close-after-denial pattern. Specific denial rationale is in the attached PDF (not transcribed in this email). The 'as is part of our claims process' framing presents closing as routine, not adversarial.",
+  "patentMapping": "Nationwide's claim handling automation. The denial PDF likely follows the same format as the Nationwide PL Property Full Denial captured earlier for KYM GULLY (also under Thomes Buchanan adjuster) — which used wear/tear/deterioration template citation to policy provisions.",
+  "lessonForAnalyzer": "Nationwide denials always have the substantive content in the attached PDF — the email itself is a thin wrapper. Counter-letter requires homeowner to forward the PDF for analysis. Reach out to Ryan Graham specifically asking for the underlying inspection report + weather data sources."
+}
