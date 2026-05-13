@@ -316,6 +316,60 @@ const unique = entries.filter((e) => {
   return true;
 });
 
+// ============ Pass 2: adjuster-name inference for unknown-carrier entries ============
+// Build map of adjuster (last-name) → carrier from entries that have both,
+// then re-tag entries that mention those adjuster names but have no carrier.
+// Filter out title/role words that aren't actually personal names.
+const TITLE_BLOCKLIST = new Set([
+  'Adjuster','Claim','Claims','Senior','Specialist','Professional','Resolution',
+  'Property','Field','Manager','Supervisor','Coordinator','Representative',
+  'Catastrophe','Mutual','Insurance','Company','Group','Indemnity','National',
+  'Inc','LLC','Department','Service','Services','Center','Team','Auto',
+  'Casualty','Property','America','American','Mobile','Office','Phone','Fax',
+  'Cell','Email','Direct','Sincerely','Best','Regards','Thanks','Hello','Dear',
+  'Mr','Ms','Mrs','State','Farm','Allstate','Travelers','USAA','Nationwide',
+  'Liberty','Erie','Encompass','Hartford','Chubb','Geico','Progressive','Lemonade',
+  'Safeco','Plymouth','Amica','Selective','Cincinnati','Modern','Federal','License',
+  'Toll','Free','Box','PO','Property','Resolution','Reliance','Capacity',
+  'Catastrophic','Wcc','Wccs','Deployed','Outside','Inside','Virtual','Loss',
+  'Roof','Roof-ER','Inside','Outside','Workforce',
+]);
+const adjusterToCarrier = new Map();
+for (const e of unique) {
+  if (!e.adjuster || !e.carrier) continue;
+  const tokens = e.adjuster.match(/\b[A-Z][a-z]{3,}\b/g) || [];
+  // Names usually come as FIRST + LAST pairs at the start of the field — take the FIRST 2 non-blocklist tokens
+  let firstName = null, lastName = null;
+  for (const t of tokens) {
+    if (TITLE_BLOCKLIST.has(t)) continue;
+    if (!firstName) { firstName = t; continue; }
+    if (!lastName) { lastName = t; break; }
+  }
+  if (firstName && lastName) {
+    const fullName = firstName + ' ' + lastName;
+    if (!adjusterToCarrier.has(fullName)) adjusterToCarrier.set(fullName, e.carrier);
+    // Also map last-name-only IF distinctive (5+ chars)
+    if (lastName.length >= 5 && !adjusterToCarrier.has(lastName)) {
+      adjusterToCarrier.set(lastName, e.carrier);
+    }
+  }
+}
+let inferred = 0;
+for (const e of unique) {
+  if (e.carrier) continue;
+  const txt = e.denialText || '';
+  for (const [name, carrier] of adjusterToCarrier) {
+    if (TITLE_BLOCKLIST.has(name)) continue;
+    if (new RegExp(`\\b${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(txt)) {
+      e.carrier = carrier;
+      e.carrierInferredFrom = 'adjuster:' + name;
+      inferred++;
+      break;
+    }
+  }
+}
+console.log(`Adjuster-name inference: ${inferred} entries re-tagged from ${adjusterToCarrier.size} known adjuster names`);
+
 // Stats
 const byCarrier = {};
 const bySource = {};
