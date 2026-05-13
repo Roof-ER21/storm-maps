@@ -78,7 +78,7 @@
       <div style="overflow-x: auto;">
         <table>
           <thead>
-            <tr><th>#</th><th>Date</th><th>Carrier</th><th>Adjuster</th><th>Claim #</th><th>Appeal</th><th>Outcome</th><th>Preview</th></tr>
+            <tr><th>#</th><th>Date</th><th>Carrier</th><th>Adjuster</th><th>Claim #</th><th>Appeal</th><th>Outcome</th><th>Mark</th><th>Preview</th></tr>
           </thead>
           <tbody id="rows"></tbody>
         </table>
@@ -154,7 +154,16 @@ function renderRows() {
                        r.appeal_strength === 'weak' ?
                         '<span class="pill red">' + escape(r.appeal_strength) + '</span>' :
                         '<span class="pill gray">—</span>';
-    return ['<tr>',
+    const markButtons = outcome ? '<span style="font-size:11px;color:var(--muted);">set</span>' :
+      '<select onchange="markOutcome(' + r.id + ', this.value)" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;">' +
+      '<option value="">— mark —</option>' +
+      '<option value="approved">✓ Approved</option>' +
+      '<option value="partial">◐ Partial</option>' +
+      '<option value="denied">✗ Denied</option>' +
+      '<option value="pending">… Pending</option>' +
+      '<option value="withdrawn">↩ Withdrawn</option>' +
+      '</select>';
+    return ['<tr id="row-' + r.id + '">',
       '<td>#' + r.id + '</td>',
       '<td>' + date + '</td>',
       '<td>' + escape(r.identified_carrier || r.carrier || '—') + '</td>',
@@ -162,9 +171,26 @@ function renderRows() {
       '<td>' + escape(r.claim_number || '—') + '</td>',
       '<td>' + appealPill + '</td>',
       '<td>' + outcomePill + '</td>',
+      '<td>' + markButtons + '</td>',
       '<td><div class="preview">' + escape((r.preview || '').slice(0, 200)) + '</div></td>',
     '</tr>'].join('');
   }).join('');
+}
+
+async function markOutcome(id, outcome) {
+  if (!outcome) return;
+  try {
+    const r = await fetch('/api/intel/denial-intake/' + id + '/outcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outcome }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    // Reload so stats + the row update
+    await load();
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  }
 }
 
 if ($('outcome-filter')) $('outcome-filter').addEventListener('change', renderRows);
