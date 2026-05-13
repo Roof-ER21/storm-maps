@@ -66,6 +66,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'carrier-patents': { file: 'carrier-patents.json', description: 'Carrier AI decoder — patent-disclosed decision rules + counter-plays + bad-faith signals' },
   'lifetime-touch':  { file: 'lifetime-touch.json',  description: 'Per-rep math-prioritized re-engagement queue (roof age + storm exposure + trade gaps)' },
   'denial-corpus':   { file: 'denial-corpus.json',   description: 'Real denial archive mined from GroupMe + Gmail + PDFs + Susan canon (for few-shot prompting)' },
+  'carrier-boilerplate': { file: 'carrier-boilerplate.json', description: 'Per-carrier n-gram phrases that appear in 2+ denials — boilerplate template detector (V1: corpus too small for most carriers; matures with intake)' },
 };
 
 // Storm light file lives in storms/ subdir

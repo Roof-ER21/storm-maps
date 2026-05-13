@@ -1,0 +1,220 @@
+{
+  "generated": "2026-05-13T03:53:11.110Z",
+  "description": "Per-carrier boilerplate phrases detected via n-gram analysis of denial corpus. Each phrase appears in 2+ denials from the same carrier — strong signal that the carrier reuses templated/AI-generated language across claims.",
+  "source": "data/denial-corpus.json",
+  "byCarrier": {
+    "Nationwide": {
+      "denialCount": 3,
+      "phrases": []
+    },
+    "Allstate": {
+      "denialCount": 3,
+      "phrases": []
+    },
+    "Travelers": {
+      "denialCount": 2,
+      "phrases": [
+        {
+          "phrase": "claim online via mytravelers; you can check your claim status, view your deductible, interact",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "... ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload..."
+            }
+          ]
+        },
+        {
+          "phrase": "online via mytravelers; you can check your claim status, view your deductible, interact with",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...ONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my m..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...ina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload docu..."
+            }
+          ]
+        },
+        {
+          "phrase": "your claim online via mytravelers; you can check your claim status, view your deductible,",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...0, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, pleas..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...ginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - ..."
+            }
+          ]
+        },
+        {
+          "phrase": "can check your claim status, view your deductible, interact with us and upload documents.",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager at ###EMAIL### To ..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...E### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documents to your claim, plea..."
+            }
+          ]
+        },
+        {
+          "phrase": "via mytravelers; you can check your claim status, view your deductible, interact with us",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "... Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my mana..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...im Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documen..."
+            }
+          ]
+        },
+        {
+          "phrase": "mytravelers; you can check your claim status, view your deductible, interact with us and",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...rything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager ..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...enter, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documents t..."
+            }
+          ]
+        },
+        {
+          "phrase": "24/7 access to your claim online via mytravelers; you can check your claim status,",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...o, NY 14240-0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assista..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "... Travelers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insur..."
+            }
+          ]
+        },
+        {
+          "phrase": "access to your claim online via mytravelers; you can check your claim status, view",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "... 14240-0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance i..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...elers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds a..."
+            }
+          ]
+        },
+        {
+          "phrase": "you can check your claim status, view your deductible, interact with us and upload",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...eed at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager at ###E..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documents to your ..."
+            }
+          ]
+        },
+        {
+          "phrase": "to your claim online via mytravelers; you can check your claim status, view your",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is req..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Co..."
+            }
+          ]
+        },
+        {
+          "phrase": "with 24/7 access to your claim online via mytravelers; you can check your claim",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...uffalo, NY 14240-0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...erty, Travelers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available ..."
+            }
+          ]
+        },
+        {
+          "phrase": "to upload documents to your claim, please use this link: claim upload center.",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...ts. If further assistance is required, please contact my manager at ###EMAIL### To upload documents to your claim, please use this link: Claim Upload Center."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "... interact with us and upload documents. Available to Insureds and Contractors - To upload documents to your claim, please use this link: Claim Upload Center. [Abdulasis Deef (homeowner, ###PHONE###) 2024-11-27] Hello, As a long-time and ..."
+            }
+          ]
+        },
+        {
+          "phrase": "if you have any questions",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...have any issues with the estimate please contact me before the work is started. If you have any questions please reach out. Thanks, Brendon Myer | Claim Professional | Virginia-Carolina..."
+            },
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...ear and tear to the shingles rather than damage due to hail. Please let me know if you have any questions or concerns. Thank you for your time, Lauren Cook | Outside Claim Representativ..."
+            }
+          ]
+        }
+      ]
+    },
+    "Liberty Mutual": {
+      "denialCount": 3,
+      "phrases": []
+    },
+    "State Farm": {
+      "denialCount": 3,
+      "phrases": []
+    },
+    "Erie": {
+      "denialCount": 2,
+      "phrases": []
+    },
+    "USAA": {
+      "denialCount": 3,
+      "phrases": []
+    }
+  },
+  "totalCarriers": 7,
+  "totalPhrases": 13
+}
