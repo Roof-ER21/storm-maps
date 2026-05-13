@@ -17,7 +17,9 @@
     { "name": "J.J. de Leon", "title": "Claim Professional - Property", "email": "jdeleon4@travelers.com", "region": "Mid-Atlantic Claim Center", "exampleClaim": "JEP7912 (Fard)", "phone": "443-401-7242" },
     { "name": "Christopher Clark", "title": "Claim Professional", "email": "cdclark2@travelers.com", "exampleClaim": "I9G0203 (Stilwell)" },
     { "name": "Matthew Birski", "title": "Claim Professional", "email": "MBIRSKI@travelers.com", "exampleClaim": "I7M4396 (Phan)" },
-    { "name": "Adam Whitehead", "title": "Claim Professional", "email": "AWHITEHE@travelers.com", "exampleClaim": "I7M2639 (Cai)" }
+    { "name": "Adam Whitehead", "title": "Claim Professional", "email": "AWHITEHE@travelers.com", "exampleClaim": "I7M2639 (Cai)" },
+    { "name": "Matt Schneider", "title": "Property Claim Professional - Property", "email": "MSCHNEI3@travelers.com", "phone": "571-361-3347", "region": "Virginia-Carolina Claim Center", "exampleClaim": "JEE6641 (Vo) - TravCo supplemental" },
+    { "name": "Josh Smith", "title": "Travelers Resolution Team", "email": "JSMITH60@travelers.com", "resolutionTeamPhone": "(800) 635-4543", "exampleClaim": "JCH0752 (Rojas)", "denialPattern": "TRIPLE-CAUSATION DENIAL — wear/tear + improper installation + 3rd-party object. Covers only consequential water damage." }
   ],
   "templatePhrases": [
     "Everything You Need at Your Fingertips",

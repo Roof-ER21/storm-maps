@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T06:17:55.816Z",
+  "generated": "2026-05-13T06:50:51.869Z",
   "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
   "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {
@@ -242,6 +242,20 @@
           "occurrences": 1
         },
         {
+          "phrase": "Your policy for this property started 4/24/2025 and the date of loss was reported as 5/16/2025. In those 23 days, no hail larger than 0.25 inches was reported.",
+          "sources": [
+            "intake:6"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Our coverage decision stands.",
+          "sources": [
+            "intake:6"
+          ],
+          "occurrences": 1
+        },
+        {
           "phrase": "Based on our review, the damage to your roof appears consistent with a pre-policy storm event from 2022.",
           "sources": [
             "intake:2"
@@ -342,7 +356,7 @@
       ]
     },
     "Travelers": {
-      "denialCount": 3,
+      "denialCount": 4,
       "phrases": [
         {
           "phrase": "virginia-carolina claim center,",
@@ -355,6 +369,20 @@
             {
               "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
               "snippet": "...or your time, Lauren Cook | Outside Claim Representative | Property, Travelers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###."
+            }
+          ]
+        },
+        {
+          "phrase": "attached is the estimate for",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...er (Travelers, Virginia-Carolina Claim Center) ###NUM###-05-31] Good afternoon, Attached is the estimate for the damages to your home and the settlement letter explaining the payment, cove..."
+            },
+            {
+              "source": "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)",
+              "snippet": "...the garage, master bedroom, and bathroom, which was caused by the roof leaking. Attached is the estimate for these damages."
             }
           ]
         },
@@ -425,6 +453,48 @@
           "occurrences": 1
         },
         {
+          "phrase": "we will not be covering the roof, siding, or garage window in this claim",
+          "sources": [
+            "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "there were no missing, damaged, or creased shingles",
+          "sources": [
+            "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "The roof leakage was attributed to wear and tear, as well as improper installation",
+          "sources": [
+            "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "improper installation, specifically over-driven nails, rather than wind damage",
+          "sources": [
+            "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "appears to have been caused by an object thrown at it, rather than high winds",
+          "sources": [
+            "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "we will be covering the water damage in the ceiling",
+          "sources": [
+            "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+          ],
+          "occurrences": 1
+        },
+        {
           "phrase": "the hail consideration to the shingles was determined to not be from hail",
           "sources": [
             "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
@@ -465,6 +535,13 @@
           "rooferTactic": "Homeowner-led reconsideration letter (more weight than contractor-led for PA-warning reasons). Emphasizes loyalty + dignity + 'detailed documentation' from contractor. Roof + siding both requested.",
           "patentMapping": "Travelers operates the largest insurance drone program (700+ FAA-certified pilots). Their 'wear and tear' classifier is the same engine documented in WO2018156846 (Dolphin AI) and US20190304026 (Betterview) which both define wear-and-tear visual signatures (granular wear contrast, uniform asphalt loss, edge curvature). Lauren Cook is invoking the AI-trained eye, not her own opinion.",
           "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration"
+        },
+        {
+          "carrierTactic": "TRIPLE-CAUSATION DENIAL — Travelers attributes damage to: (1) wear/tear (roof shingles), (2) improper installation (siding over-driven nails), (3) third-party object (window crack). Cover only the consequential water damage that's hard to deny. Each component has a DIFFERENT non-storm cause, making single-issue counter-arguments inadequate.",
+          "rooferTactic": "MULTI-PRONG COUNTER — Each cited cause needs separate rebuttal: (1) For 'improper installation' on siding: provide manufacturer specs showing nail-set tolerance + age of original install (carrier accepted same install for prior years). (2) For 'no creased shingles': cite that creasing is one of MULTIPLE wind-damage signatures (lifting, sealing failure, granule scour). (3) For 'object thrown' on window: storm wind can pick up debris — request impact-pattern analysis. (4) Cite Maryland/Virginia matching requirements to fold approved water damage into full ceiling/walls.",
+          "lessonForAnalyzer": "Multi-cause denials require multi-cause counters. Don't argue all 3-4 rationales at once — pick the WEAKEST (usually the 3rd-party-object claim) + dismantle it with physics, then use that opening to challenge the others. Resolution Team escalation: (800) 635-4543 is the documented path.",
+          "patentMapping": "Travelers' wear-and-tear classifier (Accurence US10089396 + Dolphin AI WO2018156846) is patent-disclosed to distinguish wear from storm. 'Slipped shingles' as improper-installation classification is a documented patent feature (improper-fastener-pattern detection). When carrier cites multiple causations, each is the AI's confidence-ranked alternative explanation.",
+          "source": "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
         },
         {
           "carrierTactic": "Travelers VA-Carolina Claim Center uses a standardized template across ~11 known adjusters. Wear-and-tear classification is the default for granule loss/blistering. ACV-first payment structure with depreciation held until completion. Hover.com aerial measurements as scope basis. Drone-based inspections (Travelers operates 700+ FAA-certified drone pilots).",
@@ -559,6 +636,22 @@
           "title": "Claim Professional",
           "email": "AWHITEHE@travelers.com",
           "exampleClaim": "I7M2639 (Cai)"
+        },
+        {
+          "name": "Matt Schneider",
+          "title": "Property Claim Professional - Property",
+          "email": "MSCHNEI3@travelers.com",
+          "phone": "571-361-3347",
+          "region": "Virginia-Carolina Claim Center",
+          "exampleClaim": "JEE6641 (Vo) - TravCo supplemental"
+        },
+        {
+          "name": "Josh Smith",
+          "title": "Travelers Resolution Team",
+          "email": "JSMITH60@travelers.com",
+          "resolutionTeamPhone": "(800) 635-4543",
+          "exampleClaim": "JCH0752 (Rojas)",
+          "denialPattern": "TRIPLE-CAUSATION DENIAL — wear/tear + improper installation + 3rd-party object. Covers only consequential water damage."
         }
       ],
       "templatePhrases": [
@@ -1284,6 +1377,6 @@
     }
   },
   "totalCarriers": 13,
-  "totalNgramPhrases": 11,
-  "totalCuratedPhrases": 87
+  "totalNgramPhrases": 12,
+  "totalCuratedPhrases": 95
 }

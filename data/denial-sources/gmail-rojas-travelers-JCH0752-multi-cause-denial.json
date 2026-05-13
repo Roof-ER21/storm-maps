@@ -1,0 +1,25 @@
+{
+  "threadId": "reese-JCH0752",
+  "subject": "Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)",
+  "carrier": "Travelers",
+  "adjuster": "Josh Smith (Travelers, JSMITH60@travelers.com)",
+  "resolutionTeam": "(800) 635-4543",
+  "claimNumber": "JCH0752",
+  "denialCategory": "multi-cause-roof-siding-window-denied-water-damage-covered",
+  "dateOfDenial": "2025-04-09",
+  "outcome": "claim-takeover-pending-reinspection",
+  "forwardedBy": "Christian Bratton (Roof-ER) — claim takeover",
+  "denialText": "Dear Felix Rojas, I hope this message finds you well. I am writing to inform you about the decision regarding your recent claim. After a thorough review, we have determined that we will not be covering the roof, siding, or garage window in this claim. Attached, you will find the roof inspection report, which indicates that there were no missing, damaged, or creased shingles. The roof leakage was attributed to wear and tear, as well as improper installation, evidenced by slipped shingles. Regarding the siding, the damage was due to improper installation, specifically over-driven nails, rather than wind damage. Additionally, the crack in the garage window appears to have been caused by an object thrown at it, rather than high winds. However, we will be covering the water damage in the ceiling of the garage, master bedroom, and bathroom, which was caused by the roof leaking. Attached is the estimate for these damages.",
+  "keyDenialLanguage": [
+    "we will not be covering the roof, siding, or garage window in this claim",
+    "there were no missing, damaged, or creased shingles",
+    "The roof leakage was attributed to wear and tear, as well as improper installation",
+    "improper installation, specifically over-driven nails, rather than wind damage",
+    "appears to have been caused by an object thrown at it, rather than high winds",
+    "we will be covering the water damage in the ceiling"
+  ],
+  "carrierTactic": "TRIPLE-CAUSATION DENIAL — Travelers attributes damage to: (1) wear/tear (roof shingles), (2) improper installation (siding over-driven nails), (3) third-party object (window crack). Cover only the consequential water damage that's hard to deny. Each component has a DIFFERENT non-storm cause, making single-issue counter-arguments inadequate.",
+  "rooferTactic": "MULTI-PRONG COUNTER — Each cited cause needs separate rebuttal: (1) For 'improper installation' on siding: provide manufacturer specs showing nail-set tolerance + age of original install (carrier accepted same install for prior years). (2) For 'no creased shingles': cite that creasing is one of MULTIPLE wind-damage signatures (lifting, sealing failure, granule scour). (3) For 'object thrown' on window: storm wind can pick up debris — request impact-pattern analysis. (4) Cite Maryland/Virginia matching requirements to fold approved water damage into full ceiling/walls.",
+  "patentMapping": "Travelers' wear-and-tear classifier (Accurence US10089396 + Dolphin AI WO2018156846) is patent-disclosed to distinguish wear from storm. 'Slipped shingles' as improper-installation classification is a documented patent feature (improper-fastener-pattern detection). When carrier cites multiple causations, each is the AI's confidence-ranked alternative explanation.",
+  "lessonForAnalyzer": "Multi-cause denials require multi-cause counters. Don't argue all 3-4 rationales at once — pick the WEAKEST (usually the 3rd-party-object claim) + dismantle it with physics, then use that opening to challenge the others. Resolution Team escalation: (800) 635-4543 is the documented path."
+}
