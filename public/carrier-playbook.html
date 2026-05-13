@@ -117,6 +117,20 @@ function selectCarrier(name) {
   const ngrams = bag.phrases || [];
 
   const html = [];
+  // Counter-strategies first — actionable for reps
+  const strategies = bag.strategies || [];
+  if (strategies.length > 0) {
+    html.push('<h3>⚔️ Carrier Tactics vs Roof Docs Counter-Plays</h3>');
+    for (const s of strategies) {
+      html.push('<div style="background:#342c23; border-left:3px solid var(--accent); border-radius:0 6px 6px 0; padding:12px 16px; margin-bottom:10px; font-size:13px; line-height:1.55;">');
+      if (s.carrierTactic) html.push('<div><strong style="color:var(--red);">CARRIER TACTIC:</strong> ' + escape(s.carrierTactic) + '</div>');
+      if (s.rooferTactic) html.push('<div style="margin-top:6px;"><strong style="color:var(--green);">ROOFER COUNTER:</strong> ' + escape(s.rooferTactic) + '</div>');
+      if (s.lessonForAnalyzer) html.push('<div style="margin-top:6px;"><strong style="color:var(--purple);">ANALYZER LESSON:</strong> ' + escape(s.lessonForAnalyzer) + '</div>');
+      if (s.source) html.push('<div style="margin-top:6px;color:var(--muted); font-size:11px; font-style:italic;">— from ' + escape(s.source) + '</div>');
+      html.push('</div>');
+    }
+  }
+
   html.push('<h3>📌 Curated Boilerplate (hand-tagged from real denials)</h3>');
   if (curated.length === 0) {
     html.push('<div class="empty-state">No curated phrases yet — corpus too small. Will populate as more denials flow through the Analyzer.</div>');

@@ -274,6 +274,24 @@ for (const [carrier, phraseMap] of Object.entries(curated)) {
   }));
 }
 
+// === Counter-strategies: aggregate carrierTactic / rooferTactic / lessonForAnalyzer
+// fields from Gmail dumps so reps see HOW to fight each carrier's patterns. ===
+for (const e of corpus.entries || []) {
+  const canonical = normalizeCarrier(e.carrier);
+  if (!canonical) continue;
+  if (!byCarrier[canonical]) byCarrier[canonical] = {};
+  if (!byCarrier[canonical].strategies) byCarrier[canonical].strategies = [];
+  const strategy = {};
+  if (e.carrierTactic) strategy.carrierTactic = e.carrierTactic;
+  if (e.rooferTactic) strategy.rooferTactic = e.rooferTactic;
+  if (e.lessonForAnalyzer) strategy.lessonForAnalyzer = e.lessonForAnalyzer;
+  if (e.patentMapping) strategy.patentMapping = e.patentMapping;
+  if (Object.keys(strategy).length > 0) {
+    strategy.source = e.source;
+    byCarrier[canonical].strategies.push(strategy);
+  }
+}
+
 const result = {
   generated: new Date().toISOString(),
   description: 'Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.',
