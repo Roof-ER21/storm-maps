@@ -180,10 +180,25 @@ function pullGmailDump() {
       if (Array.isArray(thread.messages) && thread.messages.length > 0) {
         allText = thread.messages.map((m) => `[${m.sender || m.role || ''} ${m.date || ''}]\n${m.body || ''}`).join('\n\n');
       }
-      // v2 fallback / supplement
-      if (!allText && thread.denialText) {
-        allText = thread.denialText;
-        if (thread.counterText) allText += '\n\n---COUNTER---\n' + thread.counterText;
+      // v2 fallback / supplement — extract text from any major content field
+      if (!allText) {
+        const parts = [];
+        if (thread.denialText) parts.push(thread.denialText);
+        if (thread.denialSummary) parts.push(thread.denialSummary);
+        if (thread.carrierResponse) parts.push(thread.carrierResponse);
+        if (thread.denialTemplate) parts.push('TEMPLATE: ' + thread.denialTemplate);
+        if (thread.patternSummary) parts.push('PATTERN: ' + thread.patternSummary);
+        if (thread.specificCarrierQuote_Kinnick) parts.push('VERBATIM: ' + thread.specificCarrierQuote_Kinnick);
+        if (Array.isArray(thread.carrierPivots)) {
+          for (const p of thread.carrierPivots) {
+            if (p.claim) parts.push(`PIVOT ${p.pivot || '?'}: ${p.claim}`);
+            if (p.rooferResponse) parts.push(`  ROOFER REPLY: ${p.rooferResponse}`);
+          }
+        }
+        if (thread.counterText) parts.push('---COUNTER---\n' + thread.counterText);
+        if (thread.homeownerCounter) parts.push('---HOMEOWNER COUNTER---\n' + thread.homeownerCounter);
+        if (thread.rooferEscalationTemplate) parts.push('---ROOFER ESCALATION TEMPLATE---\n' + thread.rooferEscalationTemplate);
+        allText = parts.filter(Boolean).join('\n\n');
       }
       if (!allText) continue;
       entries.push({

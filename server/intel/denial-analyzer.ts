@@ -89,16 +89,25 @@ async function loadCorpus(): Promise<DenialCorpus | null> {
 }
 
 /** Pick the most useful few-shot examples for this carrier.
- * Priority: carrier-matched gmail-thread w/ counterText > carrier-matched rd-canon > carrier-matched rep-chatter > generic rd-canon. */
+ * Priority: carrier-matched gmail-thread w/ counterText > carrier-matched rd-canon > carrier-matched rep-chatter > generic rd-canon.
+ * Carrier match is CONTAINS-based since corpus entries include legal-entity-suffix variants
+ * ("Allstate Indemnity Company", "Liberty Mutual Insurance" etc.) — exact match is too strict. */
 function selectFewShot(corpus: DenialCorpus, carrier: string, max = 4): DenialCorpusEntry[] {
   if (!corpus || !corpus.entries || corpus.entries.length === 0) return [];
   const target = (carrier || '').toLowerCase().trim();
   const entries = corpus.entries;
+  const matchesCarrier = (e: DenialCorpusEntry): boolean => {
+    if (!target || !e.carrier) return false;
+    const c = e.carrier.toLowerCase();
+    // Exact match OR substring match either direction (handles "Allstate" → "Allstate Indemnity Company")
+    return c === target || c.includes(target) || target.includes(c);
+  };
   const rank = (e: DenialCorpusEntry): number => {
-    const carrierMatch = e.carrier && e.carrier.toLowerCase() === target ? 100 : 0;
+    const carrierMatch = matchesCarrier(e) ? 100 : 0;
     const hasCounter = e.counterText ? 30 : 0;
     const sourceScore = e.sourceType === 'gmail-thread' ? 25 : e.sourceType === 'pdf-archive' ? 20 : e.sourceType === 'rd-canon' ? 15 : e.sourceType === 'rep-chatter' ? 5 : 0;
-    const textQuality = Math.min(10, (e.denialText || '').length / 200);
+    // Reward longer/richer entries up to 25 pts (was 10)
+    const textQuality = Math.min(25, (e.denialText || '').length / 150);
     return carrierMatch + hasCounter + sourceScore + textQuality;
   };
   const ranked = [...entries].sort((a, b) => rank(b) - rank(a));
