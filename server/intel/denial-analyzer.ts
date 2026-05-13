@@ -154,6 +154,29 @@ function detectBoilerplateMatches(letterText: string, carrier: string, blob: Boi
   return matches.slice(0, 8); // cap to keep prompt focused
 }
 
+interface StrategyEntry { carrierTactic?: string; rooferTactic?: string; lessonForAnalyzer?: string; patentMapping?: string; source?: string; }
+
+function getCarrierStrategies(carrier: string, blob: BoilerplateBlob | null): StrategyEntry[] {
+  if (!blob || !blob.byCarrier) return [];
+  const canonical = normalizeCarrier(carrier);
+  if (!canonical) return [];
+  const bag = blob.byCarrier[canonical] as BoilerplateBag & { strategies?: StrategyEntry[] };
+  if (!bag || !Array.isArray(bag.strategies)) return [];
+  // Cap to 4 strategies to keep prompt focused
+  return bag.strategies.slice(0, 4);
+}
+
+function shapeStrategies(strategies: StrategyEntry[]): string {
+  if (strategies.length === 0) return '(no carrier-specific strategies known yet)';
+  return strategies.map((s, i) => {
+    const parts: string[] = [];
+    if (s.carrierTactic) parts.push(`CARRIER TACTIC: ${s.carrierTactic}`);
+    if (s.rooferTactic) parts.push(`ROOFER COUNTER: ${s.rooferTactic}`);
+    if (s.lessonForAnalyzer) parts.push(`LESSON FOR YOU (the analyzer): ${s.lessonForAnalyzer}`);
+    return `  STRATEGY ${i + 1}:\n    ${parts.join('\n    ')}`;
+  }).join('\n\n');
+}
+
 /** Pick the most useful few-shot examples for this carrier.
  * Priority: carrier-matched gmail-thread w/ counterText > carrier-matched rd-canon > carrier-matched rep-chatter > generic rd-canon.
  * Carrier match is CONTAINS-based since corpus entries include legal-entity-suffix variants
@@ -303,6 +326,10 @@ DETERMINISTIC BOILERPLATE MATCHES (these EXACT phrases from the incoming letter 
 {{BOILERPLATE}}
 
 ================
+CARRIER-SPECIFIC STRATEGIES (curated from past Roof Docs experience with this carrier — use these to guide your recommendedActions, counterLetter, and badFaithSignals fields):
+{{STRATEGIES}}
+
+================
 DENIAL LETTER (verbatim):
 {{LETTER}}
 `;
@@ -349,10 +376,14 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
     ? boilerplateMatches.map((m, i) => `  ${i + 1}. [${m.sourceType.toUpperCase()} · ${m.occurrencesInCorpus}x in ${m.carrier} corpus] "${m.phrase}"`).join('\n')
     : '(no exact boilerplate phrase matches detected in this letter for this carrier — Gemini should still scan for AI-tell patterns)';
 
+  // Carrier-specific strategies — explicit guidance for Gemini
+  const strategies = getCarrierStrategies(carrierHint, boilerplate);
+
   const prompt = ANALYZE_PROMPT
     .replace('{{PATENTS}}', shapePatentsForPrompt(patents))
     .replace('{{EXAMPLES}}', shapeFewShot(examples))
     .replace('{{BOILERPLATE}}', boilerplateText)
+    .replace('{{STRATEGIES}}', shapeStrategies(strategies))
     .replace('{{LETTER}}', denialText.slice(0, 25000));
 
   try {
