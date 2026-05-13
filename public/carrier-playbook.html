@@ -73,10 +73,21 @@ function escape(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 
+let WIN_RATES = {};
+
 async function load() {
   try {
-    const r = await fetch('/api/intel/carrier-boilerplate');
-    DATA = await r.json();
+    const [bpRes, statsRes] = await Promise.all([
+      fetch('/api/intel/carrier-boilerplate'),
+      fetch('/api/intel/denial-intake/stats'),
+    ]);
+    DATA = await bpRes.json();
+    const stats = await statsRes.json();
+    // Map win-rates by canonical-ish carrier name (lowercase, includes-match later)
+    WIN_RATES = {};
+    for (const w of (stats.winRates || [])) {
+      WIN_RATES[(w.carrier || '').toLowerCase()] = w;
+    }
   } catch (e) {
     $('loading').textContent = 'Failed to load — refresh data first';
     return;
@@ -106,6 +117,14 @@ async function load() {
   if (carriers.length > 0) selectCarrier(carriers[0].name);
 }
 
+function findWinRate(canonical) {
+  const t = canonical.toLowerCase();
+  for (const [key, val] of Object.entries(WIN_RATES)) {
+    if (key === t || key.includes(t) || t.includes(key)) return val;
+  }
+  return null;
+}
+
 function selectCarrier(name) {
   CURRENT_CARRIER = name;
   document.querySelectorAll('.carrier-tabs button').forEach((b) => {
@@ -117,6 +136,18 @@ function selectCarrier(name) {
   const ngrams = bag.phrases || [];
 
   const html = [];
+
+  // Win-rate banner if we have outcome data for this carrier
+  const wr = findWinRate(name);
+  if (wr && wr.total > 0) {
+    const flipPct = (wr.flipRate * 100).toFixed(0);
+    const flipColor = wr.flipRate >= 0.6 ? 'var(--green)' : wr.flipRate >= 0.3 ? 'var(--yellow)' : 'var(--red)';
+    html.push('<div style="background:#342c23; border-left:3px solid ' + flipColor + '; border-radius:0 6px 6px 0; padding:12px 16px; margin-bottom:14px; font-size:13px;">');
+    html.push('<strong style="color:' + flipColor + '; font-size:15px;">' + flipPct + '% flip rate</strong> · ');
+    html.push(wr.approved + ' approved, ' + wr.partial + ' partial, ' + wr.denied + ' denied across ' + wr.total + ' tracked outcomes');
+    html.push('</div>');
+  }
+
   // Counter-strategies first — actionable for reps
   const strategies = bag.strategies || [];
   if (strategies.length > 0) {
