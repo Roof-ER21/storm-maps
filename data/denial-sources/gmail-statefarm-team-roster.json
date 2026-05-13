@@ -1,0 +1,35 @@
+{
+  "threadId": "reese-statefarm-roster",
+  "subject": "State Farm Adjuster Roster — consolidated from captured threads",
+  "carrier": "State Farm",
+  "denialCategory": "adjuster-roster",
+  "outcome": "reference-data",
+  "denialText": "State Farm uses regional Claim Specialists routed through statefarmfireclaims@statefarm.com. Multiple specialty units (Proximity, WCCS Deployed, In-House Field). Patent-disclosed automation (US10565658 Storm event roof damage detection + US20220414781 Probable Roof Loss Confidence Scores + US10977734 real property damage claims analysis) drives initial scoping; specialists confirm via engineer reports for high-friction claims.",
+  "adjusterRoster": [
+    { "name": "Nataleigh Cromwell, AIC, AIS", "title": "Claim Specialist – Proximity", "email": "statefarmfireclaims@statefarm.com", "phone": "309-994-9282", "exampleClaim": "46-81Z7-05W (Danilova)", "denialPattern": "Engineer-report triple-layer (not functionally damaged + pre-policy + cosmetic only) with combined claim numbers" },
+    { "name": "Ian Swanson", "title": "Claim Specialist – WCCS Deployed", "email": "statefarmfireclaims@statefarm.com", "phone": "866-787-8676 Ext:8254", "exampleClaim": "46-99F9-92W (Snyder)", "denialPattern": "Catastrophe-response WCCS unit. Denial substance in attached PDF. Often rushed in-person inspections." },
+    { "name": "HOME CLMS-FIRECLAIMS (template sender)", "title": "Generic claims template", "email": "statefarmfireclaims@statefarm.com", "exampleClaim": "4673B816T (Dolbeare 'No Hail RFG Denial')", "denialPattern": "AI confidence below threshold → automated 'No Hail RFG Denial' template" },
+    { "name": "HRU adjuster code", "title": "internal code per cheat-sheets", "exampleClaim": "Multiple (15 jobs, 100% approval rate, +38% vs carrier baseline)", "stance": "lenient — friendly to Roof-ER reps" },
+    { "name": "Jamell Clarke", "title": "(Reese flag: avoid)", "denialPattern": "Multiple reps report denials on legit claims. Request reassignment ASAP if assigned. If stuck: detailed photos + engineer report + document everything." },
+    { "name": "Ted Price", "title": "documented in cheat-sheets", "stance": "leaning" }
+  ],
+  "templatePhrases": [
+    "Please open the attachment for information regarding your claim now that the engineer report has been reviewed",
+    "Please open the attachment(s) for more claim information or next steps",
+    "Don't miss a call about your Auto/Homeowners claim from State Farm®",
+    "Text HOME to 62789 for your claim contact card",
+    "For your protection, please do not include sensitive personal information",
+    "statefarm.com®"
+  ],
+  "keyDenialLanguage": [
+    "the roof coverings were not functionally damaged by the reported or any recent storm event",
+    "dents on certain metal components are attributable to pre-policy storms",
+    "those metal impacts are cosmetic only",
+    "No Hail RFG Denial",
+    "Partial Denial Letter"
+  ],
+  "carrierTactic": "State Farm uses ENGINEER REPORTS as the cover for AI-confidence-below-threshold denials. Combined-claim-number practice mixes multiple DOLs into single denials. WCCS Deployed catastrophe unit does rushed inspections. Default to 'cosmetic only' or 'pre-policy' framings when AI flags uncertainty.",
+  "rooferTactic": "When State Farm cites engineer report: request the full engineer report including methodology, engineer credentials, weather data, and reconciliation of any date inconsistencies (Nataleigh Cromwell case is the canonical template). For WCCS Deployed denials: request non-WCCS adjuster reinspection. Avoid Jamell Clarke if possible.",
+  "patentMapping": "US10565658 (Storm event roof damage detection) + US20220414781 (Probable Roof Loss Confidence Scores) drive initial confidence score. When below threshold: 'No Hail RFG Denial' template fires automatically. Engineer report is the human cover for AI determination.",
+  "lessonForAnalyzer": "For State Farm: identify which unit (Proximity / WCCS / In-House) and which adjuster. Cross-reference with our cheat-sheets adjuster data (we have ~30+ State Farm adjusters with approval rate + stance). Counter-letter should ALWAYS request full engineer file + records preservation when engineer-report cited. For lenient adjusters (HRU): straightforward documentation suffices."
+}

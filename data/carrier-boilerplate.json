@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T06:06:41.968Z",
+  "generated": "2026-05-13T06:12:31.119Z",
   "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
   "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {
@@ -95,15 +95,31 @@
       ]
     },
     "Allstate": {
-      "denialCount": 3,
-      "phrases": [],
+      "denialCount": 4,
+      "phrases": [
+        {
+          "phrase": "vehicle and property",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Allstate claim 000758479307 — Carlos Alfaro",
+              "snippet": "[Alicia Janay Williams (Allstate Vehicle and Property Insurance) ###NUM###-07-23] I have attached a copy of your estimate for your re..."
+            },
+            {
+              "source": "Gmail: Allstate Adjuster Roster — consolidated from captured threads",
+              "snippet": "...state routes through ###EMAIL### with adjuster phone routing per file. Allstate Vehicle and Property Insurance Company + Allstate Indemnity Company are the two main entities seen. ..."
+            }
+          ]
+        }
+      ],
       "curatedPhrases": [
         {
           "phrase": "estimates that are higher than the Replacement Cost amount on my estimate",
           "sources": [
-            "Gmail: Allstate claim 000758479307 — Carlos Alfaro"
+            "Gmail: Allstate claim 000758479307 — Carlos Alfaro",
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand",
@@ -141,9 +157,45 @@
           "occurrences": 1
         },
         {
+          "phrase": "we have reached an impasse",
+          "sources": [
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Our coverage decision stands",
+          "sources": [
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
+          ],
+          "occurrences": 1
+        },
+        {
           "phrase": "this is not how insurance works",
           "sources": [
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads",
             "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 2
+        },
+        {
+          "phrase": "the damages your contractor wants to claim were not present at the time of loss",
+          "sources": [
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "based on the available weather data",
+          "sources": [
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "we use a variety of weather reports",
+          "sources": [
+            "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
           ],
           "occurrences": 1
         },
@@ -216,6 +268,13 @@
           "lessonForAnalyzer": "This Luis Esteves escalation template is the GOLD STANDARD for Allstate denials. Counter-letter generator should produce ALL FOUR demands: (1) supervisor escalation, (2) staff adjuster reinspection (not 3rd-party), (3) specific policy language citation, (4) claim file documentation. Plus regulatory complaint threat (Virginia SCC or state equivalent).",
           "patentMapping": "Allstate's automated claim routing (US11798095, US11348134) creates the dual-claim ambiguity — different AI confidence scores per claim number create the runaround. Patent rules say 'route to highest-confidence outcome' but when multiple claims exist for same property, the system can't reconcile.",
           "source": "Gmail: Allstate Claim 0722264736 — Shaun Ali — Adjuster Runaround + Luis Esteves Escalation Template"
+        },
+        {
+          "carrierTactic": "Allstate's biggest red flags: (1) DUAL-CLAIM SHELL GAME (Cherry) — bouncing supplement requests between claim numbers, (2) PIVOTING DENIALS (Sowers) — when one rationale falls, another is substituted from AI's ranked-reason list, (3) ASYMMETRIC EVIDENCE (Foley/Encompass) — cite undisclosed data sources. All three are documented bad-faith patterns admissible under 2026 case law.",
+          "rooferTactic": "GOLD STANDARD escalation template per Luis Esteves (see Ali/0722264736 dump): (1) supervisor escalation request, (2) Allstate STAFF adjuster reinspection — NOT third-party, (3) specific policy language citation demand, (4) Virginia State Corporation Commission complaint threat. For pivoting denials: document each contradictory carrier position with timestamps. For Foley-style asymmetry: 3+ explicit requests for evidence basis builds the regulatory record.",
+          "lessonForAnalyzer": "For Allstate: identify the subsidiary (AVPIC vs Indemnity vs Encompass NGIC). Each has slightly different escalation hierarchy. Luis Esteves's 4-demand template is the canonical counter for ANY Allstate denial cascade. For Encompass specifically (Foley pattern): demand source identification 3x + escalate to DOI when refused — this builds clean bad-faith preservation record.",
+          "patentMapping": "Allstate's 4 main patents (US11720971 ML accident assessment, US11798095 commercial claims ML, US11257132 surface dimension AI, US11348134 data processing ML) drive the AI-determined denial outcomes. When human adjuster pivots between rationales, that's the AI's ranked-reason list emitting alternate basis when first is challenged.",
+          "source": "Gmail: Allstate Adjuster Roster — consolidated from captured threads"
         },
         {
           "carrierTactic": "FOUR-PIVOT BAD-FAITH PATTERN: (1) Blame pre-policy hail, (2) Cite 2.25\" magnitude that doesn't match photo evidence, (3) Once disproven, pivot to 'no hail >0.25\" in 23 days', (4) Declare 'impasse' and direct to dispute resolution. The carrier never produces evidence for the 2.25\" claim — it's a verbal report from seller laundered into an official-sounding denial basis.",
@@ -536,41 +595,52 @@
       ]
     },
     "State Farm": {
-      "denialCount": 3,
+      "denialCount": 4,
       "phrases": [],
       "curatedPhrases": [
         {
           "phrase": "the roof coverings were not functionally damaged by the reported or any recent storm event",
           "sources": [
-            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter"
+            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter",
+            "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "dents on certain metal components are attributable to pre-policy storms",
           "sources": [
-            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter"
+            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter",
+            "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "those metal impacts are cosmetic only",
           "sources": [
-            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter"
+            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter",
+            "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "No Hail RFG Denial",
           "sources": [
-            "Gmail: State Farm Claim 4673B816T — Brian Dolbeare — No Hail Roof Denial"
+            "Gmail: State Farm Claim 4673B816T — Brian Dolbeare — No Hail Roof Denial",
+            "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "Partial Denial Letter (full content in attached PDF)",
           "sources": [
             "Gmail: State Farm 46-99F9-92W — Silvia Snyder — Partial Denial Letter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Partial Denial Letter",
+          "sources": [
+            "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
           ],
           "occurrences": 1
         }
@@ -594,6 +664,13 @@
           "lessonForAnalyzer": "State Farm partial denials via WCCS Deployed unit: request specific reinspection by NON-WCCS adjuster, ideally local field staff. Document inspector's behavior if rushed (timestamped photos, recording if state allows). Cite adjuster inadequate-investigation under VA/MD unfair claim settlement practices statutes.",
           "patentMapping": "State Farm patents US10565658, US20220414781 (roof loss confidence). The 'WCCS Deployed' designation = catastrophe-response team where AI scoring is more central. Rushed in-person inspection consistent with adjuster confirming the AI's pre-determined denial scope rather than independent assessment.",
           "source": "Gmail: State Farm 46-99F9-92W — Silvia Snyder — Partial Denial Letter"
+        },
+        {
+          "carrierTactic": "State Farm uses ENGINEER REPORTS as the cover for AI-confidence-below-threshold denials. Combined-claim-number practice mixes multiple DOLs into single denials. WCCS Deployed catastrophe unit does rushed inspections. Default to 'cosmetic only' or 'pre-policy' framings when AI flags uncertainty.",
+          "rooferTactic": "When State Farm cites engineer report: request the full engineer report including methodology, engineer credentials, weather data, and reconciliation of any date inconsistencies (Nataleigh Cromwell case is the canonical template). For WCCS Deployed denials: request non-WCCS adjuster reinspection. Avoid Jamell Clarke if possible.",
+          "lessonForAnalyzer": "For State Farm: identify which unit (Proximity / WCCS / In-House) and which adjuster. Cross-reference with our cheat-sheets adjuster data (we have ~30+ State Farm adjusters with approval rate + stance). Counter-letter should ALWAYS request full engineer file + records preservation when engineer-report cited. For lenient adjusters (HRU): straightforward documentation suffices.",
+          "patentMapping": "US10565658 (Storm event roof damage detection) + US20220414781 (Probable Roof Loss Confidence Scores) drive initial confidence score. When below threshold: 'No Hail RFG Denial' template fires automatically. Engineer report is the human cover for AI determination.",
+          "source": "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
         }
       ]
     },
@@ -654,7 +731,7 @@
       ]
     },
     "USAA": {
-      "denialCount": 3,
+      "denialCount": 4,
       "phrases": [
         {
           "phrase": "the shingles and the",
@@ -703,16 +780,18 @@
         {
           "phrase": "the loss doesn't exceed your $[deductible] deductible",
           "sources": [
-            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+            "Gmail: USAA Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "Your policy only pays if a loss exceeds your deductible",
           "sources": [
-            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+            "Gmail: USAA Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "If the reported damage is not repaired, this could result in the denial of a future claim for the same or related damage",
@@ -724,23 +803,26 @@
         {
           "phrase": "the hail to the eye was like 1/4 inch",
           "sources": [
-            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+            "Gmail: USAA Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "since an iA denied it initially there's nothing he can do to approve it",
           "sources": [
-            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+            "Gmail: USAA Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "warning of acting like a Public Adjuster",
           "sources": [
-            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread",
+            "Gmail: USAA Adjuster Roster — consolidated from captured threads"
           ],
-          "occurrences": 1
+          "occurrences": 2
         },
         {
           "phrase": "interpreting policy coverage",
@@ -804,6 +886,13 @@
           "lessonForAnalyzer": "When drafting counter-letters for USAA (and likely other carriers), AVOID: 'we respectfully request', 'negotiate', 'on behalf of', 'represent', 'advocate', 'matching requirements', 'state law requires'. USE: 'as the licensed contractor', 'technical/construction challenges', 'manufacturer warranty', 'code compliance', 'decline the project', 'joint inspection'.",
           "patentMapping": "USAA patents US11410230 + US11216889 are about automated claim generation from aerial imagery and property item detection. The PA pushback is a HUMAN escalation tactic — when AI auto-denials get challenged, carriers fall back on regulatory technicalities to limit contractor advocacy.",
           "source": "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+        },
+        {
+          "carrierTactic": "USAA's signature pattern: write the estimate JUST BELOW the deductible threshold ('the loss doesn't exceed your $X deductible'). This appears as 'covered but no payout' — technically a coverage acknowledgment, practically a $0 payout. The iA (Initial AI) cascade locks subsequent adjusters from overriding. PA-overreach warnings shut down roofer advocacy unless reframed.",
+          "rooferTactic": "For below-deductible denials: iTel shingle availability test + thorough photo documentation that pushes estimate ABOVE deductible. For PA-warnings: reframe as 'contractor's technical assessment' citing building code + manufacturer warranty + material matching impossibility (see Palmer/Robinson template). For iA cascades: request 'human-only review' explicitly under emerging state AI disclosure rules.",
+          "lessonForAnalyzer": "For USAA: (1) Identify which subsidiary (USAA / USAA General Indemnity / USAA Casualty) — coverage differs slightly. (2) Below-deductible IS the denial — counter-letter must push estimate above deductible with rigorous documentation. (3) NEVER use PA-sounding language. (4) Cite emerging AI disclosure regulations to request human-only review.",
+          "patentMapping": "USAA patents US11410230 (aerial imagery → claim) + US11216889 (property items) drive automated scoping. The 'iA' the Kinnick adjuster mentioned is likely Tractable AI (Verisk partner per Mar 2023 press release) feeding USAA's claim ingestion. Vendor patent: US20190304026 (Betterview) wear-and-tear scoring contributes to threshold calculation.",
+          "source": "Gmail: USAA Adjuster Roster — consolidated from captured threads"
         }
       ]
     },
@@ -946,6 +1035,6 @@
     }
   },
   "totalCarriers": 13,
-  "totalNgramPhrases": 10,
-  "totalCuratedPhrases": 81
+  "totalNgramPhrases": 11,
+  "totalCuratedPhrases": 87
 }

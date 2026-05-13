@@ -1,0 +1,36 @@
+{
+  "threadId": "reese-usaa-roster",
+  "subject": "USAA Adjuster Roster — consolidated from captured threads",
+  "carrier": "USAA",
+  "denialCategory": "adjuster-roster",
+  "outcome": "reference-data",
+  "denialText": "USAA / USAA General Indemnity Company / USAA Casualty Insurance Company all route through claims.usaa.com obfuscated email addresses. Multiple PROP CAT units. Member-focused tone but threshold-denial pattern is heavy. Patent-disclosed automation (US11410230 aerial imagery → claim generation + US11216889 property items detection) drives initial scoping. iA (Initial AI — likely Tractable per Verisk partnership) fires below-deductible verdicts that human adjusters can't override per off-record adjuster admission.",
+  "adjusterRoster": [
+    { "name": "Jean Paul Ruz", "title": "Dedicated Catastrophe Claims", "subsidiary": "USAA General Indemnity Company", "exampleClaim": "034296315-801 (Wongsuriyawat)", "denialPattern": "Below-deductible threshold denial — $2,000 deductible" },
+    { "name": "David Henley", "title": "Property Claims Catastrophe", "subsidiary": "United Services Automobile Association", "exampleClaim": "040039705-801 (Pearson)", "denialPattern": "Below-deductible threshold — $1,000 deductible" },
+    { "name": "Brandon Levey", "title": "PROP CAT Unit 18", "subsidiary": "USAA Casualty Insurance Company", "exampleClaim": "007198374-803 (Kinnick)", "denialPattern": "iA cascade — 'since an iA denied it initially there's nothing he can do to approve it'. 'no hail to the shingles and the hail to the eye was like 1/4 inch'" },
+    { "name": "James Robinson", "title": "USAA adjuster", "exampleClaim": "002384565-803 (Palmer)", "denialPattern": "PA-overreach warning — flags roofer letters that sound like public adjuster activity. Requires reframe as contractor-technical-assessment." },
+    { "name": "Shamanda Houston", "title": "Claims Service", "subsidiary": "United Services Automobile Association", "exampleClaim": "015826705-800 (Jones)", "denialPattern": "Terse delivery — 'I have attached the estimate per your request' minimal explanation" }
+  ],
+  "templatePhrases": [
+    "This type of loss is covered under your homeowners policy; however, the loss doesn't exceed your $[X] deductible",
+    "Your policy only pays if a loss exceeds your deductible",
+    "If you find additional damage, please submit the supporting documentation and we will re-evaluate the loss",
+    "Although the damage is less than the deductible, please make sure that all necessary repairs are completed",
+    "If the reported damage is not repaired, this could result in the denial of a future claim for the same or related damage",
+    "Your policy's Suit Against Us Provision prohibits you from taking any action against us unless you have given us notice of the loss, complied with all policy provisions, and started legal action within two (2) years",
+    "USAA SECURITY ZONE",
+    "Taking care of our members since 1922"
+  ],
+  "keyDenialLanguage": [
+    "the loss doesn't exceed your $[deductible] deductible",
+    "Your policy only pays if a loss exceeds your deductible",
+    "since an iA denied it initially there's nothing he can do to approve it",
+    "the hail to the eye was like 1/4 inch",
+    "warning of acting like a Public Adjuster"
+  ],
+  "carrierTactic": "USAA's signature pattern: write the estimate JUST BELOW the deductible threshold ('the loss doesn't exceed your $X deductible'). This appears as 'covered but no payout' — technically a coverage acknowledgment, practically a $0 payout. The iA (Initial AI) cascade locks subsequent adjusters from overriding. PA-overreach warnings shut down roofer advocacy unless reframed.",
+  "rooferTactic": "For below-deductible denials: iTel shingle availability test + thorough photo documentation that pushes estimate ABOVE deductible. For PA-warnings: reframe as 'contractor's technical assessment' citing building code + manufacturer warranty + material matching impossibility (see Palmer/Robinson template). For iA cascades: request 'human-only review' explicitly under emerging state AI disclosure rules.",
+  "patentMapping": "USAA patents US11410230 (aerial imagery → claim) + US11216889 (property items) drive automated scoping. The 'iA' the Kinnick adjuster mentioned is likely Tractable AI (Verisk partner per Mar 2023 press release) feeding USAA's claim ingestion. Vendor patent: US20190304026 (Betterview) wear-and-tear scoring contributes to threshold calculation.",
+  "lessonForAnalyzer": "For USAA: (1) Identify which subsidiary (USAA / USAA General Indemnity / USAA Casualty) — coverage differs slightly. (2) Below-deductible IS the denial — counter-letter must push estimate above deductible with rigorous documentation. (3) NEVER use PA-sounding language. (4) Cite emerging AI disclosure regulations to request human-only review."
+}

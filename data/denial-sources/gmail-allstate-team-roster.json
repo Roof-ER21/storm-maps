@@ -1,0 +1,42 @@
+{
+  "threadId": "reese-allstate-roster",
+  "subject": "Allstate Adjuster Roster — consolidated from captured threads",
+  "carrier": "Allstate",
+  "denialCategory": "adjuster-roster",
+  "outcome": "reference-data",
+  "denialText": "Allstate routes through claims@claims.allstate.com with adjuster phone routing per file. Allstate Vehicle and Property Insurance Company + Allstate Indemnity Company are the two main entities seen. Encompass Insurance Company is the Allstate/National General subsidiary (Catastrophe National Catastrophe Team NCT 1200). Allstate is one of top 3 P&C AI patent holders per Insurance Journal 2025 (US11720971 + US11798095 + US11257132 + US11348134).",
+  "adjusterRoster": [
+    { "name": "Alicia Janay Williams", "title": "Allstate Vehicle and Property Insurance", "phone": "(210) 867-4950", "email": "claims@claims.allstate.com", "exampleClaim": "000758479307 (Alfaro)", "denialPattern": "Standard estimate-issued template with supplement-request path" },
+    { "name": "James Cherry II", "title": "Allstate claims", "phone": "(800) 806-5570 x1220899", "email": "claims@claims.allstate.com", "fax": "(877) 292-9527", "exampleClaim": "0722264736 (Ali)", "denialPattern": "DUAL-CLAIM SHELL GAME — redirects supplement requests between claim numbers. Acknowledges damage verbally but denies in writing. Cites internal leadership consultation as cover." },
+    { "name": "Sarah Sowers", "title": "Allstate Indemnity Company", "phone": "(757) 901-2565", "email": "claims@claims.allstate.com", "exampleClaim": "0808617674 (Baek)", "denialPattern": "4-PIVOT BAD-FAITH PATTERN: (1) blame pre-policy hail, (2) cite unverified 2.25\" magnitude, (3) pivot to 'no hail >0.25\" in 23 days', (4) declare impasse + dispute resolution. Did NOT produce evidence for any pivot." },
+    { "name": "Milton Williams", "title": "Allstate (covering)", "phone": "(346) 278-8404", "exampleClaim": "0808617674 (covering for Sarah Sowers bereavement)" },
+    { "name": "ShaJerrica Foley", "title": "Encompass Catastrophe Adjuster - NCT 1200 (National Catastrophe Team)", "subsidiary": "Encompass Insurance Company / Allstate + National General", "phone": "Direct 469-551-7054 / 800-340-3016 Ext# 5517054", "email": "Shajerrica.Foley@ngic.com / sfolg@allstate.com / claims@ngic.com / Encompasscat@encompassins.com", "exampleClaim": "260257861 (Foss)", "denialPattern": "ASYMMETRIC EVIDENCE BAD-FAITH: cites 'available weather data' but refuses to identify sources across 3+ requests. Closes with 'Have a great day' to terminate." }
+  ],
+  "templatePhrases": [
+    "I have attached a copy of your estimate for your records",
+    "If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand",
+    "review for possible supplement",
+    "CONFIDENTIALITY/PRIVACY NOTICE: This e-mail, including any attachments, may contain personal, private and confidential information",
+    "Please do not delete your unique Conversation ID",
+    "Allstate Vehicle and Property Insurance Company",
+    "It has been my pleasure to assist you during this difficult time",
+    "you will need to dispute the denial under the new claim",
+    "we have reached an impasse regarding this",
+    "I would like to direct your attention to the dispute resolution process outlined in the homeowners policy",
+    "the damages your contractor wants to claim were not present at the time of loss for this claim",
+    "we use a variety of weather reports"
+  ],
+  "keyDenialLanguage": [
+    "estimates that are higher than the Replacement Cost amount on my estimate",
+    "we have reached an impasse",
+    "Our coverage decision stands",
+    "this is not how insurance works",
+    "the damages your contractor wants to claim were not present at the time of loss",
+    "based on the available weather data",
+    "we use a variety of weather reports"
+  ],
+  "carrierTactic": "Allstate's biggest red flags: (1) DUAL-CLAIM SHELL GAME (Cherry) — bouncing supplement requests between claim numbers, (2) PIVOTING DENIALS (Sowers) — when one rationale falls, another is substituted from AI's ranked-reason list, (3) ASYMMETRIC EVIDENCE (Foley/Encompass) — cite undisclosed data sources. All three are documented bad-faith patterns admissible under 2026 case law.",
+  "rooferTactic": "GOLD STANDARD escalation template per Luis Esteves (see Ali/0722264736 dump): (1) supervisor escalation request, (2) Allstate STAFF adjuster reinspection — NOT third-party, (3) specific policy language citation demand, (4) Virginia State Corporation Commission complaint threat. For pivoting denials: document each contradictory carrier position with timestamps. For Foley-style asymmetry: 3+ explicit requests for evidence basis builds the regulatory record.",
+  "patentMapping": "Allstate's 4 main patents (US11720971 ML accident assessment, US11798095 commercial claims ML, US11257132 surface dimension AI, US11348134 data processing ML) drive the AI-determined denial outcomes. When human adjuster pivots between rationales, that's the AI's ranked-reason list emitting alternate basis when first is challenged.",
+  "lessonForAnalyzer": "For Allstate: identify the subsidiary (AVPIC vs Indemnity vs Encompass NGIC). Each has slightly different escalation hierarchy. Luis Esteves's 4-demand template is the canonical counter for ANY Allstate denial cascade. For Encompass specifically (Foley pattern): demand source identification 3x + escalate to DOI when refused — this builds clean bad-faith preservation record."
+}
