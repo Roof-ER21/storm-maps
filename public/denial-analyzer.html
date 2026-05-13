@@ -354,10 +354,24 @@ function renderAnalysis(result) {
     html.push('</section>');
   }
 
-  // AI tells
+  // Deterministic boilerplate matches — hard evidence the carrier reuses this language
+  if ((result.boilerplateMatches || []).length > 0) {
+    html.push('<section>');
+    html.push('<h2 style="color: var(--purple);">🎯 Verbatim Boilerplate Match (Deterministic)</h2>');
+    html.push('<p class="desc">These EXACT phrases from the incoming letter were found word-for-word in past denials from this same carrier in Roof Docs\' archive. Hard evidence the carrier reuses template/AI-generated language across claims — admissible under 2026 bad-faith case law (carrier cannot claim individualized review).</p>');
+    for (const m of result.boilerplateMatches) {
+      html.push('<div class="signal-card ai-tell">');
+      html.push('<div class="head">📌 ' + escape(m.sourceType.toUpperCase()) + ' boilerplate · ' + (m.occurrencesInCorpus || 1) + 'x in ' + escape(m.carrier) + ' corpus</div>');
+      html.push('<div style="margin-top: 4px; font-style: italic;">"' + escape(m.phrase) + '"</div>');
+      html.push('</div>');
+    }
+    html.push('</section>');
+  }
+
+  // AI tells (Gemini-inferred — softer than verbatim matches above)
   if ((a.aiTells || []).length > 0) {
     html.push('<section>');
-    html.push('<h2 style="color: var(--purple);">🤖 AI Boilerplate Tells</h2>');
+    html.push('<h2 style="color: var(--purple);">🤖 AI Boilerplate Tells (Inferred)</h2>');
     html.push('<p class="desc">Phrases that suggest the letter was AI-generated with little human review. Strong evidence under 2026 case law for demanding disclosure of automated decision systems.</p>');
     for (const t of a.aiTells) {
       html.push('<div class="signal-card ai-tell">');
