@@ -135,6 +135,18 @@
         <div class="desc">Per-rep monthly call list. Old roofs + new storm hits + trade gaps + contact-quality = math-prioritized re-engagement queue.</div>
         <div class="kpi"><div><div class="v" id="kpi-touch">—</div><div class="l">Customers to touch</div></div></div>
       </a>
+      <a class="tile exec" href="carrier-playbook.html">
+        <div class="icon">📖</div>
+        <div class="title">Carrier Playbook</div>
+        <div class="desc">Per-carrier boilerplate library — phrases carriers reuse across denials, surfaced as a pre-meeting reference. Self-growing as new denials are analyzed.</div>
+        <div class="kpi"><div><div class="v" id="kpi-playbook">—</div><div class="l">Curated phrases</div></div></div>
+      </a>
+      <a class="tile exec" href="denial-archive.html">
+        <div class="icon">📂</div>
+        <div class="title">Denial Archive</div>
+        <div class="desc">Browse every denial analyzed by the system. Filter by carrier, outcome, appeal strength. Mark outcomes to close the learning loop.</div>
+        <div class="kpi"><div><div class="v" id="kpi-archive">—</div><div class="l">Denials archived</div></div></div>
+      </a>
       <a class="tile exec" href="weekly-recap.html">
         <div class="icon">📰</div>
         <div class="title">Weekly Recap</div>
@@ -408,6 +420,14 @@ async function load() {
   fetch('/api/intel/adjuster-twin/list').then((r) => r.json()).then((d) => {
     const n = (d && d.adjusters && d.adjusters.length) || 0;
     if (n > 0) $('kpi-twins').textContent = fmt.int(n);
+  }).catch(() => {});
+  fetch('/api/intel/carrier-boilerplate').then((r) => r.json()).then((d) => {
+    const n = (d && d.totalCuratedPhrases) || 0;
+    if (n > 0 && $('kpi-playbook')) $('kpi-playbook').textContent = fmt.int(n);
+  }).catch(() => {});
+  fetch('/api/intel/denial-intake/stats').then((r) => r.json()).then((d) => {
+    const n = (d && d.total) || 0;
+    if ($('kpi-archive')) $('kpi-archive').textContent = fmt.int(n);
   }).catch(() => {});
 
   $('meta-pulled').textContent = new Date(2026, 4, 12).toLocaleDateString();
