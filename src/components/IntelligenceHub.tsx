@@ -48,7 +48,12 @@ type IntelView =
   | 'sms-reminders'
   | 'weekly-recap'
   | 'carrier-orphans'
-  | 'cheat-sheet';
+  | 'cheat-sheet'
+  | 'denial-analyzer'
+  | 'denial-archive'
+  | 'carrier-playbook'
+  | 'lifetime-touch'
+  | 'adjuster-twin';
 
 const VIEW_FILES: Record<Exclude<IntelView, 'home' | 'predictor'>, string> = {
   'field-guide': 'field-guide.html',
@@ -80,6 +85,11 @@ const VIEW_FILES: Record<Exclude<IntelView, 'home' | 'predictor'>, string> = {
   'weekly-recap': 'weekly-recap.html',
   'carrier-orphans': 'carrier-orphans.html',
   'cheat-sheet': 'cheat-sheet.html',
+  'denial-analyzer': 'denial-analyzer.html',
+  'denial-archive': 'denial-archive.html',
+  'carrier-playbook': 'carrier-playbook.html',
+  'lifetime-touch': 'lifetime-touch.html',
+  'adjuster-twin': 'adjuster-twin.html',
 };
 
 const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: string }> }> = [
@@ -99,6 +109,16 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: st
       { id: 'cheat-sheet', label: '🎓 Cheat Sheet' },
       { id: 'field-guide', label: '📖 Field Guide' },
       { id: 'lead-score', label: '🎯 Lead Score' },
+    ],
+  },
+  {
+    label: 'AI Combat Suite',
+    items: [
+      { id: 'denial-analyzer', label: '🥷 Denial Analyzer' },
+      { id: 'denial-archive', label: '📚 Denial Archive' },
+      { id: 'carrier-playbook', label: '📕 Carrier Playbook' },
+      { id: 'adjuster-twin', label: '🪞 Adjuster Twin' },
+      { id: 'lifetime-touch', label: '💞 Touch Engine' },
     ],
   },
   {
