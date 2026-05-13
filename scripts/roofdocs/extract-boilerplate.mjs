@@ -51,16 +51,60 @@ function normalizeCarrier(name) {
 }
 
 function cleanText(s) {
-  return String(s || '')
+  let txt = String(s || '');
+
+  // V2: aggressively strip non-substantive content BEFORE n-gram analysis
+  const noiseFilters = [
+    // Email footers / signature blocks
+    /With 24\/7 access[\s\S]*?(?=\n\n|$)/gi,
+    /Available to Insureds[\s\S]*?(?=\n\n|$)/gi,
+    /CONFIDENTIAL[\s\S]*?(?=\n\n|$)/gi,
+    /Taking care of our members[\s\S]*?(?=\n\n|$)/gi,
+    /CONFIDENTIALITY[\s\S]*?STATEMENT[\s\S]*?(?=\n\n|$)/gi,
+    /PRIVACY NOTICE[\s\S]*?(?=\n\n|$)/gi,
+    /Go Digital[\s\S]*?(?=\n\n|$)/gi,
+    /Need Roadside Assistance[\s\S]*?(?=\n\n|$)/gi,
+    /To ensure delivery[\s\S]*?address book\.?/gi,
+    /This message[\s\S]*?intended recipient/gi,
+    /\[metadata[\s\S]*?\]/gi,
+    /\[COMUID[\s\S]*?\]/gi,
+    /TRVDiscDefault::\d+/gi,
+    // Address blocks / boilerplate carrier addresses
+    /P\.?O\.?\s*Box[\s\S]*?\d{5}/gi,
+    /\d{1,4}\s+[A-Z][a-z]+\s+(St|Ave|Road|Rd|Blvd|Drive|Dr|Way)\b[\s\S]*?\d{5}/gi,
+    // Email-app callouts
+    /Sent from my (iPhone|Android|Samsung|Verizon)[\s\S]*?(?=\n|$)/gi,
+    /Get Outlook for[\s\S]*?(?=\n|$)/gi,
+    // Adjuster signature blocks: looks like "Name, Title \n Org \n Phone..."
+    /Sincerely,\s*\n[\s\S]{0,600}?(?=\n\n|$)/gi,
+    /Regards,\s*\n[\s\S]{0,600}?(?=\n\n|$)/gi,
+    /Best regards,\s*\n[\s\S]{0,600}?(?=\n\n|$)/gi,
+    // Roof-ER rep sign-offs (we want CARRIER language only, not Roof-ER's)
+    /Best,?\s*\n\s*\*?[A-Z][a-z]+ [A-Z][a-z]+\*?[\s\S]*?Roof.?ER[\s\S]*?(?=\n\n|$)/gi,
+    /Roof\s*Doc\s*I\s*Roof.?ER[\s\S]*?(?=\n\n|$)/gi,
+    /Director\s*I\s*Roof.?ER[\s\S]*?(?=\n\n|$)/gi,
+    /Senior\s*Field\s*Rep\s*I\s*Roof.?ER[\s\S]*?(?=\n\n|$)/gi,
+    /Operations\s*I\s*Roof.?ER[\s\S]*?(?=\n\n|$)/gi,
+    /https?:\/\/theroofdocs\.com\/?/gi,
+    /https?:\/\/\S+/gi,
+    // Forward chain markers
+    /----+\s*Forwarded message\s*----+/gi,
+    /From:\s+[A-Z][\s\S]*?Subject:[^\n]*\n/gi,
+    /Sent:\s+\w+,?\s+\w+ \d+,?\s+\d{4}[\s\S]*?(?=\n)/gi,
+    /On \w+,?\s+\w+\s+\d+,?\s+\d{4}.*?wrote:/gi,
+  ];
+  for (const re of noiseFilters) txt = txt.replace(re, ' ');
+
+  txt = txt
     .replace(/[­-‏﻿]/g, '')
-    // Strip rep names/signatures we don't want as carrier patterns
-    .replace(/Best,\s*[A-Z][a-z]+ [A-Z][a-z]+/g, '')
     .replace(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g, '###PHONE###')
     .replace(/[\w.+-]+@[\w-]+\.[\w.-]+/g, '###EMAIL###')
     .replace(/\$\d[\d,.]*/g, '###AMOUNT###')
     .replace(/\d{1,2}\/\d{1,2}\/\d{2,4}/g, '###DATE###')
+    .replace(/\b\d{4,}\b/g, '###NUM###') // strip claim numbers etc
     .replace(/\s+/g, ' ')
     .trim();
+  return txt;
 }
 
 // Build per-carrier text bundles (only from carrier-spoken text, not roofer/homeowner replies)
@@ -83,7 +127,7 @@ for (const e of corpus.entries || []) {
 // Extract 5-12 word phrases that appear in 2+ denials from same carrier.
 // Use word boundary tokens to handle slight word-order variation.
 
-function extractPhrases(texts, minLen = 5, maxLen = 14) {
+function extractPhrases(texts, minLen = 3, maxLen = 10) {
   // For each text, sentence-split and find common n-gram phrases across texts.
   const phraseCounts = new Map(); // phrase -> Set of texts it appears in (with refs)
   for (let i = 0; i < texts.length; i++) {
@@ -158,13 +202,43 @@ function extractSnippet(text, phrase) {
   return (start > 0 ? '...' : '') + text.slice(start, end) + (end < text.length ? '...' : '');
 }
 
+// === Second source: aggregate the hand-curated keyDenialLanguage arrays
+// from each Gmail dump. These are higher quality than n-gram extraction
+// because a human (me, while reading each thread) flagged them as the
+// substantive denial-defining phrases. ===
+const curated = {}; // canonicalCarrier -> Set of curated phrases
+for (const e of corpus.entries || []) {
+  const canonical = normalizeCarrier(e.carrier);
+  if (!canonical) continue;
+  const kdl = e.keyDenialLanguage;
+  if (!Array.isArray(kdl) || kdl.length === 0) continue;
+  if (!curated[canonical]) curated[canonical] = new Map();
+  for (const phrase of kdl) {
+    if (!phrase || typeof phrase !== 'string' || phrase.length < 10) continue;
+    const norm = phrase.toLowerCase().trim();
+    if (!curated[canonical].has(norm)) curated[canonical].set(norm, { phrase, sources: [] });
+    curated[canonical].get(norm).sources.push(e.source || e.id);
+  }
+}
+
+// Merge curated phrases into byCarrier (as a separate field)
+for (const [carrier, phraseMap] of Object.entries(curated)) {
+  if (!byCarrier[carrier]) byCarrier[carrier] = { denialCount: 0, phrases: [] };
+  byCarrier[carrier].curatedPhrases = Array.from(phraseMap.values()).map(v => ({
+    phrase: v.phrase,
+    sources: v.sources,
+    occurrences: v.sources.length,
+  }));
+}
+
 const result = {
   generated: new Date().toISOString(),
-  description: 'Per-carrier boilerplate phrases detected via n-gram analysis of denial corpus. Each phrase appears in 2+ denials from the same carrier — strong signal that the carrier reuses templated/AI-generated language across claims.',
-  source: 'data/denial-corpus.json',
+  description: 'Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.',
+  source: 'data/denial-corpus.json + data/denial-sources/*.json',
   byCarrier,
   totalCarriers: Object.keys(byCarrier).length,
-  totalPhrases: Object.values(byCarrier).reduce((sum, c) => sum + c.phrases.length, 0),
+  totalNgramPhrases: Object.values(byCarrier).reduce((sum, c) => sum + (c.phrases?.length || 0), 0),
+  totalCuratedPhrases: Object.values(byCarrier).reduce((sum, c) => sum + (c.curatedPhrases?.length || 0), 0),
 };
 
 fs.writeFileSync(OUT_PATH, JSON.stringify(result, null, 2));

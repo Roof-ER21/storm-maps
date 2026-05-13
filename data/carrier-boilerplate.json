@@ -1,184 +1,189 @@
 {
-  "generated": "2026-05-13T03:53:11.110Z",
-  "description": "Per-carrier boilerplate phrases detected via n-gram analysis of denial corpus. Each phrase appears in 2+ denials from the same carrier — strong signal that the carrier reuses templated/AI-generated language across claims.",
-  "source": "data/denial-corpus.json",
+  "generated": "2026-05-13T04:02:12.560Z",
+  "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
+  "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {
     "Nationwide": {
       "denialCount": 3,
-      "phrases": []
+      "phrases": [
+        {
+          "phrase": "provide coverage for",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "PL Property Full Denial_compressed.pdf",
+              "snippet": "...ca Homeowners policy. We must respectfully advise you that your policy does not provide coverage for this loss – as further detailed below. Claim details Insurer: Nationwide Insura..."
+            },
+            {
+              "source": "Gmail: Nationwide Claim 000883-GR — Kevin Melton — Full Denial",
+              "snippet": "...tached a full denial letter that goes into more detail on why we were unable to provide coverage for the damages found. I will close the claim (as is part of our claims process), b..."
+            }
+          ]
+        },
+        {
+          "phrase": "if you have any",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "PL Property Full Denial_compressed.pdf",
+              "snippet": "...ent decision, please forward it to us as soon as possible. For more information If you have any questions or concerns about your claim, please contact me at ###PHONE### x15650..."
+            },
+            {
+              "source": "Gmail: Nationwide Claim 000883-GR — Kevin Melton — Full Denial",
+              "snippet": "...ose the claim (as is part of our claims process), but as mentioned in our call, if you have any questions, please reach out using my information below!"
+            }
+          ]
+        }
+      ],
+      "curatedPhrases": [
+        {
+          "phrase": "do not effectively prove that this roof is in an unrepairable condition",
+          "sources": [
+            "Gmail: 065417-GQ — Cheng / Vienna VA"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "not seeing the clear creasing and/or granule loss to the surrounding shingles",
+          "sources": [
+            "Gmail: 065417-GQ — Cheng / Vienna VA"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "shingles appeared to be pliable enough to us to proceed with the repair per shingle",
+          "sources": [
+            "Gmail: 065417-GQ — Cheng / Vienna VA"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "attached a full denial letter that goes into more detail on why we were unable to provide coverage for the damages found",
+          "sources": [
+            "Gmail: Nationwide Claim 000883-GR — Kevin Melton — Full Denial"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "I will close the claim (as is part of our claims process)",
+          "sources": [
+            "Gmail: Nationwide Claim 000883-GR — Kevin Melton — Full Denial"
+          ],
+          "occurrences": 1
+        }
+      ]
     },
     "Allstate": {
       "denialCount": 3,
-      "phrases": []
+      "phrases": [],
+      "curatedPhrases": [
+        {
+          "phrase": "estimates that are higher than the Replacement Cost amount on my estimate",
+          "sources": [
+            "Gmail: Allstate claim 000758479307 — Carlos Alfaro"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand",
+          "sources": [
+            "Gmail: Allstate claim 000758479307 — Carlos Alfaro"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "review for possible supplement",
+          "sources": [
+            "Gmail: Allstate claim 000758479307 — Carlos Alfaro"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "the damages your contractor wants to claim were not present at the time of loss for this claim",
+          "sources": [
+            "Gmail: Allstate Claim 0722264736 — Shaun Ali — Adjuster Runaround + Luis Esteves Escalation Template"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "you will need to dispute the denial under the new claim",
+          "sources": [
+            "Gmail: Allstate Claim 0722264736 — Shaun Ali — Adjuster Runaround + Luis Esteves Escalation Template"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "spoke with the previous adjuster handling your claim. I also consulted with leadership",
+          "sources": [
+            "Gmail: Allstate Claim 0722264736 — Shaun Ali — Adjuster Runaround + Luis Esteves Escalation Template"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "this is not how insurance works",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "no hail larger than .25 inches was reported",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": ".25 inch (pea-sized) hail rarely causes immediate, functional damage to a standard roof",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Hail typically needs to be 1 inch (quarter-sized) or larger to cause significant damage",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "We discussed that you replaced your roof components due to significant hail damage when you purchased the home",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "we have reached an impasse regarding this",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "I would like to direct your attention to the dispute resolution process outlined in the homeowners policy",
+          "sources": [
+            "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
+          ],
+          "occurrences": 1
+        }
+      ]
     },
     "Travelers": {
       "denialCount": 2,
       "phrases": [
         {
-          "phrase": "claim online via mytravelers; you can check your claim status, view your deductible, interact",
+          "phrase": "virginia-carolina claim center,",
           "occurrences": 2,
           "examples": [
             {
               "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "... ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact..."
+              "snippet": "...ave any questions please reach out. Thanks, Brendon Myer | Claim Professional | Virginia-Carolina Claim Center, Travelers, -###NUM###, W: ###PHONE###. Everything You Need at Your Fingertips -"
             },
             {
               "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload..."
-            }
-          ]
-        },
-        {
-          "phrase": "online via mytravelers; you can check your claim status, view your deductible, interact with",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...ONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my m..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...ina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload docu..."
-            }
-          ]
-        },
-        {
-          "phrase": "your claim online via mytravelers; you can check your claim status, view your deductible,",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...0, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, pleas..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...ginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - ..."
-            }
-          ]
-        },
-        {
-          "phrase": "can check your claim status, view your deductible, interact with us and upload documents.",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager at ###EMAIL### To ..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...E### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documents to your claim, plea..."
-            }
-          ]
-        },
-        {
-          "phrase": "via mytravelers; you can check your claim status, view your deductible, interact with us",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "... Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my mana..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...im Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documen..."
-            }
-          ]
-        },
-        {
-          "phrase": "mytravelers; you can check your claim status, view your deductible, interact with us and",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...rything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager ..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...enter, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documents t..."
-            }
-          ]
-        },
-        {
-          "phrase": "24/7 access to your claim online via mytravelers; you can check your claim status,",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...o, NY 14240-0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assista..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "... Travelers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insur..."
-            }
-          ]
-        },
-        {
-          "phrase": "access to your claim online via mytravelers; you can check your claim status, view",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "... 14240-0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance i..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...elers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds a..."
-            }
-          ]
-        },
-        {
-          "phrase": "you can check your claim status, view your deductible, interact with us and upload",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...eed at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager at ###E..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Contractors - To upload documents to your ..."
-            }
-          ]
-        },
-        {
-          "phrase": "to your claim online via mytravelers; you can check your claim status, view your",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is req..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available to Insureds and Co..."
-            }
-          ]
-        },
-        {
-          "phrase": "with 24/7 access to your claim online via mytravelers; you can check your claim",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...uffalo, NY 14240-0430, W: ###PHONE###. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further..."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "...erty, Travelers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###. With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. Available ..."
-            }
-          ]
-        },
-        {
-          "phrase": "to upload documents to your claim, please use this link: claim upload center.",
-          "occurrences": 2,
-          "examples": [
-            {
-              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
-              "snippet": "...ts. If further assistance is required, please contact my manager at ###EMAIL### To upload documents to your claim, please use this link: Claim Upload Center."
-            },
-            {
-              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
-              "snippet": "... interact with us and upload documents. Available to Insureds and Contractors - To upload documents to your claim, please use this link: Claim Upload Center. [Abdulasis Deef (homeowner, ###PHONE###) 2024-11-27] Hello, As a long-time and ..."
+              "snippet": "...or your time, Lauren Cook | Outside Claim Representative | Property, Travelers, Virginia-Carolina Claim Center, W: ###PHONE### F: ###PHONE###."
             }
           ]
         },
@@ -196,25 +201,511 @@
             }
           ]
         }
+      ],
+      "curatedPhrases": [
+        {
+          "phrase": "Your estimate includes depreciation which is based on the age and condition of the damaged items",
+          "sources": [
+            "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "it is recoverable",
+          "sources": [
+            "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "once the work is finished please upload the final invoice to me and I will release the payment for depreciation",
+          "sources": [
+            "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "If you or your contractor have any issues with the estimate please contact me before the work is started",
+          "sources": [
+            "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "based on what he provided me I am standing by my decision",
+          "sources": [
+            "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "he is pointing out normal wear and tear to the shingles rather than damage due to hail",
+          "sources": [
+            "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Attached to this email is your settlement letter and copy of your estimate",
+          "sources": [
+            "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration"
+          ],
+          "occurrences": 1
+        }
       ]
     },
     "Liberty Mutual": {
       "denialCount": 3,
-      "phrases": []
+      "phrases": [
+        {
+          "phrase": "all of the information",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Liberty Mutual Claim 059304720-01 — Coverage Explanation & Settlement",
+              "snippet": "...he information he rec'd from his INS Co. HO does not understand/am able to read all of the information received, but he sees that there was a full approval. Please contact HO with re..."
+            },
+            {
+              "source": "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)",
+              "snippet": "...x being full. We were able to conduct the roof inspection yesterday, I received all of the information and was able to finalize coverage for your claim. I have attached a copy of the..."
+            }
+          ]
+        },
+        {
+          "phrase": "no coverage for",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)",
+              "snippet": "...mate for replacement of your roof and repairs to your kitchen ceiling. There is no coverage for your siding due the damage pre-existing the date of loss this claim was filed f..."
+            },
+            {
+              "source": "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear",
+              "snippet": "...ore, currently our coverage position has not changed and there is unfortunately no coverage for the condition of your roof."
+            }
+          ]
+        },
+        {
+          "phrase": "of your roof",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)",
+              "snippet": "...coverage for your claim. I have attached a copy of the estimate for replacement of your roof and repairs to your kitchen ceiling. There is no coverage for your siding due t..."
+            },
+            {
+              "source": "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear",
+              "snippet": "We completed an additional inspection of your roof this morning with your contractor. We utilized a different inspection company t..."
+            }
+          ]
+        },
+        {
+          "phrase": "there is no",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)",
+              "snippet": "... the estimate for replacement of your roof and repairs to your kitchen ceiling. There is no coverage for your siding due the damage pre-existing the date of loss this clai..."
+            },
+            {
+              "source": "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear",
+              "snippet": "...d that this damage is not consistent with storm damage. He went on to note that there is no pattern of damage to any of the soft metals on the roof that would indicate hai..."
+            }
+          ]
+        }
+      ],
+      "curatedPhrases": [
+        {
+          "phrase": "industry market standards for most licensed contractors",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 059304720-01 — Coverage Explanation & Settlement"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "if your chosen contractor's estimate is more they can submit for a supplement request",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 059304720-01 — Coverage Explanation & Settlement"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Please do not submit any estimates to us from contractors that you do not choose to complete the repairs",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 059304720-01 — Coverage Explanation & Settlement"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Recoverable Depreciation will be released only when proof of repairs has been received",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 059304720-01 — Coverage Explanation & Settlement"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "There is no coverage for your siding due the damage pre-existing the date of loss this claim was filed for",
+          "sources": [
+            "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "the total repair costs is $11,969.65. The policy deductible for this claim is $1,000",
+          "sources": [
+            "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Your mortgage company is named on your claim payment, please contact your mortgage company about releasing the funds to you for repairs before attempting to cash the payment",
+          "sources": [
+            "Gmail: Liberty Mutual 061143908-01 — Neena Florio — Partial Denial on Siding (Pre-Existing)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "no storm-related damage was found on the roof",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "the condition of the roof is due to wear and tear or deterioration",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "granule loss and marring around some of the solar panels that was likely caused by footfall or other movement during the installation of the panels",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "no pattern of damage to any of the soft metals on the roof that would indicate hail damage",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "the only measurable hailstorm at your location since your policy started with us was recorded on 8/20/2019, with a hailstone size of .75\"",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "This size hail typically is not large enough to cause significant damage to shingles or gutters",
+          "sources": [
+            "Gmail: Liberty Mutual Claim 060253156-01 — Sarwar Siddiqui — Denied 2x for Wear & Tear"
+          ],
+          "occurrences": 1
+        }
+      ]
     },
     "State Farm": {
       "denialCount": 3,
-      "phrases": []
+      "phrases": [],
+      "curatedPhrases": [
+        {
+          "phrase": "the roof coverings were not functionally damaged by the reported or any recent storm event",
+          "sources": [
+            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "dents on certain metal components are attributable to pre-policy storms",
+          "sources": [
+            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "those metal impacts are cosmetic only",
+          "sources": [
+            "Gmail: State Farm Claim 46-81Z7-05W — Nataly Danilova — Engineer Report Denial w/ Masterful Counter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "No Hail RFG Denial",
+          "sources": [
+            "Gmail: State Farm Claim 4673B816T — Brian Dolbeare — No Hail Roof Denial"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Partial Denial Letter (full content in attached PDF)",
+          "sources": [
+            "Gmail: State Farm 46-99F9-92W — Silvia Snyder — Partial Denial Letter"
+          ],
+          "occurrences": 1
+        }
+      ]
     },
     "Erie": {
       "denialCount": 2,
-      "phrases": []
+      "phrases": [],
+      "curatedPhrases": [
+        {
+          "phrase": "Sufficient photographs were available for review, and we respectfully decline your request for a physical re-inspection",
+          "sources": [
+            "Gmail: Erie Claim A00007555686 — Hongyan Hang — Partial Denial w/ Reinspection Refusal"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "While some of your soft metals did exhibit hail damage, the shingles did not",
+          "sources": [
+            "Gmail: Erie Claim A00007555686 — Hongyan Hang — Partial Denial w/ Reinspection Refusal"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "The roof did display blistering and granule loss, consistent with wear and tear",
+          "sources": [
+            "Gmail: Erie Claim A00007555686 — Hongyan Hang — Partial Denial w/ Reinspection Refusal"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "you have the option, at your own expense, to hire a professional engineer or similar expert",
+          "sources": [
+            "Gmail: Erie Claim A00007555686 — Hongyan Hang — Partial Denial w/ Reinspection Refusal"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Suit must be brought within two years after the loss or damage occurs",
+          "sources": [
+            "Gmail: Erie Claim A00007555686 — Hongyan Hang — Partial Denial w/ Reinspection Refusal"
+          ],
+          "occurrences": 1
+        }
+      ]
     },
     "USAA": {
       "denialCount": 3,
-      "phrases": []
+      "phrases": [
+        {
+          "phrase": "the shingles and the",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+              "snippet": "...t's hail damage. The roof isn't old, the shingle is still available, no hail to the shingles and the hail to the eye was like 1/4 inch. The estimate still fell below the deductible..."
+            },
+            {
+              "source": "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread",
+              "snippet": "...sted a reinspection of his roof due to significant hail damage observed on both the shingles and the soft metals. Our recent photo report, which you will find under the shingle dam..."
+            }
+          ]
+        },
+        {
+          "phrase": "thank you for",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones",
+              "snippet": "TEMPLATE: Dear [Member], Thank you for trusting us with your insurance needs. This type of loss is covered under your ..."
+            },
+            {
+              "source": "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread",
+              "snippet": "... Claim ####NUM###-803 - Clarification of Contractor Role. Dear [Adjuster Name], Thank you for your response regarding public adjuster licensing. I appreciate the opportunity..."
+            }
+          ]
+        }
+      ],
+      "curatedPhrases": [
+        {
+          "phrase": "I have attached the estimate per your request",
+          "sources": [
+            "Gmail: USAA claim 015826705-800 — Andre Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "If you need to provide documentation, you can attach documents to your email",
+          "sources": [
+            "Gmail: USAA claim 015826705-800 — Andre Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "the loss doesn't exceed your $[deductible] deductible",
+          "sources": [
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "Your policy only pays if a loss exceeds your deductible",
+          "sources": [
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "If the reported damage is not repaired, this could result in the denial of a future claim for the same or related damage",
+          "sources": [
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "the hail to the eye was like 1/4 inch",
+          "sources": [
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "since an iA denied it initially there's nothing he can do to approve it",
+          "sources": [
+            "Gmail: USAA Threshold Denial Pattern — 4 Threads — Atiphat / Pearson / Kinnick + earlier Jones"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "warning of acting like a Public Adjuster",
+          "sources": [
+            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "interpreting policy coverage",
+          "sources": [
+            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "negotiating his claim settlement",
+          "sources": [
+            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "acting as an intermediary between the insured and USAA",
+          "sources": [
+            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "requires public adjuster licensing",
+          "sources": [
+            "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+          ],
+          "occurrences": 1
+        }
+      ]
+    },
+    "AMIG (Cincinnati Financial)": {
+      "denialCount": 0,
+      "phrases": [],
+      "curatedPhrases": [
+        {
+          "phrase": "There is some cosmetic damage to gutters and down spouts which is not covered",
+          "sources": [
+            "Gmail: American Modern (AMIG / Cincinnati) Claim 173980AB — Shawn Krause — Roof Approved + Cosmetic Gutter Denial"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "we will send a separate letter addressing no coverage for cosmetic damage to the roof components",
+          "sources": [
+            "Gmail: American Modern (AMIG / Cincinnati) Claim 173980AB — Shawn Krause — Roof Approved + Cosmetic Gutter Denial"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "depreciation applied is available for reimbursement if the actual cost is incurred",
+          "sources": [
+            "Gmail: American Modern (AMIG / Cincinnati) Claim 173980AB — Shawn Krause — Roof Approved + Cosmetic Gutter Denial"
+          ],
+          "occurrences": 1
+        }
+      ]
+    },
+    "Encompass": {
+      "denialCount": 0,
+      "phrases": [],
+      "curatedPhrases": [
+        {
+          "phrase": "based on the available weather data",
+          "sources": [
+            "Gmail: Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "earliest hail event capable of producing the level of damage observed occurred in July 2025",
+          "sources": [
+            "Gmail: Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "prior to the policy inception date",
+          "sources": [
+            "Gmail: Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "we use a variety of weather reports",
+          "sources": [
+            "Gmail: Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "we use weather reports",
+          "sources": [
+            "Gmail: Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)"
+          ],
+          "occurrences": 1
+        }
+      ]
+    },
+    "Utica National": {
+      "denialCount": 0,
+      "phrases": [],
+      "curatedPhrases": [
+        {
+          "phrase": "We are able to provide coverage for the damaged elevations. We would not be able to provide coverage for elevations that were not damaged by the event",
+          "sources": [
+            "Gmail: Utica National Claim 0020059596 — Sandra Valenti — Elevation-Specific Approval + Matching Denial"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "While it is possible that the exact siding may no longer be available Utica does not owe to match the existing siding",
+          "sources": [
+            "Gmail: Utica National Claim 0020059596 — Sandra Valenti — Elevation-Specific Approval + Matching Denial"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "by replacing the entire damaged elevation to the corner trim leaking will not be an issue",
+          "sources": [
+            "Gmail: Utica National Claim 0020059596 — Sandra Valenti — Elevation-Specific Approval + Matching Denial"
+          ],
+          "occurrences": 1
+        }
+      ]
     }
   },
-  "totalCarriers": 7,
-  "totalPhrases": 13
+  "totalCarriers": 10,
+  "totalNgramPhrases": 10,
+  "totalCuratedPhrases": 71
 }
