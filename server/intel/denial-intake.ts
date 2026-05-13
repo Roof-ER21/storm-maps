@@ -243,10 +243,37 @@ export async function intakeStats(_req: Request, res: Response): Promise<void> {
       GROUP BY 1
       ORDER BY 2 DESC
     `;
+    // Per-carrier win-rate: (approved + partial) / total outcomes per carrier
+    const winRates = await pgSql<Array<{ carrier: string | null; total: string; wins: string; partial: string; denied: string }>>`
+      SELECT
+        COALESCE(di.identified_carrier, di.carrier, '(unknown)') AS carrier,
+        COUNT(DISTINCT lo.id)::text AS total,
+        SUM(CASE WHEN lo.outcome = 'approved' THEN 1 ELSE 0 END)::text AS wins,
+        SUM(CASE WHEN lo.outcome = 'partial' THEN 1 ELSE 0 END)::text AS partial,
+        SUM(CASE WHEN lo.outcome = 'denied' THEN 1 ELSE 0 END)::text AS denied
+      FROM denial_intake di
+      JOIN LATERAL (
+        SELECT id, outcome FROM denial_outcomes
+        WHERE intake_id = di.id
+        ORDER BY created_at DESC LIMIT 1
+      ) lo ON true
+      WHERE lo.outcome IN ('approved','partial','denied')
+      GROUP BY 1
+      HAVING COUNT(*) >= 1
+      ORDER BY 2 DESC
+    `;
     res.json({
       total: Number(totals[0]?.count || 0),
       byCarrier: byCarrier.map((r) => ({ carrier: r.carrier, count: Number(r.n) })),
       byOutcome: byOutcome.map((r) => ({ outcome: r.outcome, count: Number(r.n) })),
+      winRates: winRates.map((r) => ({
+        carrier: r.carrier,
+        total: Number(r.total),
+        approved: Number(r.wins),
+        partial: Number(r.partial),
+        denied: Number(r.denied),
+        flipRate: (Number(r.wins) + Number(r.partial)) / Math.max(1, Number(r.total)),
+      })),
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown';
