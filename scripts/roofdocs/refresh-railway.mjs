@@ -102,6 +102,7 @@ async function pushDerivedToDb() {
     { key: 'carrier-patents', file: path.join(DATA_DIR, 'carrier-patents.json') },
     { key: 'lifetime-touch',  file: path.join(DATA_DIR, 'lifetime-touch.json') },
     { key: 'denial-corpus',   file: path.join(DATA_DIR, 'denial-corpus.json') },
+    { key: 'carrier-boilerplate', file: path.join(DATA_DIR, 'carrier-boilerplate.json') },
     { key: 'storms-light',    file: path.join(STORMS_DIR, 'iem-hail-wind-2018-2026.json') },
   ];
 
@@ -161,6 +162,9 @@ async function pushDerivedToDb() {
 
     log('Building lifetime touch engine…');
     await runChild('node', ['scripts/roofdocs/build-lifetime-touch.mjs']);
+
+    log('Extracting carrier boilerplate (corpus + denial_intake auto-grow)…');
+    await runChild('node', ['scripts/roofdocs/extract-boilerplate.mjs']);
 
     await pushDerivedToDb();
 
