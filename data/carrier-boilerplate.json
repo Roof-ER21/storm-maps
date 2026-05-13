@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T05:15:20.304Z",
+  "generated": "2026-05-13T06:00:46.320Z",
   "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
   "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {

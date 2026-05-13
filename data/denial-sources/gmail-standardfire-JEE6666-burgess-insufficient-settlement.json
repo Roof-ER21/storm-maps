@@ -1,0 +1,26 @@
+{
+  "threadId": "reese-JEE6666",
+  "subject": "The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)",
+  "carrier": "The Standard Fire Insurance Company",
+  "carrierParent": "Travelers",
+  "adjuster": "Kirkland J. Nelms, Property Claim Professional, Travelers (W 571-623-9034, KNelms@travelers.com)",
+  "managerEscalation": "Lisa Eisele <Leisele@travelers.com>",
+  "claimNumber": "JEE6666",
+  "denialCategory": "settlement-too-low-neighbor-mismatch",
+  "dateOfDenial": "2026-01-02",
+  "outcome": "homeowner-considering-alternative-insurer",
+  "denialText": "Per the Loss Settlement provision of the policy, we pay no more than the actual cash value (ACV) until the actual repair or replacement is complete. When the work is complete, please forward either the completion certificate or final invoice to me to review for any additional payment. This basically means that our payment to you will be separated into two payments. The initial payment is based on the age of the materials and can be used as a deposit and the final payment will be made after all the work is completed and the final invoice or completion certificate is forwarded to me. You are responsible for your deductible which is paid to the contractor and the difference in cost if you choose to upgrade any of the materials.",
+  "homeownerReactions": [
+    "This settlement is not enough to do anything on the roof, waste of time",
+    "Don't understand that my next store neighbor got a full roof replacement when our roofs where installed within a week or two of each other. I'm going to look at alternative insurance options."
+  ],
+  "keyDenialLanguage": [
+    "Per the Loss Settlement provision of the policy, we pay no more than the actual cash value (ACV) until the actual repair or replacement is complete",
+    "The initial payment is based on the age of the materials",
+    "You are responsible for your deductible which is paid to the contractor"
+  ],
+  "carrierTactic": "ACV-FIRST PAYMENT STRUCTURE — Travelers/Standard Fire intentionally splits payment into ACV (low, depreciation applied) + RCV (released only on completion). Homeowner cash flow is constrained.",
+  "rooferTactic": "NEIGHBOR-APPROVED PATTERN — Document neighbors with same storm + similar installation windows + better outcomes. Use as inconsistent-application evidence under state unfair claim settlement statutes.",
+  "patentMapping": "Travelers' Probable Roof Loss Confidence Score drives ACV split; depreciation tied to patent-disclosed age-of-materials logic.",
+  "lessonForAnalyzer": "Travelers/Standard Fire 'settlement letter' insufficient pattern: request Xactimate line-item breakdown, document neighbor approvals with proximity proof, cite inadequate-investigation, request depreciation methodology basis."
+}
