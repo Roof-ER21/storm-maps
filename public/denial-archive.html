@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Denial Archive</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; --blue:#60a5fa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 11px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--accent); }
+  section .desc { color: var(--muted); font-size: 13px; margin-bottom: 14px; line-height: 1.5; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  @media (max-width: 700px) { .stats-grid { grid-template-columns: 1fr 1fr; } }
+  .stat { background: #342c23; border-radius: 6px; padding: 11px 14px; }
+  .stat .v { font-size: 21px; font-weight: 700; color: var(--accent); }
+  .stat .l { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+  .filter-bar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+  .filter-bar select, .filter-bar input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 5px; padding: 7px 11px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  td .preview { color: var(--muted); font-size: 11px; margin-top: 3px; line-height: 1.4; font-style: italic; }
+  .pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .pill.green { background: rgba(16,185,129,0.2); color: var(--green); }
+  .pill.yellow { background: rgba(245,158,11,0.2); color: var(--yellow); }
+  .pill.red { background: rgba(239,68,68,0.2); color: var(--red); }
+  .pill.gray { background: #342c23; color: var(--muted); }
+  .empty-state { padding: 60px 20px; text-align: center; color: var(--muted); }
+  .loading { padding: 50px; text-align: center; color: var(--accent); }
+  .row-actions a { color: var(--accent); text-decoration: none; margin-right: 8px; font-size: 12px; }
+  .row-actions a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📂 RIQ 21 — Denial Archive</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="denial-analyzer.html">⚖️ Analyzer</a>
+    <a href="denial-archive.html" class="active">Archive</a>
+    <a href="adjuster-twin.html">🧠 Adjuster Twin</a>
+    <a href="lifetime-touch.html">📞 Touch Engine</a>
+    <a href="cheat-sheet.html">Cheat Sheets</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading archive…</div>
+  <div id="content" style="display:none">
+    <section>
+      <h2>Denial intake archive</h2>
+      <p class="desc">Every denial that flows through the Analyzer is archived here. Each row links back to the original analysis + lets you mark outcomes. As outcomes accumulate, RIQ learns which counter-letter strategies actually flip denials.</p>
+      <div class="stats-grid" id="stats"></div>
+    </section>
+
+    <section>
+      <h2>Recent intakes</h2>
+      <div class="filter-bar">
+        <input id="carrier-filter" placeholder="Filter by carrier (e.g. Allstate)" />
+        <select id="outcome-filter">
+          <option value="all">All outcomes</option>
+          <option value="approved">Approved</option>
+          <option value="partial">Partial</option>
+          <option value="denied">Denied</option>
+          <option value="pending">Pending</option>
+          <option value="none">No outcome yet</option>
+        </select>
+        <button onclick="load()" style="background: var(--accent); color: var(--bg); border: 0; padding: 7px 14px; border-radius: 5px; font-weight: 700; cursor: pointer;">Refresh</button>
+      </div>
+      <div style="overflow-x: auto;">
+        <table>
+          <thead>
+            <tr><th>#</th><th>Date</th><th>Carrier</th><th>Adjuster</th><th>Claim #</th><th>Appeal</th><th>Outcome</th><th>Preview</th></tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let ALL = [];
+
+function escape(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+}
+
+async function load() {
+  $('loading').style.display = 'block';
+  $('content').style.display = 'none';
+  try {
+    const carrier = $('carrier-filter') ? $('carrier-filter').value.trim() : '';
+    const url = '/api/intel/denial-intake/list' + (carrier ? '?carrier=' + encodeURIComponent(carrier) : '?limit=200');
+    const [listRes, statsRes] = await Promise.all([fetch(url), fetch('/api/intel/denial-intake/stats')]);
+    const list = await listRes.json();
+    const stats = await statsRes.json();
+    ALL = list.entries || [];
+    $('loading').style.display = 'none';
+    $('content').style.display = 'block';
+    renderStats(stats);
+    renderRows();
+  } catch (e) {
+    $('loading').textContent = 'Failed to load: ' + e.message;
+  }
+}
+
+function renderStats(s) {
+  const byCarrier = s.byCarrier || [];
+  const byOutcome = s.byOutcome || [];
+  const outcomeOf = (k) => (byOutcome.find((x) => x.outcome === k) || {}).count || 0;
+  $('stats').innerHTML = [
+    ['Total intakes', s.total || 0],
+    ['Approved', outcomeOf('approved')],
+    ['Partial', outcomeOf('partial')],
+    ['Denied', outcomeOf('denied')],
+  ].map(([l, v]) => '<div class="stat"><div class="v">' + Number(v).toLocaleString() + '</div><div class="l">' + l + '</div></div>').join('');
+}
+
+function renderRows() {
+  const outcomeFilter = $('outcome-filter').value;
+  let rows = ALL;
+  if (outcomeFilter !== 'all') {
+    if (outcomeFilter === 'none') rows = rows.filter((r) => !r.latest_outcome);
+    else rows = rows.filter((r) => r.latest_outcome === outcomeFilter);
+  }
+  if (rows.length === 0) {
+    $('rows').innerHTML = '<tr><td colspan="8" class="empty-state">No intakes match these filters.</td></tr>';
+    return;
+  }
+  $('rows').innerHTML = rows.map((r) => {
+    const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '—';
+    const outcome = r.latest_outcome || '';
+    const outcomePill = outcome === 'approved' ? '<span class="pill green">✓ Approved</span>' :
+                        outcome === 'partial' ? '<span class="pill yellow">◐ Partial</span>' :
+                        outcome === 'denied' ? '<span class="pill red">✗ Denied</span>' :
+                        outcome === 'pending' ? '<span class="pill gray">… Pending</span>' :
+                        outcome === 'withdrawn' ? '<span class="pill gray">↩ Withdrawn</span>' :
+                        '<span class="pill gray">—</span>';
+    const appealPill = r.appeal_strength === 'very-strong' || r.appeal_strength === 'strong' ?
+                        '<span class="pill green">' + escape(r.appeal_strength) + '</span>' :
+                       r.appeal_strength === 'moderate' ?
+                        '<span class="pill yellow">' + escape(r.appeal_strength) + '</span>' :
+                       r.appeal_strength === 'weak' ?
+                        '<span class="pill red">' + escape(r.appeal_strength) + '</span>' :
+                        '<span class="pill gray">—</span>';
+    return ['<tr>',
+      '<td>#' + r.id + '</td>',
+      '<td>' + date + '</td>',
+      '<td>' + escape(r.identified_carrier || r.carrier || '—') + '</td>',
+      '<td>' + escape(r.identified_adjuster || '—') + '</td>',
+      '<td>' + escape(r.claim_number || '—') + '</td>',
+      '<td>' + appealPill + '</td>',
+      '<td>' + outcomePill + '</td>',
+      '<td><div class="preview">' + escape((r.preview || '').slice(0, 200)) + '</div></td>',
+    '</tr>'].join('');
+  }).join('');
+}
+
+if ($('outcome-filter')) $('outcome-filter').addEventListener('change', renderRows);
+if ($('carrier-filter')) $('carrier-filter').addEventListener('input', () => clearTimeout(window.__t) || (window.__t = setTimeout(load, 500)));
+load();
+</script>
+</body>
+</html>
