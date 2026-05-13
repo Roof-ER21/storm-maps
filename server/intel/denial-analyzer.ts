@@ -88,6 +88,72 @@ async function loadCorpus(): Promise<DenialCorpus | null> {
   }
 }
 
+interface BoilerplatePhrase { phrase: string; occurrences: number; sources?: string[]; }
+interface BoilerplateBag { denialCount?: number; phrases?: BoilerplatePhrase[]; curatedPhrases?: BoilerplatePhrase[]; }
+interface BoilerplateBlob { byCarrier?: Record<string, BoilerplateBag>; totalCarriers?: number; totalCuratedPhrases?: number; }
+
+async function loadBoilerplate(): Promise<BoilerplateBlob | null> {
+  try {
+    const rows = await pgSql<Array<{ data: BoilerplateBlob }>>`
+      SELECT data FROM intel_blobs WHERE key = 'carrier-boilerplate' LIMIT 1
+    `;
+    if (rows.length === 0) return null;
+    return rows[0].data;
+  } catch {
+    return null;
+  }
+}
+
+function normalizeCarrier(name: string): string | null {
+  const n = (name || '').toLowerCase().trim();
+  if (!n) return null;
+  if (n.includes('allstate')) return 'Allstate';
+  if (n.includes('state farm')) return 'State Farm';
+  if (n.includes('usaa')) return 'USAA';
+  if (n.includes('liberty mutual') || n.includes('safeco')) return 'Liberty Mutual';
+  if (n.includes('nationwide')) return 'Nationwide';
+  if (n.includes('travelers')) return 'Travelers';
+  if (n.includes('erie')) return 'Erie';
+  if (n.includes('encompass')) return 'Encompass';
+  if (n.includes('utica')) return 'Utica National';
+  if (n.includes('amig') || n.includes('american modern') || n.includes('cincinnati')) return 'AMIG (Cincinnati Financial)';
+  if (n.includes('progressive')) return 'Progressive';
+  if (n.includes('geico')) return 'Geico';
+  if (n.includes('chubb')) return 'Chubb';
+  if (n.includes('lemonade')) return 'Lemonade';
+  if (n.includes('hartford')) return 'The Hartford';
+  if (n.includes('selective')) return 'Selective';
+  if (n.includes('farmers')) return 'Farmers';
+  return null;
+}
+
+interface BoilerplateMatch { phrase: string; carrier: string; sourceType: 'curated' | 'ngram'; occurrencesInCorpus: number; }
+
+function detectBoilerplateMatches(letterText: string, carrier: string, blob: BoilerplateBlob | null): BoilerplateMatch[] {
+  if (!blob || !blob.byCarrier) return [];
+  const canonical = normalizeCarrier(carrier);
+  if (!canonical) return [];
+  const bag = blob.byCarrier[canonical];
+  if (!bag) return [];
+  const haystack = letterText.toLowerCase();
+  const matches: BoilerplateMatch[] = [];
+  // Check curated phrases first (higher quality)
+  for (const p of (bag.curatedPhrases || [])) {
+    if (!p.phrase || p.phrase.length < 12) continue;
+    if (haystack.includes(p.phrase.toLowerCase())) {
+      matches.push({ phrase: p.phrase, carrier: canonical, sourceType: 'curated', occurrencesInCorpus: p.occurrences || 1 });
+    }
+  }
+  // Also check n-gram phrases (lower quality but exhaustive)
+  for (const p of (bag.phrases || [])) {
+    if (!p.phrase || p.phrase.length < 15) continue;
+    if (haystack.includes(p.phrase.toLowerCase())) {
+      matches.push({ phrase: p.phrase, carrier: canonical, sourceType: 'ngram', occurrencesInCorpus: p.occurrences || 2 });
+    }
+  }
+  return matches.slice(0, 8); // cap to keep prompt focused
+}
+
 /** Pick the most useful few-shot examples for this carrier.
  * Priority: carrier-matched gmail-thread w/ counterText > carrier-matched rd-canon > carrier-matched rep-chatter > generic rd-canon.
  * Carrier match is CONTAINS-based since corpus entries include legal-entity-suffix variants
@@ -233,6 +299,10 @@ PAST DENIAL EXAMPLES FROM ROOF DOCS' REAL ARCHIVE (use as style/leverage referen
 {{EXAMPLES}}
 
 ================
+DETERMINISTIC BOILERPLATE MATCHES (these EXACT phrases from the incoming letter appear verbatim in past denials from this same carrier — STRONG aiTells / boilerplate signal):
+{{BOILERPLATE}}
+
+================
 DENIAL LETTER (verbatim):
 {{LETTER}}
 `;
@@ -272,9 +342,17 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
   const corpus = await loadCorpus();
   const examples = corpus ? selectFewShot(corpus, carrierHint, 4) : [];
 
+  // Deterministic boilerplate detection (runs BEFORE Gemini sees the letter)
+  const boilerplate = await loadBoilerplate();
+  const boilerplateMatches = detectBoilerplateMatches(denialText, carrierHint, boilerplate);
+  const boilerplateText = boilerplateMatches.length > 0
+    ? boilerplateMatches.map((m, i) => `  ${i + 1}. [${m.sourceType.toUpperCase()} · ${m.occurrencesInCorpus}x in ${m.carrier} corpus] "${m.phrase}"`).join('\n')
+    : '(no exact boilerplate phrase matches detected in this letter for this carrier — Gemini should still scan for AI-tell patterns)';
+
   const prompt = ANALYZE_PROMPT
     .replace('{{PATENTS}}', shapePatentsForPrompt(patents))
     .replace('{{EXAMPLES}}', shapeFewShot(examples))
+    .replace('{{BOILERPLATE}}', boilerplateText)
     .replace('{{LETTER}}', denialText.slice(0, 25000));
 
   try {
@@ -317,6 +395,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
       carrierHint,
       patentsConsidered,
       corpusExamplesUsed,
+      boilerplateMatches,
       intakeId,
       analysis: parsed,
     });
