@@ -1,0 +1,64 @@
+{
+  "threadId": "19dff4a2e9aae9e4",
+  "subject": "Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)",
+  "carrier": "Encompass Insurance Company",
+  "carrierParent": "Allstate / National General",
+  "adjuster": "ShaJerrica Foley (Encompass Catastrophe Adjuster, NCT 1200 — National Catastrophe Team, Shajerrica.Foley@ngic.com, Direct 469-551-7054, 800-340-3016 ext 5517054, sfolg@allstate.com / claims@ngic.com / Encompasscat@encompassins.com)",
+  "claimNumber": "260257861",
+  "claimRef": "260257861-26053-1-A6QZ8GN",
+  "denialCategory": "pre-policy-inception-no-hail-storm-data-withheld",
+  "dateOfDenial": "2026-05-06",
+  "outcome": "pending-bad-faith-documented",
+  "messages": [
+    {
+      "sender": "ShaJerrica Foley (Encompass Catastrophe Adjuster)",
+      "date": "2026-05-06 17:23",
+      "role": "carrier-denial-reason",
+      "body": "HI Christian, As discussed, based on the available weather data, the earliest hail event capable of producing the level of damage observed occurred in July 2025, which is prior to the policy inception date. Please let me know if you have any questions or would like to discuss this further."
+    },
+    {
+      "sender": "Christian Bratton (Roof-ER Senior Field Rep)",
+      "date": "2026-05-06 17:29",
+      "role": "roofer-counter-evidence",
+      "body": "Good afternoon, Thank you for your response. We have submitted numerous storm reports now supporting the DOL. The most recent one cross references 12 different federal storm reporting agencies. We have gone above and beyond to support the physical damages with accurate storm data. Please provide us with the storm information you have as well as the cited sources used to deny. Thanks."
+    },
+    {
+      "sender": "ShaJerrica Foley (Encompass)",
+      "date": "2026-05-06 17:40",
+      "role": "carrier-deflection-1",
+      "body": "We use weather reports."
+    },
+    {
+      "sender": "Christian Bratton (Roof-ER)",
+      "date": "2026-05-06 17:42",
+      "role": "roofer-followup",
+      "body": "Please share the report with us. It takes 2 seconds to send it over."
+    },
+    {
+      "sender": "ShaJerrica Foley (Encompass)",
+      "date": "2026-05-06 17:48",
+      "role": "carrier-deflection-2",
+      "body": "HI Christian, As previously discussed, we use a variety of weather reports. Have a great day."
+    },
+    {
+      "sender": "Christian Bratton (Roof-ER)",
+      "date": "2026-05-06 17:52",
+      "role": "roofer-escalation-request",
+      "body": "Okay I understand that. Please send us 3 of the reports. I've sent numerous reports all verifiable. It would be nice to at least see what reports are being used. They should be easily accessible to you and easy to send over."
+    }
+  ],
+  "denialText": "Based on the available weather data, the earliest hail event capable of producing the level of damage observed occurred in July 2025, which is prior to the policy inception date. ... We use weather reports. ... As previously discussed, we use a variety of weather reports.",
+  "counterText": "We have submitted numerous storm reports now supporting the DOL. The most recent one cross references 12 different federal storm reporting agencies. We have gone above and beyond to support the physical damages with accurate storm data. Please provide us with the storm information you have as well as the cited sources used to deny. ... Please share the report with us. It takes 2 seconds to send it over. ... Please send us 3 of the reports. I've sent numerous reports all verifiable. It would be nice to at least see what reports are being used.",
+  "keyDenialLanguage": [
+    "based on the available weather data",
+    "earliest hail event capable of producing the level of damage observed occurred in July 2025",
+    "prior to the policy inception date",
+    "we use a variety of weather reports",
+    "we use weather reports"
+  ],
+  "carrierTactic": "ASYMMETRIC EVIDENCE BAD-FAITH PATTERN. Carrier (1) cites 'available weather data' to deny, (2) refuses to share or identify which sources, (3) deflects 3 separate explicit requests to share, (4) closes with 'Have a great day' to terminate. This is textbook bad faith — adjuster MUST be able to produce the underlying basis for a coverage decision per most states' unfair claim settlement practices statutes (e.g. Maryland § 27-303, Virginia § 38.2-510).",
+  "rooferTactic": "Christian Bratton submitted 12 federal-source cross-referenced storm reports — well-documented. Now systematically requesting the underlying carrier source 4+ times to build the bad-faith record. Each ignored request becomes evidence. Next escalation: written formal demand for AI/automated decision system disclosure under emerging state regulations + DOI complaint.",
+  "patentMapping": "Allstate (Encompass's parent) operates under patents US11720971, US11798095, US11257132, US11348134 — ML-driven claim assessment. The 'we use a variety of weather reports' answer is consistent with an AI weather-correlation engine where the adjuster doesn't actually know which sources fired the denial. ShaJerrica may genuinely not have access to the underlying data — the model emitted a confidence score and template letter without surfacing sources.",
+  "lessonForAnalyzer": "CRITICAL bad-faith signal: when carrier denial cites 'weather data' / 'available data' / 'reports' but refuses to identify or share sources after 2+ requests, this is patent-disclosed AI automation with no human-reviewable trail. Counter-letter should: (1) cite state-specific unfair claim settlement statute requiring disclosure of denial basis, (2) request the AI/automated decision system disclosure under emerging state regs (CA AB-3030, CO AI Act, etc.), (3) document each refused request with timestamps for DOI complaint, (4) escalate to supervisor/manager in writing — 'I am requesting in writing the specific weather data sources cited in the denial, and reserve all rights including filing a DOI complaint for failure to disclose the basis of the coverage decision.'",
+  "stateActionFramework": "VA § 38.2-510 (Unfair Claim Settlement Practices) prohibits failure to acknowledge with reasonable promptness pertinent communications and failure to affirm or deny coverage. Refusing to identify denial sources after 3+ explicit requests = clear violation. MD §27-303 has same pattern."
+}

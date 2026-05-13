@@ -1,0 +1,30 @@
+{
+  "threadId": "18fee15e31b06898",
+  "subject": "Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+  "carrier": "Travelers",
+  "adjuster": "Brendon Myer (Travelers Claim Professional, Virginia-Carolina Claim Center, BMYER@travelers.com, W 202-207-8675)",
+  "manager": "MCVICTOR@travelers.com",
+  "claimNumber": "I7M4883",
+  "denialCategory": "estimate-with-depreciation",
+  "dateOfDenial": "2024-05-31",
+  "outcome": "estimate-issued",
+  "messages": [
+    {
+      "sender": "Brendon Myer (Travelers, Virginia-Carolina Claim Center)",
+      "date": "2024-05-31",
+      "role": "carrier-estimate-letter",
+      "body": "Good afternoon, Attached is the estimate for the damages to your home and the settlement letter explaining the payment, coverage and depreciation. Your estimate includes depreciation which is based on the age and condition of the damaged items and it is recoverable. So, once the work is finished please upload the final invoice to me and I will release the payment for depreciation. If you or your contractor have any issues with the estimate please contact me before the work is started. If you have any questions please reach out. Thanks, Brendon Myer | Claim Professional | Virginia-Carolina Claim Center, Travelers, PO Box 430, Buffalo, NY 14240-0430, W: 202.207.8675. Everything You Need at Your Fingertips - With 24/7 access to your claim online via MyTravelers; you can check your claim status, view your deductible, interact with us and upload documents. If further assistance is required, please contact my manager at MCVICTOR@travelers.com. To upload documents to your claim, please use this link: Claim Upload Center."
+    }
+  ],
+  "denialText": "Attached is the estimate for the damages to your home and the settlement letter explaining the payment, coverage and depreciation. Your estimate includes depreciation which is based on the age and condition of the damaged items and it is recoverable. So, once the work is finished please upload the final invoice to me and I will release the payment for depreciation. If you or your contractor have any issues with the estimate please contact me before the work is started.",
+  "counterText": null,
+  "keyDenialLanguage": [
+    "Your estimate includes depreciation which is based on the age and condition of the damaged items",
+    "it is recoverable",
+    "once the work is finished please upload the final invoice to me and I will release the payment for depreciation",
+    "If you or your contractor have any issues with the estimate please contact me before the work is started"
+  ],
+  "carrierTactic": "Travelers' Brendon Myer follows the same template as Lauren Cook — minimal explanation in email, full detail in attached settlement letter + estimate PDF. Key levers: recoverable depreciation held back until invoice; contractor disputes must come BEFORE work starts (lock-in tactic).",
+  "patentMapping": "Travelers' standardized claim handling per their 238 filed patents (72 issued in last 5 years). The 'contact me before work is started' language is the supplement-gate — designed to keep all changes flowing through one channel.",
+  "lessonForAnalyzer": "Travelers Virginia-Carolina Claim Center uses identical template across adjusters (Lauren Cook + Brendon Myer + Christopher Clark + Matthew Birski + Adam Whitehead all sign with similar copy). The boilerplate detector should flag this template — when 5+ adjusters use identical phrasing, that's the AI/template fingerprint."
+}

@@ -1,0 +1,25 @@
+{
+  "threadId": "19308b38f99cb9cb",
+  "subject": "Erie Insurance Claim A00006258004 — Dustin Tran — Settlement Estimate",
+  "carrier": "Erie Insurance",
+  "adjuster": null,
+  "claimNumber": "A00006258004",
+  "denialCategory": "estimate-issued",
+  "dateOfDenial": "2024-11-07",
+  "outcome": "estimate-shared-with-roofer",
+  "propertyAddress": "12009 Kemps Landing Cir, Manassas VA 20109",
+  "messages": [
+    {
+      "sender": "Dustin Tran (homeowner)",
+      "date": "2024-11-07",
+      "role": "homeowner-forward",
+      "body": "Hello, Attached you'll find the settlement estimated from my Erie insurance for my roof at 12009 Kemps Landing Cir Manassas VA 20109. Thanks"
+    }
+  ],
+  "denialText": "Erie insurance settlement estimate issued for claim A00006258004 at 12009 Kemps Landing Cir, Manassas VA 20109 — settlement amount in attached PDF.",
+  "counterText": null,
+  "keyDenialLanguage": [],
+  "carrierTactic": "Erie's standard settlement delivery — direct to homeowner. No adjuster name in this thread (would be on the PDF).",
+  "patentMapping": "Erie was not in the Insurance Journal top-3 patent holders. Likely uses Verisk/CoreLogic vendor patents (US10089396 Accurence, US20190304026 Betterview) rather than in-house ML. Erie tends to have shorter/simpler estimates — less AI-driven boilerplate, more human-adjuster-driven.",
+  "lessonForAnalyzer": "Erie thread is THIN — only the homeowner forward exists, the actual estimate is in the attached PDF. For full intel, the PDF needs OCR (which we now have via the transcribe endpoint). Future improvement: when a homeowner forwards a claim PDF, auto-transcribe and store."
+}
