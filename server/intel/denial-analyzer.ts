@@ -155,6 +155,7 @@ function detectBoilerplateMatches(letterText: string, carrier: string, blob: Boi
 }
 
 interface StrategyEntry { carrierTactic?: string; rooferTactic?: string; lessonForAnalyzer?: string; patentMapping?: string; source?: string; }
+interface AdjusterEntry { name?: string; title?: string; email?: string; phone?: string; exampleClaim?: string; denialPattern?: string; stance?: string; subsidiary?: string; manager?: string; }
 
 function getCarrierStrategies(carrier: string, blob: BoilerplateBlob | null): StrategyEntry[] {
   if (!blob || !blob.byCarrier) return [];
@@ -164,6 +165,36 @@ function getCarrierStrategies(carrier: string, blob: BoilerplateBlob | null): St
   if (!bag || !Array.isArray(bag.strategies)) return [];
   // Cap to 4 strategies to keep prompt focused
   return bag.strategies.slice(0, 4);
+}
+
+function getCarrierAdjusters(carrier: string, blob: BoilerplateBlob | null): AdjusterEntry[] {
+  if (!blob || !blob.byCarrier) return [];
+  const canonical = normalizeCarrier(carrier);
+  if (!canonical) return [];
+  const bag = blob.byCarrier[canonical] as BoilerplateBag & { adjusters?: AdjusterEntry[] };
+  return Array.isArray(bag?.adjusters) ? bag.adjusters : [];
+}
+
+function findRelevantAdjusters(letterText: string, allAdjusters: AdjusterEntry[]): AdjusterEntry[] {
+  if (allAdjusters.length === 0) return [];
+  const lc = letterText.toLowerCase();
+  const matched = allAdjusters.filter((a) => a.name && lc.includes(a.name.toLowerCase()));
+  return matched.slice(0, 3);
+}
+
+function shapeAdjusters(adjusters: AdjusterEntry[]): string {
+  if (adjusters.length === 0) return '(no specific adjuster from our roster matched in this letter)';
+  return adjusters.map((a, i) => {
+    const lines = [`  ADJUSTER ${i + 1}: ${a.name || '?'}${a.title ? ` (${a.title})` : ''}`];
+    if (a.email) lines.push(`    Email: ${a.email}`);
+    if (a.phone) lines.push(`    Phone: ${a.phone}`);
+    if (a.subsidiary) lines.push(`    Subsidiary: ${a.subsidiary}`);
+    if (a.manager) lines.push(`    Escalate to manager: ${a.manager}`);
+    if (a.exampleClaim) lines.push(`    Past Roof Docs claim ref: ${a.exampleClaim}`);
+    if (a.denialPattern) lines.push(`    Known pattern: ${a.denialPattern}`);
+    if (a.stance) lines.push(`    Stance: ${a.stance}`);
+    return lines.join('\n');
+  }).join('\n\n');
 }
 
 function shapeStrategies(strategies: StrategyEntry[]): string {
@@ -330,6 +361,10 @@ CARRIER-SPECIFIC STRATEGIES (curated from past Roof Docs experience with this ca
 {{STRATEGIES}}
 
 ================
+SPECIFIC ADJUSTER INTEL (we have prior history with these adjusters — use known patterns + escalation paths):
+{{ADJUSTERS}}
+
+================
 DENIAL LETTER (verbatim):
 {{LETTER}}
 `;
@@ -378,12 +413,16 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
 
   // Carrier-specific strategies — explicit guidance for Gemini
   const strategies = getCarrierStrategies(carrierHint, boilerplate);
+  // Adjuster intel — match by name in the letter
+  const allAdjusters = getCarrierAdjusters(carrierHint, boilerplate);
+  const matchedAdjusters = findRelevantAdjusters(denialText, allAdjusters);
 
   const prompt = ANALYZE_PROMPT
     .replace('{{PATENTS}}', shapePatentsForPrompt(patents))
     .replace('{{EXAMPLES}}', shapeFewShot(examples))
     .replace('{{BOILERPLATE}}', boilerplateText)
     .replace('{{STRATEGIES}}', shapeStrategies(strategies))
+    .replace('{{ADJUSTERS}}', shapeAdjusters(matchedAdjusters))
     .replace('{{LETTER}}', denialText.slice(0, 25000));
 
   try {
@@ -427,6 +466,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
       patentsConsidered,
       corpusExamplesUsed,
       boilerplateMatches,
+      matchedAdjusters: matchedAdjusters.map((a) => ({ name: a.name, email: a.email, denialPattern: a.denialPattern })),
       intakeId,
       analysis: parsed,
     });

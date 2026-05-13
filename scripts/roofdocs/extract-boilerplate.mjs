@@ -292,6 +292,29 @@ for (const e of corpus.entries || []) {
   }
 }
 
+// === Adjuster rosters: pull adjusterRoster + templatePhrases arrays from
+// the roster dump JSON files for per-carrier adjuster lookup. ===
+const SOURCES_DIR = path.join(RIQ_BASE, 'data/denial-sources');
+if (fs.existsSync(SOURCES_DIR)) {
+  const rosterFiles = fs.readdirSync(SOURCES_DIR).filter(f => /team-roster/.test(f));
+  for (const f of rosterFiles) {
+    try {
+      const dump = JSON.parse(fs.readFileSync(path.join(SOURCES_DIR, f), 'utf8'));
+      const canonical = normalizeCarrier(dump.carrier);
+      if (!canonical) continue;
+      if (!byCarrier[canonical]) byCarrier[canonical] = {};
+      if (Array.isArray(dump.adjusterRoster)) {
+        byCarrier[canonical].adjusters = dump.adjusterRoster;
+      }
+      if (Array.isArray(dump.templatePhrases)) {
+        byCarrier[canonical].templatePhrases = dump.templatePhrases;
+      }
+    } catch (e) {
+      console.warn(`Roster ${f} failed:`, e.message);
+    }
+  }
+}
+
 const result = {
   generated: new Date().toISOString(),
   description: 'Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.',

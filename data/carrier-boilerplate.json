@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T06:12:31.119Z",
+  "generated": "2026-05-13T06:17:55.816Z",
   "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
   "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {
@@ -283,6 +283,62 @@
           "patentMapping": "Allstate patents US11720971 (ML-based assessment), US11257132 (surface dimension AI), US11348134 (data processing ML) all support automated denial decisions. The pivoting suggests an AI confidence score that the human adjuster is back-rationalizing — when one rationale falls, another is substituted from the AI's ranked-reason list.",
           "source": "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
         }
+      ],
+      "adjusters": [
+        {
+          "name": "Alicia Janay Williams",
+          "title": "Allstate Vehicle and Property Insurance",
+          "phone": "(210) 867-4950",
+          "email": "claims@claims.allstate.com",
+          "exampleClaim": "000758479307 (Alfaro)",
+          "denialPattern": "Standard estimate-issued template with supplement-request path"
+        },
+        {
+          "name": "James Cherry II",
+          "title": "Allstate claims",
+          "phone": "(800) 806-5570 x1220899",
+          "email": "claims@claims.allstate.com",
+          "fax": "(877) 292-9527",
+          "exampleClaim": "0722264736 (Ali)",
+          "denialPattern": "DUAL-CLAIM SHELL GAME — redirects supplement requests between claim numbers. Acknowledges damage verbally but denies in writing. Cites internal leadership consultation as cover."
+        },
+        {
+          "name": "Sarah Sowers",
+          "title": "Allstate Indemnity Company",
+          "phone": "(757) 901-2565",
+          "email": "claims@claims.allstate.com",
+          "exampleClaim": "0808617674 (Baek)",
+          "denialPattern": "4-PIVOT BAD-FAITH PATTERN: (1) blame pre-policy hail, (2) cite unverified 2.25\" magnitude, (3) pivot to 'no hail >0.25\" in 23 days', (4) declare impasse + dispute resolution. Did NOT produce evidence for any pivot."
+        },
+        {
+          "name": "Milton Williams",
+          "title": "Allstate (covering)",
+          "phone": "(346) 278-8404",
+          "exampleClaim": "0808617674 (covering for Sarah Sowers bereavement)"
+        },
+        {
+          "name": "ShaJerrica Foley",
+          "title": "Encompass Catastrophe Adjuster - NCT 1200 (National Catastrophe Team)",
+          "subsidiary": "Encompass Insurance Company / Allstate + National General",
+          "phone": "Direct 469-551-7054 / 800-340-3016 Ext# 5517054",
+          "email": "Shajerrica.Foley@ngic.com / sfolg@allstate.com / claims@ngic.com / Encompasscat@encompassins.com",
+          "exampleClaim": "260257861 (Foss)",
+          "denialPattern": "ASYMMETRIC EVIDENCE BAD-FAITH: cites 'available weather data' but refuses to identify sources across 3+ requests. Closes with 'Have a great day' to terminate."
+        }
+      ],
+      "templatePhrases": [
+        "I have attached a copy of your estimate for your records",
+        "If the contractor estimates are all within our Replacement Cost amount, then there is no need to reach out beforehand",
+        "review for possible supplement",
+        "CONFIDENTIALITY/PRIVACY NOTICE: This e-mail, including any attachments, may contain personal, private and confidential information",
+        "Please do not delete your unique Conversation ID",
+        "Allstate Vehicle and Property Insurance Company",
+        "It has been my pleasure to assist you during this difficult time",
+        "you will need to dispute the denial under the new claim",
+        "we have reached an impasse regarding this",
+        "I would like to direct your attention to the dispute resolution process outlined in the homeowners policy",
+        "the damages your contractor wants to claim were not present at the time of loss for this claim",
+        "we use a variety of weather reports"
       ]
     },
     "Travelers": {
@@ -417,6 +473,104 @@
           "patentMapping": "Travelers is one of the top 3 P&C AI patent holders per Insurance Journal 2025 (238 patents filed Sept 2024, 72 issued in last 5 years). Their AI determination of roof condition from aerial imagery + 700+ FAA-certified drone pilots = patent-driven scoping. Per-adjuster phone routing keeps the same template language stable across the team — strong boilerplate-match opportunity.",
           "source": "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
         }
+      ],
+      "adjusters": [
+        {
+          "name": "Jessica Beall",
+          "title": "Claim Adjuster",
+          "email": "JBEALL@travelers.com",
+          "region": "Virginia-Carolina Claim Center",
+          "exampleClaim": "JEP9005"
+        },
+        {
+          "name": "Brendon Myer",
+          "title": "Claim Professional",
+          "email": "BMYER@travelers.com",
+          "region": "Virginia-Carolina Claim Center",
+          "exampleClaim": "I7M4883",
+          "phone": "202.207.8675",
+          "manager": "MCVICTOR@travelers.com"
+        },
+        {
+          "name": "Lauren Cook",
+          "title": "Outside Claim Representative - Property",
+          "email": "lcook4@travelers.com",
+          "region": "Virginia-Carolina Claim Center",
+          "exampleClaim": "I9G2378",
+          "phone": "571.596.1933"
+        },
+        {
+          "name": "Kirkland Nelms",
+          "title": "Property Claim Professional",
+          "email": "KNelms@travelers.com",
+          "region": "Virginia-Carolina Claim Center / Property",
+          "exampleClaim": "JGC5679 / JEE6666 / JEE8887",
+          "phone": "571.623.9034",
+          "manager": "Lisa Eisele <Leisele@travelers.com>"
+        },
+        {
+          "name": "Tammy Lemanski",
+          "title": "Claim Adjuster Property Claims",
+          "email": "TLEMANSK@travelers.com",
+          "region": "Virginia-Carolina Claim Center",
+          "exampleClaim": "JEE2786",
+          "phone": "615-660-6587",
+          "manager": "Kim Blake <kmblake@travelers.com>"
+        },
+        {
+          "name": "Kara Mastriano",
+          "title": "Claim Professional - Claim Response Team",
+          "email": "KMASTRIA@travelers.com",
+          "region": "Mid-Atlantic Claim Center",
+          "exampleClaim": "JEP0083",
+          "location": "Dallas TX PO Box 650293"
+        },
+        {
+          "name": "Peter Fouche",
+          "title": "Claim Professional - Claim Response Team",
+          "email": "PFOUCHE@travelers.com",
+          "region": "Claim Response Team",
+          "exampleClaim": "JEE9334 (The Automobile Insurance Company of Hartford CT)",
+          "phone": "860-954-4463",
+          "manager": "Ally Johnson <ANJOHNS5@travelers.com>"
+        },
+        {
+          "name": "J.J. de Leon",
+          "title": "Claim Professional - Property",
+          "email": "jdeleon4@travelers.com",
+          "region": "Mid-Atlantic Claim Center",
+          "exampleClaim": "JEP7912 (Fard)",
+          "phone": "443-401-7242"
+        },
+        {
+          "name": "Christopher Clark",
+          "title": "Claim Professional",
+          "email": "cdclark2@travelers.com",
+          "exampleClaim": "I9G0203 (Stilwell)"
+        },
+        {
+          "name": "Matthew Birski",
+          "title": "Claim Professional",
+          "email": "MBIRSKI@travelers.com",
+          "exampleClaim": "I7M4396 (Phan)"
+        },
+        {
+          "name": "Adam Whitehead",
+          "title": "Claim Professional",
+          "email": "AWHITEHE@travelers.com",
+          "exampleClaim": "I7M2639 (Cai)"
+        }
+      ],
+      "templatePhrases": [
+        "Everything You Need at Your Fingertips",
+        "With 24/7 access to your claim online via MyTravelers®; you can check your claim status, view your deductible, interact with us and upload documents.",
+        "If further assistance is required, please contact my manager [...]",
+        "Available to Insureds and Contractors - To upload documents to your claim, please use this link: Claim Upload Center",
+        "This message (including any attachments) may contain confidential, proprietary, privileged and/or private information",
+        "PO Box 430, Buffalo, NY 14240-0430",
+        "Per the Loss Settlement provision of the policy, we pay no more than the actual cash value (ACV) until the actual repair or replacement is complete",
+        "The initial payment is based on the age of the materials",
+        "TRVDiscDefault::1201"
       ]
     },
     "Liberty Mutual": {
@@ -672,6 +826,55 @@
           "patentMapping": "US10565658 (Storm event roof damage detection) + US20220414781 (Probable Roof Loss Confidence Scores) drive initial confidence score. When below threshold: 'No Hail RFG Denial' template fires automatically. Engineer report is the human cover for AI determination.",
           "source": "Gmail: State Farm Adjuster Roster — consolidated from captured threads"
         }
+      ],
+      "adjusters": [
+        {
+          "name": "Nataleigh Cromwell, AIC, AIS",
+          "title": "Claim Specialist – Proximity",
+          "email": "statefarmfireclaims@statefarm.com",
+          "phone": "309-994-9282",
+          "exampleClaim": "46-81Z7-05W (Danilova)",
+          "denialPattern": "Engineer-report triple-layer (not functionally damaged + pre-policy + cosmetic only) with combined claim numbers"
+        },
+        {
+          "name": "Ian Swanson",
+          "title": "Claim Specialist – WCCS Deployed",
+          "email": "statefarmfireclaims@statefarm.com",
+          "phone": "866-787-8676 Ext:8254",
+          "exampleClaim": "46-99F9-92W (Snyder)",
+          "denialPattern": "Catastrophe-response WCCS unit. Denial substance in attached PDF. Often rushed in-person inspections."
+        },
+        {
+          "name": "HOME CLMS-FIRECLAIMS (template sender)",
+          "title": "Generic claims template",
+          "email": "statefarmfireclaims@statefarm.com",
+          "exampleClaim": "4673B816T (Dolbeare 'No Hail RFG Denial')",
+          "denialPattern": "AI confidence below threshold → automated 'No Hail RFG Denial' template"
+        },
+        {
+          "name": "HRU adjuster code",
+          "title": "internal code per cheat-sheets",
+          "exampleClaim": "Multiple (15 jobs, 100% approval rate, +38% vs carrier baseline)",
+          "stance": "lenient — friendly to Roof-ER reps"
+        },
+        {
+          "name": "Jamell Clarke",
+          "title": "(Reese flag: avoid)",
+          "denialPattern": "Multiple reps report denials on legit claims. Request reassignment ASAP if assigned. If stuck: detailed photos + engineer report + document everything."
+        },
+        {
+          "name": "Ted Price",
+          "title": "documented in cheat-sheets",
+          "stance": "leaning"
+        }
+      ],
+      "templatePhrases": [
+        "Please open the attachment for information regarding your claim now that the engineer report has been reviewed",
+        "Please open the attachment(s) for more claim information or next steps",
+        "Don't miss a call about your Auto/Homeowners claim from State Farm®",
+        "Text HOME to 62789 for your claim contact card",
+        "For your protection, please do not include sensitive personal information",
+        "statefarm.com®"
       ]
     },
     "Erie": {
@@ -894,6 +1097,52 @@
           "patentMapping": "USAA patents US11410230 (aerial imagery → claim) + US11216889 (property items) drive automated scoping. The 'iA' the Kinnick adjuster mentioned is likely Tractable AI (Verisk partner per Mar 2023 press release) feeding USAA's claim ingestion. Vendor patent: US20190304026 (Betterview) wear-and-tear scoring contributes to threshold calculation.",
           "source": "Gmail: USAA Adjuster Roster — consolidated from captured threads"
         }
+      ],
+      "adjusters": [
+        {
+          "name": "Jean Paul Ruz",
+          "title": "Dedicated Catastrophe Claims",
+          "subsidiary": "USAA General Indemnity Company",
+          "exampleClaim": "034296315-801 (Wongsuriyawat)",
+          "denialPattern": "Below-deductible threshold denial — $2,000 deductible"
+        },
+        {
+          "name": "David Henley",
+          "title": "Property Claims Catastrophe",
+          "subsidiary": "United Services Automobile Association",
+          "exampleClaim": "040039705-801 (Pearson)",
+          "denialPattern": "Below-deductible threshold — $1,000 deductible"
+        },
+        {
+          "name": "Brandon Levey",
+          "title": "PROP CAT Unit 18",
+          "subsidiary": "USAA Casualty Insurance Company",
+          "exampleClaim": "007198374-803 (Kinnick)",
+          "denialPattern": "iA cascade — 'since an iA denied it initially there's nothing he can do to approve it'. 'no hail to the shingles and the hail to the eye was like 1/4 inch'"
+        },
+        {
+          "name": "James Robinson",
+          "title": "USAA adjuster",
+          "exampleClaim": "002384565-803 (Palmer)",
+          "denialPattern": "PA-overreach warning — flags roofer letters that sound like public adjuster activity. Requires reframe as contractor-technical-assessment."
+        },
+        {
+          "name": "Shamanda Houston",
+          "title": "Claims Service",
+          "subsidiary": "United Services Automobile Association",
+          "exampleClaim": "015826705-800 (Jones)",
+          "denialPattern": "Terse delivery — 'I have attached the estimate per your request' minimal explanation"
+        }
+      ],
+      "templatePhrases": [
+        "This type of loss is covered under your homeowners policy; however, the loss doesn't exceed your $[X] deductible",
+        "Your policy only pays if a loss exceeds your deductible",
+        "If you find additional damage, please submit the supporting documentation and we will re-evaluate the loss",
+        "Although the damage is less than the deductible, please make sure that all necessary repairs are completed",
+        "If the reported damage is not repaired, this could result in the denial of a future claim for the same or related damage",
+        "Your policy's Suit Against Us Provision prohibits you from taking any action against us unless you have given us notice of the loss, complied with all policy provisions, and started legal action within two (2) years",
+        "USAA SECURITY ZONE",
+        "Taking care of our members since 1922"
       ]
     },
     "AMIG (Cincinnati Financial)": {
