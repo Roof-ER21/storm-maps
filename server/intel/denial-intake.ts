@@ -54,6 +54,34 @@ export async function ensureIntakeTables(): Promise<void> {
     )
   `;
   await pgSql`CREATE INDEX IF NOT EXISTS denial_outcomes_intake_idx ON denial_outcomes(intake_id)`;
+
+  // Idempotent boot-time backfill: any row whose carrier/identified_carrier
+  // doesn't equal its canonical form gets rewritten. Runs once per boot;
+  // skips rows that already match canonical (cheap no-op).
+  try {
+    const rows = await pgSql<Array<{ id: number; carrier: string | null; identified_carrier: string | null }>>`
+      SELECT id, carrier, identified_carrier FROM denial_intake
+    `;
+    let fixed = 0;
+    for (const r of rows) {
+      const newCarrier = normalizeCarrier(r.carrier);
+      const newIdent = normalizeCarrier(r.identified_carrier);
+      const carrierChanged = newCarrier && newCarrier !== r.carrier;
+      const identChanged = newIdent && newIdent !== r.identified_carrier;
+      if (!carrierChanged && !identChanged) continue;
+      await pgSql`
+        UPDATE denial_intake
+        SET carrier = ${carrierChanged ? newCarrier : r.carrier},
+            identified_carrier = ${identChanged ? newIdent : r.identified_carrier}
+        WHERE id = ${r.id}
+      `;
+      fixed += 1;
+    }
+    if (fixed > 0) console.log(`[denial-intake] boot backfill normalized ${fixed} legacy carrier strings`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : 'unknown';
+    console.warn('[denial-intake] boot backfill skipped:', msg);
+  }
 }
 
 function hashLetter(text: string): string {
