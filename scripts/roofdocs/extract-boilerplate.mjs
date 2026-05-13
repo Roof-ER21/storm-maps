@@ -221,6 +221,49 @@ for (const e of corpus.entries || []) {
   }
 }
 
+// === Third source: live denial_intake table — every analyzer call captures
+// `analysis.denialReasons[].verbatimQuote` which is Gemini's extraction of
+// the substantive denial language from an incoming letter. This means the
+// boilerplate corpus AUTO-GROWS with each new intake. ===
+let intakeAdded = 0;
+const DATABASE_URL = process.env.DATABASE_URL || process.env.DATABASE_PUBLIC_URL;
+if (DATABASE_URL) {
+  try {
+    const { default: postgres } = await import('postgres');
+    const sql = postgres(DATABASE_URL, { ssl: DATABASE_URL.includes('railway.internal') ? false : { rejectUnauthorized: false }, max: 2, idle_timeout: 30 });
+    const rows = await sql`
+      SELECT id, COALESCE(identified_carrier, carrier) AS carrier, analysis
+      FROM denial_intake
+      WHERE analysis IS NOT NULL
+      ORDER BY created_at DESC
+      LIMIT 5000
+    `;
+    for (const r of rows) {
+      const canonical = normalizeCarrier(r.carrier);
+      if (!canonical) continue;
+      const reasons = (r.analysis && r.analysis.denialReasons) || [];
+      if (!Array.isArray(reasons)) continue;
+      for (const reason of reasons) {
+        const q = reason?.verbatimQuote;
+        if (!q || typeof q !== 'string' || q.length < 15) continue;
+        const norm = q.toLowerCase().trim();
+        if (!curated[canonical]) curated[canonical] = new Map();
+        if (!curated[canonical].has(norm)) {
+          curated[canonical].set(norm, { phrase: q, sources: [] });
+          intakeAdded++;
+        }
+        curated[canonical].get(norm).sources.push('intake:' + r.id);
+      }
+    }
+    await sql.end();
+    console.log(`Live intake: +${intakeAdded} unique phrases pulled from ${rows.length} denial_intake rows`);
+  } catch (e) {
+    console.warn('Live intake pull failed:', e.message);
+  }
+} else {
+  console.log('No DATABASE_URL — skipping live intake source');
+}
+
 // Merge curated phrases into byCarrier (as a separate field)
 for (const [carrier, phraseMap] of Object.entries(curated)) {
   if (!byCarrier[carrier]) byCarrier[carrier] = { denialCount: 0, phrases: [] };
