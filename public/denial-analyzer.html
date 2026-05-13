@@ -305,6 +305,22 @@ function renderAnalysis(result) {
   html.push('<div class="cell"><div class="lbl">Claim #</div><div class="val">' + escape(a.claimNumber || '—') + '</div></div>');
   html.push('<div class="cell"><div class="lbl">Letter Date</div><div class="val">' + escape(a.denialDateGuess || '—') + '</div></div>');
   html.push('</div>');
+  if (a.denialPosture) {
+    const postureLabels = {
+      'full-denial': { txt: 'FULL DENIAL', color: '#ef4444', desc: 'Carrier rejects coverage entirely — appeal posture' },
+      'partial-approval-undersized': { txt: 'PARTIAL APPROVAL — UNDER-SCOPED', color: '#f59e0b', desc: 'Coverage approved but squares/scope under-counted — supplement-request posture, not appeal' },
+      'partial-approval-coverage-limited': { txt: 'PARTIAL APPROVAL — COVERAGE LIMITED', color: '#f59e0b', desc: 'Some components approved, others denied — line-item appeal posture' },
+      'acv-payment-only': { txt: 'ACV PAYMENT — DEPRECIATION WITHHELD', color: '#3b82f6', desc: 'Approved but RCV pending repair completion — depreciation-recovery posture' },
+      'supplement-rejected': { txt: 'SUPPLEMENT REJECTED', color: '#ef4444', desc: 'Carrier denied additional scope after supplement — escalation posture' },
+      'approval-full': { txt: 'FULL APPROVAL', color: '#10b981', desc: 'Clean approval — no appeal needed' }
+    };
+    const p = postureLabels[a.denialPosture] || { txt: a.denialPosture.toUpperCase(), color: 'var(--muted)', desc: '' };
+    html.push('<div style="margin-top: 12px; padding: 10px 12px; background: rgba(0,0,0,0.2); border-left: 3px solid ' + p.color + '; border-radius: 4px;">');
+    html.push('<div style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">Denial Posture</div>');
+    html.push('<div style="font-size: 14px; font-weight: 600; color: ' + p.color + '; margin-top: 4px;">' + p.txt + '</div>');
+    if (p.desc) html.push('<div style="font-size: 12px; color: var(--muted); margin-top: 4px;">' + p.desc + '</div>');
+    html.push('</div>');
+  }
   html.push('<div style="margin-top: 12px;">');
   html.push('<div class="lbl" style="color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Appeal Strength</div>');
   html.push('<div class="meter"><div class="bar"><div class="fill" style="width:' + strength.pct + '%; background:' + strength.color + ';"></div></div><div class="label" style="color:' + strength.color + ';">' + strength.label + '</div></div>');

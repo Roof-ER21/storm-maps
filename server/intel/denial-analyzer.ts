@@ -17,6 +17,7 @@ import type { Request, Response } from 'express';
 import { GoogleGenAI } from '@google/genai';
 import { sql as pgSql } from '../db.js';
 import { recordIntake } from './denial-intake.js';
+import { normalizeCarrier } from './carrier-normalize.mjs';
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 let ai: GoogleGenAI | null = null;
@@ -102,29 +103,6 @@ async function loadBoilerplate(): Promise<BoilerplateBlob | null> {
   } catch {
     return null;
   }
-}
-
-function normalizeCarrier(name: string): string | null {
-  const n = (name || '').toLowerCase().trim();
-  if (!n) return null;
-  if (n.includes('allstate')) return 'Allstate';
-  if (n.includes('state farm')) return 'State Farm';
-  if (n.includes('usaa')) return 'USAA';
-  if (n.includes('liberty mutual') || n.includes('safeco')) return 'Liberty Mutual';
-  if (n.includes('nationwide')) return 'Nationwide';
-  if (n.includes('travelers')) return 'Travelers';
-  if (n.includes('erie')) return 'Erie';
-  if (n.includes('encompass')) return 'Encompass';
-  if (n.includes('utica')) return 'Utica National';
-  if (n.includes('amig') || n.includes('american modern') || n.includes('cincinnati')) return 'AMIG (Cincinnati Financial)';
-  if (n.includes('progressive')) return 'Progressive';
-  if (n.includes('geico')) return 'Geico';
-  if (n.includes('chubb')) return 'Chubb';
-  if (n.includes('lemonade')) return 'Lemonade';
-  if (n.includes('hartford')) return 'The Hartford';
-  if (n.includes('selective')) return 'Selective';
-  if (n.includes('farmers')) return 'Farmers';
-  return null;
 }
 
 interface BoilerplateMatch { phrase: string; carrier: string; sourceType: 'curated' | 'ngram'; occurrencesInCorpus: number; }
@@ -303,6 +281,14 @@ GROUND RULES:
 - Match each reason to specific patent decision rules from the corpus below.
 - A "contradiction" exists when the denial language clearly diverges from what the patent says the AI/process actually does.
 - An "AI tell" is boilerplate language without property-specific detail (generic "wear and tear", "manufacturing defect", "improper installation" with no specific shingle reference, no batch number, no installation date).
+- DENIAL POSTURE — not every adverse outcome is a full denial. Classify the letter:
+  • "full-denial": carrier rejects the claim entirely / no payment
+  • "partial-approval-undersized": carrier approves coverage but UNDER-COUNTS scope (e.g., 16.51 of 18.81 sq, single-slope when matching applies, missing accessories). Common USAA AI tell.
+  • "partial-approval-coverage-limited": carrier approves some components, denies others (e.g., roof denied, siding approved, water damage approved)
+  • "acv-payment-only": carrier approves but withholds depreciation pending repair — common Travelers pattern
+  • "supplement-rejected": carrier responds to a supplement request with denial of additional scope
+  • "approval-full": clean full approval (rare in this corpus but flag if present)
+  When posture is "partial-approval-undersized": the counter is a SUPPLEMENT REQUEST with measurement evidence, NOT an appeal of denial. Tone is conversational/factual, not adversarial.
 - Bad-faith signals (per 2026 federal case law in State Farm OK litigation) include:
   • Denial issued <72 hours from claim submission (suggests no human review)
   • Identical denial language reused across unrelated claims
@@ -316,8 +302,9 @@ OUTPUT — return ONLY valid JSON in this exact shape:
   "identifiedAdjuster": "adjuster name + title if mentioned (or empty)",
   "claimNumber": "claim number if visible (or empty)",
   "denialDateGuess": "date on letter if visible (or empty)",
+  "denialPosture": "full-denial|partial-approval-undersized|partial-approval-coverage-limited|acv-payment-only|supplement-rejected|approval-full",
   "denialReasons": [
-    { "verbatimQuote": "EXACT text from letter, no paraphrase", "category": "wear-and-tear|prior-damage|maintenance|manufacturing-defect|installation|cosmetic|insufficient-evidence|other" }
+    { "verbatimQuote": "EXACT text from letter, no paraphrase", "category": "wear-and-tear|prior-damage|maintenance|manufacturing-defect|installation|cosmetic|insufficient-evidence|scope-omission|matching-denied|depreciation-withheld|other" }
   ],
   "matchedPatents": [
     { "patentId": "USXXXXXXX", "ruleApplied": "which rule from that patent matches this denial", "likelyReason": "why this patent's rule explains this denial" }

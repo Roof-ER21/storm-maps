@@ -14,6 +14,7 @@
 import type { Request, Response } from 'express';
 import { sql as pgSql } from '../db.js';
 import { consumerLabel } from './auth.js';
+import { normalizeCarrier } from './carrier-normalize.mjs';
 
 export async function ensureIntakeTables(): Promise<void> {
   await pgSql`
@@ -82,6 +83,11 @@ export async function recordIntake(req: Request, args: {
     if (existing.length > 0) return existing[0].id;
 
     const a = args.analysis as Record<string, unknown>;
+    // Normalize carriers BEFORE insert so all future submissions share canonical
+    // grouping keys — fixes the per-carrier win-rate split caused by variants
+    // like "Allstate Indemnity Company" vs "Allstate".
+    const canonicalCarrier = normalizeCarrier(args.carrier) || args.carrier || null;
+    const canonicalIdentified = normalizeCarrier(a.identifiedCarrier as string) || (a.identifiedCarrier as string) || null;
     // postgres.js v3 rejects raw objects/arrays for JSONB bindings —
     // see feedback_postgres-js-sql-json memory. Use JSON.stringify + ::jsonb.
     const rows = await pgSql<Array<{ id: number }>>`
@@ -91,8 +97,8 @@ export async function recordIntake(req: Request, args: {
         denial_text, analysis, patents_considered, corpus_examples_used, letter_hash
       ) VALUES (
         ${consumerLabel(req)},
-        ${args.carrier || null},
-        ${(a.identifiedCarrier as string) || null},
+        ${canonicalCarrier},
+        ${canonicalIdentified},
         ${(a.identifiedAdjuster as string) || null},
         ${(a.claimNumber as string) || null},
         ${(a.denialDateGuess as string) || null},
@@ -226,54 +232,78 @@ export async function postOutcome(req: Request, res: Response): Promise<void> {
   }
 }
 
-/** GET /api/intel/denial-intake/stats — corpus stats for the dashboard */
+/** GET /api/intel/denial-intake/stats — corpus stats for the dashboard.
+ *  Carrier rollups happen in JS using the canonical normalizer so legacy rows
+ *  with variant strings (e.g. "Allstate Indemnity Company") aggregate into
+ *  their canonical bucket ("Allstate"). */
 export async function intakeStats(_req: Request, res: Response): Promise<void> {
   try {
     const totals = await pgSql<Array<{ count: string }>>`SELECT COUNT(*)::text AS count FROM denial_intake`;
-    const byCarrier = await pgSql<Array<{ carrier: string | null; n: string }>>`
-      SELECT COALESCE(identified_carrier, carrier, '(unknown)') AS carrier, COUNT(*)::text AS n
-      FROM denial_intake
-      GROUP BY 1
-      ORDER BY 2 DESC
-      LIMIT 20
+
+    // Pull raw rows + roll up in JS via the canonical normalizer.
+    const rawByCarrier = await pgSql<Array<{ identified_carrier: string | null; carrier: string | null }>>`
+      SELECT identified_carrier, carrier FROM denial_intake
     `;
+    const carrierCounts = new Map<string, number>();
+    for (const r of rawByCarrier) {
+      const raw = r.identified_carrier || r.carrier || '(unknown)';
+      const canonical = normalizeCarrier(raw) || raw;
+      carrierCounts.set(canonical, (carrierCounts.get(canonical) || 0) + 1);
+    }
+    const byCarrier = [...carrierCounts.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 20)
+      .map(([carrier, count]) => ({ carrier, count }));
+
     const byOutcome = await pgSql<Array<{ outcome: string; n: string }>>`
       SELECT outcome, COUNT(*)::text AS n
       FROM denial_outcomes
       GROUP BY 1
       ORDER BY 2 DESC
     `;
-    // Per-carrier win-rate: (approved + partial) / total outcomes per carrier
-    const winRates = await pgSql<Array<{ carrier: string | null; total: string; wins: string; partial: string; denied: string }>>`
+
+    // Pull raw intake + latest outcome, roll up by canonical carrier in JS.
+    const rawWinRows = await pgSql<Array<{ identified_carrier: string | null; carrier: string | null; outcome: string }>>`
       SELECT
-        COALESCE(di.identified_carrier, di.carrier, '(unknown)') AS carrier,
-        COUNT(DISTINCT lo.id)::text AS total,
-        SUM(CASE WHEN lo.outcome = 'approved' THEN 1 ELSE 0 END)::text AS wins,
-        SUM(CASE WHEN lo.outcome = 'partial' THEN 1 ELSE 0 END)::text AS partial,
-        SUM(CASE WHEN lo.outcome = 'denied' THEN 1 ELSE 0 END)::text AS denied
+        di.identified_carrier,
+        di.carrier,
+        lo.outcome
       FROM denial_intake di
       JOIN LATERAL (
-        SELECT id, outcome FROM denial_outcomes
+        SELECT outcome FROM denial_outcomes
         WHERE intake_id = di.id
         ORDER BY created_at DESC LIMIT 1
       ) lo ON true
       WHERE lo.outcome IN ('approved','partial','denied')
-      GROUP BY 1
-      HAVING COUNT(*) >= 1
-      ORDER BY 2 DESC
     `;
+    type Bucket = { total: number; approved: number; partial: number; denied: number };
+    const winBuckets = new Map<string, Bucket>();
+    for (const r of rawWinRows) {
+      const raw = r.identified_carrier || r.carrier || '(unknown)';
+      const canonical = normalizeCarrier(raw) || raw;
+      const bucket = winBuckets.get(canonical) || { total: 0, approved: 0, partial: 0, denied: 0 };
+      bucket.total += 1;
+      if (r.outcome === 'approved') bucket.approved += 1;
+      else if (r.outcome === 'partial') bucket.partial += 1;
+      else if (r.outcome === 'denied') bucket.denied += 1;
+      winBuckets.set(canonical, bucket);
+    }
+    const winRates = [...winBuckets.entries()]
+      .sort((a, b) => b[1].total - a[1].total)
+      .map(([carrier, b]) => ({
+        carrier,
+        total: b.total,
+        approved: b.approved,
+        partial: b.partial,
+        denied: b.denied,
+        flipRate: (b.approved + b.partial) / Math.max(1, b.total),
+      }));
+
     res.json({
       total: Number(totals[0]?.count || 0),
-      byCarrier: byCarrier.map((r) => ({ carrier: r.carrier, count: Number(r.n) })),
+      byCarrier,
       byOutcome: byOutcome.map((r) => ({ outcome: r.outcome, count: Number(r.n) })),
-      winRates: winRates.map((r) => ({
-        carrier: r.carrier,
-        total: Number(r.total),
-        approved: Number(r.wins),
-        partial: Number(r.partial),
-        denied: Number(r.denied),
-        flipRate: (Number(r.wins) + Number(r.partial)) / Math.max(1, Number(r.total)),
-      })),
+      winRates,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown';

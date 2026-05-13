@@ -17,38 +17,13 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { normalizeCarrier } from '../../server/intel/carrier-normalize.mjs';
 
 const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/Desktop/storm-maps';
 const CORPUS_PATH = path.join(RIQ_BASE, 'data/denial-corpus.json');
 const OUT_PATH = path.join(RIQ_BASE, 'data/carrier-boilerplate.json');
 
 const corpus = JSON.parse(fs.readFileSync(CORPUS_PATH, 'utf8'));
-
-// --- normalization helpers ---
-function normalizeCarrier(name) {
-  if (!name) return null;
-  const n = String(name).toLowerCase().trim();
-  // Collapse legal-entity variants to canonical carrier names
-  if (n.includes('allstate')) return 'Allstate';
-  if (n.includes('state farm')) return 'State Farm';
-  if (n.includes('usaa')) return 'USAA';
-  if (n.includes('liberty mutual') || n.includes('safeco')) return 'Liberty Mutual';
-  if (n.includes('nationwide')) return 'Nationwide';
-  if (n.includes('travelers')) return 'Travelers';
-  if (n.includes('erie')) return 'Erie';
-  if (n.includes('encompass')) return 'Encompass';
-  if (n.includes('utica')) return 'Utica National';
-  if (n.includes('amig') || n.includes('american modern') || n.includes('cincinnati')) return 'AMIG (Cincinnati Financial)';
-  if (n.includes('progressive')) return 'Progressive';
-  if (n.includes('geico')) return 'Geico';
-  if (n.includes('chubb')) return 'Chubb';
-  if (n.includes('lemonade')) return 'Lemonade';
-  if (n.includes('hartford')) return 'The Hartford';
-  if (n.includes('selective')) return 'Selective';
-  if (n.includes('safeco')) return 'Safeco';
-  if (n.includes('farmers')) return 'Farmers';
-  return null;
-}
 
 function cleanText(s) {
   let txt = String(s || '');

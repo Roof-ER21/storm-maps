@@ -25,6 +25,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 import os from 'node:os';
+import { normalizeCarrier } from '../../server/intel/carrier-normalize.mjs';
 
 const HOME = os.homedir();
 const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/Desktop/storm-maps';
@@ -56,7 +57,7 @@ function pullPdfDenials() {
         id: 'pdf:' + t.file.replace(/[^a-z0-9]+/gi, '-').toLowerCase(),
         source: t.file,
         sourceType: 'pdf-archive',
-        carrier: t.carrier,
+        carrier: normalizeCarrier(t.carrier) || t.carrier,
         adjuster: extractAdjusterFromText(text) || null,
         denialText: cleanText(text).slice(0, 8000),
         outcome: null, // We don't know yet — could be tracked later
@@ -205,7 +206,7 @@ function pullGmailDump() {
         id: 'gm-email:' + (thread.threadId || f.replace(/\.json$/, '')),
         source: 'Gmail: ' + (thread.subject || f),
         sourceType: 'gmail-thread',
-        carrier: thread.carrier || guessCarrierFromText(allText),
+        carrier: normalizeCarrier(thread.carrier) || guessCarrierFromText(allText),
         adjuster: thread.adjuster || extractAdjusterFromText(allText),
         denialText: cleanText(allText).slice(0, 14000),
         counterText: thread.counterText || null,
@@ -259,7 +260,7 @@ const CARRIER_PATTERNS = [
 function guessCarrierFromText(text) {
   const t = String(text || '');
   for (const [name, re] of CARRIER_PATTERNS) {
-    if (re.test(t)) return name;
+    if (re.test(t)) return normalizeCarrier(name) || name;
   }
   return null;
 }

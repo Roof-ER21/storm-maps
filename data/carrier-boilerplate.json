@@ -1,5 +1,5 @@
 {
-  "generated": "2026-05-13T06:50:51.869Z",
+  "generated": "2026-05-13T07:45:32.702Z",
   "description": "Per-carrier boilerplate phrases — two sources: (1) n-gram extraction across denial bodies finding phrases appearing in 2+ denials from same carrier; (2) hand-curated keyDenialLanguage arrays from each Gmail dump JSON. Curated is higher quality but limited to what I manually flagged while reading; n-gram is exhaustive but noisy.",
   "source": "data/denial-corpus.json + data/denial-sources/*.json",
   "byCarrier": {
@@ -68,13 +68,6 @@
           "phrase": "I will close the claim (as is part of our claims process)",
           "sources": [
             "Gmail: Nationwide Claim 000883-GR — Kevin Melton — Full Denial"
-          ],
-          "occurrences": 1
-        },
-        {
-          "phrase": "Our review showed that the damages to your property is a result of wear, tear, and deterioration.",
-          "sources": [
-            "intake:5"
           ],
           "occurrences": 1
         }
@@ -240,34 +233,6 @@
             "Gmail: Allstate Claim 0808617674 — Sue Baek — Carrier Pivoting Pattern (Pre-Policy → No-Hail → Impasse)"
           ],
           "occurrences": 1
-        },
-        {
-          "phrase": "Your policy for this property started 4/24/2025 and the date of loss was reported as 5/16/2025. In those 23 days, no hail larger than 0.25 inches was reported.",
-          "sources": [
-            "intake:6"
-          ],
-          "occurrences": 1
-        },
-        {
-          "phrase": "Our coverage decision stands.",
-          "sources": [
-            "intake:6"
-          ],
-          "occurrences": 1
-        },
-        {
-          "phrase": "Based on our review, the damage to your roof appears consistent with a pre-policy storm event from 2022.",
-          "sources": [
-            "intake:2"
-          ],
-          "occurrences": 1
-        },
-        {
-          "phrase": "Your policy began 4/15/2025 and the hail at your location since policy inception has not exceeded 0.5 inches.",
-          "sources": [
-            "intake:2"
-          ],
-          "occurrences": 1
         }
       ],
       "strategies": [
@@ -356,7 +321,7 @@
       ]
     },
     "Travelers": {
-      "denialCount": 4,
+      "denialCount": 6,
       "phrases": [
         {
           "phrase": "virginia-carolina claim center,",
@@ -397,6 +362,76 @@
             {
               "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
               "snippet": "...ear and tear to the shingles rather than damage due to hail. Please let me know if you have any questions or concerns. Thank you for your time, Lauren Cook | Outside Claim Representativ..."
+            }
+          ]
+        },
+        {
+          "phrase": "is based on the age",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...e payment, coverage and depreciation. Your estimate includes depreciation which is based on the age and condition of the damaged items and it is recoverable. So, once the work is ..."
+            },
+            {
+              "source": "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)",
+              "snippet": "...hat our payment to you will be separated into two payments. The initial payment is based on the age of the materials and can be used as a deposit and the final payment will be mad..."
+            }
+          ]
+        },
+        {
+          "phrase": "final invoice to me",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...ed items and it is recoverable. So, once the work is finished please upload the final invoice to me and I will release the payment for depreciation. If you or your contractor have..."
+            },
+            {
+              "source": "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)",
+              "snippet": "... When the work is complete, please forward either the completion certificate or final invoice to me to review for any additional payment. This basically means that our payment to ..."
+            }
+          ]
+        },
+        {
+          "phrase": "the final invoice",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...amaged items and it is recoverable. So, once the work is finished please upload the final invoice to me and I will release the payment for depreciation. If you or your contracto..."
+            },
+            {
+              "source": "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)",
+              "snippet": "... deposit and the final payment will be made after all the work is completed and the final invoice or completion certificate is forwarded to me. You are responsible for your dedu..."
+            }
+          ]
+        },
+        {
+          "phrase": "to the shingles",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I9G2378 — Abdul Deef Request for Reconsideration",
+              "snippet": "...ed me I am standing by my decision that he is pointing out normal wear and tear to the shingles rather than damage due to hail. Please let me know if you have any questions or..."
+            },
+            {
+              "source": "Gmail: TravCo Insurance Company Claim JEE8887 — Back-slope approved, front-slope denied (wear/tear) + masterful manufacturer-spec counter",
+              "snippet": "...nt slope there was no coverage provided for replacement. The hail consideration to the shingles was determined to not be from hail, and instead was a result of granule loss an..."
+            }
+          ]
+        },
+        {
+          "phrase": "the work is",
+          "occurrences": 2,
+          "examples": [
+            {
+              "source": "Gmail: Travelers Claim I7M4883 — Jeanne Chang / Bang — Estimate + Depreciation Letter",
+              "snippet": "...d on the age and condition of the damaged items and it is recoverable. So, once the work is finished please upload the final invoice to me and I will release the payment f..."
+            },
+            {
+              "source": "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)",
+              "snippet": "...ctual cash value (ACV) until the actual repair or replacement is complete. When the work is complete, please forward either the completion certificate or final invoice to ..."
             }
           ]
         }
@@ -495,16 +530,53 @@
           "occurrences": 1
         },
         {
-          "phrase": "the hail consideration to the shingles was determined to not be from hail",
+          "phrase": "Per the Loss Settlement provision of the policy, we pay no more than the actual cash value (ACV) until the actual repair or replacement is complete",
           "sources": [
-            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+            "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)"
           ],
           "occurrences": 1
         },
         {
+          "phrase": "The initial payment is based on the age of the materials",
+          "sources": [
+            "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "You are responsible for your deductible which is paid to the contractor",
+          "sources": [
+            "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "The hail consideration to the shingles was determined to not be from hail",
+          "sources": [
+            "Gmail: TravCo Insurance Company Claim JEE8887 — Back-slope approved, front-slope denied (wear/tear) + masterful manufacturer-spec counter",
+            "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+          ],
+          "occurrences": 2
+        },
+        {
           "phrase": "instead was a result of granule loss and blistering",
           "sources": [
+            "Gmail: TravCo Insurance Company Claim JEE8887 — Back-slope approved, front-slope denied (wear/tear) + masterful manufacturer-spec counter",
             "Gmail: Travelers VA-Carolina + Mid-Atlantic Claim Center Adjuster Roster — captured from 4 threads"
+          ],
+          "occurrences": 2
+        },
+        {
+          "phrase": "Since there was no wind damage to the front slope there was no coverage provided for replacement",
+          "sources": [
+            "Gmail: TravCo Insurance Company Claim JEE8887 — Back-slope approved, front-slope denied (wear/tear) + masterful manufacturer-spec counter"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "since the back slope runs continuous to the left and right slopes on the reverse gable",
+          "sources": [
+            "Gmail: TravCo Insurance Company Claim JEE8887 — Back-slope approved, front-slope denied (wear/tear) + masterful manufacturer-spec counter"
           ],
           "occurrences": 1
         },
@@ -542,6 +614,20 @@
           "lessonForAnalyzer": "Multi-cause denials require multi-cause counters. Don't argue all 3-4 rationales at once — pick the WEAKEST (usually the 3rd-party-object claim) + dismantle it with physics, then use that opening to challenge the others. Resolution Team escalation: (800) 635-4543 is the documented path.",
           "patentMapping": "Travelers' wear-and-tear classifier (Accurence US10089396 + Dolphin AI WO2018156846) is patent-disclosed to distinguish wear from storm. 'Slipped shingles' as improper-installation classification is a documented patent feature (improper-fastener-pattern detection). When carrier cites multiple causations, each is the AI's confidence-ranked alternative explanation.",
           "source": "Gmail: Travelers Claim JCH0752 — Felix Rojas — Multi-Cause Denial Pattern (wear/tear + improper installation + 3rd-party-object)"
+        },
+        {
+          "carrierTactic": "ACV-FIRST PAYMENT STRUCTURE — Travelers/Standard Fire intentionally splits payment into ACV (low, depreciation applied) + RCV (released only on completion). Homeowner cash flow is constrained.",
+          "rooferTactic": "NEIGHBOR-APPROVED PATTERN — Document neighbors with same storm + similar installation windows + better outcomes. Use as inconsistent-application evidence under state unfair claim settlement statutes.",
+          "lessonForAnalyzer": "Travelers/Standard Fire 'settlement letter' insufficient pattern: request Xactimate line-item breakdown, document neighbor approvals with proximity proof, cite inadequate-investigation, request depreciation methodology basis.",
+          "patentMapping": "Travelers' Probable Roof Loss Confidence Score drives ACV split; depreciation tied to patent-disclosed age-of-materials logic.",
+          "source": "Gmail: The Standard Fire Insurance Company Claim JEE6666 — Freddie Burgess — Insufficient Settlement (Neighbor Approved)"
+        },
+        {
+          "carrierTactic": "TRAVELERS WEAR-AND-TEAR PATTERN — classify granule loss + blistering as 'not hail' (the Accurence/Verisk patent-driven AI signature). Approve back slope + side slopes (since they're 'continuous'), deny front slope. The 'continuity' logic is INCONSISTENTLY APPLIED — it justifies coverage for adjacent back/side slopes, but NOT for the front slope connected to the same ridge.",
+          "rooferTactic": "CONTRACTOR STANDPOINT COUNTER — Chris Aycock's response is template-quality. It (1) acknowledges carrier's good faith on back-slope coverage, (2) cites SPECIFIC manufacturer (Owens Corning VentSure) installation requirements requiring 6\" past ridge terminations, (3) frames the request as RISK to homeowner (broken seals, future leaks) AND inability to warrant the work, (4) uses the carrier's OWN continuity logic (rear-gable connection) to extend to the ridge → front slope connection. Pure contractor-role argument, no public-adjuster overreach.",
+          "lessonForAnalyzer": "When Travelers/TravCo denies a slope citing 'granule loss and blistering' wear-and-tear: counter-letter should (1) NOT argue the classification directly (you'll lose against patent-trained AI), (2) instead cite SHINGLE MANUFACTURER's installation requirements that REQUIRE work on the denied slope, (3) use carrier's own continuity logic against them (if back-to-side counts, ridge-to-front counts), (4) frame as contractor-warranty issue + future-leak risk, NOT a damage-classification dispute. Chris Aycock's letter is the gold-standard template for this pattern.",
+          "patentMapping": "Travelers' wear-and-tear classifier (Accurence US10089396, Dolphin AI WO2018156846) labels 'granule loss + blistering' as 'not hail' default. The patent provides no mechanism to distinguish between THERMAL granule loss vs HAIL-INDUCED granule loss — Roof Docs counter cites manufacturer specs to bypass the AI classification entirely.",
+          "source": "Gmail: TravCo Insurance Company Claim JEE8887 — Back-slope approved, front-slope denied (wear/tear) + masterful manufacturer-spec counter"
         },
         {
           "carrierTactic": "Travelers VA-Carolina Claim Center uses a standardized template across ~11 known adjusters. Wear-and-tear classification is the default for granule loss/blistering. ACV-first payment structure with depreciation held until completion. Hover.com aerial measurements as scope basis. Drone-based inspections (Travelers operates 700+ FAA-certified drone pilots).",
@@ -1027,7 +1113,7 @@
       ]
     },
     "USAA": {
-      "denialCount": 4,
+      "denialCount": 5,
       "phrases": [
         {
           "phrase": "the shingles and the",
@@ -1149,16 +1235,30 @@
           "occurrences": 1
         },
         {
-          "phrase": "the damage observed on the roof is consistent with normal wear and tear rather than a covered hail event",
+          "phrase": "based on the available measurements",
           "sources": [
-            "intake:1"
+            "Gmail: USAA SCOPE-OMISSION PATTERN — AI under-counts squares, supplement-required to recover"
           ],
           "occurrences": 1
         },
         {
-          "phrase": "The shingle granule loss is uniform across all slopes, indicating gradual deterioration over time.",
+          "phrase": "approved scope reflects damaged area only",
           "sources": [
-            "intake:1"
+            "Gmail: USAA SCOPE-OMISSION PATTERN — AI under-counts squares, supplement-required to recover"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "supplement may be submitted for additional scope review",
+          "sources": [
+            "Gmail: USAA SCOPE-OMISSION PATTERN — AI under-counts squares, supplement-required to recover"
+          ],
+          "occurrences": 1
+        },
+        {
+          "phrase": "review for possible supplement",
+          "sources": [
+            "Gmail: USAA SCOPE-OMISSION PATTERN — AI under-counts squares, supplement-required to recover"
           ],
           "occurrences": 1
         }
@@ -1182,6 +1282,13 @@
           "lessonForAnalyzer": "When drafting counter-letters for USAA (and likely other carriers), AVOID: 'we respectfully request', 'negotiate', 'on behalf of', 'represent', 'advocate', 'matching requirements', 'state law requires'. USE: 'as the licensed contractor', 'technical/construction challenges', 'manufacturer warranty', 'code compliance', 'decline the project', 'joint inspection'.",
           "patentMapping": "USAA patents US11410230 + US11216889 are about automated claim generation from aerial imagery and property item detection. The PA pushback is a HUMAN escalation tactic — when AI auto-denials get challenged, carriers fall back on regulatory technicalities to limit contractor advocacy.",
           "source": "Gmail: USAA Claim 002384565-803 — Palmer / PA Warning thread"
+        },
+        {
+          "carrierTactic": "USAA AI scope-omission pattern: (1) Initial estimate reflects a lower square count than full roof measurement. (2) Damage classification may be limited to one slope rather than full structure even when matching jurisdictions apply. (3) Supplement process is structured but requires the contractor to identify the omission — USAA does not proactively reconcile aerial to scope.",
+          "rooferTactic": "STANDARD SUPPLEMENT TEMPLATE (Richie Riley pattern): (1) State the exact aerial square count vs USAA-scoped count. (2) Include screenshot/measurement source. (3) Request 'kindly revise to reflect the total replacement of all squares'. Conversational, factual tone — works without escalation. The 'I noticed a couple squares were missing... 16.51/18.81 that's almost 2 and a half squares missing out of the scope' phrasing is canonical.",
+          "lessonForAnalyzer": "USAA denials are often NOT outright denials — they're partial scopes / square omissions. The analyzer should detect: (1) approved-but-undersized scope vs full roof measurement, (2) damaged-area-only vs full-structure with matching, (3) ACV depreciation withholding. Each requires a different counter-pattern. Pure denial counters miss the under-scope pattern entirely.",
+          "patentMapping": "USAA's AI scope determination has documented under-count tendency on multi-slope roofs. Their Geomni/CoreLogic-based aerial reporting (US10453147 + related geospatial patents) provides accurate total area, but the human-reviewed scope often defaults to damaged-section-only unless contractor pushes back.",
+          "source": "Gmail: USAA SCOPE-OMISSION PATTERN — AI under-counts squares, supplement-required to recover"
         },
         {
           "carrierTactic": "USAA's signature pattern: write the estimate JUST BELOW the deductible threshold ('the loss doesn't exceed your $X deductible'). This appears as 'covered but no payout' — technically a coverage acknowledgment, practically a $0 payout. The iA (Initial AI) cascade locks subsequent adjusters from overriding. PA-overreach warnings shut down roofer advocacy unless reframed.",
@@ -1311,13 +1418,6 @@
             "Gmail: Encompass Claim 260257861 — Matt Foss — Bad-Faith Pattern (refused to share denial sources)"
           ],
           "occurrences": 1
-        },
-        {
-          "phrase": "Based on the available weather data, the earliest hail event capable of producing the level of damage observed occurred in July 2025, which is prior to the policy inception date.",
-          "sources": [
-            "intake:3"
-          ],
-          "occurrences": 1
         }
       ],
       "strategies": [
@@ -1377,6 +1477,6 @@
     }
   },
   "totalCarriers": 13,
-  "totalNgramPhrases": 12,
-  "totalCuratedPhrases": 95
+  "totalNgramPhrases": 17,
+  "totalCuratedPhrases": 96
 }

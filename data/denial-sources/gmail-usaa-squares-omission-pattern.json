@@ -1,0 +1,22 @@
+{
+  "threadId": "reese-usaa-squares-omission",
+  "subject": "USAA SCOPE-OMISSION PATTERN — AI under-counts squares, supplement-required to recover",
+  "carrier": "USAA",
+  "denialCategory": "partial-scope-ai-under-count",
+  "outcome": "supplement-corrected-via-rep-catch",
+  "exampleClaims": [
+    { "claim": "Patrick Wilson 002717657-802", "rep": "Christian Bratton", "outcome": "Full approval after squares-update supplement", "date": "2025-12-15 to 2025-12-19" },
+    { "claim": "Richie Riley client (USAA template)", "rep": "Richie Riley", "shortage": "16.51 of 18.81 squares scoped (2.3 squares missing)", "outcome": "FULL APPROVAL after rep-flagged supplement (18.81/18.81)", "date": "2025-11-28 to 2025-12-05" }
+  ],
+  "denialText": "USAA's initial scope routinely under-counts total squares on the structure. Reps catching the omission and submitting supplements with photographic + measurement proof typically recover the missing squares without escalation. The pattern: aerial measurement system (Hover/EagleView-equivalent) reports X squares, USAA estimate uses lower number, rep submits supplement showing measurement discrepancy.",
+  "keyDenialLanguage": [
+    "based on the available measurements",
+    "approved scope reflects damaged area only",
+    "supplement may be submitted for additional scope review",
+    "review for possible supplement"
+  ],
+  "carrierTactic": "USAA AI scope-omission pattern: (1) Initial estimate reflects a lower square count than full roof measurement. (2) Damage classification may be limited to one slope rather than full structure even when matching jurisdictions apply. (3) Supplement process is structured but requires the contractor to identify the omission — USAA does not proactively reconcile aerial to scope.",
+  "rooferTactic": "STANDARD SUPPLEMENT TEMPLATE (Richie Riley pattern): (1) State the exact aerial square count vs USAA-scoped count. (2) Include screenshot/measurement source. (3) Request 'kindly revise to reflect the total replacement of all squares'. Conversational, factual tone — works without escalation. The 'I noticed a couple squares were missing... 16.51/18.81 that's almost 2 and a half squares missing out of the scope' phrasing is canonical.",
+  "patentMapping": "USAA's AI scope determination has documented under-count tendency on multi-slope roofs. Their Geomni/CoreLogic-based aerial reporting (US10453147 + related geospatial patents) provides accurate total area, but the human-reviewed scope often defaults to damaged-section-only unless contractor pushes back.",
+  "lessonForAnalyzer": "USAA denials are often NOT outright denials — they're partial scopes / square omissions. The analyzer should detect: (1) approved-but-undersized scope vs full roof measurement, (2) damaged-area-only vs full-structure with matching, (3) ACV depreciation withholding. Each requires a different counter-pattern. Pure denial counters miss the under-scope pattern entirely."
+}
