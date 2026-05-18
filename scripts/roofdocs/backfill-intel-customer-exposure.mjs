@@ -112,7 +112,10 @@ async function main() {
     COUNT(*)::int AS total,
     COUNT(*) FILTER (WHERE storm_count > 0)::int AS with_storms,
     COUNT(*) FILTER (WHERE hail_count > 0)::int AS with_hail,
-    COUNT(*) FILTER (WHERE most_recent_storm_date >= NOW() - INTERVAL '90 days')::int AS recent_90d
+    COUNT(*) FILTER (
+      WHERE most_recent_storm_date IS NOT NULL
+        AND most_recent_storm_date::timestamptz >= NOW() - INTERVAL '90 days'
+    )::int AS recent_90d
   FROM intel_customer_exposure`;
   console.log(`[backfill-intel-customer-exposure] Total: ${stats[0].total}`);
   console.log(`[backfill-intel-customer-exposure]   with_storms=${stats[0].with_storms}, with_hail=${stats[0].with_hail}, recent_90d=${stats[0].recent_90d}`);
