@@ -87,75 +87,7 @@ const fmt = {
   int: (v) => v == null ? '—' : v.toLocaleString(),
   pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
 };
-const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
-const isDead = (r) => /dead|cancel/i.test(r.stage || '');
-let jobs = [], reps = [];
-
-// jobType buckets — matches Field Portal's "Sales" splits.
-const INS_TYPES = new Set(['Insurance', 'Insurance Conversion']);
-const RETAIL_TYPES = new Set(['Retail']);
-
-function buildReps() {
-  const m = new Map();
-  for (const j of jobs) {
-    // Trim trailing whitespace — fixes 'Jason Brown ' miscategorization.
-    const rep = (j.salesRep || '').trim();
-    if (!rep) continue;
-    if (!m.has(rep)) m.set(rep, { name: rep, jobs: [] });
-    m.get(rep).jobs.push(j);
-  }
-  return [...m.values()].map((r) => {
-    let signed = 0, completed = 0, dead = 0, open = 0;
-    let revenue = 0, compRev = 0;
-    // Field Portal-matching totals: insurance uses insuranceTotal on SIGNED jobs;
-    // retail uses jobTotal on SIGNED jobs. Both restricted by jobType.
-    let insSalesTotal = 0, retailSalesTotal = 0;
-    let insSignedCount = 0, retailSignedCount = 0;
-    const trades = {}, carriers = {}, cities = {}, zips = {};
-    const speedDays = [];
-    const completeDays = [];
-    for (const j of r.jobs) {
-      signed++;
-      if (isCompleted(j)) { completed++; compRev += j.jobTotal || 0; }
-      else if (isDead(j)) dead++;
-      else open++;
-      if (j.jobTotal) revenue += j.jobTotal;
-      // Field Portal-style Sales: only count signed jobs by jobType, use insuranceTotal for insurance.
-      if (j.signedDate) {
-        if (INS_TYPES.has(j.jobType)) {
-          insSalesTotal += j.insuranceTotal || 0;
-          insSignedCount++;
-        } else if (RETAIL_TYPES.has(j.jobType)) {
-          retailSalesTotal += j.jobTotal || 0;
-          retailSignedCount++;
-        }
-      }
-      for (const t of (j.trades || [])) trades[t] = (trades[t] || 0) + 1;
-      if (j.insurance) carriers[j.insurance] = (carriers[j.insurance] || 0) + 1;
-      if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
-      if (j.zip) zips[j.zip] = (zips[j.zip] || 0) + 1;
-      if (j.daysLossToSign != null && j.daysLossToSign >= 0 && j.daysLossToSign < 365) speedDays.push(j.daysLossToSign);
-      if (j.daysToComplete != null && j.daysToComplete >= 0 && j.daysToComplete < 730) completeDays.push(j.daysToComplete);
-    }
-    speedDays.sort((a, b) => a - b);
-    completeDays.sort((a, b) => a - b);
-    return {
-      name: r.name, signed, completed, dead, open,
-      revenue, completedRevenue: compRev,
-      // Field Portal-style splits — match what reps see in the iOS app.
-      insSalesTotal, retailSalesTotal,
-      insSignedCount, retailSignedCount,
-      totalSalesAllTime: insSalesTotal + retailSalesTotal,
-      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
-      avgApprovedJob: completed ? compRev / completed : null,
-      trades, carriers, cities, zips,
-      jobs: r.jobs,
-      medianSpeedDays: speedDays.length ? speedDays[Math.floor(speedDays.length / 2)] : null,
-      medianCompleteDays: completeDays.length ? completeDays[Math.floor(completeDays.length / 2)] : null,
-      topBy: (obj, n = 5) => Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n),
-    };
-  }).sort((a, b) => b.totalSalesAllTime - a.totalSalesAllTime);
-}
+let reps = [];
 
 function renderRepList() {
   const q = ($('rep-search').value || '').trim().toLowerCase();
@@ -181,19 +113,25 @@ function renderRepList() {
   }));
 }
 
-function topByList(obj, n = 8) {
-  return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
-}
-
-function showRep(name) {
+async function showRep(name) {
   const r = reps.find((x) => x.name === name);
   if (!r) return;
-  const tradeTop = topByList(r.trades, 12);
-  const carrierTop = topByList(r.carriers, 12);
-  const cityTop = topByList(r.cities, 12);
-  const zipTop = topByList(r.zips, 12);
-  // Top biggest jobs (by jobTotal, completed)
-  const bigJobs = [...r.jobs].filter((j) => j.jobTotal).sort((a, b) => (b.jobTotal || 0) - (a.jobTotal || 0)).slice(0, 10);
+  $('rep-detail').innerHTML = '<div class="loading">Loading…</div>';
+  let deep;
+  try {
+    const res = await fetch('/api/intel/rep-deep?name=' + encodeURIComponent(name));
+    deep = await res.json();
+  } catch (e) {
+    $('rep-detail').innerHTML = '<div class="loading">Failed: ' + e + '</div>';
+    return;
+  }
+  const tradeTop = (deep.trades || []).map((x) => [x.name, x.count]);
+  const carrierTop = (deep.carriers || []).map((x) => [x.name, x.count]);
+  const cityTop = (deep.cities || []).map((x) => [x.name, x.count]);
+  const zipTop = (deep.zips || []).map((x) => [x.name, x.count]);
+  const bigJobs = deep.bigJobs || [];
+  r.medianSpeedDays = deep.medianSpeedDays;
+  r.medianCompleteDays = deep.medianCompleteDays;
   $('rep-detail').innerHTML = `
     <h2>${r.name} <a class="riq-link" href="cheat-sheet.html?type=rep&name=${encodeURIComponent(r.name)}" style="font-size:13px;margin-left:8px">🎓 Open Cheat Sheet →</a></h2>
     <div class="desc">Full book of business · ${r.signed} signed · ${r.completed} completed · ${fmt.money(r.completedRevenue)} closed revenue</div>
@@ -243,9 +181,9 @@ function showRep(name) {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  jobs = await res.json();
-  reps = buildReps();
+  const res = await fetch('/api/intel/reps-summary');
+  const json = await res.json();
+  reps = json.reps || [];
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('rep-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderRepList, 200); });

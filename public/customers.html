@@ -103,60 +103,10 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
-let allJobs = [];
 let customers = [];
 let activeRows = [];
 let sortKey = 'totalRev';
 let sortDir = 'desc';
-
-function custKey(r) {
-  return ((r.customer || '').trim().toLowerCase() + '|' +
-          (r.addressLine1 || '').trim().toLowerCase() + '|' +
-          (r.city || '').trim().toLowerCase());
-}
-
-function buildCustomers() {
-  const map = new Map();
-  for (const j of allJobs) {
-    const k = custKey(j);
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!map.has(k)) map.set(k, {
-      key: k,
-      name: j.customer || '(unknown)',
-      addressLine1: j.addressLine1, city: j.city, state: j.state, zip: j.zip,
-      lat: j.lat, lng: j.lng,
-      jobs: [], trades: new Set(), carriers: new Set(), reps: new Set(),
-      totalRev: 0, completedJobs: 0, deadJobs: 0, openJobs: 0,
-      lastDate: '', firstDate: '',
-    });
-    const c = map.get(k);
-    c.jobs.push(j);
-    for (const t of (j.trades || [])) c.trades.add(t);
-    if (j.insurance) c.carriers.add(j.insurance);
-    if (j.salesRep) c.reps.add(j.salesRep);
-    if (j.jobTotal) c.totalRev += j.jobTotal;
-    if (isCompleted(j)) c.completedJobs++;
-    else if (isDead(j)) c.deadJobs++;
-    else c.openJobs++;
-    const d = j.completedDate || j.signedDate;
-    if (d) {
-      if (!c.lastDate || d > c.lastDate) c.lastDate = d;
-      if (!c.firstDate || d < c.firstDate) c.firstDate = d;
-    }
-  }
-  // compute days since last contact
-  const today = new Date().toISOString().slice(0, 10);
-  for (const c of map.values()) {
-    if (c.lastDate) {
-      c.daysSince = Math.floor((new Date(today) - new Date(c.lastDate)) / 86400000);
-    } else {
-      c.daysSince = null;
-    }
-    c.jobCount = c.jobs.length;
-    c.tradeCount = c.trades.size;
-  }
-  return [...map.values()];
-}
 
 function renderKPIs() {
   const total = customers.length;
@@ -184,9 +134,9 @@ function applyFilters() {
       (c.name || '').toLowerCase().includes(q) ||
       (c.addressLine1 || '').toLowerCase().includes(q) ||
       (c.city || '').toLowerCase().includes(q) ||
-      [...c.reps].some((r) => r.toLowerCase().includes(q)) ||
-      [...c.carriers].some((c2) => c2.toLowerCase().includes(q)) ||
-      [...c.trades].some((t) => t.toLowerCase().includes(q))
+      (c.reps || []).some((r) => r.toLowerCase().includes(q)) ||
+      (c.carriers || []).some((c2) => c2.toLowerCase().includes(q)) ||
+      (c.trades || []).some((t) => t.toLowerCase().includes(q))
     );
   }
   const st = $('f-state').value;
@@ -196,7 +146,7 @@ function applyFilters() {
   const minRev = Number($('f-minrev').value || 0);
   if (minRev) rows = rows.filter((c) => c.totalRev >= minRev);
   const tradeSel = $('f-trade').value;
-  if (tradeSel) rows = rows.filter((c) => c.trades.has(tradeSel));
+  if (tradeSel) rows = rows.filter((c) => (c.trades || []).includes(tradeSel));
   rows.sort((a, b) => {
     const va = a[sortKey]; const vb = b[sortKey];
     if (va == null && vb == null) return 0;
@@ -280,16 +230,16 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  allJobs = await res.json();
-  customers = buildCustomers();
+  const res = await fetch('/api/intel/customers-list');
+  const json = await res.json();
+  customers = json.customers || [];
   $('loading').style.display = 'none';
   $('content').style.display = '';
   // Populate filters
   const states = new Set(), trades = new Set();
   for (const c of customers) {
     if (c.state) states.add(c.state);
-    for (const t of c.trades) trades.add(t);
+    for (const t of (c.trades || [])) trades.add(t);
   }
   for (const s of [...states].sort()) {
     const o = document.createElement('option'); o.value = s; o.textContent = s; $('f-state').appendChild(o);

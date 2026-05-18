@@ -22,7 +22,11 @@ import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
 import { transcribeDenial } from './denial-transcribe.js';
 import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } from './denial-intake.js';
 import { projectsQuery, projectsAggregate } from './projects-query.js';
-import { zipStats, carriersSummary, carrierDeep, mapPins, customerLeads } from './aggregates.js';
+import {
+  zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
+  adjustersSummary, adjusterDeep, repsSummary, repDeep,
+  carrierTradeMatrix, customersList,
+} from './aggregates.js';
 
 // Fire-and-forget on module load — table creation is idempotent and the
 // app shouldn't crash if Postgres is temporarily unavailable at boot.
@@ -204,6 +208,12 @@ router.get('/api/intel/carriers-summary', carriersSummary);
 router.get('/api/intel/carrier-deep', carrierDeep);
 router.get('/api/intel/map-pins', mapPins);
 router.get('/api/intel/customer-leads', customerLeads);
+router.get('/api/intel/adjusters-summary', adjustersSummary);
+router.get('/api/intel/adjuster-deep', adjusterDeep);
+router.get('/api/intel/reps-summary', repsSummary);
+router.get('/api/intel/rep-deep', repDeep);
+router.get('/api/intel/carrier-trade-matrix', carrierTradeMatrix);
+router.get('/api/intel/customers-list', customersList);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

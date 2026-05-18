@@ -94,51 +94,6 @@ const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 let adjusters = [], active = [];
 let sortKey = 'completed', sortDir = 'desc';
 
-function build(all) {
-  const m = new Map();
-  for (const r of all) {
-    if (!r.adjusterName || r.adjusterName.trim() === '') continue;
-    const key = `${r.adjusterName.trim()}|${r.insurance || 'Unknown'}`;
-    if (!m.has(key)) m.set(key, {
-      name: r.adjusterName.trim(),
-      carrier: r.insurance || 'Unknown',
-      emails: new Set(),
-      phones: new Set(),
-      cities: new Set(),
-      reps: new Set(),
-      signed: 0, completed: 0, dead: 0, revenue: 0, completedRevenue: 0,
-      avgDeductible: [], jobs: [],
-    });
-    const e = m.get(key);
-    e.signed++;
-    if (r.adjusterEmail) e.emails.add(r.adjusterEmail);
-    if (r.adjusterPhone) e.phones.add(r.adjusterPhone);
-    if (r.city) e.cities.add(r.city);
-    if (r.salesRep) e.reps.add(r.salesRep);
-    if (isCompleted(r)) { e.completed++; e.completedRevenue += r.jobTotal || 0; }
-    else if (isDead(r)) e.dead++;
-    if (r.jobTotal) e.revenue += r.jobTotal;
-    if (r.deductible) e.avgDeductible.push(r.deductible);
-    e.jobs.push({ id: r.id, customer: r.customer, address: r.addressLine1, signedDate: r.signedDate, stage: r.stage });
-  }
-  const rows = [];
-  for (const e of m.values()) {
-    rows.push({
-      name: e.name, carrier: e.carrier,
-      emails: [...e.emails].join(', '),
-      phones: [...e.phones].join(', '),
-      cities: [...e.cities].sort(),
-      reps: [...e.reps].sort(),
-      signed: e.signed, completed: e.completed, dead: e.dead,
-      revenue: e.revenue, completedRevenue: e.completedRevenue,
-      approvalRate: e.signed - e.dead > 0 ? e.completed / (e.signed - e.dead) : 0,
-      avgApprovedJob: e.completed ? e.completedRevenue / e.completed : null,
-      avgDeductible: e.avgDeductible.length ? e.avgDeductible.reduce((s, v) => s + v, 0) / e.avgDeductible.length : null,
-    });
-  }
-  return rows;
-}
-
 function renderKPIs() {
   const total = adjusters.length;
   const withEmail = adjusters.filter((a) => a.emails).length;
@@ -241,9 +196,9 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  const all = await res.json();
-  adjusters = build(all);
+  const res = await fetch('/api/intel/adjusters-summary');
+  const json = await res.json();
+  adjusters = json.adjusters || [];
   $('loading').style.display = 'none';
   $('content').style.display = '';
   const carriers = new Set();

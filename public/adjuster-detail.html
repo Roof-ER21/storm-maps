@@ -81,30 +81,7 @@ const fmt = {
   int: (v) => v == null ? '—' : v.toLocaleString(),
   pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
 };
-const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
-const isDead = (r) => /dead|cancel/i.test(r.stage || '');
-let jobs = [], adjusters = [];
-
-function buildAdjusters() {
-  const m = new Map();
-  for (const j of jobs) {
-    if (!j.adjusterName || j.adjusterName.trim() === '') continue;
-    const k = `${j.adjusterName.trim()}|${j.insurance || 'Unknown'}`;
-    if (!m.has(k)) m.set(k, { name: j.adjusterName.trim(), carrier: j.insurance || 'Unknown', jobs: [], emails: new Set(), phones: new Set(), supervisors: new Set() });
-    const e = m.get(k);
-    e.jobs.push(j);
-    if (j.adjusterEmail) e.emails.add(j.adjusterEmail);
-    if (j.adjusterPhone) e.phones.add(j.adjusterPhone);
-    if (j.supervisorName) e.supervisors.add(j.supervisorName);
-  }
-  return [...m.values()].map((a) => {
-    const signed = a.jobs.length;
-    const completed = a.jobs.filter(isCompleted).length;
-    const dead = a.jobs.filter(isDead).length;
-    const revenue = a.jobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
-    return { ...a, signed, completed, dead, revenue, approvalRate: signed - dead > 0 ? completed / (signed - dead) : 0 };
-  }).sort((a, b) => b.completed - a.completed);
-}
+let adjusters = [];
 
 function renderList() {
   const q = ($('search').value || '').trim().toLowerCase();
@@ -124,46 +101,31 @@ function renderList() {
   }));
 }
 
-function show(key) {
+async function show(key) {
   const a = adjusters.find((x) => `${x.name}|${x.carrier}` === key);
   if (!a) return;
-  const cities = {}, zips = {}, reps = {}, trades = {};
-  const deductibles = [];
-  const yearAgg = {};
-  for (const j of a.jobs) {
-    if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
-    if (j.zip) {
-      const z = j.zip.slice(0, 5);
-      zips[z] = zips[z] || { signed: 0, completed: 0 };
-      zips[z].signed++;
-      if (isCompleted(j)) zips[z].completed++;
-    }
-    if (j.salesRep) reps[j.salesRep] = (reps[j.salesRep] || 0) + 1;
-    for (const t of (j.trades || [])) trades[t] = (trades[t] || 0) + 1;
-    if (j.deductible && j.deductible > 0 && j.deductible <= 50000) deductibles.push(j.deductible);
-    if (j.signedDate) {
-      const y = j.signedDate.slice(0, 4);
-      yearAgg[y] = yearAgg[y] || { signed: 0, completed: 0 };
-      yearAgg[y].signed++;
-      if (isCompleted(j)) yearAgg[y].completed++;
-    }
+  $('detail').innerHTML = '<div class="loading">Loading…</div>';
+
+  let deep;
+  try {
+    const url = '/api/intel/adjuster-deep?name=' + encodeURIComponent(a.name) + '&carrier=' + encodeURIComponent(a.carrier);
+    const res = await fetch(url);
+    deep = await res.json();
+  } catch (e) {
+    $('detail').innerHTML = '<div class="loading">Failed: ' + e + '</div>';
+    return;
   }
-  deductibles.sort((a, b) => a - b);
-  const med = deductibles[Math.floor(deductibles.length / 2)];
-  const topZips = Object.entries(zips).sort((a, b) => b[1].signed - a[1].signed).slice(0, 10);
-  const topReps = Object.entries(reps).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const topTrades = Object.entries(trades).sort((a, b) => b[1] - a[1]).slice(0, 8);
-  const years = Object.entries(yearAgg).sort((a, b) => b[0].localeCompare(a[0]));
-  const recent = a.jobs.sort((x, y) => (y.signedDate || '').localeCompare(x.signedDate || '')).slice(0, 20);
+  const { summary = {}, emails = [], phones = [], supervisors = [], zips = [], reps = [], trades = [], years = [], recent = [] } = deep;
+  const med = summary.medianDeductible;
 
   $('detail').innerHTML = `
     <h2>${a.name} · <span style="color:var(--muted);font-weight:400">${a.carrier}</span> <a class="riq-link" href="cheat-sheet.html?type=adjuster&name=${encodeURIComponent(a.name)}" style="font-size:13px;margin-left:8px">🎓 Cheat Sheet →</a></h2>
     <div class="desc">${a.signed} signed · ${a.completed} approved · ${fmt.pct(a.approvalRate)} approval rate</div>
-    ${[...a.emails].length || [...a.phones].length ? `<div class="contact">
-      ${[...a.emails].map((e) => `<a href="mailto:${e}">📧 ${e}</a>`).join('')}
-      ${[...a.phones].map((p) => `<a href="tel:${p.replace(/\D/g, '')}">📱 ${p}</a>`).join('')}
+    ${emails.length || phones.length ? `<div class="contact">
+      ${emails.map((e) => `<a href="mailto:${e}">📧 ${e}</a>`).join('')}
+      ${phones.map((p) => `<a href="tel:${p.replace(/\D/g, '')}">📱 ${p}</a>`).join('')}
     </div>` : ''}
-    ${[...a.supervisors].length ? `<div style="color:var(--muted);font-size:12px;margin-top:4px">Supervisor(s): ${[...a.supervisors].join(', ')}</div>` : ''}
+    ${supervisors.length ? `<div style="color:var(--muted);font-size:12px;margin-top:4px">Supervisor(s): ${supervisors.join(', ')}</div>` : ''}
 
     <div class="kpi-row" style="margin-top:16px">
       <div class="kpi"><div class="label">Signed</div><div class="value">${a.signed}</div></div>
@@ -177,17 +139,17 @@ function show(key) {
     <div class="grid-2">
       <div><h2 style="font-size:13px;margin-top:0">Top ZIPs handled</h2><div class="scroll"><table>
         <thead><tr><th>ZIP</th><th class="num">Signed</th><th class="num">Approved</th></tr></thead>
-        <tbody>${topZips.map(([z, s]) => `<tr><td>${z}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td></tr>`).join('')}</tbody>
+        <tbody>${zips.map((z) => `<tr><td>${z.zip}</td><td class="num">${z.signed}</td><td class="num">${z.completed}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top reps working this adjuster</h2><div class="scroll"><table>
-        <tbody>${topReps.map(([r, n]) => `<tr><td>${r}</td><td class="num">${n}</td></tr>`).join('')}</tbody>
+        <tbody>${reps.map((r) => `<tr><td>${r.rep}</td><td class="num">${r.count}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>
-        <tbody>${topTrades.map(([t, n]) => `<tr><td>${t}</td><td class="num">${n}</td></tr>`).join('')}</tbody>
+        <tbody>${trades.map((t) => `<tr><td>${t.trade}</td><td class="num">${t.count}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Year-over-year</h2><div class="scroll"><table>
         <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Approved</th></tr></thead>
-        <tbody>${years.map(([y, s]) => `<tr><td>${y}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td></tr>`).join('')}</tbody>
+        <tbody>${years.map((y) => `<tr><td>${y.year}</td><td class="num">${y.signed}</td><td class="num">${y.completed}</td></tr>`).join('')}</tbody>
       </table></div></div>
     </div>
 
@@ -208,9 +170,9 @@ function show(key) {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  jobs = await res.json();
-  adjusters = buildAdjusters();
+  const res = await fetch('/api/intel/adjusters-summary');
+  const json = await res.json();
+  adjusters = (json.adjusters || []).slice().sort((a, b) => b.completed - a.completed);
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });

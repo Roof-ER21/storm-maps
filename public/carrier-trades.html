@@ -64,50 +64,11 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  const allJobs = await res.json();
+  const res = await fetch('/api/intel/carrier-trade-matrix');
+  const m = await res.json();
+  const { topCarriers, topTrades, cells, terciles, carrierTotals } = m;
+  const { t1, t2 } = terciles;
 
-  // Aggregate carrier × trade
-  const agg = new Map(); // carrier -> trade -> { jobs, revenue }
-  const carrierTotals = {};
-  const tradeTotals = {};
-  for (const j of allJobs) {
-    if (!isCompleted(j)) continue;
-    if (!j.insurance || !j.trades || j.trades.length === 0) continue;
-    if (!j.jobTotal) continue;
-    const perTrade = j.jobTotal / j.trades.length;  // split revenue evenly across trades on the job
-    for (const t of j.trades) {
-      const key = j.insurance;
-      if (!agg.has(key)) agg.set(key, {});
-      if (!agg.get(key)[t]) agg.get(key)[t] = { jobs: 0, revenue: 0 };
-      agg.get(key)[t].jobs++;
-      agg.get(key)[t].revenue += perTrade;
-      carrierTotals[key] = (carrierTotals[key] || 0) + 1;
-      tradeTotals[t] = (tradeTotals[t] || 0) + 1;
-    }
-  }
-  // Top 12 carriers + top 8 trades
-  const topCarriers = Object.entries(carrierTotals).sort((a, b) => b[1] - a[1]).slice(0, 18).map((p) => p[0]);
-  const topTrades = Object.entries(tradeTotals).sort((a, b) => b[1] - a[1]).slice(0, 10).map((p) => p[0]);
-
-  // Compute avg per cell
-  const cells = {};
-  const allValues = [];
-  for (const c of topCarriers) {
-    for (const t of topTrades) {
-      const x = agg.get(c)?.[t];
-      if (!x || x.jobs < 2) continue;
-      const avg = x.revenue / x.jobs;
-      cells[`${c}|${t}`] = { avg, jobs: x.jobs };
-      allValues.push(avg);
-    }
-  }
-  // Tercile thresholds
-  allValues.sort((a, b) => a - b);
-  const t1 = allValues[Math.floor(allValues.length / 3)];
-  const t2 = allValues[Math.floor(allValues.length * 2 / 3)];
-
-  // Build table
   const head = '<thead><tr><th>Carrier (jobs)</th>' + topTrades.map((t) => `<th class="num">${t}</th>`).join('') + '</tr></thead>';
   const body = '<tbody>' + topCarriers.map((c) => {
     return `<tr>

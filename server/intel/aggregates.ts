@@ -750,3 +750,554 @@ export async function customerLeads(req: Request, res: Response) {
     res.status(500).json({ error: 'customer_leads_failed', message: msg });
   }
 }
+
+/* ============================================================================
+ * /api/intel/adjusters-summary
+ * ----------------------------------------------------------------------------
+ *  Per-(adjuster, carrier) rollup with contact aggregates. Used by
+ *  adjusters.html (directory + filter). Returns one row per adjuster×carrier
+ *  combo — same adjuster name working two carriers is two rows.
+ * ========================================================================= */
+export async function adjustersSummary(_req: Request, res: Response) {
+  const t0 = Date.now();
+  try {
+    const rows = await pgSql<Array<{
+      name: string;
+      carrier: string;
+      emails: string[];
+      phones: string[];
+      cities: string[];
+      reps: string[];
+      signed: number;
+      completed: number;
+      dead: number;
+      revenue: number;
+      completed_revenue: number;
+      avg_deductible: number | null;
+    }>>`
+      SELECT
+        TRIM(adjuster_name) AS name,
+        COALESCE(insurance, 'Unknown') AS carrier,
+        COALESCE(ARRAY_AGG(DISTINCT adjuster_email) FILTER (WHERE adjuster_email IS NOT NULL AND adjuster_email <> ''), ARRAY[]::text[]) AS emails,
+        COALESCE(ARRAY_AGG(DISTINCT adjuster_phone) FILTER (WHERE adjuster_phone IS NOT NULL AND adjuster_phone <> ''), ARRAY[]::text[]) AS phones,
+        COALESCE(ARRAY_AGG(DISTINCT city) FILTER (WHERE city IS NOT NULL AND city <> ''), ARRAY[]::text[]) AS cities,
+        COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL AND sales_rep <> ''), ARRAY[]::text[]) AS reps,
+        COUNT(*)::int AS signed,
+        COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+        COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+        COALESCE(SUM(job_total), 0)::numeric AS revenue,
+        COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS completed_revenue,
+        AVG(deductible) FILTER (WHERE deductible > 0 AND deductible <= 50000)::numeric AS avg_deductible
+        FROM intel_projects
+       WHERE adjuster_name IS NOT NULL AND TRIM(adjuster_name) <> ''
+       GROUP BY TRIM(adjuster_name), COALESCE(insurance, 'Unknown')
+    `;
+
+    const adjusters = rows.map((r) => {
+      const signed = num(r.signed);
+      const completed = num(r.completed);
+      const dead = num(r.dead);
+      const completedRev = num(r.completed_revenue);
+      return {
+        name: r.name,
+        carrier: r.carrier,
+        emails: r.emails.join(', '),
+        phones: r.phones.join(', '),
+        cities: r.cities,
+        reps: r.reps,
+        signed,
+        completed,
+        dead,
+        revenue: num(r.revenue),
+        completedRevenue: completedRev,
+        approvalRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        avgApprovedJob: completed > 0 ? completedRev / completed : null,
+        avgDeductible: r.avg_deductible != null ? num(r.avg_deductible) : null,
+      };
+    });
+    res.json({ adjusters, total: adjusters.length, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'adjusters_summary_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/adjuster-deep?name=X[&carrier=Y]
+ * ----------------------------------------------------------------------------
+ *  Per-adjuster deep dive (zips, reps, trades, years, deductible median,
+ *  recent jobs). Used by adjuster-detail.html right pane.
+ *  If `carrier` is provided, restricts to that adjuster×carrier combo.
+ * ========================================================================= */
+export async function adjusterDeep(req: Request, res: Response) {
+  const t0 = Date.now();
+  const name = String(req.query.name ?? '').trim();
+  const carrier = String(req.query.carrier ?? '').trim() || null;
+  if (!name) {
+    res.status(400).json({ error: 'missing_name' });
+    return;
+  }
+  const nameCond = pgSql`TRIM(adjuster_name) = ${name}`;
+  const filter = carrier
+    ? pgSql`${nameCond} AND COALESCE(insurance, 'Unknown') = ${carrier}`
+    : nameCond;
+
+  try {
+    const [
+      contactRows,
+      summaryRows,
+      zipRows,
+      repRows,
+      tradeRows,
+      yearRows,
+      medianRows,
+      recentRows,
+    ] = await Promise.all([
+      pgSql<Array<{ emails: string[]; phones: string[]; supervisors: string[] }>>`
+        SELECT
+          COALESCE(ARRAY_AGG(DISTINCT adjuster_email) FILTER (WHERE adjuster_email IS NOT NULL AND adjuster_email <> ''), ARRAY[]::text[]) AS emails,
+          COALESCE(ARRAY_AGG(DISTINCT adjuster_phone) FILTER (WHERE adjuster_phone IS NOT NULL AND adjuster_phone <> ''), ARRAY[]::text[]) AS phones,
+          COALESCE(ARRAY_AGG(DISTINCT data->>'supervisorName') FILTER (WHERE data->>'supervisorName' IS NOT NULL AND data->>'supervisorName' <> ''), ARRAY[]::text[]) AS supervisors
+          FROM intel_projects WHERE ${filter}
+      `,
+      pgSql<Array<{ signed: number; completed: number; dead: number; revenue: number }>>`
+        SELECT
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COALESCE(SUM(job_total), 0)::numeric AS revenue
+          FROM intel_projects WHERE ${filter}
+      `,
+      pgSql<Array<{ zip: string; signed: number; completed: number }>>`
+        SELECT
+          LEFT(zip, 5) AS zip,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed
+          FROM intel_projects WHERE ${filter} AND zip IS NOT NULL AND LENGTH(zip) >= 5
+         GROUP BY LEFT(zip, 5)
+         ORDER BY COUNT(*) DESC
+         LIMIT 10
+      `,
+      pgSql<Array<{ rep: string; count: number }>>`
+        SELECT sales_rep AS rep, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND sales_rep IS NOT NULL AND sales_rep <> ''
+         GROUP BY sales_rep ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ trade: string; count: number }>>`
+        SELECT trade, COUNT(*)::int AS count
+          FROM intel_projects,
+               jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
+         WHERE ${filter}
+         GROUP BY trade ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ year: string; signed: number; completed: number }>>`
+        SELECT LEFT(signed_date, 4) AS year,
+               COUNT(*)::int AS signed,
+               COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed
+          FROM intel_projects WHERE ${filter} AND signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
+         GROUP BY LEFT(signed_date, 4) ORDER BY LEFT(signed_date, 4) DESC
+      `,
+      pgSql<Array<{ med_deductible: number | null }>>`
+        SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY deductible)
+                 FILTER (WHERE deductible > 0 AND deductible <= 50000)::numeric AS med_deductible
+          FROM intel_projects WHERE ${filter}
+      `,
+      pgSql<Array<{
+        signed_date: string | null;
+        customer: string | null;
+        address_line1: string | null;
+        city: string | null;
+        stage: string | null;
+        job_total: number | null;
+      }>>`
+        SELECT signed_date, customer, address_line1, city, stage, job_total
+          FROM intel_projects WHERE ${filter}
+         ORDER BY signed_date DESC NULLS LAST
+         LIMIT 20
+      `,
+    ]);
+
+    const contact = contactRows[0] ?? { emails: [], phones: [], supervisors: [] };
+    const sum = summaryRows[0] ?? { signed: 0, completed: 0, dead: 0, revenue: 0 };
+    const signed = num(sum.signed);
+    const completed = num(sum.completed);
+    const dead = num(sum.dead);
+    const med = medianRows[0] ?? { med_deductible: null };
+
+    res.json({
+      summary: {
+        name,
+        carrier: carrier || null,
+        signed, completed, dead,
+        revenue: num(sum.revenue),
+        approvalRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        medianDeductible: med.med_deductible != null ? num(med.med_deductible) : null,
+      },
+      emails: contact.emails,
+      phones: contact.phones,
+      supervisors: contact.supervisors,
+      zips: zipRows.map((r) => ({ zip: r.zip, signed: num(r.signed), completed: num(r.completed) })),
+      reps: repRows.map((r) => ({ rep: r.rep, count: num(r.count) })),
+      trades: tradeRows.map((r) => ({ trade: r.trade, count: num(r.count) })),
+      years: yearRows.map((r) => ({ year: r.year, signed: num(r.signed), completed: num(r.completed) })),
+      recent: recentRows.map((r) => ({
+        signedDate: r.signed_date,
+        customer: r.customer,
+        addressLine1: r.address_line1,
+        city: r.city,
+        stage: r.stage,
+        jobTotal: r.job_total != null ? num(r.job_total) : null,
+      })),
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'adjuster_deep_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/reps-summary
+ * ----------------------------------------------------------------------------
+ *  Per-rep rollup with Field-Portal-matching insurance/retail splits. Used
+ *  by reps.html left pane.
+ * ========================================================================= */
+export async function repsSummary(_req: Request, res: Response) {
+  const t0 = Date.now();
+  try {
+    const rows = await pgSql<Array<{
+      name: string;
+      signed: number;
+      completed: number;
+      dead: number;
+      open: number;
+      revenue: number;
+      completed_revenue: number;
+      ins_sales_total: number;
+      retail_sales_total: number;
+      ins_signed_count: number;
+      retail_signed_count: number;
+    }>>`
+      SELECT
+        TRIM(sales_rep) AS name,
+        COUNT(*)::int AS signed,
+        COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+        COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+        COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
+        COALESCE(SUM(job_total), 0)::numeric AS revenue,
+        COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS completed_revenue,
+        COALESCE(SUM(insurance_total) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion')), 0)::numeric AS ins_sales_total,
+        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND job_type = 'Retail'), 0)::numeric AS retail_sales_total,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion'))::int AS ins_signed_count,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type = 'Retail')::int AS retail_signed_count
+        FROM intel_projects
+       WHERE sales_rep IS NOT NULL AND TRIM(sales_rep) <> ''
+       GROUP BY TRIM(sales_rep)
+    `;
+
+    const reps = rows.map((r) => {
+      const signed = num(r.signed);
+      const completed = num(r.completed);
+      const dead = num(r.dead);
+      const completedRev = num(r.completed_revenue);
+      const insSales = num(r.ins_sales_total);
+      const retailSales = num(r.retail_sales_total);
+      return {
+        name: r.name,
+        signed,
+        completed,
+        dead,
+        open: num(r.open),
+        revenue: num(r.revenue),
+        completedRevenue: completedRev,
+        insSalesTotal: insSales,
+        retailSalesTotal: retailSales,
+        insSignedCount: num(r.ins_signed_count),
+        retailSignedCount: num(r.retail_signed_count),
+        totalSalesAllTime: insSales + retailSales,
+        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        avgApprovedJob: completed > 0 ? completedRev / completed : null,
+      };
+    });
+    reps.sort((a, b) => b.totalSalesAllTime - a.totalSalesAllTime);
+    res.json({ reps, total: reps.length, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'reps_summary_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/rep-deep?name=X
+ * ----------------------------------------------------------------------------
+ *  Per-rep deep dive (trades / carriers / cities / zips top counts,
+ *  median speed days, 10 biggest jobs). Used by reps.html right pane.
+ * ========================================================================= */
+export async function repDeep(req: Request, res: Response) {
+  const t0 = Date.now();
+  const name = String(req.query.name ?? '').trim();
+  if (!name) {
+    res.status(400).json({ error: 'missing_name' });
+    return;
+  }
+
+  try {
+    const [
+      tradeRows,
+      carrierRows,
+      cityRows,
+      zipRows,
+      medianRows,
+      bigJobs,
+    ] = await Promise.all([
+      pgSql<Array<{ trade: string; count: number }>>`
+        SELECT trade, COUNT(*)::int AS count
+          FROM intel_projects,
+               jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
+         WHERE TRIM(sales_rep) = ${name}
+         GROUP BY trade ORDER BY COUNT(*) DESC LIMIT 12
+      `,
+      pgSql<Array<{ carrier: string; count: number }>>`
+        SELECT insurance AS carrier, COUNT(*)::int AS count
+          FROM intel_projects WHERE TRIM(sales_rep) = ${name} AND insurance IS NOT NULL
+         GROUP BY insurance ORDER BY COUNT(*) DESC LIMIT 12
+      `,
+      pgSql<Array<{ city: string; count: number }>>`
+        SELECT city, COUNT(*)::int AS count
+          FROM intel_projects WHERE TRIM(sales_rep) = ${name} AND city IS NOT NULL
+         GROUP BY city ORDER BY COUNT(*) DESC LIMIT 12
+      `,
+      pgSql<Array<{ zip: string; count: number }>>`
+        SELECT zip, COUNT(*)::int AS count
+          FROM intel_projects WHERE TRIM(sales_rep) = ${name} AND zip IS NOT NULL
+         GROUP BY zip ORDER BY COUNT(*) DESC LIMIT 12
+      `,
+      pgSql<Array<{ med_speed: number | null; med_complete: number | null }>>`
+        SELECT
+          PERCENTILE_CONT(0.5) WITHIN GROUP (
+            ORDER BY NULLIF(data->>'daysLossToSign','')::int
+          ) FILTER (
+            WHERE NULLIF(data->>'daysLossToSign','')::int BETWEEN 0 AND 364
+          )::numeric AS med_speed,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (
+            ORDER BY NULLIF(data->>'daysToComplete','')::int
+          ) FILTER (
+            WHERE NULLIF(data->>'daysToComplete','')::int BETWEEN 0 AND 729
+          )::numeric AS med_complete
+          FROM intel_projects WHERE TRIM(sales_rep) = ${name}
+      `,
+      pgSql<Array<{
+        customer: string | null; address_line1: string | null; city: string | null;
+        state: string | null; insurance: string | null; stage: string | null;
+        signed_date: string | null; job_total: number | null;
+      }>>`
+        SELECT customer, address_line1, city, state, insurance, stage, signed_date, job_total
+          FROM intel_projects WHERE TRIM(sales_rep) = ${name} AND job_total > 0
+         ORDER BY job_total DESC NULLS LAST LIMIT 10
+      `,
+    ]);
+
+    const med = medianRows[0] ?? { med_speed: null, med_complete: null };
+
+    res.json({
+      trades: tradeRows.map((r) => ({ name: r.trade, count: num(r.count) })),
+      carriers: carrierRows.map((r) => ({ name: r.carrier, count: num(r.count) })),
+      cities: cityRows.map((r) => ({ name: r.city, count: num(r.count) })),
+      zips: zipRows.map((r) => ({ name: r.zip, count: num(r.count) })),
+      medianSpeedDays: med.med_speed != null ? Math.round(num(med.med_speed)) : null,
+      medianCompleteDays: med.med_complete != null ? Math.round(num(med.med_complete)) : null,
+      bigJobs: bigJobs.map((j) => ({
+        customer: j.customer,
+        addressLine1: j.address_line1,
+        city: j.city,
+        state: j.state,
+        insurance: j.insurance,
+        stage: j.stage,
+        signedDate: j.signed_date,
+        jobTotal: j.job_total != null ? num(j.job_total) : null,
+      })),
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'rep_deep_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/carrier-trade-matrix
+ * ----------------------------------------------------------------------------
+ *  Avg revenue per (carrier, trade) cell — top 18 carriers × top 10 trades.
+ *  Splits revenue evenly across trades on each completed job. Used by
+ *  carrier-trades.html (heat-map matrix).
+ * ========================================================================= */
+export async function carrierTradeMatrix(_req: Request, res: Response) {
+  const t0 = Date.now();
+  try {
+    // One scan: completed jobs only, expand trades array, share revenue evenly.
+    const rows = await pgSql<Array<{
+      carrier: string;
+      trade: string;
+      jobs: number;
+      revenue: number;
+    }>>`
+      SELECT
+        insurance AS carrier,
+        trade,
+        COUNT(*)::int AS jobs,
+        COALESCE(SUM(job_total / NULLIF(jsonb_array_length(data->'trades'), 0)), 0)::numeric AS revenue
+        FROM intel_projects,
+             jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
+       WHERE stage ~* 'completed|finalized'
+         AND insurance IS NOT NULL
+         AND job_total IS NOT NULL AND job_total > 0
+       GROUP BY insurance, trade
+    `;
+
+    // Tally carrier + trade totals to pick top 18 / top 10.
+    const carrierTotal = new Map<string, number>();
+    const tradeTotal = new Map<string, number>();
+    const cellMap = new Map<string, { jobs: number; revenue: number }>();
+    for (const r of rows) {
+      const jobs = num(r.jobs);
+      const rev = num(r.revenue);
+      cellMap.set(`${r.carrier}|${r.trade}`, { jobs, revenue: rev });
+      carrierTotal.set(r.carrier, (carrierTotal.get(r.carrier) || 0) + jobs);
+      tradeTotal.set(r.trade, (tradeTotal.get(r.trade) || 0) + jobs);
+    }
+    const topCarriers = [...carrierTotal.entries()].sort((a, b) => b[1] - a[1]).slice(0, 18).map((p) => p[0]);
+    const topTrades = [...tradeTotal.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10).map((p) => p[0]);
+
+    // Compute cells (jobs >= 2 to avoid noise) and tercile thresholds.
+    const cells: Record<string, { avg: number; jobs: number }> = {};
+    const allValues: number[] = [];
+    for (const c of topCarriers) {
+      for (const t of topTrades) {
+        const x = cellMap.get(`${c}|${t}`);
+        if (!x || x.jobs < 2) continue;
+        const avg = x.revenue / x.jobs;
+        cells[`${c}|${t}`] = { avg, jobs: x.jobs };
+        allValues.push(avg);
+      }
+    }
+    allValues.sort((a, b) => a - b);
+    const t1 = allValues[Math.floor(allValues.length / 3)] ?? 0;
+    const t2 = allValues[Math.floor((allValues.length * 2) / 3)] ?? 0;
+
+    res.json({
+      topCarriers,
+      topTrades,
+      carrierTotals: Object.fromEntries(carrierTotal),
+      tradeTotals: Object.fromEntries(tradeTotal),
+      cells,
+      terciles: { t1, t2 },
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'carrier_trade_matrix_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/customers-list
+ * ----------------------------------------------------------------------------
+ *  Full customer list with lifetime aggregates. Used by customers.html.
+ *  Dedup key: lower(trim(customer) || '|' || trim(addressLine1) || '|' || trim(city))
+ *  — wider than customer-leads' name+address-only key, matches customers.html.
+ *  Server-side filter on state and minJobs/minRev to avoid shipping all 12k.
+ * ========================================================================= */
+export async function customersList(req: Request, res: Response) {
+  const t0 = Date.now();
+  const q = req.query as Record<string, string | undefined>;
+  const state = q.state?.trim()?.toUpperCase() || null;
+
+  try {
+    const rows = await pgSql<Array<{
+      name: string;
+      address_line1: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      lat: number | null;
+      lng: number | null;
+      jobs: number;
+      completed: number;
+      dead: number;
+      open: number;
+      total_rev: number;
+      first_date: string | null;
+      last_date: string | null;
+      trades: string[];
+      carriers: string[];
+      reps: string[];
+    }>>`
+      WITH base AS (
+        SELECT
+          LOWER(TRIM(COALESCE(customer,'')) || '|' || TRIM(COALESCE(address_line1,'')) || '|' || TRIM(COALESCE(city,''))) AS key,
+          customer, address_line1, city, state, zip, lat, lng,
+          insurance, sales_rep, stage, job_total,
+          COALESCE(NULLIF(completed_date,''), signed_date) AS effective_date,
+          data->'trades' AS trades_json
+          FROM intel_projects
+         WHERE COALESCE(customer,'') <> ''
+           ${state ? pgSql`AND state = ${state}` : pgSql``}
+      )
+      SELECT
+        (ARRAY_AGG(customer ORDER BY effective_date DESC NULLS LAST))[1] AS name,
+        (ARRAY_AGG(address_line1 ORDER BY effective_date DESC NULLS LAST))[1] AS address_line1,
+        (ARRAY_AGG(city ORDER BY effective_date DESC NULLS LAST))[1] AS city,
+        (ARRAY_AGG(state ORDER BY effective_date DESC NULLS LAST))[1] AS state,
+        (ARRAY_AGG(zip ORDER BY effective_date DESC NULLS LAST))[1] AS zip,
+        (ARRAY_AGG(lat ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lat IS NOT NULL))[1] AS lat,
+        (ARRAY_AGG(lng ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lng IS NOT NULL))[1] AS lng,
+        COUNT(*)::int AS jobs,
+        COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+        COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+        COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
+        COALESCE(SUM(job_total), 0)::numeric AS total_rev,
+        MIN(effective_date) AS first_date,
+        MAX(effective_date) AS last_date,
+        COALESCE(ARRAY_AGG(DISTINCT trade) FILTER (WHERE trade IS NOT NULL), ARRAY[]::text[]) AS trades,
+        COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
+        COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps
+        FROM base
+        LEFT JOIN LATERAL jsonb_array_elements_text(COALESCE(trades_json, '[]'::jsonb)) AS trade ON TRUE
+       GROUP BY key
+    `;
+
+    const today = Date.now();
+    const customers = rows.map((r) => {
+      const lastDate = r.last_date;
+      const daysSince = lastDate
+        ? Math.floor((today - new Date(lastDate).getTime()) / 86400_000)
+        : null;
+      return {
+        name: r.name || '(unknown)',
+        addressLine1: r.address_line1,
+        city: r.city,
+        state: r.state,
+        zip: r.zip,
+        lat: r.lat,
+        lng: r.lng,
+        jobCount: num(r.jobs),
+        completedJobs: num(r.completed),
+        deadJobs: num(r.dead),
+        openJobs: num(r.open),
+        totalRev: num(r.total_rev),
+        firstDate: r.first_date,
+        lastDate,
+        daysSince,
+        trades: r.trades,
+        tradeCount: r.trades.length,
+        carriers: r.carriers,
+        reps: r.reps,
+      };
+    });
+
+    res.json({ customers, total: customers.length, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'customers_list_failed', message: msg });
+  }
+}
