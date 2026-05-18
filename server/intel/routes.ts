@@ -292,8 +292,9 @@ router.get('/api/intel/:key', async (req: Request, res: Response) => {
 
 // In-progress refresh state — single-flight so the UI button can't kick off
 // concurrent runs that hammer NOAA + the DB. Status is read by the SPA via
-// GET /api/intel/refresh/status.
-type RefreshStatus = {
+// GET /api/intel/refresh/status. Exported so the in-process scheduler can
+// share the same state + single-flight guard.
+export type RefreshStatus = {
   state: 'idle' | 'running' | 'success' | 'error';
   startedAt: string | null;
   finishedAt: string | null;
@@ -301,7 +302,7 @@ type RefreshStatus = {
   log: string[];
   error: string | null;
 };
-const refreshState: RefreshStatus = {
+export const refreshState: RefreshStatus = {
   state: 'idle',
   startedAt: null,
   finishedAt: null,
@@ -372,7 +373,17 @@ router.post('/api/intel/refresh', async (req: Request, res: Response) => {
   void runRefresh();
 });
 
-async function runRefresh(): Promise<void> {
+export async function runRefresh(consumerLabelStr: string = 'internal'): Promise<void> {
+  // If called externally (cron), mark refreshState here. The HTTP handler
+  // does it before calling runRefresh — preserve that path with a check.
+  if (refreshState.state !== 'running') {
+    refreshState.state = 'running';
+    refreshState.startedAt = new Date().toISOString();
+    refreshState.finishedAt = null;
+    refreshState.consumer = consumerLabelStr;
+    refreshState.log = [];
+    refreshState.error = null;
+  }
   const { spawn } = await import('node:child_process');
   const path = await import('node:path');
   const fs = await import('node:fs');

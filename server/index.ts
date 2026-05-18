@@ -25,6 +25,7 @@ import { sql as pgSql } from './db.js';
 import { authMiddleware } from './auth/middleware.js';
 import { authRouter } from './auth/routes.js';
 import { intelRouter } from './intel/routes.js';
+import { startRefreshScheduler } from './intel/scheduler.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'riq21-dev-secret-change-in-production';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAILS || 'ahmed@theroofdocs.com')
@@ -153,4 +154,6 @@ app.get('/*splat', (req, res, next) => {
 
 app.listen(PORT, () => {
   console.log(`[riq21] running on port ${PORT}`);
+  // Daily stealth refresh — replaces the Mac launchd cron.
+  startRefreshScheduler();
 });
