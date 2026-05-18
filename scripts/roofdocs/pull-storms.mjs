@@ -5,7 +5,7 @@
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
 
 const OUT_DIR = `${RIQ_BASE}/data/storms`;
 const STATES = 'VA,MD,PA,DC,DE,NJ,WV';

@@ -19,6 +19,7 @@
 set -u
 cd "$(dirname "$0")/../.."
 BASE="/Users/a21/storm-maps"
+export RIQ_BASE="$BASE"
 
 echo "=== RIQ 21 stealth refresh — $(date -Iseconds) ==="
 

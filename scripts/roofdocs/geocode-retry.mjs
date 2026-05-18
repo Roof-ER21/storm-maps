@@ -3,7 +3,7 @@
 
 import fs from 'node:fs';
 
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
 
 const FAILED = `${RIQ_BASE}/data/geocoded-failed.jsonl`;
 const OUT = `${RIQ_BASE}/data/geocoded.json`;

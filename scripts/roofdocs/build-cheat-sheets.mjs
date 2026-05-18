@@ -17,7 +17,7 @@
 
 import fs from 'node:fs';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/Desktop/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
 
 const PROJECTS = `${RIQ_BASE}/data/projects.json`;
 const OUT = `${RIQ_BASE}/data/cheat-sheets.json`;

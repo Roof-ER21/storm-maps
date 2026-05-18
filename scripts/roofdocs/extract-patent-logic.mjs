@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { GoogleGenAI } from '@google/genai';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/Desktop/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
 const RAW_DIR = `${RIQ_BASE}/data/carrier-patents-raw`;
 const OUT = `${RIQ_BASE}/data/carrier-patents.json`;
 

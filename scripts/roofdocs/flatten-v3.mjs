@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
 
 const DETAIL_DIR = `${RIQ_BASE}/data/roofdocs-pull`;
 const INVOICE_DIR = `${RIQ_BASE}/data/roofdocs-invoices`;

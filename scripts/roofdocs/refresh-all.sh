@@ -19,6 +19,7 @@
 set -e
 cd "$(dirname "$0")/../.."
 BASE="/Users/a21/storm-maps"
+export RIQ_BASE="$BASE"
 
 echo "=== Roof Docs intelligence refresh — $(date -Iseconds) ==="
 

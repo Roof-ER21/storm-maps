@@ -17,7 +17,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/Desktop/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
 const PROJ = `${RIQ_BASE}/data/projects.json`;
 const STORMS = `${RIQ_BASE}/data/storms/iem-hail-wind-2018-2026.json`;
 const OUT = `${RIQ_BASE}/data/lifetime-touch.json`;

@@ -3,7 +3,7 @@
 
 import fs from 'node:fs';
 
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/Desktop/storm-maps";
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
 
 const IN = `${RIQ_BASE}/data/roofdocs-reference/receivables-open.json`;
 const PROJECTS = `${RIQ_BASE}/data/projects.json`;

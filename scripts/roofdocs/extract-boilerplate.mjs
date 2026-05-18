@@ -19,7 +19,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { normalizeCarrier } from '../../server/intel/carrier-normalize.mjs';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/Desktop/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
 const CORPUS_PATH = path.join(RIQ_BASE, 'data/denial-corpus.json');
 const OUT_PATH = path.join(RIQ_BASE, 'data/carrier-boilerplate.json');
 
