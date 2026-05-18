@@ -102,7 +102,7 @@ const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing']);
 const UPSELL = ['Siding', 'Gutters & Downspouts', 'Skylights', 'Trim', 'Windows', 'Soffit & Ventilation'];
 
-let allJobs = [], allExposure = [], byCust = new Map(), mapInst = null;
+let mapInst = null;
 
 function custKey(r) {
   return ((r.customer || '').trim().toLowerCase() + '|' +
@@ -110,22 +110,23 @@ function custKey(r) {
           (r.city || '').trim().toLowerCase());
 }
 
-function quickSearch() {
-  const q = $('search').value.trim().toLowerCase();
+let qsToken = 0;
+async function quickSearch() {
+  const q = $('search').value.trim();
   const r = $('results');
   if (q.length < 2) { r.classList.remove('show'); return; }
-  const seen = new Set();
-  const items = [];
-  for (const p of allJobs) {
-    if (items.length >= 30) break;
-    const matchStr = `${p.customer || ''} ${p.addressLine1 || ''} ${p.city || ''}`.toLowerCase();
-    if (matchStr.includes(q)) {
-      const k = custKey(p);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      items.push({ key: k, name: p.customer || '(unknown)', sub: [p.addressLine1, p.city, p.state, p.zip].filter(Boolean).join(', ') + ' · ' + (p.insurance || '—') });
-    }
-  }
+  const myToken = ++qsToken;
+  let results = [];
+  try {
+    const json = await fetch('/api/intel/quick-search?q=' + encodeURIComponent(q)).then((r) => r.json());
+    results = json.results || [];
+  } catch { /* fall through */ }
+  if (myToken !== qsToken) return;
+  const items = results.map((p) => ({
+    key: custKey(p),
+    name: p.customer || '(unknown)',
+    sub: [p.addressLine1, p.city, p.state].filter(Boolean).join(', ') + ' · ' + (p.insurance || '—'),
+  }));
   r.innerHTML = items.length > 0
     ? items.map((i) => `<div class="item" data-k="${i.key.replace(/"/g, '&quot;')}"><div class="name">${i.name}</div><div class="sub">${i.sub}</div></div>`).join('')
     : '<div class="item" style="color:var(--muted)">No matches</div>';
@@ -138,14 +139,26 @@ function quickSearch() {
   }));
 }
 
-function showCustomer(key) {
-  const jobs = byCust.get(key);
-  if (!jobs || jobs.length === 0) {
+async function showCustomer(key) {
+  $('detail').innerHTML = '<section><div class="empty">Loading…</div></section>';
+  let deep;
+  try {
+    const res = await fetch('/api/intel/customer-deep?key=' + encodeURIComponent(key));
+    if (!res.ok) {
+      $('detail').innerHTML = '<section><div class="empty">Customer not found</div></section>';
+      return;
+    }
+    deep = await res.json();
+  } catch (e) {
+    $('detail').innerHTML = '<section><div class="empty">Failed: ' + e + '</div></section>';
+    return;
+  }
+  const jobs = deep.jobs || [];
+  if (jobs.length === 0) {
     $('detail').innerHTML = '<section><div class="empty">Customer not found</div></section>';
     return;
   }
   const j0 = jobs[0];
-  // Trades
   const trades = new Set();
   for (const j of jobs) for (const t of (j.trades || [])) trades.add(t);
   const tradesArr = [...trades];
@@ -157,11 +170,7 @@ function showCustomer(key) {
   const totalRev = jobs.reduce((s, j) => s + (j.jobTotal || 0), 0);
   const completed = jobs.filter(isCompleted).length;
   const dead = jobs.filter(isDead).length;
-  // Storm exposure for this customer
-  const exposure = allExposure.find((e) =>
-    (e.customer || '').toLowerCase() === (j0.customer || '').toLowerCase() &&
-    (e.addressLine1 || '').toLowerCase() === (j0.addressLine1 || '').toLowerCase()
-  );
+  const exposure = deep.exposure;
   const storms = exposure?.allStorms || [];
   // Compute simple score
   const stormScore = Math.min(100, (storms.length / 10) * 100);
@@ -281,18 +290,6 @@ function showCustomer(key) {
 }
 
 async function start() {
-  const [r1, r2] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
-    fetch('/api/intel/storm-exposure').then((r) => r.json()).catch(() => []),
-  ]);
-  allJobs = r1;
-  allExposure = r2;
-  for (const j of allJobs) {
-    const k = custKey(j);
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!byCust.has(k)) byCust.set(k, []);
-    byCust.get(k).push(j);
-  }
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(quickSearch, 200); });
@@ -300,12 +297,13 @@ async function start() {
   document.addEventListener('click', (e) => {
     if (!e.target.closest('section')) $('results').classList.remove('show');
   });
-  // URL param
+  // URL param — load the customer; server handles "not found".
   const params = new URLSearchParams(location.search);
   const k = params.get('k');
-  if (k && byCust.has(k)) {
+  if (k) {
     showCustomer(k);
-    $('search').value = byCust.get(k)[0].customer || '';
+    // First segment of key is the lowercased name — use as search box hint.
+    $('search').value = (k.split('|')[0] || '').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });

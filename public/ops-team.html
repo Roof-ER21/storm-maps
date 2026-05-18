@@ -86,30 +86,18 @@ const fmt = {
 };
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
-let jobs = [];
 let role = 'projectCoordinator';
+let cachedPeople = [];
 
-function build() {
-  const m = new Map();
-  for (const j of jobs) {
-    let key = j[role];
-    if (!key) continue;
-    if (!m.has(key)) m.set(key, { name: key, jobs: [] });
-    m.get(key).jobs.push(j);
-  }
-  return [...m.values()].map((p) => {
-    const signed = p.jobs.length;
-    const completed = p.jobs.filter(isCompleted).length;
-    const dead = p.jobs.filter(isDead).length;
-    const revenue = p.jobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
-    return { ...p, signed, completed, dead, revenue,
-      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
-      avgJob: completed ? revenue / completed : 0 };
-  }).sort((a, b) => b.signed - a.signed);
+async function fetchPeople() {
+  const res = await fetch('/api/intel/ops-team-summary?role=' + encodeURIComponent(role));
+  const json = await res.json();
+  cachedPeople = json.people || [];
+  return cachedPeople;
 }
 
-function renderList() {
-  const people = build();
+async function renderList() {
+  let people = cachedPeople.length ? cachedPeople : await fetchPeople();
   const q = ($('search').value || '').trim().toLowerCase();
   let rows = people;
   if (q) rows = rows.filter((p) => p.name.toLowerCase().includes(q));
@@ -131,47 +119,41 @@ function topList(obj, n = 8) {
   return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
 }
 
-function show(key) {
-  const peopleJobs = jobs.filter((j) => String(j[role]) === String(key));
-  if (peopleJobs.length === 0) return;
-  const signed = peopleJobs.length;
-  const completed = peopleJobs.filter(isCompleted).length;
-  const dead = peopleJobs.filter(isDead).length;
-  const open = signed - completed - dead;
-  const revenue = peopleJobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
-
-  const cities = {}, carriers = {}, reps = {}, trades = {}, zips = {};
-  const completeDays = [];
-  for (const j of peopleJobs) {
-    if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
-    if (j.insurance) carriers[j.insurance] = (carriers[j.insurance] || 0) + 1;
-    if (j.salesRep) reps[j.salesRep] = (reps[j.salesRep] || 0) + 1;
-    for (const t of (j.trades || [])) trades[t] = (trades[t] || 0) + 1;
-    if (j.zip) zips[j.zip.slice(0, 5)] = (zips[j.zip.slice(0, 5)] || 0) + 1;
-    if (j.daysToComplete != null && j.daysToComplete >= 0 && j.daysToComplete < 730) completeDays.push(j.daysToComplete);
+async function show(key) {
+  $('detail').innerHTML = '<div class="loading">Loading…</div>';
+  let deep;
+  try {
+    const res = await fetch(`/api/intel/ops-team-deep?role=${encodeURIComponent(role)}&key=${encodeURIComponent(key)}`);
+    deep = await res.json();
+  } catch (e) {
+    $('detail').innerHTML = '<div class="loading">Failed: ' + e + '</div>';
+    return;
   }
-  completeDays.sort((a, b) => a - b);
-  const med = completeDays.length ? completeDays[Math.floor(completeDays.length / 2)] : null;
-  const big = peopleJobs.filter((j) => j.jobTotal).sort((a, b) => (b.jobTotal || 0) - (a.jobTotal || 0)).slice(0, 10);
-
+  const s = deep.summary || {};
+  const cities = (deep.cities || []).map((r) => [r.name, r.count]);
+  const carriers = (deep.carriers || []).map((r) => [r.name, r.count]);
+  const reps = (deep.reps || []).map((r) => [r.name, r.count]);
+  const trades = (deep.trades || []).map((r) => [r.name, r.count]);
+  const big = deep.bigJobs || [];
+  const med = deep.medianCompleteDays;
   const displayName = role === 'fieldTechId' ? `Field Tech ${String(key).slice(0, 12)}…` : key;
 
   $('detail').innerHTML = `
     <h2>${displayName}</h2>
-    <div class="desc">${signed} jobs · ${completed} done · ${fmt.money(revenue)} closed revenue</div>
+    <div class="desc">${s.signed} jobs · ${s.completed} done · ${fmt.money(s.revenue)} closed revenue</div>
     <div class="kpi-row">
-      <div class="kpi"><div class="label">Jobs</div><div class="value">${fmt.int(signed)}</div></div>
-      <div class="kpi"><div class="label">Completed</div><div class="value">${fmt.int(completed)}</div></div>
-      <div class="kpi"><div class="label">Dead</div><div class="value">${fmt.int(dead)}</div></div>
-      <div class="kpi"><div class="label">Open</div><div class="value">${fmt.int(open)}</div></div>
-      <div class="kpi"><div class="label">Revenue</div><div class="value">${fmt.money(revenue)}</div></div>
+      <div class="kpi"><div class="label">Jobs</div><div class="value">${fmt.int(s.signed)}</div></div>
+      <div class="kpi"><div class="label">Completed</div><div class="value">${fmt.int(s.completed)}</div></div>
+      <div class="kpi"><div class="label">Dead</div><div class="value">${fmt.int(s.dead)}</div></div>
+      <div class="kpi"><div class="label">Open</div><div class="value">${fmt.int(s.open)}</div></div>
+      <div class="kpi"><div class="label">Revenue</div><div class="value">${fmt.money(s.revenue)}</div></div>
       <div class="kpi"><div class="label">Median sign→done</div><div class="value">${med != null ? med + 'd' : '—'}</div></div>
     </div>
     <div class="grid-2">
-      <div><h2 style="font-size:13px;margin-top:0">Top cities</h2><div class="scroll"><table>${topList(cities).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
-      <div><h2 style="font-size:13px;margin-top:0">Top carriers</h2><div class="scroll"><table>${topList(carriers).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
-      <div><h2 style="font-size:13px;margin-top:0">Top reps paired</h2><div class="scroll"><table>${topList(reps).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
-      <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>${topList(trades).map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top cities</h2><div class="scroll"><table>${cities.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top carriers</h2><div class="scroll"><table>${carriers.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top reps paired</h2><div class="scroll"><table>${reps.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
+      <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>${trades.map(([k, v]) => `<tr><td>${k}</td><td class="num">${v}</td></tr>`).join('')}</table></div></div>
     </div>
     <h2 style="font-size:13px;margin-top:20px">Top 10 biggest jobs</h2>
     <div class="scroll"><table>
@@ -181,22 +163,21 @@ function show(key) {
   `;
 }
 
-function activateTab(tab) {
+async function activateTab(tab) {
   role = tab;
+  cachedPeople = [];  // invalidate cache for new role
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('active', t.dataset.role === tab));
   $('role-title').textContent = { projectCoordinator: 'Project Coordinators', estimator: 'Estimators', fieldTechId: 'Field Techs' }[tab];
-  renderList();
+  await renderList();
   setTimeout(() => $('list').querySelector('.item')?.click(), 50);
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  jobs = await res.json();
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => activateTab(t.dataset.role)));
-  activateTab('projectCoordinator');
+  await activateTab('projectCoordinator');
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
 </script>

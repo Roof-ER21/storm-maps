@@ -1513,3 +1513,288 @@ export async function quickSearch(req: Request, res: Response) {
     res.status(500).json({ error: 'quick_search_failed', message: msg });
   }
 }
+
+/* ============================================================================
+ * /api/intel/customer-deep?key=lowercased-customer|address|city
+ * ----------------------------------------------------------------------------
+ *  Full picture of one customer (deduped by customer-detail.html's 3-part key).
+ *  Returns: identity + all job records + aggregates + storm-exposure entry.
+ *  Used by customer-detail.html right pane.
+ * ========================================================================= */
+export async function customerDeep(req: Request, res: Response) {
+  const t0 = Date.now();
+  const rawKey = String(req.query.key ?? '').trim();
+  if (!rawKey) {
+    res.status(400).json({ error: 'missing_key' });
+    return;
+  }
+  // Parse 3-part dedup key: customer|address|city (already lowercased)
+  const [keyCustomer = '', keyAddr = '', keyCity = ''] = rawKey.split('|');
+
+  try {
+    const jobRows = await pgSql<Array<{
+      id: number;
+      customer: string | null;
+      address_line1: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      lat: number | null;
+      lng: number | null;
+      insurance: string | null;
+      adjuster_name: string | null;
+      sales_rep: string | null;
+      stage: string | null;
+      job_type: string | null;
+      signed_date: string | null;
+      completed_date: string | null;
+      job_total: number | null;
+      customer_email: string | null;
+      customer_cell: string | null;
+      customer_home: string | null;
+      trades: unknown;
+    }>>`
+      SELECT id, customer, address_line1, city, state, zip, lat, lng,
+             insurance, adjuster_name, sales_rep, stage, job_type,
+             signed_date, completed_date, job_total,
+             NULLIF(data->>'customerEmail','') AS customer_email,
+             NULLIF(data->>'customerCell','') AS customer_cell,
+             NULLIF(data->>'customerHome','') AS customer_home,
+             data->'trades' AS trades
+        FROM intel_projects
+       WHERE LOWER(TRIM(COALESCE(customer,''))) = ${keyCustomer}
+         AND LOWER(TRIM(COALESCE(address_line1,''))) = ${keyAddr}
+         AND LOWER(TRIM(COALESCE(city,''))) = ${keyCity}
+    `;
+
+    if (jobRows.length === 0) {
+      res.status(404).json({ error: 'not_found' });
+      return;
+    }
+
+    // Storm exposure lookup — dedup key in exposure blob is just customer|addressLine1.
+    type ExposureEntry = {
+      customer?: string; addressLine1?: string;
+      allStorms?: Array<{ date?: string; type?: string; mag?: number; unit?: string; distance?: number }>;
+    };
+    let exposure: ExposureEntry | null = null;
+    try {
+      const rows = await pgSql<Array<{ data: ExposureEntry[] }>>`
+        SELECT data FROM intel_blobs WHERE key = 'storm-exposure' LIMIT 1
+      `;
+      const blob = Array.isArray(rows[0]?.data) ? rows[0].data : [];
+      exposure = blob.find((e) =>
+        (e.customer || '').trim().toLowerCase() === keyCustomer &&
+        (e.addressLine1 || '').trim().toLowerCase() === keyAddr
+      ) || null;
+    } catch { /* exposure stays null */ }
+
+    // Map rows to camelCase shape the page expects.
+    const jobs = jobRows.map((r) => ({
+      id: r.id,
+      customer: r.customer,
+      addressLine1: r.address_line1,
+      city: r.city,
+      state: r.state,
+      zip: r.zip,
+      lat: r.lat,
+      lng: r.lng,
+      insurance: r.insurance,
+      adjusterName: r.adjuster_name,
+      salesRep: r.sales_rep,
+      stage: r.stage,
+      jobType: r.job_type,
+      signedDate: r.signed_date,
+      completedDate: r.completed_date,
+      jobTotal: r.job_total != null ? num(r.job_total) : null,
+      customerEmail: r.customer_email,
+      customerCell: r.customer_cell,
+      customerHome: r.customer_home,
+      trades: Array.isArray(r.trades) ? r.trades : [],
+    }));
+
+    res.json({
+      jobs,
+      exposure,
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'customer_deep_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/ops-team-summary?role=projectCoordinator
+ * ----------------------------------------------------------------------------
+ *  Per-(projectCoordinator|estimator|fieldTechId) rollup. Role-keyed list for
+ *  ops-team.html left pane.
+ * ========================================================================= */
+const OPS_ROLES = new Set(['projectCoordinator', 'estimator', 'fieldTechId']);
+export async function opsTeamSummary(req: Request, res: Response) {
+  const t0 = Date.now();
+  const role = String(req.query.role ?? 'projectCoordinator');
+  if (!OPS_ROLES.has(role)) {
+    res.status(400).json({ error: 'invalid_role', allowed: [...OPS_ROLES] });
+    return;
+  }
+  // Field is in JSONB (not promoted) — `data->>'<role>'`.
+  // Use pgSql(role) to inline as identifier-safe (we whitelisted role above).
+  const roleExpr = pgSql`data->>${role}`;
+
+  try {
+    const rows = await pgSql<Array<{
+      name: string;
+      signed: number;
+      completed: number;
+      dead: number;
+      revenue: number;
+    }>>`
+      SELECT
+        ${roleExpr} AS name,
+        COUNT(*)::int AS signed,
+        COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+        COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+        COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+        FROM intel_projects
+       WHERE ${roleExpr} IS NOT NULL AND ${roleExpr} <> ''
+       GROUP BY ${roleExpr}
+       ORDER BY COUNT(*) DESC
+    `;
+    const people = rows.map((r) => {
+      const signed = num(r.signed);
+      const completed = num(r.completed);
+      const dead = num(r.dead);
+      const revenue = num(r.revenue);
+      return {
+        name: r.name,
+        signed, completed, dead, revenue,
+        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        avgJob: completed > 0 ? revenue / completed : 0,
+      };
+    });
+    res.json({ role, people, total: people.length, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'ops_team_summary_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/ops-team-deep?role=projectCoordinator&key=John+Doe
+ * ----------------------------------------------------------------------------
+ *  Deep dive for one ops person. Returns city/carrier/rep/trade/zip rollups +
+ *  median sign→complete days + 10 biggest jobs.
+ * ========================================================================= */
+export async function opsTeamDeep(req: Request, res: Response) {
+  const t0 = Date.now();
+  const role = String(req.query.role ?? 'projectCoordinator');
+  const key = String(req.query.key ?? '').trim();
+  if (!OPS_ROLES.has(role)) {
+    res.status(400).json({ error: 'invalid_role', allowed: [...OPS_ROLES] });
+    return;
+  }
+  if (!key) {
+    res.status(400).json({ error: 'missing_key' });
+    return;
+  }
+  const filter = pgSql`data->>${role} = ${key}`;
+
+  try {
+    const [
+      summary,
+      cityRows,
+      carrierRows,
+      repRows,
+      tradeRows,
+      zipRows,
+      medianRows,
+      bigJobs,
+    ] = await Promise.all([
+      pgSql<Array<{ signed: number; completed: number; dead: number; open: number; revenue: number }>>`
+        SELECT
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+          FROM intel_projects WHERE ${filter}
+      `,
+      pgSql<Array<{ name: string; count: number }>>`
+        SELECT city AS name, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND city IS NOT NULL
+         GROUP BY city ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ name: string; count: number }>>`
+        SELECT insurance AS name, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND insurance IS NOT NULL
+         GROUP BY insurance ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ name: string; count: number }>>`
+        SELECT sales_rep AS name, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND sales_rep IS NOT NULL
+         GROUP BY sales_rep ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ name: string; count: number }>>`
+        SELECT trade AS name, COUNT(*)::int AS count
+          FROM intel_projects,
+               jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
+         WHERE ${filter}
+         GROUP BY trade ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ name: string; count: number }>>`
+        SELECT LEFT(zip, 5) AS name, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND zip IS NOT NULL AND LENGTH(zip) >= 5
+         GROUP BY LEFT(zip, 5) ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ med_complete: number | null }>>`
+        SELECT PERCENTILE_CONT(0.5) WITHIN GROUP (
+          ORDER BY NULLIF(data->>'daysToComplete','')::int
+        ) FILTER (
+          WHERE NULLIF(data->>'daysToComplete','')::int BETWEEN 0 AND 729
+        )::numeric AS med_complete
+          FROM intel_projects WHERE ${filter}
+      `,
+      pgSql<Array<{
+        customer: string | null; address_line1: string | null; city: string | null;
+        state: string | null; stage: string | null; signed_date: string | null; job_total: number | null;
+      }>>`
+        SELECT customer, address_line1, city, state, stage, signed_date, job_total
+          FROM intel_projects WHERE ${filter} AND job_total > 0
+         ORDER BY job_total DESC NULLS LAST LIMIT 10
+      `,
+    ]);
+
+    const s = summary[0] ?? { signed: 0, completed: 0, dead: 0, open: 0, revenue: 0 };
+    const med = medianRows[0]?.med_complete;
+
+    res.json({
+      summary: {
+        signed: num(s.signed),
+        completed: num(s.completed),
+        dead: num(s.dead),
+        open: num(s.open),
+        revenue: num(s.revenue),
+      },
+      cities: cityRows.map((r) => ({ name: r.name, count: num(r.count) })),
+      carriers: carrierRows.map((r) => ({ name: r.name, count: num(r.count) })),
+      reps: repRows.map((r) => ({ name: r.name, count: num(r.count) })),
+      trades: tradeRows.map((r) => ({ name: r.name, count: num(r.count) })),
+      zips: zipRows.map((r) => ({ name: r.name, count: num(r.count) })),
+      medianCompleteDays: med != null ? Math.round(num(med)) : null,
+      bigJobs: bigJobs.map((j) => ({
+        customer: j.customer,
+        addressLine1: j.address_line1,
+        city: j.city,
+        state: j.state,
+        stage: j.stage,
+        signedDate: j.signed_date,
+        jobTotal: j.job_total != null ? num(j.job_total) : null,
+      })),
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'ops_team_deep_failed', message: msg });
+  }
+}

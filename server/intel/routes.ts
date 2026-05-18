@@ -27,6 +27,7 @@ import {
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
   carrierTradeMatrix, customersList,
   dashboardKpis, quickSearch,
+  customerDeep, opsTeamSummary, opsTeamDeep,
 } from './aggregates.js';
 
 // Fire-and-forget on module load — table creation is idempotent and the
@@ -217,6 +218,9 @@ router.get('/api/intel/carrier-trade-matrix', carrierTradeMatrix);
 router.get('/api/intel/customers-list', customersList);
 router.get('/api/intel/dashboard-kpis', dashboardKpis);
 router.get('/api/intel/quick-search', quickSearch);
+router.get('/api/intel/customer-deep', customerDeep);
+router.get('/api/intel/ops-team-summary', opsTeamSummary);
+router.get('/api/intel/ops-team-deep', opsTeamDeep);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;
