@@ -2319,7 +2319,7 @@ export async function dashboardKpis(_req: Request, res: Response) {
       avgApprovedJob: 0,
     }));
     for (const z of zipsForScore) {
-      z.closeRate = z.signed - z.dead > 0 ? z.completed / (z.signed - z.dead) : 0;
+      z.closeRate = z.completed + z.dead > 0 ? z.completed / (z.completed + z.dead) : 0;
       z.avgApprovedJob = z.completed > 0 ? z.revenue / z.completed : 0;
     }
     // Normalize against 90th-percentile (not absolute max) so a single
