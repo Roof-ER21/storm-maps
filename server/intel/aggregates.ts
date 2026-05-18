@@ -174,11 +174,15 @@ export async function carriersSummary(_req: Request, res: Response) {
        GROUP BY COALESCE(NULLIF(insurance, ''), 'Retail / No Carrier')
        ORDER BY COUNT(*) DESC
     `;
+    // Pull NAIC complaint indices once and attach to each carrier in the
+    // summary so the left-pane list shows ratings at-a-glance.
+    const { getComplaintIndex } = await import('./naic-complaints.js');
     const carriers = rows.map((c) => {
       const signed = num(c.signed);
       const completed = num(c.completed);
       const dead = num(c.dead);
       const revenue = num(c.revenue);
+      const ci = getComplaintIndex(c.name);
       return {
         name: c.name,
         signed,
@@ -187,6 +191,8 @@ export async function carriersSummary(_req: Request, res: Response) {
         revenue,
         closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgApprovedJob: completed > 0 ? revenue / completed : 0,
+        naicIndex: ci?.index ?? null,
+        naicRating: ci?.rating ?? null,
       };
     });
     res.json({ carriers, total: carriers.length, took_ms: Date.now() - t0 });

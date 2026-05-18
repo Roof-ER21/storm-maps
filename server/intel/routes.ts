@@ -171,6 +171,7 @@ router.get('/api/intel/_meta', (_req, res) => {
       'POST /api/intel/refresh':            'Trigger a stealth refresh (no portal calls)',
       'GET  /api/intel/predictor/score':    'Lead-score predictor (query-params)',
       'POST /api/intel/predictor/webhook':  'CC21 lead-pipeline webhook (JSON body)',
+      'GET  /api/intel/carrier-complaints': 'NAIC complaint index per carrier (Indiana 2022 baseline)',
       'POST /api/intel/share':              'Create a public shareable list (no-auth viewer)',
       'GET  /api/intel/share/:slug':        'PUBLIC: read shared list snapshot',
     },

@@ -88,12 +88,24 @@ function renderList() {
   let rows = carriers;
   if (q) rows = rows.filter((c) => c.name.toLowerCase().includes(q));
   $('count').textContent = `${rows.length} carriers`;
-  $('list').innerHTML = rows.map((c) => `
-    <div class="item" data-name="${c.name.replace(/"/g, '&quot;')}">
-      <div class="name">${c.name}</div>
+  $('list').innerHTML = rows.map((c) => {
+    // NAIC color dot — green=excellent, light-green=good, neutral=average,
+    // amber=above-avg, red=outlier. Hollow if unrated/DNC.
+    let dot = '<span style="display:inline-block;width:8px;height:8px;border-radius:50%;border:1px solid var(--border);margin-right:6px"></span>';
+    let title = 'NAIC complaint index: unrated';
+    if (c.naicIndex != null) {
+      const i = c.naicIndex;
+      const color = i <= 0.5 ? '#10b981' : i <= 0.8 ? '#9ed27a' : i <= 1.2 ? '#a09486' : i <= 2.0 ? '#e0a04f' : '#ef4444';
+      dot = `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};margin-right:6px" title="NAIC complaint index ${i.toFixed(2)} (${c.naicRating})"></span>`;
+      title = `NAIC complaint index ${i.toFixed(2)} (${c.naicRating})`;
+    }
+    return `
+    <div class="item" data-name="${c.name.replace(/"/g, '&quot;')}" title="${title}">
+      <div class="name">${dot}${c.name}</div>
       <div class="stats">${c.signed} signed · ${c.completed} done · ${fmt.money(c.revenue)}</div>
     </div>
-  `).join('');
+  `;
+  }).join('');
   $('list').querySelectorAll('.item').forEach((el) => el.addEventListener('click', () => {
     $('list').querySelectorAll('.item').forEach((x) => x.classList.remove('active'));
     el.classList.add('active');
