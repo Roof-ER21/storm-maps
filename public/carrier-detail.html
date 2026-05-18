@@ -118,9 +118,31 @@ async function showCarrier(name) {
   const medDeductible = medians.deductible;
   const medUplift = medians.upliftPct;
 
+  // Fire-and-forget NAIC complaint-index lookup — paints into the page when
+  // it arrives, doesn't block the main render.
+  fetch('/api/intel/carrier-complaints?carrier=' + encodeURIComponent(c.name))
+    .then((r) => r.json())
+    .then((d) => {
+      if (!d || !d.entry || d.entry.index == null) return;
+      const e = d.entry;
+      const idx = Number(e.index);
+      const ratingColor = idx <= 0.5 ? '#10b981' : idx <= 0.8 ? '#9ed27a' : idx <= 1.2 ? 'var(--muted)' : idx <= 2.0 ? '#e0a04f' : '#ef4444';
+      const target = document.getElementById('naic-row');
+      if (target) target.innerHTML =
+        `<div style="margin-top:8px;padding:8px 12px;background:rgba(94,200,255,0.05);border:1px solid var(--border);border-radius:6px;font-size:12px;color:var(--muted)">` +
+        `<strong style="color:var(--text)">NAIC Complaint Index:</strong> ` +
+        `<strong style="color:${ratingColor}">${idx.toFixed(2)}</strong> ` +
+        `<span style="color:${ratingColor}">(${e.rating})</span>` +
+        ` · <a href="${d.sourceUrl}" target="_blank" rel="noreferrer" style="color:var(--muted);text-decoration:underline">Indiana DOI 2022 baseline</a>` +
+        (e.note ? `<div style="margin-top:4px;color:var(--muted);font-size:11px">${e.note}</div>` : '') +
+        `</div>`;
+    })
+    .catch(() => {});
+
   $('detail').innerHTML = `
     <h2>${c.name} <a class="riq-link" href="cheat-sheet.html?type=carrier&name=${encodeURIComponent(c.name)}" style="font-size:13px;margin-left:8px">🎓 Cheat Sheet →</a></h2>
     <div class="desc">${c.signed} signed · ${c.completed} approved · ${fmt.money(c.revenue)} revenue · ${fmt.pct(c.closeRate)} close rate</div>
+    <div id="naic-row"></div>
     <div class="kpi-row">
       <div class="kpi"><div class="label">Signed</div><div class="value">${fmt.int(c.signed)}</div></div>
       <div class="kpi"><div class="label">Approved</div><div class="value">${fmt.int(c.completed)}</div></div>

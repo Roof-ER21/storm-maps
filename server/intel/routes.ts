@@ -24,6 +24,7 @@ import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } f
 import { projectsQuery, projectsAggregate } from './projects-query.js';
 import { createShare, getSharedList, listMyShares, deleteShare } from './sharing.js';
 import { predictorScore, predictorWebhook } from './predictor.js';
+import { carrierComplaints } from './naic-complaints.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -261,6 +262,13 @@ router.delete('/api/intel/share/:slug', deleteShare);
  */
 router.get('/api/intel/predictor/score', predictorScore);
 router.post('/api/intel/predictor/webhook', predictorWebhook);
+
+/**
+ * NAIC complaint index — carrier-quality context (Indiana 2022 baseline).
+ *   GET /api/intel/carrier-complaints              — full table
+ *   GET /api/intel/carrier-complaints?carrier=X    — single carrier
+ */
+router.get('/api/intel/carrier-complaints', carrierComplaints);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

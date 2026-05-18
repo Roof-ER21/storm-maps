@@ -19,6 +19,7 @@
 import { type Request, type Response } from 'express';
 import { sql as pgSql } from '../db.js';
 import { normalizeCarrier } from './carrier-normalize.mjs';
+import { getComplaintIndex } from './naic-complaints.js';
 
 const num = (v: unknown): number => {
   if (v === null || v === undefined) return 0;
@@ -96,6 +97,7 @@ const FACTOR_WEIGHTS: Record<string, number> = {
   lead_source:     0.05,
   zip_overall:     0.10,  // zip baseline (no carrier)
   storm_match:     0.18,  // hail magnitude + days since
+  naic_complaint:  0.08,  // industry-wide carrier reputation (NAIC index)
 };
 
 function confidenceWeight(n: number): number {
@@ -269,6 +271,34 @@ export async function computeScore(features: LeadFeatures): Promise<ScoreResult>
     'zip_overall',
     zipAllRow[0],
   );
+
+  // NAIC complaint index — industry-wide carrier reputation, Indiana 2022.
+  // Centered at 1.0 = average. Index 0.5 → carrier is better than average →
+  // small upward nudge. Index 2.0 → worse than average → small downward nudge.
+  // Scaled so a 0.5 swing from 1.0 = +/- 8 percentage points at max weight.
+  if (carrier) {
+    const ci = getComplaintIndex(carrier);
+    if (ci && ci.index != null) {
+      // Map index to a [-0.15, +0.15] delta vs baseRate:
+      //   index 0.25 (excellent) → +0.12
+      //   index 0.50 (good)      → +0.08
+      //   index 1.00 (average)   → 0
+      //   index 1.50 (bad)       → -0.08
+      //   index 2.50 (outlier)   → -0.15 (capped)
+      const delta = Math.max(-0.15, Math.min(0.15, (1 - ci.index) * 0.16));
+      const w = FACTOR_WEIGHTS.naic_complaint;
+      const contributionBoost = delta * w;
+      blendedRate += contributionBoost;
+      totalWeightApplied += w;
+      factors.push({
+        name: 'NAIC complaint index',
+        value: `${carrier} · ${ci.index!.toFixed(2)} (${ci.rating})`,
+        rate: 1 - ci.index!,
+        contribution: Math.round(contributionBoost * 100),
+        direction: contributionBoost > 0.005 ? 'up' : contributionBoost < -0.005 ? 'down' : 'neutral',
+      });
+    }
+  }
 
   // Storm features — direct heuristic, no historical lookup.
   if (features.stormMagnitude != null && features.stormType === 'HAIL') {

@@ -1,0 +1,129 @@
+{
+  "source": "Indiana Department of Insurance · 2022 Homeowner Complaint Index",
+  "sourceUrl": "https://www.in.gov/idoi/files/Homeowners-Complaint-Index.pdf",
+  "lastUpdated": "2026-05-18",
+  "methodology": "Complaint Index = (company's share of complaints) / (company's share of premiums). 1.0 = average. <1 better than average, >1 worse. For carrier groups with multiple subsidiaries we report the volume-weighted blend of the homeowners-line subsidiaries.",
+  "interpretation": {
+    "≤0.50": "excellent — half the complaints expected for size",
+    "0.50-0.80": "good — fewer complaints than average",
+    "0.80-1.20": "average",
+    "1.20-2.00": "above-average complaints",
+    ">2.00": "high-complaint outlier"
+  },
+  "carriers": {
+    "State Farm": {
+      "index": 1.08,
+      "premium_in_2022": 600964570,
+      "complaints_in_2022": 39,
+      "primary_naic": "25143 (State Farm Fire & Cas Ins Co)",
+      "rating": "average",
+      "note": "State Farm's huge book makes 1.08 (essentially average) the structural ceiling. 39 complaints absolute."
+    },
+    "USAA": {
+      "index": 0.50,
+      "premium_in_2022": 32929176,
+      "complaints_in_2022": 1,
+      "primary_naic": "25941 (United Serv Automobile Assn)",
+      "rating": "excellent",
+      "note": "USAA Cas Ins Co subsidiary 1.42 — main parent USAA shows 0.50. Bundled member-only carrier."
+    },
+    "Travelers": {
+      "index": 0.45,
+      "premium_in_2022": 87892851,
+      "complaints_in_2022": 2,
+      "primary_naic": "38130 (Travelers Personal Ins Co)",
+      "rating": "excellent",
+      "note": "Travelers Personal 0.27 + Travco 0.62 — both well below average. Confirmed by NAIC's national 'Travelers ~half the average' callout."
+    },
+    "Allstate": {
+      "index": 1.30,
+      "premium_in_2022": 177637569,
+      "complaints_in_2022": 16,
+      "primary_naic": "37907 (Allstate Vehicle & Prop Ins Co)",
+      "rating": "above-average complaints",
+      "note": "Allstate Ind Co subsidiary 6.93 (small premium pool but a worrying outlier). Main subsidiary 1.26. Consistent with the Weiss 50.9% close-without-payment finding cited on predictor.html."
+    },
+    "Erie": {
+      "index": 0.55,
+      "premium_in_2022": 151948931,
+      "complaints_in_2022": 5,
+      "primary_naic": "26263 (Erie Ins Co)",
+      "rating": "good",
+      "note": "Erie Ins Co 0.26 + Erie Ins Exch 1.90. Volume-weighted blend favors the bigger Erie Ins Co subsidiary."
+    },
+    "Liberty Mutual": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Below Indiana's $1M premium reporting threshold for homeowners line — small footprint."
+    },
+    "Nationwide": {
+      "index": 1.19,
+      "premium_in_2022": 27849040,
+      "complaints_in_2022": 2,
+      "primary_naic": "25453 (Nationwide Ins Co Of Amer)",
+      "rating": "above-average complaints"
+    },
+    "Progressive": {
+      "index": 2.17,
+      "premium_in_2022": 7651759,
+      "complaints_in_2022": 1,
+      "primary_naic": "38784 (Progressive Southeastern Ins Co)",
+      "rating": "high-complaint outlier",
+      "note": "Progressive doesn't underwrite homeowners directly — partners with American Strategic / ASI (2.50 index). Mismatch between auto brand and homeowners service is well-documented."
+    },
+    "Farmers": {
+      "index": 1.00,
+      "premium_in_2022": 40220315,
+      "complaints_in_2022": 3,
+      "primary_naic": "21652 (Farmers Ins Exch)",
+      "rating": "average",
+      "note": "Farmers Ins Exch 0.59 + Grp 3.09 + Prop 2.39 — volume-weighted blend."
+    },
+    "The Hartford": {
+      "index": null,
+      "rating": "DNC",
+      "note": "Premiums under Indiana's $1M reporting threshold for HO line."
+    },
+    "Encompass": {
+      "index": 3.79,
+      "premium_in_2022": 8744224,
+      "complaints_in_2022": 2,
+      "primary_naic": "15130 (Encompass Ind Co)",
+      "rating": "high-complaint outlier",
+      "note": "Allstate subsidiary — even higher complaint index than parent."
+    },
+    "Lemonade": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Newer / small homeowners footprint — not in Indiana's 2022 report. Anecdotally low complaints per NAIC national data."
+    },
+    "Geico": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Geico doesn't directly underwrite homeowners — partners with ASI/Liberty Mutual."
+    },
+    "AMIG (Cincinnati Financial)": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Cincinnati Insurance broadly: ultra-low complaint rate per NAIC national. Specific 2022 IN data unavailable in this report."
+    },
+    "Chubb": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Luxury/HNW segment; small homeowner footprint in mass-market IN data."
+    },
+    "Homesite": {
+      "index": 1.69,
+      "premium_in_2022": 68644539,
+      "complaints_in_2022": 7,
+      "primary_naic": "17221 (Homesite Ins Co)",
+      "rating": "above-average complaints",
+      "note": "Homesite Midwest 6.58 — substantially worse."
+    },
+    "Assurant": {
+      "index": null,
+      "rating": "high-complaint outlier",
+      "note": "InsuranceNewsNet 2024: 'American Banker, an affiliate of Assurant, had the highest complaint score among homeowners'. No specific Indiana 2022 entry."
+    }
+  }
+}
