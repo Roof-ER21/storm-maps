@@ -160,8 +160,9 @@ async function buildRecap() {
     </div>
 
     <h2>🏆 Top Reps This Week</h2>
+    <div style="color:var(--muted);font-size:11px;margin-bottom:4px">Closed revenue from this week's signs is usually \$0 — those jobs haven't completed yet. Use Signed count as the leading indicator.</div>
     ${topReps.length === 0 ? '<div class="empty">No new signs this window.</div>' :
-      `<table><thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>
+      `<table><thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Closed $ (so far)</th></tr></thead>
        <tbody>${topReps.map(([n, s]) => `<tr><td>${n}</td><td class="num">${s.signed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody></table>`}
 
     <h2>🌪 Strong Storms This Week</h2>
