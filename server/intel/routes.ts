@@ -179,6 +179,20 @@ router.get('/api/intel/manifest', (_req, res) => {
   res.json({ generated: new Date().toISOString(), files: out });
 });
 
+/**
+ * Phase 4b: indexed query endpoint over `intel_projects`.
+ * MUST be registered before /api/intel/:key — Express would otherwise route
+ * `projects-query` into the :key catch-all and 404 with `unknown_key`.
+ *
+ *   GET /api/intel/projects-query?carrier=State+Farm&zip=20170&limit=50
+ *   GET /api/intel/projects-aggregate?group_by=insurance&state=VA
+ * Filters: carrier, zip, city, state, sales_rep, adjuster, stage, job_type,
+ *   lead_source, min_total, max_total, since_date, until_date, paused.
+ * Aggregates: group_by ∈ {insurance, zip, state, city, stage, sales_rep, lead_source, job_type}.
+ */
+router.get('/api/intel/projects-query', projectsQuery);
+router.get('/api/intel/projects-aggregate', projectsAggregate);
+
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;
   if (['health', '_meta', 'manifest', 'refresh'].includes(key)) {
@@ -276,16 +290,6 @@ router.post('/api/intel/denial-intake/:id/outcome', postOutcome);
 router.get('/api/intel/adjuster-twin/list', listAdjusters);
 router.post('/api/intel/adjuster-twin/predict', predictAdjuster);
 
-/**
- * Phase 4b: indexed query endpoint over `intel_projects`.
- *   GET /api/intel/projects-query?carrier=State+Farm&zip=20170&limit=50
- *   GET /api/intel/projects-aggregate?group_by=insurance&state=VA
- * Filters: carrier, zip, city, state, sales_rep, adjuster, stage, job_type,
- *   lead_source, min_total, max_total, since_date, until_date, paused.
- * Aggregates: group_by ∈ {insurance, zip, state, city, stage, sales_rep, lead_source, job_type}.
- */
-router.get('/api/intel/projects-query', projectsQuery);
-router.get('/api/intel/projects-aggregate', projectsAggregate);
 
 /**
  * Trigger a STEALTH refresh from the SPA. Runs scripts/roofdocs/refresh-stealth.sh
