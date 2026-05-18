@@ -1319,6 +1319,189 @@ export async function customersList(req: Request, res: Response) {
 }
 
 /* ============================================================================
+ * /api/intel/exec-summary
+ * ----------------------------------------------------------------------------
+ *  Exec dashboard widgets: latest storm, top reps last 12mo, top ZIPs by rev,
+ *  YoY, top carriers by rev, top storms by jobs, risk counts, solar candidates
+ *  count. Returns everything exec.html needs in one round-trip.
+ * ========================================================================= */
+export async function execSummary(_req: Request, res: Response) {
+  const t0 = Date.now();
+  const cutoff12mo = new Date(Date.now() - 365 * 86400_000).toISOString().slice(0, 10);
+
+  try {
+    const [
+      latestStormRows,
+      topRepsRows,
+      topZipsRows,
+      yoyRows,
+      topCarriersRows,
+      topStormsRows,
+      risksRows,
+      solarRows,
+    ] = await Promise.all([
+      pgSql<Array<{
+        storm_date: string | null; storm_type: string | null;
+        storm_mag: string | null; storm_unit: string | null;
+      }>>`
+        SELECT
+          data->'stormMatch'->>'stormDate' AS storm_date,
+          data->'stormMatch'->>'stormType' AS storm_type,
+          data->'stormMatch'->>'stormMagnitude' AS storm_mag,
+          data->'stormMatch'->>'stormUnit' AS storm_unit
+          FROM intel_projects
+         WHERE data->'stormMatch'->>'stormDate' IS NOT NULL
+         ORDER BY data->'stormMatch'->>'stormDate' DESC NULLS LAST
+         LIMIT 1
+      `,
+      pgSql<Array<{ rep: string; signed: number; completed: number; revenue: number }>>`
+        SELECT
+          sales_rep AS rep,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+          FROM intel_projects
+         WHERE signed_date >= ${cutoff12mo} AND sales_rep IS NOT NULL AND sales_rep <> ''
+         GROUP BY sales_rep ORDER BY COUNT(*) DESC LIMIT 5
+      `,
+      pgSql<Array<{ zip: string; city: string | null; signed: number; revenue: number }>>`
+        SELECT
+          LEFT(zip, 5) AS zip,
+          MODE() WITHIN GROUP (ORDER BY city) AS city,
+          COUNT(*)::int AS signed,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+          FROM intel_projects
+         WHERE zip IS NOT NULL AND LENGTH(zip) >= 5
+         GROUP BY LEFT(zip, 5) ORDER BY revenue DESC LIMIT 5
+      `,
+      pgSql<Array<{ year: string; signed: number; completed: number; revenue: number }>>`
+        SELECT
+          LEFT(signed_date, 4) AS year,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+          FROM intel_projects WHERE signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
+         GROUP BY LEFT(signed_date, 4) ORDER BY LEFT(signed_date, 4) DESC
+      `,
+      pgSql<Array<{ name: string; signed: number; completed: number; revenue: number }>>`
+        SELECT
+          insurance AS name,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+          FROM intel_projects WHERE insurance IS NOT NULL AND insurance <> ''
+         GROUP BY insurance ORDER BY revenue DESC LIMIT 5
+      `,
+      pgSql<Array<{
+        storm_date: string | null; storm_type: string | null;
+        storm_mag: string | null; storm_unit: string | null;
+        jobs: number; revenue: number;
+      }>>`
+        SELECT
+          data->'stormMatch'->>'stormDate' AS storm_date,
+          data->'stormMatch'->>'stormType' AS storm_type,
+          data->'stormMatch'->>'stormMagnitude' AS storm_mag,
+          data->'stormMatch'->>'stormUnit' AS storm_unit,
+          COUNT(*)::int AS jobs,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
+          FROM intel_projects
+         WHERE data->'stormMatch'->>'stormId' IS NOT NULL
+         GROUP BY data->'stormMatch'->>'stormId',
+                  data->'stormMatch'->>'stormDate',
+                  data->'stormMatch'->>'stormType',
+                  data->'stormMatch'->>'stormMag',
+                  data->'stormMatch'->>'stormMagnitude',
+                  data->'stormMatch'->>'stormUnit'
+         ORDER BY COUNT(*) DESC LIMIT 5
+      `,
+      pgSql<Array<{
+        paused_count: number; dead_12mo: number; supplements_open: number;
+      }>>`
+        SELECT
+          COUNT(*) FILTER (WHERE paused = true)::int AS paused_count,
+          COUNT(*) FILTER (
+            WHERE stage ~* 'dead|cancel' AND signed_date >= ${cutoff12mo}
+          )::int AS dead_12mo,
+          COUNT(*) FILTER (
+            WHERE (data->>'hasSupplement')::boolean = true
+              AND NOT (stage ~* 'completed|finalized|dead|cancel')
+          )::int AS supplements_open
+          FROM intel_projects
+      `,
+      pgSql<Array<{ count: number }>>`
+        SELECT COUNT(*)::int AS count
+          FROM (
+            SELECT DISTINCT ON (LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')))
+              COALESCE(NULLIF(completed_date,''), signed_date) AS d
+              FROM intel_projects
+             WHERE stage ~* 'completed|finalized'
+               AND COALESCE(data->'trades', '[]'::jsonb) ?| ARRAY['Roofing','Metal Roofing','Flat Roofing','Cedar Shake Roofing']
+               AND (COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> '')
+             ORDER BY LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')),
+                      COALESCE(NULLIF(completed_date,''), signed_date) DESC NULLS LAST
+          ) latest
+         WHERE d IS NOT NULL
+           AND LEFT(d, 4)::int BETWEEN 2018 AND 2024
+      `,
+    ]);
+
+    const latest = latestStormRows[0];
+    res.json({
+      latestStorm: latest ? {
+        stormDate: latest.storm_date,
+        stormType: latest.storm_type,
+        stormMagnitude: latest.storm_mag != null ? num(latest.storm_mag) : null,
+        stormUnit: latest.storm_unit,
+      } : null,
+      topRepsLast12mo: topRepsRows.map((r) => ({
+        name: r.rep,
+        signed: num(r.signed),
+        completed: num(r.completed),
+        revenue: num(r.revenue),
+      })),
+      topZipsByRev: topZipsRows.map((r) => ({
+        zip: r.zip, city: r.city,
+        signed: num(r.signed), revenue: num(r.revenue),
+      })),
+      yoy: yoyRows.map((r) => {
+        const signed = num(r.signed);
+        const completed = num(r.completed);
+        return {
+          year: r.year,
+          signed, completed,
+          revenue: num(r.revenue),
+          closeRate: signed > 0 ? completed / signed : 0,
+        };
+      }),
+      topCarriersByRev: topCarriersRows.map((r) => ({
+        name: r.name,
+        signed: num(r.signed),
+        completed: num(r.completed),
+        revenue: num(r.revenue),
+      })),
+      topStormsByJobs: topStormsRows.map((r) => ({
+        date: r.storm_date,
+        type: r.storm_type,
+        mag: r.storm_mag != null ? num(r.storm_mag) : null,
+        unit: r.storm_unit,
+        jobs: num(r.jobs),
+        revenue: num(r.revenue),
+      })),
+      risks: {
+        paused: num(risksRows[0]?.paused_count ?? 0),
+        deadLast12mo: num(risksRows[0]?.dead_12mo ?? 0),
+        supplementsOpen: num(risksRows[0]?.supplements_open ?? 0),
+      },
+      solarCandidates: num(solarRows[0]?.count ?? 0),
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'exec_summary_failed', message: msg });
+  }
+}
+
+/* ============================================================================
  * /api/intel/weekly-recap?days=7&state=VA
  * ----------------------------------------------------------------------------
  *  Date-windowed metrics for weekly-recap.html. Returns current vs prior

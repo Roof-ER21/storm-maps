@@ -29,6 +29,7 @@ import {
   dashboardKpis, quickSearch,
   customerDeep, opsTeamSummary, opsTeamDeep,
   solarCandidates, repResponse, zipDeep, jobsNearby, weeklyRecap,
+  execSummary,
 } from './aggregates.js';
 
 // Fire-and-forget on module load — table creation is idempotent and the
@@ -227,6 +228,7 @@ router.get('/api/intel/rep-response', repResponse);
 router.get('/api/intel/zip-deep', zipDeep);
 router.get('/api/intel/jobs-nearby', jobsNearby);
 router.get('/api/intel/weekly-recap', weeklyRecap);
+router.get('/api/intel/exec-summary', execSummary);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

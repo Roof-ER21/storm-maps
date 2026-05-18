@@ -144,45 +144,37 @@ const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
 async function start() {
-  const [projects, resurrection, exposure, playbook, receivables] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
-    fetch('/api/intel/resurrection').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/storm-exposure').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/storm-playbook').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/receivables').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
+  // dashboard-kpis covers hero + most opportunity counts; exec-summary covers
+  // YoY, top reps last 12mo, top zips, top storms, latest storm, risks, solar.
+  const [k, e] = await Promise.all([
+    fetch('/api/intel/dashboard-kpis').then((r) => r.json()),
+    fetch('/api/intel/exec-summary').then((r) => r.json()),
   ]);
   $('loading').style.display = 'none';
   $('content').style.display = '';
 
-  // Hero KPIs
-  const totalRev = projects.reduce((s, p) => s + (p.jobTotal || 0), 0);
-  const completedJobs = projects.filter(isCompleted);
-  const completedRev = completedJobs.reduce((s, p) => s + (p.jobTotal || 0), 0);
-  const dataYears = ((new Date(projects.map((p) => p.signedDate).filter(Boolean).sort().reverse()[0]) - new Date(projects.map((p) => p.signedDate).filter(Boolean).sort()[0])) / (365 * 86400000)).toFixed(1);
-  const arTotal = receivables.accounts.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0);
+  const h = k.hero || {};
+  const t = k.tiles || {};
 
+  // Hero
+  const yoyYears = (e.yoy || []).map((y) => y.year).sort();
+  const dataYears = yoyYears.length >= 2
+    ? ((Number(yoyYears[yoyYears.length - 1]) - Number(yoyYears[0])) + 1).toFixed(1)
+    : '—';
   $('hero').innerHTML = `
-    <div><div class="big">${fmt.bigMoney(completedRev)}</div><div class="label">Completed revenue · ${dataYears}y</div></div>
-    <div><div class="big">${fmt.int(completedJobs.length)}</div><div class="label">Completed jobs</div></div>
-    <div><div class="big">${fmt.int(projects.length)}</div><div class="label">Lifetime signed jobs</div></div>
-    <div><div class="big">${fmt.bigMoney(arTotal)}</div><div class="label">Open AR · ${receivables.accounts.length} accounts</div></div>
+    <div><div class="big">${fmt.bigMoney(h.completedRevenue)}</div><div class="label">Completed revenue · ${dataYears}y</div></div>
+    <div><div class="big">${fmt.int(h.completed)}</div><div class="label">Completed jobs</div></div>
+    <div><div class="big">${fmt.int(h.total)}</div><div class="label">Lifetime signed jobs</div></div>
+    <div><div class="big">${fmt.bigMoney(t.arTotal)}</div><div class="label">Open AR</div></div>
   `;
 
-  // Opportunities cards
-  const expRecentHail = exposure.filter((c) => {
-    const ms = c.mostRecentStorm;
-    if (!ms || !ms.valid) return false;
-    return (Date.now() - new Date(ms.valid).getTime()) / 86400000 < 90 && c.strongestStorm.type === 'HAIL';
-  }).length;
-  const roofNoSiding = countUpsell(projects, ['Roofing', 'Metal Roofing', 'Flat Roofing'], 'Siding');
-  const solarCandidates = countSolar(projects);
+  // Opportunities
   const opps = [
-    { title: 'Resurrection candidates', desc: 'Dead insurance jobs hit by new strong storms', count: resurrection.length, link: 'resurrection.html' },
-    { title: 'Warm customers w/ new damage', desc: 'Strong storm within 2mi since first contact', count: exposure.length, link: 'storm-exposure.html' },
-    { title: 'Recent hail-hit customers (90d)', desc: 'Hot warm leads to call this week', count: expRecentHail, link: 'storm-exposure.html' },
-    { title: 'Siding upsell pool', desc: 'Roof customers who never bought siding', count: roofNoSiding, link: 'upgrade-campaigns.html' },
-    { title: 'Solar candidates', desc: 'Completed roof 2018-2024 (right age for solar)', count: solarCandidates, link: 'upgrade-campaigns.html' },
-    { title: 'Open AR ($)', desc: 'Money awaiting collection right now', count: fmt.bigMoney(arTotal), link: 'receivables.html' },
+    { title: 'Resurrection candidates', desc: 'Dead insurance jobs hit by new strong storms', count: t.resurrection, link: 'resurrection.html' },
+    { title: 'Warm customers w/ new damage', desc: 'Strong storm within 2mi since first contact', count: t.stormExposure, link: 'storm-exposure.html' },
+    { title: 'Siding upsell pool', desc: 'Roof customers who never bought siding', count: t.sidingUpsell, link: 'upgrade-campaigns.html' },
+    { title: 'Solar candidates', desc: 'Completed roof 2018-2024 (right age for solar)', count: e.solarCandidates, link: 'upgrade-campaigns.html' },
+    { title: 'Open AR ($)', desc: 'Money awaiting collection right now', count: fmt.bigMoney(t.arTotal), link: 'receivables.html' },
   ];
   $('opportunities').innerHTML = opps.map((o) => `
     <div class="opp-card">
@@ -196,11 +188,7 @@ async function start() {
   `).join('');
 
   // Latest storm
-  let latest = null;
-  for (const j of projects) {
-    if (!j.stormMatch || !j.stormMatch.stormDate) continue;
-    if (!latest || j.stormMatch.stormDate > latest.stormDate) latest = j.stormMatch;
-  }
+  const latest = e.latestStorm;
   if (latest) {
     const days = Math.floor((Date.now() - new Date(latest.stormDate).getTime()) / 86400000);
     $('latest-storm').innerHTML = `
@@ -210,133 +198,43 @@ async function start() {
     `;
   }
 
-  // Top reps last 12 months
-  const cutoff12mo = (new Date(Date.now() - 365 * 86400000)).toISOString().slice(0, 10);
-  const recent = projects.filter((p) => p.signedDate && p.signedDate >= cutoff12mo);
-  const repCounts = {};
-  for (const p of recent) {
-    if (!p.salesRep) continue;
-    if (!repCounts[p.salesRep]) repCounts[p.salesRep] = { signed: 0, completed: 0, revenue: 0 };
-    repCounts[p.salesRep].signed++;
-    if (isCompleted(p)) { repCounts[p.salesRep].completed++; repCounts[p.salesRep].revenue += p.jobTotal || 0; }
-  }
-  const topReps = Object.entries(repCounts).sort((a, b) => b[1].signed - a[1].signed).slice(0, 5);
+  // Top reps last 12mo
   $('tbl-reps').innerHTML = `
     <thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Completed</th><th class="num">Revenue</th></tr></thead>
-    <tbody>${topReps.map(([rep, s]) => `<tr><td>${rep}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+    <tbody>${(e.topRepsLast12mo || []).map((r) => `<tr><td>${r.name}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Top ZIPs all time
-  const zipCounts = {};
-  for (const p of projects) {
-    if (!p.zip) continue;
-    const z = p.zip.slice(0, 5);
-    if (!zipCounts[z]) zipCounts[z] = { signed: 0, completed: 0, revenue: 0, cities: {} };
-    zipCounts[z].signed++;
-    if (p.city) zipCounts[z].cities[p.city] = (zipCounts[z].cities[p.city] || 0) + 1;
-    if (isCompleted(p)) { zipCounts[z].completed++; zipCounts[z].revenue += p.jobTotal || 0; }
-  }
-  const topZips = Object.entries(zipCounts).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+  // Top ZIPs by revenue
   $('tbl-zips').innerHTML = `
     <thead><tr><th>ZIP</th><th>City</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>
-    <tbody>${topZips.map(([z, s]) => `<tr><td>${z}</td><td>${Object.entries(s.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '—'}</td><td class="num">${s.signed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+    <tbody>${(e.topZipsByRev || []).map((r) => `<tr><td>${r.zip}</td><td>${r.city || '—'}</td><td class="num">${r.signed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
   // YoY
-  const yearAgg = {};
-  for (const p of projects) {
-    if (!p.signedDate) continue;
-    const y = p.signedDate.slice(0, 4);
-    if (!yearAgg[y]) yearAgg[y] = { signed: 0, completed: 0, revenue: 0 };
-    yearAgg[y].signed++;
-    if (isCompleted(p)) { yearAgg[y].completed++; yearAgg[y].revenue += p.jobTotal || 0; }
-  }
-  const years = Object.entries(yearAgg).sort((a, b) => b[0].localeCompare(a[0]));
   $('tbl-year').innerHTML = `
     <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Completed</th><th class="num">Close Rate</th><th class="num">Revenue</th></tr></thead>
-    <tbody>${years.map(([y, s]) => {
-      const cr = s.signed > 0 ? s.completed / s.signed : 0;
-      return `<tr><td>${y}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td><td class="num">${(cr * 100).toFixed(1)}%</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`;
-    }).join('')}</tbody>
+    <tbody>${(e.yoy || []).map((y) => `<tr><td>${y.year}</td><td class="num">${y.signed}</td><td class="num">${y.completed}</td><td class="num">${(y.closeRate * 100).toFixed(1)}%</td><td class="num money">${fmt.money(y.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Carriers
-  const carrierAgg = {};
-  for (const p of projects) {
-    if (!p.insurance) continue;
-    if (!carrierAgg[p.insurance]) carrierAgg[p.insurance] = { signed: 0, completed: 0, revenue: 0 };
-    carrierAgg[p.insurance].signed++;
-    if (isCompleted(p)) { carrierAgg[p.insurance].completed++; carrierAgg[p.insurance].revenue += p.jobTotal || 0; }
-  }
-  const topCarriers = Object.entries(carrierAgg).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 5);
+  // Top carriers
   $('tbl-carriers').innerHTML = `
     <thead><tr><th>Carrier</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Revenue</th></tr></thead>
-    <tbody>${topCarriers.map(([c, s]) => `<tr><td>${c}</td><td class="num">${s.signed}</td><td class="num">${s.completed}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+    <tbody>${(e.topCarriersByRev || []).map((c) => `<tr><td>${c.name}</td><td class="num">${c.signed}</td><td class="num">${c.completed}</td><td class="num money">${fmt.money(c.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Top single storms
-  const stormAgg = {};
-  for (const p of projects) {
-    if (!p.stormMatch) continue;
-    const id = p.stormMatch.stormId;
-    if (!stormAgg[id]) stormAgg[id] = { date: p.stormMatch.stormDate, type: p.stormMatch.stormType, mag: p.stormMatch.stormMagnitude, unit: p.stormMatch.stormUnit, jobs: 0, revenue: 0 };
-    stormAgg[id].jobs++;
-    if (p.jobTotal) stormAgg[id].revenue += p.jobTotal;
-  }
-  const topStorms = Object.values(stormAgg).sort((a, b) => b.jobs - a.jobs).slice(0, 5);
+  // Top storms
   $('tbl-bigstorms').innerHTML = `
     <thead><tr><th>Date</th><th>Type</th><th>Mag</th><th class="num">Jobs</th><th class="num">Revenue</th></tr></thead>
-    <tbody>${topStorms.map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type}</td><td>${s.mag} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+    <tbody>${(e.topStormsByJobs || []).map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type || ''}</td><td>${s.mag || ''} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
   // Risks
-  const pausedNow = projects.filter((p) => p.paused).length;
-  const balPending = receivables.accounts.filter((a) => a.status === 'Balance Pending').length;
-  const deadInWindow = projects.filter((p) => isDead(p) && p.signedDate && p.signedDate >= cutoff12mo).length;
-  const supplementsOpen = projects.filter((p) => p.hasSupplement && !isCompleted(p) && !isDead(p)).length;
+  const r = e.risks || {};
   $('risks').innerHTML = `
-    <div class="opp-card"><div class="left"><div class="title">Paused jobs</div><div class="desc">Active blockers</div></div><div class="right"><div class="count" style="color:var(--yellow)">${pausedNow}</div></div></div>
-    <div class="opp-card"><div class="left"><div class="title">Balance Pending AR</div><div class="desc">Money awaiting customer payment</div></div><div class="right"><div class="count" style="color:var(--yellow)">${balPending}</div></div></div>
-    <div class="opp-card"><div class="left"><div class="title">Open supplements</div><div class="desc">Supplement-filed, not yet closed</div></div><div class="right"><div class="count" style="color:var(--yellow)">${supplementsOpen}</div></div></div>
-    <div class="opp-card"><div class="left"><div class="title">Dead jobs (last 12 mo)</div><div class="desc">Resurrection candidates pool</div></div><div class="right"><div class="count" style="color:var(--red)">${deadInWindow}</div></div></div>
+    <div class="opp-card"><div class="left"><div class="title">Paused jobs</div><div class="desc">Active blockers</div></div><div class="right"><div class="count" style="color:var(--yellow)">${fmt.int(r.paused)}</div></div></div>
+    <div class="opp-card"><div class="left"><div class="title">Open supplements</div><div class="desc">Supplement-filed, not yet closed</div></div><div class="right"><div class="count" style="color:var(--yellow)">${fmt.int(r.supplementsOpen)}</div></div></div>
+    <div class="opp-card"><div class="left"><div class="title">Dead jobs (last 12 mo)</div><div class="desc">Resurrection candidates pool</div></div><div class="right"><div class="count" style="color:var(--red)">${fmt.int(r.deadLast12mo)}</div></div></div>
   `;
-}
-
-function countUpsell(projects, hasTrades, missingTrade) {
-  const cust = new Map();
-  for (const p of projects) {
-    const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!cust.has(k)) cust.set(k, new Set());
-    for (const t of (p.trades || [])) cust.get(k).add(t);
-  }
-  let n = 0;
-  for (const trades of cust.values()) {
-    if (hasTrades.some((t) => trades.has(t)) && !trades.has(missingTrade)) n++;
-  }
-  return n;
-}
-function countSolar(projects) {
-  const cust = new Map();
-  const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing']);
-  for (const p of projects) {
-    const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!cust.has(k)) cust.set(k, { trades: new Set(), lastRoofDate: null });
-    const e = cust.get(k);
-    if (isCompleted(p) && (p.trades || []).some((t) => ROOF.has(t))) {
-      const d = p.completedDate || p.signedDate;
-      if (d && (!e.lastRoofDate || d > e.lastRoofDate)) e.lastRoofDate = d;
-      for (const t of (p.trades || [])) e.trades.add(t);
-    }
-  }
-  let n = 0;
-  for (const e of cust.values()) {
-    if (!e.lastRoofDate) continue;
-    const y = Number(e.lastRoofDate.slice(0, 4));
-    if (y >= 2018 && y <= 2024) n++;
-  }
-  return n;
 }
 
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
