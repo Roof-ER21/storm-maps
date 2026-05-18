@@ -1301,3 +1301,215 @@ export async function customersList(req: Request, res: Response) {
     res.status(500).json({ error: 'customers_list_failed', message: msg });
   }
 }
+
+/* ============================================================================
+ * /api/intel/dashboard-kpis
+ * ----------------------------------------------------------------------------
+ *  All summary metrics index.html shows in the hero + tile grid, in one shot:
+ *  total/completed/dead counts, lifetime+completed revenue, distinct customer/
+ *  zip/rep/carrier/adjuster counts, storm-matched count, hot-zips ≥60 score
+ *  count, and siding-upsell count (customers with Roofing but no Siding).
+ *  Also rolls in receivables + resurrection + storm-exposure + storm-playbook
+ *  blob counts for the tile KPIs.
+ * ========================================================================= */
+export async function dashboardKpis(_req: Request, res: Response) {
+  const t0 = Date.now();
+  try {
+    // Big scan in one query — counts + revenue + distinct cardinalities.
+    const [coreRows, zipAggRows, sidingRows, blobCounts] = await Promise.all([
+      pgSql<Array<{
+        total: number; completed: number; dead: number;
+        completed_revenue: number; total_revenue: number;
+        cust_count: number; zip_count: number; rep_count: number;
+        carrier_count: number; adjuster_count: number; storm_matched: number;
+      }>>`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS completed_revenue,
+          COALESCE(SUM(job_total), 0)::numeric AS total_revenue,
+          COUNT(DISTINCT LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')))
+            FILTER (WHERE COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> '')::int AS cust_count,
+          COUNT(DISTINCT LEFT(zip, 5)) FILTER (WHERE zip IS NOT NULL AND LENGTH(zip) >= 5)::int AS zip_count,
+          COUNT(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL AND sales_rep <> '')::int AS rep_count,
+          COUNT(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL AND insurance <> '')::int AS carrier_count,
+          COUNT(DISTINCT TRIM(adjuster_name) || '|' || COALESCE(insurance,''))
+            FILTER (WHERE adjuster_name IS NOT NULL AND TRIM(adjuster_name) <> '')::int AS adjuster_count,
+          COUNT(*) FILTER (WHERE data->'stormMatch' IS NOT NULL AND data->'stormMatch' <> 'null'::jsonb)::int AS storm_matched
+          FROM intel_projects
+      `,
+      // For hot-zips 60+ count, need same scoring as /zip-stats with 180d window.
+      pgSql<Array<{
+        zip: string;
+        signed: number; completed: number; dead: number;
+        revenue: number; recent_storms: number;
+      }>>`
+        SELECT
+          LEFT(zip, 5) AS zip,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue,
+          COUNT(*) FILTER (
+            WHERE (data->'stormMatch'->>'stormDate')::timestamptz > NOW() - INTERVAL '180 days'
+          )::int AS recent_storms
+          FROM intel_projects
+         WHERE zip IS NOT NULL AND LENGTH(zip) >= 5
+         GROUP BY LEFT(zip, 5)
+      `,
+      // Siding upsell — customers with Roofing but no Siding in their trades union.
+      pgSql<Array<{ count: number }>>`
+        WITH customer_trades AS (
+          SELECT
+            LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')) AS key,
+            ARRAY_AGG(DISTINCT trade) AS trades
+            FROM intel_projects,
+                 jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
+           WHERE COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> ''
+           GROUP BY LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,''))
+        )
+        SELECT COUNT(*)::int AS count
+          FROM customer_trades
+         WHERE trades && ARRAY['Roofing','Metal Roofing','Flat Roofing']
+           AND NOT ('Siding' = ANY(trades))
+      `,
+      // Blob row counts for tile KPIs.
+      pgSql<Array<{ key: string; row_count: number; bytes: number }>>`
+        SELECT key, row_count, bytes FROM intel_blobs
+         WHERE key IN ('resurrection','storm-exposure','storm-playbook','receivables','notes','lifetime-touch')
+      `,
+    ]);
+
+    const core = coreRows[0] ?? { total: 0, completed: 0, dead: 0, completed_revenue: 0, total_revenue: 0, cust_count: 0, zip_count: 0, rep_count: 0, carrier_count: 0, adjuster_count: 0, storm_matched: 0 };
+
+    // Hot-zips 60+ score post-process (same formula as zipStats).
+    const zipsForScore = zipAggRows.map((r) => ({
+      signed: num(r.signed),
+      completed: num(r.completed),
+      dead: num(r.dead),
+      revenue: num(r.revenue),
+      recentStorms: num(r.recent_storms),
+      closeRate: 0,
+      avgApprovedJob: 0,
+    }));
+    for (const z of zipsForScore) {
+      z.closeRate = z.signed - z.dead > 0 ? z.completed / (z.signed - z.dead) : 0;
+      z.avgApprovedJob = z.completed > 0 ? z.revenue / z.completed : 0;
+    }
+    const maxStorms = Math.max(1, ...zipsForScore.map((z) => z.recentStorms));
+    const maxJobs = Math.max(1, ...zipsForScore.map((z) => z.signed));
+    const maxAvg = Math.max(1, ...zipsForScore.map((z) => z.avgApprovedJob));
+    let hotZips60 = 0;
+    for (const z of zipsForScore) {
+      const score = 100 * (
+        0.40 * (z.recentStorms / maxStorms) +
+        0.25 * z.closeRate +
+        0.20 * (z.avgApprovedJob / maxAvg) +
+        0.15 * (z.signed / maxJobs)
+      );
+      if (score >= 60) hotZips60++;
+    }
+
+    const siding = num(sidingRows[0]?.count ?? 0);
+
+    // Receivables — sum stored as blob; we don't decompose for this — quick scan.
+    // Pull just enough to compute AR total. Falls back gracefully if missing.
+    let arTotal = 0;
+    try {
+      const blobRow = await pgSql<Array<{ data: { accounts?: Array<{ proj?: { jobTotal?: number }; job?: { jobTotal?: number } }> } }>>`
+        SELECT data FROM intel_blobs WHERE key = 'receivables' LIMIT 1
+      `;
+      const accounts = blobRow[0]?.data?.accounts || [];
+      for (const a of accounts) {
+        arTotal += a.proj?.jobTotal || a.job?.jobTotal || 0;
+      }
+    } catch { /* fall through */ }
+
+    const blobMap: Record<string, { rows: number; bytes: number }> = {};
+    for (const b of blobCounts) {
+      blobMap[b.key] = { rows: num(b.row_count), bytes: num(b.bytes) };
+    }
+
+    res.json({
+      hero: {
+        total: num(core.total),
+        completed: num(core.completed),
+        dead: num(core.dead),
+        totalRevenue: num(core.total_revenue),
+        completedRevenue: num(core.completed_revenue),
+        customers: num(core.cust_count),
+        zips: num(core.zip_count),
+        reps: num(core.rep_count),
+        carriers: num(core.carrier_count),
+        adjusters: num(core.adjuster_count),
+        stormMatched: num(core.storm_matched),
+      },
+      tiles: {
+        hotZips60,
+        sidingUpsell: siding,
+        arTotal,
+        resurrection: blobMap['resurrection']?.rows ?? 0,
+        stormExposure: blobMap['storm-exposure']?.rows ?? 0,
+        stormPlaybook: blobMap['storm-playbook']?.rows ?? 0,
+        notes: blobMap['notes']?.rows ?? 0,
+        lifetimeTouch: blobMap['lifetime-touch']?.rows ?? 0,
+      },
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'dashboard_kpis_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/quick-search?q=foo
+ * ----------------------------------------------------------------------------
+ *  Lightweight typeahead for index.html. Matches against customer name,
+ *  address, city — up to 20 results.
+ *  Returns: { results: [...], took_ms }
+ * ========================================================================= */
+export async function quickSearch(req: Request, res: Response) {
+  const t0 = Date.now();
+  const q = String(req.query.q ?? '').trim();
+  if (q.length < 2) {
+    res.json({ results: [], took_ms: Date.now() - t0 });
+    return;
+  }
+  const needle = '%' + q.replace(/%/g, '\\%').replace(/_/g, '\\_') + '%';
+  try {
+    const rows = await pgSql<Array<{
+      key: string;
+      customer: string | null;
+      address_line1: string | null;
+      city: string | null;
+      state: string | null;
+      insurance: string | null;
+      sales_rep: string | null;
+    }>>`
+      SELECT DISTINCT ON (LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')))
+        LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')) AS key,
+        customer, address_line1, city, state, insurance, sales_rep
+        FROM intel_projects
+       WHERE customer ILIKE ${needle}
+          OR address_line1 ILIKE ${needle}
+          OR city ILIKE ${needle}
+       ORDER BY LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')),
+                signed_date DESC NULLS LAST
+       LIMIT 20
+    `;
+    const results = rows.map((r) => ({
+      customer: r.customer,
+      addressLine1: r.address_line1,
+      city: r.city,
+      state: r.state,
+      insurance: r.insurance,
+      salesRep: r.sales_rep,
+    }));
+    res.json({ results, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'quick_search_failed', message: msg });
+  }
+}

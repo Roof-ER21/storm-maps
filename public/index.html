@@ -326,90 +326,36 @@ const fmt = {
 };
 
 async function load() {
-  const [projects, resurrection, exposure, playbook, receivables] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
-    fetch('/api/intel/resurrection').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/storm-exposure').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/storm-playbook').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/receivables').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
-  ]);
-  // Stats
-  const total = projects.length;
-  const completed = projects.filter((p) => /completed|finalized/i.test(p.stage || ''));
-  const completedRev = completed.reduce((s, p) => s + (p.jobTotal || 0), 0);
-  const totalRev = projects.reduce((s, p) => s + (p.jobTotal || 0), 0);
-  const cust = new Set(projects.map((p) => ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase()).filter((k) => k.replace(/\|/g, '').trim()));
-  const zips = new Set(projects.map((p) => p.zip ? p.zip.slice(0, 5) : null).filter(Boolean));
-  const reps = new Set(projects.map((p) => p.salesRep).filter(Boolean));
-  const carriers = new Set(projects.map((p) => p.insurance).filter(Boolean));
-  const adjusters = new Set();
-  for (const p of projects) if (p.adjusterName) adjusters.add(p.adjusterName + '|' + (p.insurance || ''));
-  const stormMatched = projects.filter((p) => p.stormMatch).length;
-  const arTotal = receivables.accounts.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0);
-  // Compute siding upsell
-  const cm = new Map();
-  for (const p of projects) {
-    const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!cm.has(k)) cm.set(k, new Set());
-    for (const t of (p.trades || [])) cm.get(k).add(t);
-  }
-  const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing']);
-  let siding = 0;
-  for (const trades of cm.values()) {
-    if ([...trades].some((t) => ROOF.has(t)) && !trades.has('Siding')) siding++;
-  }
-  // Hot ZIPs computation (60+)
-  const zipAgg = {};
-  for (const p of projects) {
-    if (!p.zip) continue;
-    const z = p.zip.slice(0, 5);
-    if (!zipAgg[z]) zipAgg[z] = { signed: 0, completed: 0, dead: 0, revenue: 0, recentStorms: 0 };
-    zipAgg[z].signed++;
-    if (/completed|finalized/i.test(p.stage || '')) { zipAgg[z].completed++; zipAgg[z].revenue += p.jobTotal || 0; }
-    else if (/dead|cancel/i.test(p.stage || '')) zipAgg[z].dead++;
-    if (p.stormMatch && p.stormMatch.stormDate) {
-      if ((Date.now() - new Date(p.stormMatch.stormDate).getTime()) / 86400000 < 180) zipAgg[z].recentStorms++;
-    }
-  }
-  const zipRows = Object.values(zipAgg);
-  const maxStorms = Math.max(1, ...zipRows.map((r) => r.recentStorms));
-  const maxJobs = Math.max(1, ...zipRows.map((r) => r.signed));
-  const maxAvg = Math.max(1, ...zipRows.map((r) => r.completed ? r.revenue / r.completed : 0));
-  let hotZips60 = 0;
-  for (const r of zipRows) {
-    const cr = (r.signed - r.dead) > 0 ? r.completed / (r.signed - r.dead) : 0;
-    const avgJob = r.completed ? r.revenue / r.completed : 0;
-    const score = 100 * (0.40 * (r.recentStorms / maxStorms) + 0.25 * cr + 0.20 * (avgJob / maxAvg) + 0.15 * (r.signed / maxJobs));
-    if (score >= 60) hotZips60++;
-  }
+  const k = await fetch('/api/intel/dashboard-kpis').then((r) => r.json());
+  const h = k.hero || {};
+  const t = k.tiles || {};
 
   // Hero
   $('hero').innerHTML = `
-    <div class="stat"><div class="label">Lifetime revenue</div><div class="value">${fmt.money(totalRev)}</div><div class="sub">all signed jobs</div></div>
-    <div class="stat"><div class="label">Completed revenue</div><div class="value">${fmt.money(completedRev)}</div><div class="sub">${completed.length.toLocaleString()} jobs</div></div>
-    <div class="stat"><div class="label">Mapped projects</div><div class="value">${fmt.int(total)}</div><div class="sub">${fmt.int(stormMatched)} matched to storms</div></div>
-    <div class="stat"><div class="label">Unique customers</div><div class="value">${fmt.int(cust.size)}</div><div class="sub">deduped by name+address</div></div>
-    <div class="stat"><div class="label">ZIPs we work</div><div class="value">${fmt.int(zips.size)}</div></div>
-    <div class="stat"><div class="label">Adjusters in book</div><div class="value">${fmt.int(adjusters.size)}</div></div>
+    <div class="stat"><div class="label">Lifetime revenue</div><div class="value">${fmt.money(h.totalRevenue)}</div><div class="sub">all signed jobs</div></div>
+    <div class="stat"><div class="label">Completed revenue</div><div class="value">${fmt.money(h.completedRevenue)}</div><div class="sub">${(h.completed || 0).toLocaleString()} jobs</div></div>
+    <div class="stat"><div class="label">Mapped projects</div><div class="value">${fmt.int(h.total)}</div><div class="sub">${fmt.int(h.stormMatched)} matched to storms</div></div>
+    <div class="stat"><div class="label">Unique customers</div><div class="value">${fmt.int(h.customers)}</div><div class="sub">deduped by name+address</div></div>
+    <div class="stat"><div class="label">ZIPs we work</div><div class="value">${fmt.int(h.zips)}</div></div>
+    <div class="stat"><div class="label">Adjusters in book</div><div class="value">${fmt.int(h.adjusters)}</div></div>
   `;
 
   // Tile KPIs
-  $('kpi-exec').textContent = fmt.money(completedRev);
-  $('kpi-anal').textContent = fmt.int(total);
-  $('kpi-lead').textContent = fmt.int(cust.size);
-  $('kpi-map').textContent = fmt.int(total);
-  $('kpi-hotzips').textContent = fmt.int(hotZips60);
-  $('kpi-zips').textContent = fmt.int(zips.size);
-  $('kpi-res').textContent = fmt.int(resurrection.length);
-  $('kpi-exp').textContent = fmt.int(exposure.length);
-  $('kpi-play').textContent = fmt.int(playbook.length);
-  $('kpi-camp').textContent = fmt.int(siding);
-  $('kpi-cust').textContent = fmt.int(cust.size);
-  $('kpi-adj').textContent = fmt.int(adjusters.size);
-  $('kpi-reps').textContent = fmt.int(reps.size);
-  $('kpi-notes').textContent = '9,775';
-  $('kpi-ar').textContent = fmt.money(arTotal);
+  $('kpi-exec').textContent = fmt.money(h.completedRevenue);
+  $('kpi-anal').textContent = fmt.int(h.total);
+  $('kpi-lead').textContent = fmt.int(h.customers);
+  $('kpi-map').textContent = fmt.int(h.total);
+  $('kpi-hotzips').textContent = fmt.int(t.hotZips60);
+  $('kpi-zips').textContent = fmt.int(h.zips);
+  $('kpi-res').textContent = fmt.int(t.resurrection);
+  $('kpi-exp').textContent = fmt.int(t.stormExposure);
+  $('kpi-play').textContent = fmt.int(t.stormPlaybook);
+  $('kpi-camp').textContent = fmt.int(t.sidingUpsell);
+  $('kpi-cust').textContent = fmt.int(h.customers);
+  $('kpi-adj').textContent = fmt.int(h.adjusters);
+  $('kpi-reps').textContent = fmt.int(h.reps);
+  $('kpi-notes').textContent = fmt.int(t.notes);
+  $('kpi-ar').textContent = fmt.money(t.arTotal);
 
   // Lifetime Touch + Adjuster Twin KPIs (separate fetches — non-blocking)
   fetch('/api/intel/lifetime-touch').then((r) => r.json()).then((d) => {
@@ -433,8 +379,7 @@ async function load() {
   $('meta-pulled').textContent = new Date(2026, 4, 12).toLocaleDateString();
   $('meta-expires').textContent = 'Fri 2026-05-15';
 
-  // Quick search
-  window.__index = { projects, exposure, customers: cm };
+  // Quick search — now hits server-side endpoint (no more keeping 36MB in window)
   $('qsearch').addEventListener('input', quickSearch);
   $('qsearch').addEventListener('focus', quickSearch);
   document.addEventListener('click', (e) => {
@@ -442,32 +387,29 @@ async function load() {
   });
 }
 
-function quickSearch() {
-  const q = $('qsearch').value.trim().toLowerCase();
+let qsearchToken = 0;
+async function quickSearch() {
+  const q = $('qsearch').value.trim();
   const r = $('qresults');
   if (q.length < 2) { r.classList.remove('show'); return; }
+  const myToken = ++qsearchToken;
   const items = [];
-  // ZIP exact match
   if (/^\d{5}$/.test(q)) {
     items.push({ name: `Open ZIP ${q} in ZIP Intel`, sub: 'View knock script for this zip', href: `zip-intel.html` });
   }
-  // Customer / address search
-  let n = 0;
-  const seen = new Set();
-  for (const p of __index.projects) {
-    if (n >= 20) break;
-    const matchStr = `${p.customer || ''} ${p.addressLine1 || ''} ${p.city || ''}`.toLowerCase();
-    if (matchStr.includes(q)) {
-      const k = ((p.customer || '') + '|' + (p.addressLine1 || '')).toLowerCase();
-      if (seen.has(k)) continue;
-      seen.add(k);
-      items.push({
-        name: p.customer || '(unknown)',
-        sub: `${p.addressLine1 || ''}, ${p.city || ''} ${p.state || ''} · ${p.insurance || ''} · ${p.salesRep || ''}`,
-        href: window.RIQ ? window.RIQ.custProfileUrl(p) : 'customers.html',
-      });
-      n++;
-    }
+  let results = [];
+  try {
+    const res = await fetch('/api/intel/quick-search?q=' + encodeURIComponent(q));
+    const json = await res.json();
+    results = json.results || [];
+  } catch { /* fall through */ }
+  if (myToken !== qsearchToken) return;  // stale response — newer keystroke superseded
+  for (const p of results) {
+    items.push({
+      name: p.customer || '(unknown)',
+      sub: `${p.addressLine1 || ''}, ${p.city || ''} ${p.state || ''} · ${p.insurance || ''} · ${p.salesRep || ''}`,
+      href: window.RIQ ? window.RIQ.custProfileUrl(p) : 'customers.html',
+    });
   }
   r.innerHTML = items.length > 0
     ? items.map((i) => `<a class="item" href="${i.href}"><div class="name">${i.name}</div><div class="sub">${i.sub}</div></a>`).join('')
