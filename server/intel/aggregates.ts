@@ -2069,7 +2069,7 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
   else if (tier === 'mid') conds.push(pgSql`score >= 40 AND score < 60`);
   else if (tier === 'low') conds.push(pgSql`score < 40`);
   if (reason === 'storm') conds.push(pgSql`storm_hits_since_last >= 1`);
-  else if (reason === 'old') conds.push(pgSql`years_since_last >= 8`);
+  else if (reason === 'old') conds.push(pgSql`years_since_last >= 4`);
   else if (reason === 'gap') conds.push(pgSql`jsonb_array_length(COALESCE(data->'tradeGaps','[]'::jsonb)) >= 3`);
   const where = conds.length === 0
     ? pgSql``
@@ -2097,7 +2097,7 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
             COUNT(*) FILTER (WHERE score >= 60)::int AS top_tier_count,
             COUNT(*) FILTER (WHERE score >= 40 AND score < 60)::int AS mid_tier_count,
             COUNT(*) FILTER (WHERE storm_hits_since_last >= 1)::int AS with_storm_since,
-            COUNT(*) FILTER (WHERE years_since_last >= 8)::int AS old_roof_count,
+            COUNT(*) FILTER (WHERE years_since_last >= 4)::int AS old_roof_count,
             COUNT(*) FILTER (WHERE customer_email IS NOT NULL OR customer_cell IS NOT NULL)::int AS contactable_count,
             COUNT(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL)::int AS by_rep_count
             FROM intel_lifetime_touch
