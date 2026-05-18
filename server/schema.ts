@@ -192,6 +192,48 @@ export const intelBlobs = pgTable('intel_blobs', {
   updatedAt: timestamp('updated_at').defaultNow(),
 });
 
+// Phase 4b: decomposed projects table for indexed queries (e.g.
+// `WHERE insurance='State Farm' AND zip='20170'`). Promoted columns are the
+// ones we actually filter/sort on; everything else stays in `data` JSONB.
+// Backfilled from intel_blobs[projects] by scripts/roofdocs/backfill-intel-projects.mjs.
+export const intelProjects = pgTable('intel_projects', {
+  id: integer('id').primaryKey(),
+  customer: text('customer'),
+  customerId: text('customer_id'),
+  addressLine1: text('address_line1'),
+  city: text('city'),
+  state: text('state'),
+  zip: text('zip'),
+  lat: real('lat'),
+  lng: real('lng'),
+  insurance: text('insurance'),           // normalized via carrier-normalize.mjs
+  insuranceRaw: text('insurance_raw'),    // original string for audit
+  adjusterName: text('adjuster_name'),
+  adjusterPhone: text('adjuster_phone'),
+  adjusterEmail: text('adjuster_email'),
+  claimNumber: text('claim_number'),
+  claimType: text('claim_type'),
+  jobType: text('job_type'),
+  stage: text('stage'),
+  statusId: integer('status_id'),
+  salesRep: text('sales_rep'),
+  repId: text('rep_id'),
+  leadSource: text('lead_source'),
+  houseType: text('house_type'),
+  roofAccess: text('roof_access'),
+  signedDate: text('signed_date'),        // YYYY-MM-DD strings; portal sends this format
+  completedDate: text('completed_date'),
+  finalizedDate: text('finalized_date'),
+  dateOfLoss: text('date_of_loss'),
+  jobTotal: real('job_total'),
+  acv: real('acv'),
+  deductible: real('deductible'),
+  insuranceTotal: real('insurance_total'),
+  paused: boolean('paused').default(false),
+  data: jsonb('data').notNull(),          // full original record for non-promoted fields
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+
 export const shareableReports = pgTable('shareable_reports', {
   id: serial('id').primaryKey(),
   slug: text('slug').notNull().unique(),

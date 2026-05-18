@@ -394,6 +394,59 @@ async function migrate() {
     )
   `;
 
+  // Phase 4b: decomposed projects table — one row per job for indexed queries
+  // like `WHERE insurance='State Farm' AND zip='20170'`. Backfilled by
+  // scripts/roofdocs/backfill-intel-projects.mjs after the projects blob updates.
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_projects (
+      id INTEGER PRIMARY KEY,
+      customer TEXT,
+      customer_id TEXT,
+      address_line1 TEXT,
+      city TEXT,
+      state TEXT,
+      zip TEXT,
+      lat REAL,
+      lng REAL,
+      insurance TEXT,
+      insurance_raw TEXT,
+      adjuster_name TEXT,
+      adjuster_phone TEXT,
+      adjuster_email TEXT,
+      claim_number TEXT,
+      claim_type TEXT,
+      job_type TEXT,
+      stage TEXT,
+      status_id INTEGER,
+      sales_rep TEXT,
+      rep_id TEXT,
+      lead_source TEXT,
+      house_type TEXT,
+      roof_access TEXT,
+      signed_date TEXT,
+      completed_date TEXT,
+      finalized_date TEXT,
+      date_of_loss TEXT,
+      job_total REAL,
+      acv REAL,
+      deductible REAL,
+      insurance_total REAL,
+      paused BOOLEAN DEFAULT FALSE,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_carrier_zip ON intel_projects (insurance, zip)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_carrier_state ON intel_projects (insurance, state)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_rep_signed ON intel_projects (sales_rep, signed_date)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_zip ON intel_projects (zip)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_state_city ON intel_projects (state, city)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_stage ON intel_projects (stage)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_signed_date ON intel_projects (signed_date)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_adjuster ON intel_projects (adjuster_name)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_lead_source ON intel_projects (lead_source)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_latlng ON intel_projects USING BRIN (lat, lng)`;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)

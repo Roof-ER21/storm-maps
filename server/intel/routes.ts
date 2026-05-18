@@ -21,6 +21,7 @@ import { analyzeDenial } from './denial-analyzer.js';
 import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
 import { transcribeDenial } from './denial-transcribe.js';
 import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } from './denial-intake.js';
+import { projectsQuery, projectsAggregate } from './projects-query.js';
 
 // Fire-and-forget on module load — table creation is idempotent and the
 // app shouldn't crash if Postgres is temporarily unavailable at boot.
@@ -141,11 +142,15 @@ router.get('/api/intel/_meta', (_req, res) => {
       apiKey:  'Send x-riq-api-key header (request from admin)',
     },
     endpoints: {
-      'GET /api/intel/health':        'Service status + data freshness',
-      'GET /api/intel/manifest':      'Inventory of available intel files + mtimes',
-      'GET /api/intel/:key':          'Fetch a specific intel dataset',
-      'GET /api/intel/_meta':         'This endpoint — discovery doc',
-      'POST /api/intel/refresh':      'Returns instructions for running refresh-all.sh',
+      'GET /api/intel/health':              'Service status + data freshness',
+      'GET /api/intel/manifest':            'Inventory of available intel files + mtimes',
+      'GET /api/intel/:key':                'Fetch a specific intel dataset (full blob)',
+      'GET /api/intel/_meta':               'This endpoint — discovery doc',
+      'GET /api/intel/projects-query':      'Filtered + paginated job query (carrier, zip, rep, etc.)',
+      'GET /api/intel/projects-aggregate':  'Job counts grouped by carrier|zip|state|stage|...',
+      'POST /api/intel/analyze-denial':     'Gemini-powered denial-letter analyzer',
+      'POST /api/intel/transcribe-denial':  'PDF/image denial-letter → text',
+      'POST /api/intel/refresh':            'Trigger a stealth refresh (no portal calls)',
     },
     datasets: Object.fromEntries(
       Object.entries(FILES).map(([k, v]) => [k, v.description]),
@@ -270,6 +275,17 @@ router.post('/api/intel/denial-intake/:id/outcome', postOutcome);
  */
 router.get('/api/intel/adjuster-twin/list', listAdjusters);
 router.post('/api/intel/adjuster-twin/predict', predictAdjuster);
+
+/**
+ * Phase 4b: indexed query endpoint over `intel_projects`.
+ *   GET /api/intel/projects-query?carrier=State+Farm&zip=20170&limit=50
+ *   GET /api/intel/projects-aggregate?group_by=insurance&state=VA
+ * Filters: carrier, zip, city, state, sales_rep, adjuster, stage, job_type,
+ *   lead_source, min_total, max_total, since_date, until_date, paused.
+ * Aggregates: group_by ∈ {insurance, zip, state, city, stage, sales_rep, lead_source, job_type}.
+ */
+router.get('/api/intel/projects-query', projectsQuery);
+router.get('/api/intel/projects-aggregate', projectsAggregate);
 
 /**
  * Trigger a STEALTH refresh from the SPA. Runs scripts/roofdocs/refresh-stealth.sh
