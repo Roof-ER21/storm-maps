@@ -150,10 +150,10 @@ curl -sH "x-riq-api-key: $RIQ_API_KEY" https://riq21.example.com/api/intel/resur
 
 ## Operational
 
-- **Refresh log:** `/Users/a21/Desktop/storm-maps/.logs/cron-refresh.log`
-- **Last successful refresh marker:** `/Users/a21/Desktop/storm-maps/.logs/last-ok.txt` (unix epoch seconds)
+- **Refresh log:** `/Users/a21/storm-maps/.logs/cron-refresh.log`
+- **Last successful refresh marker:** `/Users/a21/storm-maps/.logs/last-ok.txt` (unix epoch seconds)
 - **launchd plist:** `~/Library/LaunchAgents/com.theroofdocs.intel-refresh.plist`
-- **Manual run:** `cd /Users/a21/Desktop/storm-maps && ./scripts/roofdocs/refresh-all.sh`
+- **Manual run:** `cd /Users/a21/storm-maps && ./scripts/roofdocs/refresh-all.sh`
 - **Token expiry tracking:** `/Users/a21/web-recon/data/sessions/theroofdocs.json` (JWT exp claim)
 
 When the portal JWT expires, refresh will fail with a clear error in the log;

@@ -16,7 +16,7 @@
 
 set -u
 
-BASE="/Users/a21/Desktop/storm-maps"
+BASE="/Users/a21/storm-maps"
 LOG_DIR="$BASE/.logs"
 LOG="$LOG_DIR/cron-refresh.log"
 LAST_OK="$LOG_DIR/last-ok.txt"

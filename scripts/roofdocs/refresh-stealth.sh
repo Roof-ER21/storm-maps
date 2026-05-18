@@ -18,7 +18,7 @@
 
 set -u
 cd "$(dirname "$0")/../.."
-BASE="/Users/a21/Desktop/storm-maps"
+BASE="/Users/a21/storm-maps"
 
 echo "=== RIQ 21 stealth refresh — $(date -Iseconds) ==="
 
