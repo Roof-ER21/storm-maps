@@ -23,6 +23,7 @@ import { transcribeDenial } from './denial-transcribe.js';
 import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } from './denial-intake.js';
 import { projectsQuery, projectsAggregate } from './projects-query.js';
 import { createShare, getSharedList, listMyShares, deleteShare } from './sharing.js';
+import { predictorScore, predictorWebhook } from './predictor.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -248,6 +249,14 @@ router.get('/api/intel/lifetime-touch-query', lifetimeTouchQuery);
 router.post('/api/intel/share', createShare);
 router.get('/api/intel/share', listMyShares);
 router.delete('/api/intel/share/:slug', deleteShare);
+
+/**
+ * Phase 6: lead-score predictor.
+ *   GET  /api/intel/predictor/score?carrier=X&zip=Y&...  query-param scoring
+ *   POST /api/intel/predictor/webhook                    CC21 lead webhook
+ */
+router.get('/api/intel/predictor/score', predictorScore);
+router.post('/api/intel/predictor/webhook', predictorWebhook);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;
