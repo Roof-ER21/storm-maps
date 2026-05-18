@@ -89,48 +89,8 @@ const fmt = {
   money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
   int: (v) => v == null ? '—' : v.toLocaleString(),
 };
-const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
-const ROOF = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing']);
-let allJobs = [], candidates = [], active = [];
+let candidates = [], active = [];
 let sortKey = 'ageYears', sortDir = 'asc';
-
-function build() {
-  const today = new Date();
-  const m = new Map();
-  for (const j of allJobs) {
-    if (!isCompleted(j)) continue;
-    if (!(j.trades || []).some((t) => ROOF.has(t))) continue;
-    const k = ((j.customer || '').toLowerCase() + '|' + (j.addressLine1 || '').toLowerCase());
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!m.has(k)) m.set(k, []);
-    m.get(k).push(j);
-  }
-  const out = [];
-  for (const [k, jobs] of m) {
-    // Use most recent completed roof
-    const sorted = jobs.sort((a, b) => (b.completedDate || b.signedDate || '').localeCompare(a.completedDate || a.signedDate || ''));
-    const last = sorted[0];
-    const completedDate = last.completedDate || last.signedDate;
-    if (!completedDate) continue;
-    const ageDays = (today.getTime() - new Date(completedDate).getTime()) / 86400000;
-    const ageYears = ageDays / 365;
-    out.push({
-      customer: last.customer,
-      addressLine1: last.addressLine1,
-      city: last.city, state: last.state, zip: last.zip,
-      lat: last.lat, lng: last.lng,
-      email: last.customerEmail, phone: last.customerCell,
-      completedDate, ageYears,
-      jobTotal: last.jobTotal,
-      carrier: last.insurance,
-      houseType: last.houseType,
-      trades: last.trades,
-      rep: last.salesRep,
-      customerKey: k,
-    });
-  }
-  return out;
-}
 
 function renderKPIs() {
   const fresh = candidates.filter((c) => c.ageYears <= 3).length;
@@ -238,9 +198,9 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  allJobs = await res.json();
-  candidates = build();
+  const res = await fetch('/api/intel/solar-candidates');
+  const json = await res.json();
+  candidates = json.candidates || [];
   $('loading').style.display = 'none';
   $('content').style.display = '';
   // Populate filters

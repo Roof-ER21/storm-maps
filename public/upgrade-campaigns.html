@@ -124,58 +124,28 @@ let activeRows = [];
 let sortKey = 'totalRev', sortDir = 'desc';
 
 function custKey(r) {
-  const name = (r.customer || '').trim().toLowerCase();
+  const name = (r.customer || r.name || '').trim().toLowerCase();
   const a1 = (r.addressLine1 || '').trim().toLowerCase();
   const city = (r.city || '').trim().toLowerCase();
   return name + '|' + a1 + '|' + city;
 }
 
-function buildCustomers() {
-  const map = new Map();
-  for (const j of allJobs) {
-    const k = custKey(j);
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!map.has(k)) map.set(k, {
-      key: k,
-      name: j.customer || '(unknown)',
-      addr: [j.addressLine1, j.city, j.state, j.zip].filter(Boolean).join(', '),
-      city: j.city, state: j.state, zip: j.zip,
-      addressLine1: j.addressLine1,
-      lat: j.lat, lng: j.lng,
-      jobs: [],
-      trades: new Set(),
-      carriers: new Set(),
-      reps: new Set(),
-      totalRev: 0,
-      lastDate: '',
-      firstDate: '',
-      hasCompletedRoof: false,
-      lastCompletedRoofDate: '',
-      anyDead: false,
-      anyOpen: false,
-    });
-    const c = map.get(k);
-    c.jobs.push(j);
-    for (const t of (j.trades || [])) c.trades.add(t);
-    if (j.insurance) c.carriers.add(j.insurance);
-    if (j.salesRep) c.reps.add(j.salesRep);
-    if (j.jobTotal) c.totalRev += j.jobTotal;
-    const d = j.completedDate || j.signedDate;
-    if (d) {
-      if (!c.lastDate || d > c.lastDate) c.lastDate = d;
-      if (!c.firstDate || d < c.firstDate) c.firstDate = d;
-    }
-    if (isCompleted(j) && (j.trades || []).some((t) => ROOF_TRADES.includes(t))) {
-      c.hasCompletedRoof = true;
-      const cd = j.completedDate || j.signedDate;
-      if (cd && (!c.lastCompletedRoofDate || cd > c.lastCompletedRoofDate)) {
-        c.lastCompletedRoofDate = cd;
-      }
-    }
-    if (isDead(j)) c.anyDead = true;
-    else if (!isCompleted(j)) c.anyOpen = true;
-  }
-  return [...map.values()];
+// Wrap server `customers-list` rows into the shape the page expects.
+// Server gives us: hasCompletedRoof, lastCompletedRoofDate, maxDeductible,
+// trades/carriers/reps as arrays, plus identity + counts. We compute the
+// addr string + anyDead/anyOpen + 'has any trade' helper here.
+function normalizeCustomer(c) {
+  c.key = custKey(c);
+  c.addr = [c.addressLine1, c.city, c.state, c.zip].filter(Boolean).join(', ');
+  c.totalRev = c.totalRev || 0;
+  c.anyDead = (c.deadJobs || 0) > 0;
+  c.anyOpen = (c.openJobs || 0) > 0;
+  // Filters use `c.trades.has(...)` — we expose Set-like APIs over arrays.
+  const tradesArr = c.trades || [];
+  c.trades = Object.assign([...tradesArr], {
+    has: (t) => tradesArr.includes(t),
+  });
+  return c;
 }
 
 const CAMPAIGNS = {
@@ -216,7 +186,7 @@ const CAMPAIGNS = {
   'multi-job-repeat': {
     label: 'Repeat Customers — 2+ jobs',
     desc: 'Customers who came back for more work. Strongest referral candidates and warmest leads for new offerings.',
-    filter: (c) => c.jobs.length >= 2,
+    filter: (c) => (c.jobCount || 0) >= 2,
   },
   'multi-trade-complete': {
     label: 'Full Stack Customers — Roof + Siding + Gutter',
@@ -226,7 +196,7 @@ const CAMPAIGNS = {
   'high-deductible': {
     label: 'High Deductible — $2500+',
     desc: 'Customers whose insurance had a $2,500+ deductible. Good fits for financing programs.',
-    filter: (c) => c.jobs.some((j) => j.deductible && j.deductible >= 2500),
+    filter: (c) => (c.maxDeductible || 0) >= 2500,
   },
 };
 
@@ -286,7 +256,7 @@ function sortVal(c, k) {
   if (k === 'state') return c.state || '';
   if (k === 'trades') return [...c.trades].sort().join(',');
   if (k === 'carriers') return [...c.carriers].sort().join(',');
-  if (k === 'jobCount') return c.jobs.length;
+  if (k === 'jobCount') return c.jobCount || 0;
   if (k === 'totalRev') return c.totalRev || 0;
   if (k === 'lastDate') return c.lastDate || '';
   return '';
@@ -321,7 +291,7 @@ function renderTable(rows) {
       <td>${c.state || '—'}</td>
       <td><span style="font-size:11px">${[...c.trades].sort().join(', ') || '—'}</span></td>
       <td><span style="font-size:11px">${[...c.carriers].sort().join(', ') || '—'}</span></td>
-      <td class="num">${c.jobs.length}</td>
+      <td class="num">${c.jobCount}</td>
       <td class="num money">${fmt.money(c.totalRev)}</td>
       <td class="num">${c.lastDate || '—'}</td>
     </tr>
@@ -345,7 +315,7 @@ function exportCSV() {
     const reps = [...c.reps].sort().join(';');
     const row = [
       c.name, c.addressLine1, c.city, c.state, c.zip, trades, carriers, reps,
-      c.jobs.length, Math.round(c.totalRev), c.lastDate, c.lat, c.lng,
+      c.jobCount, Math.round(c.totalRev), c.lastDate, c.lat, c.lng,
     ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
     lines.push(row.join(','));
   }
@@ -359,9 +329,9 @@ function exportCSV() {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  allJobs = await res.json();
-  customers = buildCustomers();
+  const res = await fetch('/api/intel/customers-list');
+  const json = await res.json();
+  customers = (json.customers || []).map(normalizeCustomer);
   $('loading').style.display = 'none';
   $('content').style.display = '';
 

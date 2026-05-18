@@ -1213,6 +1213,9 @@ export async function customersList(req: Request, res: Response) {
   const state = q.state?.trim()?.toUpperCase() || null;
 
   try {
+    // ROOF_TRADES literal is matched in SQL via ARRAY_AGG so the page can
+    // filter on hasCompletedRoof / lastCompletedRoofDate / maxDeductible
+    // without having to scan all jobs.
     const rows = await pgSql<Array<{
       name: string;
       address_line1: string | null;
@@ -1231,14 +1234,21 @@ export async function customersList(req: Request, res: Response) {
       trades: string[];
       carriers: string[];
       reps: string[];
+      has_completed_roof: boolean;
+      last_completed_roof_date: string | null;
+      max_deductible: number | null;
     }>>`
       WITH base AS (
         SELECT
           LOWER(TRIM(COALESCE(customer,'')) || '|' || TRIM(COALESCE(address_line1,'')) || '|' || TRIM(COALESCE(city,''))) AS key,
           customer, address_line1, city, state, zip, lat, lng,
-          insurance, sales_rep, stage, job_total,
+          insurance, sales_rep, stage, job_total, deductible,
           COALESCE(NULLIF(completed_date,''), signed_date) AS effective_date,
-          data->'trades' AS trades_json
+          data->'trades' AS trades_json,
+          -- Boolean: this job is a completed roofing job (any of the roof trade variants).
+          (stage ~* 'completed|finalized'
+            AND COALESCE(data->'trades', '[]'::jsonb) ?| ARRAY['Roofing','Metal Roofing','Flat Roofing','Cedar Shake Roofing']
+          ) AS is_completed_roof
           FROM intel_projects
          WHERE COALESCE(customer,'') <> ''
            ${state ? pgSql`AND state = ${state}` : pgSql``}
@@ -1260,7 +1270,10 @@ export async function customersList(req: Request, res: Response) {
         MAX(effective_date) AS last_date,
         COALESCE(ARRAY_AGG(DISTINCT trade) FILTER (WHERE trade IS NOT NULL), ARRAY[]::text[]) AS trades,
         COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
-        COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps
+        COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps,
+        BOOL_OR(is_completed_roof) AS has_completed_roof,
+        MAX(effective_date) FILTER (WHERE is_completed_roof) AS last_completed_roof_date,
+        MAX(deductible) FILTER (WHERE deductible > 0 AND deductible <= 50000) AS max_deductible
         FROM base
         LEFT JOIN LATERAL jsonb_array_elements_text(COALESCE(trades_json, '[]'::jsonb)) AS trade ON TRUE
        GROUP BY key
@@ -1292,6 +1305,9 @@ export async function customersList(req: Request, res: Response) {
         tradeCount: r.trades.length,
         carriers: r.carriers,
         reps: r.reps,
+        hasCompletedRoof: !!r.has_completed_roof,
+        lastCompletedRoofDate: r.last_completed_roof_date,
+        maxDeductible: r.max_deductible != null ? num(r.max_deductible) : null,
       };
     });
 
@@ -1299,6 +1315,95 @@ export async function customersList(req: Request, res: Response) {
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: 'customers_list_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/solar-candidates
+ * ----------------------------------------------------------------------------
+ *  Customers whose most-recent completed roof job is the candidate row. Used
+ *  by solar.html. Per-customer dedup by lower(customer)|lower(addressLine1).
+ *  Returns: { candidates: [{ customer, addressLine1, city, ..., completedDate,
+ *  ageYears, jobTotal, carrier, houseType, email, phone, rep, trades }] }
+ * ========================================================================= */
+export async function solarCandidates(_req: Request, res: Response) {
+  const t0 = Date.now();
+  try {
+    // DISTINCT ON picks the most recent completed roof per customer key.
+    const rows = await pgSql<Array<{
+      customer: string | null;
+      address_line1: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      lat: number | null;
+      lng: number | null;
+      email: string | null;
+      phone: string | null;
+      completed_date: string | null;
+      job_total: number | null;
+      carrier: string | null;
+      house_type: string | null;
+      rep: string | null;
+      trades: unknown;
+    }>>`
+      SELECT DISTINCT ON (LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')))
+        customer,
+        address_line1,
+        city,
+        state,
+        zip,
+        lat,
+        lng,
+        NULLIF(data->>'customerEmail','') AS email,
+        NULLIF(data->>'customerCell','') AS phone,
+        COALESCE(NULLIF(completed_date,''), signed_date) AS completed_date,
+        job_total,
+        insurance AS carrier,
+        house_type,
+        sales_rep AS rep,
+        data->'trades' AS trades
+        FROM intel_projects
+       WHERE stage ~* 'completed|finalized'
+         AND COALESCE(data->'trades', '[]'::jsonb) ?| ARRAY['Roofing','Metal Roofing','Flat Roofing','Cedar Shake Roofing','Slate Roofing']
+         AND COALESCE(NULLIF(completed_date,''), signed_date) IS NOT NULL
+         AND (COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> '')
+       ORDER BY
+         LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')),
+         COALESCE(NULLIF(completed_date,''), signed_date) DESC NULLS LAST
+    `;
+
+    const today = Date.now();
+    const candidates = rows.map((r) => {
+      const completedMs = r.completed_date ? new Date(r.completed_date).getTime() : null;
+      const ageYears = completedMs != null
+        ? (today - completedMs) / (365 * 86400_000)
+        : null;
+      const key = ((r.customer || '').toLowerCase() + '|' + (r.address_line1 || '').toLowerCase());
+      return {
+        customer: r.customer,
+        addressLine1: r.address_line1,
+        city: r.city,
+        state: r.state,
+        zip: r.zip,
+        lat: r.lat,
+        lng: r.lng,
+        email: r.email,
+        phone: r.phone,
+        completedDate: r.completed_date,
+        ageYears,
+        jobTotal: r.job_total != null ? num(r.job_total) : null,
+        carrier: r.carrier,
+        houseType: r.house_type,
+        rep: r.rep,
+        trades: Array.isArray(r.trades) ? r.trades : [],
+        customerKey: key,
+      };
+    });
+    res.json({ candidates, total: candidates.length, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'solar_candidates_failed', message: msg });
   }
 }
 
