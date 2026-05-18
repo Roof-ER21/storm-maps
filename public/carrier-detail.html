@@ -132,9 +132,9 @@ async function showCarrier(name) {
     </div>
 
     <div class="grid-2">
-      <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>
-        <thead><tr><th>Trade</th><th class="num">Jobs</th><th class="num">Close%</th></tr></thead>
-        <tbody>${trades.map((r) => `<tr><td>${r.t}</td><td class="num">${r.signed}</td><td class="num pct">${fmt.pct(r.closeRate)}</td></tr>`).join('')}</tbody>
+      <div><h2 style="font-size:13px;margin-top:0">Top trades <span style="color:var(--muted);font-weight:400;font-size:10px">(close% is post-scope — see note)</span></h2><div class="scroll"><table>
+        <thead><tr><th>Trade</th><th class="num" title="Jobs that had this trade in the scope">Jobs</th><th class="num" title="% of carrier book that contained this trade">Share</th><th class="num" title="Close rate among jobs that reached scoping. Excludes jobs that died before trade scope was set, so this is HIGHER than carrier overall close rate.">Post-scope%</th></tr></thead>
+        <tbody>${trades.map((r) => `<tr><td>${r.t}</td><td class="num">${r.signed}</td><td class="num pct">${fmt.pct(r.share)}</td><td class="num pct">${fmt.pct(r.closeRate)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top ZIPs</h2><div class="scroll"><table>
         <thead><tr><th>ZIP</th><th>City</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>

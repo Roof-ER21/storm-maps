@@ -355,8 +355,13 @@ export async function carrierDeep(req: Request, res: Response) {
     const dead = num(sum.dead);
     const revenue = num(sum.revenue);
 
-    // All sub-aggregate closeRate uses the canonical /(signed-dead) denominator,
-    // matching the carrier-summary close rate. Was incorrectly /signed before.
+    // All sub-aggregate closeRate uses the canonical /(completed+dead).
+    // For TRADES: jobs that die before scoping don't have a trades array,
+    // so per-trade dead is systematically lower than carrier-overall dead.
+    // We expose `share` (this trade's volume vs carrier book) and label
+    // the rate "post-scope" so readers see it's a different metric than
+    // carrier overall close rate.
+    const carrierSigned = num(summaryRows[0]?.signed ?? 0);
     const trades = tradeRows.map((r) => {
       const s = num(r.signed);
       const c = num(r.completed);
@@ -367,6 +372,7 @@ export async function carrierDeep(req: Request, res: Response) {
         completed: c,
         dead: d,
         revenue: num(r.revenue),
+        share: carrierSigned > 0 ? s / carrierSigned : 0,
         closeRate: c + d > 0 ? c / (c + d) : 0,
       };
     });
