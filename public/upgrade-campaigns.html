@@ -95,6 +95,7 @@
         <label>&nbsp;
           <div class="toolbar">
             <button class="btn" id="btn-csv">Export CSV</button>
+            <button class="btn" id="btn-share" style="background:#5ec8ff;color:#000;margin-left:6px">Share Link</button>
             <button class="btn secondary" id="btn-emails">Copy Emails (TODO)</button>
           </div>
         </label>
@@ -345,6 +346,11 @@ async function start() {
   $('f-state').addEventListener('change', applyFilters);
   $('f-minval').addEventListener('input', () => { clearTimeout(window._u); window._u = setTimeout(applyFilters, 250); });
   $('btn-csv').addEventListener('click', exportCSV);
+  $('btn-share').addEventListener('click', () => {
+    const cmp = CAMPAIGNS[currentCampaign];
+    const matches = customers.filter(cmp.filter);
+    window.RIQ.shareList('upgrade-campaign', cmp.label, `${matches.length} customers · ${cmp.desc}`, matches);
+  });
 
   renderCampaigns();
   selectCampaign('siding-upsell');

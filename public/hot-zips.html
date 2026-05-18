@@ -85,6 +85,7 @@
           </select>
         </label>
         <label>&nbsp;<button class="btn" id="btn-csv">Export CSV</button></label>
+        <label>&nbsp;<button class="btn" id="btn-share" style="background:#5ec8ff;color:#000">Share Link</button></label>
       </div>
       <div id="count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
       <div class="scroll"><table id="tbl"></table></div>
@@ -200,6 +201,7 @@ async function start() {
   $('f-state').addEventListener('change', recalc);
   $('f-window').addEventListener('change', recalc);
   $('btn-csv').addEventListener('click', exportCSV);
+  $('btn-share').addEventListener('click', () => window.RIQ.shareList('hot-zips', 'Hot ZIPs', `Top knock-targets by score (${active.length} zips)`, active));
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
 </script>

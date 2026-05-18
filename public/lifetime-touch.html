@@ -94,6 +94,7 @@
         </select>
         <input id="search" placeholder="Search name/address/city/zip…" />
         <button onclick="exportCsv()" style="background: var(--accent); color: var(--bg); border: 0; padding: 7px 14px; border-radius: 5px; font-weight: 700; cursor: pointer;">Export CSV</button>
+        <button onclick="window.RIQ.shareList('leads', 'Lifetime Touch Queue', `${CURRENT.length} customer re-engagement candidates`, CURRENT)" style="background: #5ec8ff; color: #000; border: 0; padding: 7px 14px; border-radius: 5px; font-weight: 700; cursor: pointer; margin-left:6px">Share Link</button>
       </div>
       <div style="overflow-x: auto;">
         <table>

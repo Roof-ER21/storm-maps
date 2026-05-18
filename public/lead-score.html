@@ -101,6 +101,7 @@
             <option value="">All states</option>
           </select>
           <button class="btn" id="rank-csv">Export top 1000</button>
+          <button class="btn" id="rank-share" style="background:#5ec8ff;color:#000;margin-left:6px">Share Link</button>
         </div>
         <div id="rank-count" style="color:var(--muted);font-size:12px;margin-bottom:8px"></div>
         <div class="scroll"><table id="tbl-rank"></table></div>
@@ -266,6 +267,7 @@ async function start() {
   $('rank-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyRankFilters, 200); });
   $('rank-state').addEventListener('change', applyRankFilters);
   $('rank-csv').addEventListener('click', exportTopCSV);
+  $('rank-share').addEventListener('click', () => window.RIQ.shareList('leads', 'Customer Lead Scores (Top 1000)', `Top-scored customers by storm exposure + trade gap + recency`, scored.slice(0, 1000)));
   $('zip-go').addEventListener('click', () => scoreZip($('zip-input').value.trim()));
   $('zip-input').addEventListener('keydown', (e) => { if (e.key === 'Enter') scoreZip(e.target.value.trim()); });
   document.querySelectorAll('.tab').forEach((t) => t.addEventListener('click', () => {
