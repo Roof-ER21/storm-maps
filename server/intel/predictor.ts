@@ -77,10 +77,10 @@ export type ScoreResult = {
 /* ============================================================================
  * Core scoring
  *
- * Each factor's `rate` is its empirical close rate (completed / (signed-dead))
- * for the matched bucket. We start with the global base rate, then nudge
- * toward each factor's rate weighted by sample-size confidence + a hardcoded
- * factor weight.
+ * Each factor's `rate` is its empirical close rate (completed / (completed +
+ * dead)) for the matched bucket — matches the Field Portal's Approval Rate.
+ * We start with the global base rate, then nudge toward each factor's rate
+ * weighted by sample-size confidence + a hardcoded factor weight.
  *
  * Sample-size confidence: 1 - exp(-n/30). For n=30 → ~63% weight. For n=100 →
  * ~96%. Tiny buckets (n<3) ignored.
@@ -112,7 +112,7 @@ export async function computeScore(features: LeadFeatures): Promise<ScoreResult>
   const rep = features.salesRep?.trim() || null;
   const leadSource = features.leadSource?.trim() || null;
 
-  // Base rate: completed / (signed - dead) across the entire book.
+  // Base rate: completed / (completed + dead) — matches Field Portal Approval Rate.
   // Run all lookups in parallel.
   const [
     baseRow,
@@ -128,35 +128,35 @@ export async function computeScore(features: LeadFeatures): Promise<ScoreResult>
     pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects
     `,
     carrier && zip5 ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE insurance = ${carrier} AND LEFT(zip,5) = ${zip5}
     ` : Promise.resolve([{ rate: null, n: 0 }]),
     carrier && state ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE insurance = ${carrier} AND state = ${state}
     ` : Promise.resolve([{ rate: null, n: 0 }]),
     carrier ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE insurance = ${carrier}
     ` : Promise.resolve([{ rate: null, n: 0 }]),
     adjuster ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects
        WHERE LOWER(TRIM(adjuster_name)) = LOWER(${adjuster})
@@ -165,28 +165,28 @@ export async function computeScore(features: LeadFeatures): Promise<ScoreResult>
     rep && carrier ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE TRIM(sales_rep) = ${rep} AND insurance = ${carrier}
     ` : Promise.resolve([{ rate: null, n: 0 }]),
     rep ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE TRIM(sales_rep) = ${rep}
     ` : Promise.resolve([{ rate: null, n: 0 }]),
     leadSource ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE lead_source = ${leadSource}
     ` : Promise.resolve([{ rate: null, n: 0 }]),
     zip5 ? pgSql<Array<{ rate: number | null; n: number }>>`
       SELECT
         (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
-          / NULLIF((COUNT(*) FILTER (WHERE NOT (stage ~* 'dead|cancel'))), 0) AS rate,
+          / NULLIF((COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel')), 0) AS rate,
         COUNT(*)::int AS n
         FROM intel_projects WHERE LEFT(zip,5) = ${zip5}
     ` : Promise.resolve([{ rate: null, n: 0 }]),

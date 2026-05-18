@@ -110,7 +110,7 @@ function renderKPIs() {
   $('kpis').innerHTML = `
     <div class="kpi"><div class="label">Unique ZIPs tracked</div><div class="value">${zips.length}</div></div>
     <div class="kpi"><div class="label">ZIPs with recent storms</div><div class="value">${zips.filter((z) => z.recentStorms > 0).length}</div></div>
-    <div class="kpi"><div class="label">High-score ZIPs (60+)</div><div class="value">${zips.filter((z) => z.score >= 60).length}</div></div>
+    <div class="kpi"><div class="label">High-score ZIPs (50+)</div><div class="value">${zips.filter((z) => z.score >= 50).length}</div></div>
     <div class="kpi"><div class="label">Avg Hot Score</div><div class="value">${(zips.reduce((s, z) => s + z.score, 0) / zips.length).toFixed(1)}</div></div>
   `;
 }
@@ -136,7 +136,7 @@ function render(rows) {
     <th></th>
   </tr></thead>`;
   const body = '<tbody>' + rows.slice(0, 200).map((z) => {
-    const cls = z.score >= 60 ? 'high' : (z.score >= 35 ? 'med' : 'low');
+    const cls = z.score >= 50 ? 'high' : (z.score >= 30 ? 'med' : 'low');
     return `
     <tr>
       <td><strong>${z.zip}</strong></td>

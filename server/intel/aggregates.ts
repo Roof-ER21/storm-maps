@@ -153,15 +153,17 @@ export async function carriersSummary(_req: Request, res: Response) {
       dead: number;
       revenue: number;
     }>>`
+      -- Insurance carriers + a synthetic 'Retail / No Carrier' bucket for the
+      -- ~40% of jobs with no insurance attached (Retail, Repair, Add-On).
+      -- Without this they were silently excluded from carrier views.
       SELECT
-        insurance AS name,
+        COALESCE(NULLIF(insurance, ''), 'Retail / No Carrier') AS name,
         COUNT(*)::int AS signed,
         COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
         COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
         COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
         FROM intel_projects
-       WHERE insurance IS NOT NULL AND insurance <> ''
-       GROUP BY insurance
+       GROUP BY COALESCE(NULLIF(insurance, ''), 'Retail / No Carrier')
        ORDER BY COUNT(*) DESC
     `;
     const carriers = rows.map((c) => {
@@ -175,7 +177,7 @@ export async function carriersSummary(_req: Request, res: Response) {
         completed,
         dead,
         revenue,
-        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgApprovedJob: completed > 0 ? revenue / completed : 0,
       };
     });
@@ -350,7 +352,7 @@ export async function carrierDeep(req: Request, res: Response) {
         completed: c,
         dead: d,
         revenue: num(r.revenue),
-        closeRate: s - d > 0 ? c / (s - d) : 0,
+        closeRate: c + d > 0 ? c / (c + d) : 0,
       };
     });
     const zips = zipRows.map((r) => {
@@ -364,7 +366,7 @@ export async function carrierDeep(req: Request, res: Response) {
         completed: c,
         dead: d,
         revenue: num(r.revenue),
-        closeRate: s - d > 0 ? c / (s - d) : 0,
+        closeRate: c + d > 0 ? c / (c + d) : 0,
       };
     });
     const reps = repRows.map((r) => {
@@ -377,7 +379,7 @@ export async function carrierDeep(req: Request, res: Response) {
         completed: c,
         dead: d,
         revenue: num(r.revenue),
-        closeRate: s - d > 0 ? c / (s - d) : 0,
+        closeRate: c + d > 0 ? c / (c + d) : 0,
       };
     });
     const adjusters = adjusterRows.map((r) => {
@@ -389,7 +391,7 @@ export async function carrierDeep(req: Request, res: Response) {
         signed: s,
         completed: c,
         dead: d,
-        approvalRate: s - d > 0 ? c / (s - d) : 0,
+        approvalRate: c + d > 0 ? c / (c + d) : 0,
       };
     });
     const years = yearRows.map((r) => {
@@ -402,7 +404,7 @@ export async function carrierDeep(req: Request, res: Response) {
         completed: c,
         dead: d,
         revenue: num(r.revenue),
-        closeRate: s - d > 0 ? c / (s - d) : 0,
+        closeRate: c + d > 0 ? c / (c + d) : 0,
       };
     });
     const storms = stormRows.map((r) => ({
@@ -420,7 +422,7 @@ export async function carrierDeep(req: Request, res: Response) {
       summary: {
         name,
         signed, completed, dead, revenue,
-        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgApprovedJob: completed > 0 ? revenue / completed : 0,
       },
       trades, zips, reps, adjusters, years, storms,
@@ -655,7 +657,7 @@ export async function customerLeads(req: Request, res: Response) {
     let maxAvgJob = 1;
     for (const z of zipRows) {
       const s = num(z.signed), c = num(z.completed), d = num(z.dead), rev = num(z.revenue);
-      const closeRate = s - d > 0 ? c / (s - d) : 0;
+      const closeRate = c + d > 0 ? c / (c + d) : 0;
       const avgApprovedJob = c > 0 ? rev / c : 0;
       if (avgApprovedJob > maxAvgJob) maxAvgJob = avgApprovedJob;
       zipStatsMap.set(z.zip, { closeRate, avgApprovedJob });
@@ -711,7 +713,7 @@ export async function customerLeads(req: Request, res: Response) {
       const jobs = num(r.jobs);
       const completed = num(r.completed_jobs);
       const dead = num(r.dead_jobs);
-      const personalCloseRate = jobs - dead > 0 ? completed / (jobs - dead) : 0;
+      const personalCloseRate = completed + dead > 0 ? completed / (completed + dead) : 0;
       const lastDate = r.last_date;
       const daysSinceLast = lastDate
         ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400_000)
@@ -858,7 +860,7 @@ export async function adjustersSummary(_req: Request, res: Response) {
         dead,
         revenue: num(r.revenue),
         completedRevenue: completedRev,
-        approvalRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        approvalRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgApprovedJob: completed > 0 ? completedRev / completed : null,
         avgDeductible: r.avg_deductible != null ? num(r.avg_deductible) : null,
       };
@@ -978,7 +980,7 @@ export async function adjusterDeep(req: Request, res: Response) {
         carrier: carrier || null,
         signed, completed, dead,
         revenue: num(sum.revenue),
-        approvalRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        approvalRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         medianDeductible: med.med_deductible != null ? num(med.med_deductible) : null,
       },
       emails: contact.emails,
@@ -1063,7 +1065,7 @@ export async function repsSummary(_req: Request, res: Response) {
         insSignedCount: num(r.ins_signed_count),
         retailSignedCount: num(r.retail_signed_count),
         totalSalesAllTime: insSales + retailSales,
-        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgApprovedJob: completed > 0 ? completedRev / completed : null,
       };
     });
@@ -1541,9 +1543,9 @@ export async function execSummary(_req: Request, res: Response) {
           year: r.year,
           signed, completed, dead,
           revenue: num(r.revenue),
-          // Canonical close rate — completed / (signed - dead). Matches
-          // carriers-summary, zip-stats, predictor base rate, etc.
-          closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+          // Canonical close rate — completed / (completed + dead). Matches the
+          // Field Portal's Approval Rate (51.23%). All RIQ surfaces use this.
+          closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         };
       }),
       topCarriersByRev: topCarriersRows.map((r) => ({
@@ -1891,7 +1893,7 @@ export async function zipDeep(req: Request, res: Response) {
       return {
         name: c.name,
         signed: cs, completed: cc, dead: cd, rev: num(c.rev),
-        closeRate: cs - cd > 0 ? cc / (cs - cd) : 0,
+        closeRate: cc + cd > 0 ? cc / (cc + cd) : 0,
       };
     });
 
@@ -1902,7 +1904,7 @@ export async function zipDeep(req: Request, res: Response) {
         signed, completed, dead,
         revenue: num(s.revenue),
         completedRev,
-        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgApprovedJob: completed > 0 ? completedRev / completed : null,
         medianDeductible: s.med_deductible != null ? num(s.med_deductible) : null,
         stormCount: num(s.storm_count),
@@ -2225,8 +2227,11 @@ export async function dashboardKpis(_req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS completed_revenue,
           COALESCE(SUM(job_total), 0)::numeric AS total_revenue,
-          COUNT(DISTINCT LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')))
-            FILTER (WHERE COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> '')::int AS cust_count,
+          -- 3-part dedup key matches customers-list, customer-deep, and the
+          -- shared riq-links.js custKey(). Required filter is "customer name
+          -- present" (was OR-address, which surfaced 9 address-only entries).
+          COUNT(DISTINCT LOWER(TRIM(COALESCE(customer,'')) || '|' || TRIM(COALESCE(address_line1,'')) || '|' || TRIM(COALESCE(city,''))))
+            FILTER (WHERE TRIM(COALESCE(customer,'')) <> '')::int AS cust_count,
           COUNT(DISTINCT LEFT(zip, 5)) FILTER (WHERE zip IS NOT NULL AND LENGTH(zip) >= 5)::int AS zip_count,
           COUNT(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL AND sales_rep <> '')::int AS rep_count,
           COUNT(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL AND insurance <> '')::int AS carrier_count,
@@ -2296,6 +2301,9 @@ export async function dashboardKpis(_req: Request, res: Response) {
     const maxStorms = Math.max(1, ...zipsForScore.map((z) => z.recentStorms));
     const maxJobs = Math.max(1, ...zipsForScore.map((z) => z.signed));
     const maxAvg = Math.max(1, ...zipsForScore.map((z) => z.avgApprovedJob));
+    // "Hot ZIPs" threshold tuned to 50 — the previous 60 was rarely reached
+    // because each normalizer pegs to the absolute max (one extreme zip drags
+    // every other zip's normalized component down). 50 surfaces ~5-15 zips.
     let hotZips60 = 0;
     for (const z of zipsForScore) {
       const score = 100 * (
@@ -2304,7 +2312,7 @@ export async function dashboardKpis(_req: Request, res: Response) {
         0.20 * (z.avgApprovedJob / maxAvg) +
         0.15 * (z.signed / maxJobs)
       );
-      if (score >= 60) hotZips60++;
+      if (score >= 50) hotZips60++;
     }
 
     const siding = num(sidingRows[0]?.count ?? 0);
@@ -2577,7 +2585,7 @@ export async function opsTeamSummary(req: Request, res: Response) {
       return {
         name: r.name,
         signed, completed, dead, revenue,
-        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
         avgJob: completed > 0 ? revenue / completed : 0,
       };
     });
