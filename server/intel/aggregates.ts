@@ -107,18 +107,26 @@ export async function zipStats(req: Request, res: Response) {
       avgApprovedJob: 0,
       score: 0,
     }));
+    // Close rate matches the platform-wide formula B (completed/(completed+dead)).
     for (const z of zipsRaw) {
-      z.closeRate = z.signed - z.dead > 0 ? z.completed / (z.signed - z.dead) : 0;
+      z.closeRate = z.completed + z.dead > 0 ? z.completed / (z.completed + z.dead) : 0;
       z.avgApprovedJob = z.completed > 0 ? z.revenue / z.completed : 0;
     }
-    const maxStorms = Math.max(1, ...zipsRaw.map((z) => z.recentStorms));
-    const maxJobs = Math.max(1, ...zipsRaw.map((z) => z.signed));
-    const maxAvg = Math.max(1, ...zipsRaw.map((z) => z.avgApprovedJob));
+    // Normalize against 90th-percentile (was absolute max). Single extreme
+    // zip used to peg the normalizer and drag every other zip's normalized
+    // component to near-zero. Cap each component at 1.0.
+    function p90(values: number[]): number {
+      const sorted = values.slice().sort((a, b) => a - b);
+      return Math.max(1, sorted[Math.floor(sorted.length * 0.90)] ?? 1);
+    }
+    const p90Storms = p90(zipsRaw.map((z) => z.recentStorms));
+    const p90Jobs = p90(zipsRaw.map((z) => z.signed));
+    const p90Avg = p90(zipsRaw.map((z) => z.avgApprovedJob));
     for (const z of zipsRaw) {
-      const stormN = z.recentStorms / maxStorms;
-      const closeN = z.closeRate;
-      const avgN = z.avgApprovedJob / maxAvg;
-      const densN = z.signed / maxJobs;
+      const stormN = Math.min(1, z.recentStorms / p90Storms);
+      const closeN = Math.min(1, z.closeRate);
+      const avgN = Math.min(1, z.avgApprovedJob / p90Avg);
+      const densN = Math.min(1, z.signed / p90Jobs);
       z.score = Math.round(100 * (0.40 * stormN + 0.25 * closeN + 0.20 * avgN + 0.15 * densN));
     }
     zipsRaw.sort((a, b) => b.score - a.score);
@@ -203,6 +211,13 @@ export async function carrierDeep(req: Request, res: Response) {
     res.status(400).json({ error: 'missing_name' });
     return;
   }
+  // "Retail / No Carrier" is a synthetic bucket for jobs with NULL insurance
+  // (created by carriers-summary so the 40% of book without a carrier doesn't
+  // disappear). Translate clicks into a real predicate.
+  const isRetailBucket = name === 'Retail / No Carrier';
+  const insuranceFilter = isRetailBucket
+    ? pgSql`(insurance IS NULL OR insurance = '')`
+    : pgSql`insurance = ${name}`;
 
   try {
     // 7 parallel aggregations on the same indexed predicate.
@@ -222,7 +237,7 @@ export async function carrierDeep(req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
-          FROM intel_projects WHERE insurance = ${name}
+          FROM intel_projects WHERE ${insuranceFilter}
       `,
       // Trades: unnest JSONB array, count + revenue per trade (revenue shared across trades on a job).
       // `dead` is selected so closeRate uses the canonical /(signed-dead) denominator.
@@ -239,7 +254,7 @@ export async function carrierDeep(req: Request, res: Response) {
           ), 0)::numeric AS revenue
           FROM intel_projects,
                jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
-         WHERE insurance = ${name}
+         WHERE ${insuranceFilter}
          GROUP BY trade
          ORDER BY COUNT(*) DESC
          LIMIT 10
@@ -252,7 +267,7 @@ export async function carrierDeep(req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
-          FROM intel_projects WHERE insurance = ${name} AND zip IS NOT NULL AND LENGTH(zip) >= 5
+          FROM intel_projects WHERE ${insuranceFilter} AND zip IS NOT NULL AND LENGTH(zip) >= 5
          GROUP BY LEFT(zip, 5)
          ORDER BY COUNT(*) DESC
          LIMIT 12
@@ -264,7 +279,7 @@ export async function carrierDeep(req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
-          FROM intel_projects WHERE insurance = ${name} AND sales_rep IS NOT NULL AND sales_rep <> ''
+          FROM intel_projects WHERE ${insuranceFilter} AND sales_rep IS NOT NULL AND sales_rep <> ''
          GROUP BY sales_rep
          ORDER BY COUNT(*) FILTER (WHERE stage ~* 'completed|finalized') DESC, COUNT(*) DESC
          LIMIT 10
@@ -275,7 +290,7 @@ export async function carrierDeep(req: Request, res: Response) {
           COUNT(*)::int AS signed,
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead
-          FROM intel_projects WHERE insurance = ${name} AND adjuster_name IS NOT NULL AND adjuster_name <> ''
+          FROM intel_projects WHERE ${insuranceFilter} AND adjuster_name IS NOT NULL AND adjuster_name <> ''
          GROUP BY adjuster_name
          ORDER BY COUNT(*) FILTER (WHERE stage ~* 'completed|finalized') DESC, COUNT(*) DESC
          LIMIT 10
@@ -287,7 +302,7 @@ export async function carrierDeep(req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
-          FROM intel_projects WHERE insurance = ${name} AND signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
+          FROM intel_projects WHERE ${insuranceFilter} AND signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
          GROUP BY LEFT(signed_date, 4)
          ORDER BY LEFT(signed_date, 4) DESC
       `,
@@ -310,7 +325,7 @@ export async function carrierDeep(req: Request, res: Response) {
           COUNT(*)::int AS jobs,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
           FROM intel_projects
-         WHERE insurance = ${name} AND data->'stormMatch'->>'stormId' IS NOT NULL
+         WHERE ${insuranceFilter} AND data->'stormMatch'->>'stormId' IS NOT NULL
          GROUP BY data->'stormMatch'->>'stormId'
          ORDER BY COUNT(*) DESC
          LIMIT 8
@@ -330,7 +345,7 @@ export async function carrierDeep(req: Request, res: Response) {
             WHERE NULLIF(data->>'initialEstimate','')::numeric > 0
               AND NULLIF(data->>'revisedEstimate','')::numeric IS NOT NULL
           )::numeric AS med_uplift
-          FROM intel_projects WHERE insurance = ${name}
+          FROM intel_projects WHERE ${insuranceFilter}
       `,
     ]);
 
@@ -2220,6 +2235,8 @@ export async function dashboardKpis(_req: Request, res: Response) {
         completed_revenue: number; total_revenue: number;
         cust_count: number; zip_count: number; rep_count: number;
         carrier_count: number; adjuster_count: number; storm_matched: number;
+        ins_signed: number; ins_completed: number; ins_dead: number;
+        ret_signed: number; ret_completed: number; ret_dead: number;
       }>>`
         SELECT
           COUNT(*)::int AS total,
@@ -2237,7 +2254,14 @@ export async function dashboardKpis(_req: Request, res: Response) {
           COUNT(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL AND insurance <> '')::int AS carrier_count,
           COUNT(DISTINCT TRIM(adjuster_name) || '|' || COALESCE(insurance,''))
             FILTER (WHERE adjuster_name IS NOT NULL AND TRIM(adjuster_name) <> '')::int AS adjuster_count,
-          COUNT(*) FILTER (WHERE data->'stormMatch' IS NOT NULL AND data->'stormMatch' <> 'null'::jsonb)::int AS storm_matched
+          COUNT(*) FILTER (WHERE data->'stormMatch' IS NOT NULL AND data->'stormMatch' <> 'null'::jsonb)::int AS storm_matched,
+          -- Book composition: Insurance vs Retail/No-Carrier split.
+          COUNT(*) FILTER (WHERE insurance IS NOT NULL AND insurance <> '')::int AS ins_signed,
+          COUNT(*) FILTER (WHERE (insurance IS NOT NULL AND insurance <> '') AND stage ~* 'completed|finalized')::int AS ins_completed,
+          COUNT(*) FILTER (WHERE (insurance IS NOT NULL AND insurance <> '') AND stage ~* 'dead|cancel')::int AS ins_dead,
+          COUNT(*) FILTER (WHERE insurance IS NULL OR insurance = '')::int AS ret_signed,
+          COUNT(*) FILTER (WHERE (insurance IS NULL OR insurance = '') AND stage ~* 'completed|finalized')::int AS ret_completed,
+          COUNT(*) FILTER (WHERE (insurance IS NULL OR insurance = '') AND stage ~* 'dead|cancel')::int AS ret_dead
           FROM intel_projects
       `,
       // For hot-zips 60+ count, need same scoring as /zip-stats with 180d window.
@@ -2298,19 +2322,24 @@ export async function dashboardKpis(_req: Request, res: Response) {
       z.closeRate = z.signed - z.dead > 0 ? z.completed / (z.signed - z.dead) : 0;
       z.avgApprovedJob = z.completed > 0 ? z.revenue / z.completed : 0;
     }
-    const maxStorms = Math.max(1, ...zipsForScore.map((z) => z.recentStorms));
-    const maxJobs = Math.max(1, ...zipsForScore.map((z) => z.signed));
-    const maxAvg = Math.max(1, ...zipsForScore.map((z) => z.avgApprovedJob));
-    // "Hot ZIPs" threshold tuned to 50 — the previous 60 was rarely reached
-    // because each normalizer pegs to the absolute max (one extreme zip drags
-    // every other zip's normalized component down). 50 surfaces ~5-15 zips.
+    // Normalize against 90th-percentile (not absolute max) so a single
+    // extreme zip doesn't peg the normalizer and drag every other zip's
+    // component down. Cap each component at 1.0 — extreme zips just hit the
+    // ceiling, average zips get fair scores. Threshold 50.
+    function p90(values: number[]): number {
+      const sorted = values.slice().sort((a, b) => a - b);
+      return Math.max(1, sorted[Math.floor(sorted.length * 0.90)] ?? 1);
+    }
+    const p90Storms = p90(zipsForScore.map((z) => z.recentStorms));
+    const p90Jobs = p90(zipsForScore.map((z) => z.signed));
+    const p90Avg = p90(zipsForScore.map((z) => z.avgApprovedJob));
     let hotZips60 = 0;
     for (const z of zipsForScore) {
       const score = 100 * (
-        0.40 * (z.recentStorms / maxStorms) +
-        0.25 * z.closeRate +
-        0.20 * (z.avgApprovedJob / maxAvg) +
-        0.15 * (z.signed / maxJobs)
+        0.40 * Math.min(1, z.recentStorms / p90Storms) +
+        0.25 * Math.min(1, z.closeRate) +
+        0.20 * Math.min(1, z.avgApprovedJob / p90Avg) +
+        0.15 * Math.min(1, z.signed / p90Jobs)
       );
       if (score >= 50) hotZips60++;
     }
@@ -2335,6 +2364,31 @@ export async function dashboardKpis(_req: Request, res: Response) {
       blobMap[b.key] = { rows: num(b.row_count), bytes: num(b.bytes) };
     }
 
+    // Book composition — Insurance vs Retail close rate is the most under-
+    // appreciated number in the book (51% vs 28%). Make it easy to display.
+    const insSigned = num(core.ins_signed);
+    const insCompleted = num(core.ins_completed);
+    const insDead = num(core.ins_dead);
+    const retSigned = num(core.ret_signed);
+    const retCompleted = num(core.ret_completed);
+    const retDead = num(core.ret_dead);
+    const bookComposition = {
+      insurance: {
+        signed: insSigned,
+        completed: insCompleted,
+        dead: insDead,
+        closeRate: insCompleted + insDead > 0 ? insCompleted / (insCompleted + insDead) : 0,
+        share: num(core.total) > 0 ? insSigned / num(core.total) : 0,
+      },
+      retail: {
+        signed: retSigned,
+        completed: retCompleted,
+        dead: retDead,
+        closeRate: retCompleted + retDead > 0 ? retCompleted / (retCompleted + retDead) : 0,
+        share: num(core.total) > 0 ? retSigned / num(core.total) : 0,
+      },
+    };
+
     res.json({
       hero: {
         total: num(core.total),
@@ -2349,6 +2403,7 @@ export async function dashboardKpis(_req: Request, res: Response) {
         adjusters: num(core.adjuster_count),
         stormMatched: num(core.storm_matched),
       },
+      bookComposition,
       tiles: {
         hotZips60,
         sidingUpsell: siding,
