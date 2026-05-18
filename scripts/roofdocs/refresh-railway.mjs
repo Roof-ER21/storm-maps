@@ -174,6 +174,9 @@ async function pushDerivedToDb() {
     log('Phase 4c: backfilling intel_customer_exposure (decomposed indexed table)…');
     await runChild('node', ['scripts/roofdocs/backfill-intel-customer-exposure.mjs']);
 
+    log('Phase 4d: backfilling intel_lifetime_touch (decomposed indexed table)…');
+    await runChild('node', ['scripts/roofdocs/backfill-intel-lifetime-touch.mjs']);
+
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
     log(`=== DONE in ${elapsed}s ===`);
     await sql.end();

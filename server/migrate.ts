@@ -487,6 +487,41 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_cust_exp_recent ON intel_customer_exposure (most_recent_storm_date DESC) WHERE most_recent_storm_date IS NOT NULL`;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_cust_exp_latlng ON intel_customer_exposure USING BRIN (lat, lng)`;
 
+  // Phase 4d: decomposed lifetime-touch (per-customer re-engagement queue).
+  // Backfilled from intel_blobs[lifetime-touch] by
+  // scripts/roofdocs/backfill-intel-lifetime-touch.mjs.
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_lifetime_touch (
+      key TEXT PRIMARY KEY,
+      customer TEXT,
+      address TEXT,
+      city TEXT,
+      state TEXT,
+      zip TEXT,
+      lat REAL,
+      lng REAL,
+      customer_email TEXT,
+      customer_cell TEXT,
+      sales_rep TEXT,
+      last_completed TEXT,
+      first_completed TEXT,
+      years_since_last REAL,
+      job_count INTEGER DEFAULT 0,
+      insurance TEXT,
+      storm_hits_since_last INTEGER DEFAULT 0,
+      hail_hits_since_last INTEGER DEFAULT 0,
+      strongest_storm_since_last REAL,
+      score INTEGER DEFAULT 0,
+      contact_quality TEXT,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_lt_rep_score ON intel_lifetime_touch (sales_rep, score DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_lt_score ON intel_lifetime_touch (score DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_lt_state ON intel_lifetime_touch (state)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_lt_storm_hits ON intel_lifetime_touch (storm_hits_since_last DESC) WHERE storm_hits_since_last > 0`;
+
   // Phase 5: public short-code shareable lists (resurrection, orphans, hot-zips,
   // etc.) Reps can share a snapshot to a manager or homeowner with no login.
   await sql`

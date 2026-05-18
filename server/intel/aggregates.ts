@@ -1951,6 +1951,109 @@ export async function repResponse(req: Request, res: Response) {
 }
 
 /* ============================================================================
+ * /api/intel/lifetime-touch-query?rep=X&tier=high&reason=storm
+ * ----------------------------------------------------------------------------
+ *  Phase 4d: indexed query over intel_lifetime_touch. Replaces the 2.2 MB
+ *  blob fetch on lifetime-touch.html with a per-filter SELECT.
+ *
+ *  Params:
+ *    rep    — exact match on sales_rep ('(top)' returns top-100 across all)
+ *    tier   — 'high' (>=60), 'mid' (40-59), 'low' (<40)
+ *    reason — 'storm' (storm_hits_since_last>=1), 'old' (years>=12), 'gap' (>=3 trade gaps)
+ *
+ *  Also returns 'stats' (counts only, computed once) and 'reps' list for
+ *  the page's rep selector. ?include=stats|reps to include extras.
+ * ========================================================================= */
+export async function lifetimeTouchQuery(req: Request, res: Response) {
+  const t0 = Date.now();
+  const q = req.query as Record<string, string | undefined>;
+  const rep = q.rep?.trim() || null;
+  const tier = q.tier?.trim() || null;
+  const reason = q.reason?.trim() || null;
+  const include = String(q.include ?? '').split(',').filter(Boolean);
+  const includeStats = include.includes('stats');
+  const includeReps = include.includes('reps');
+
+  // Build WHERE incrementally
+  const conds: ReturnType<typeof pgSql>[] = [];
+  if (rep && rep !== '(top)') conds.push(pgSql`sales_rep = ${rep}`);
+  if (tier === 'high') conds.push(pgSql`score >= 60`);
+  else if (tier === 'mid') conds.push(pgSql`score >= 40 AND score < 60`);
+  else if (tier === 'low') conds.push(pgSql`score < 40`);
+  if (reason === 'storm') conds.push(pgSql`storm_hits_since_last >= 1`);
+  else if (reason === 'old') conds.push(pgSql`years_since_last >= 12`);
+  else if (reason === 'gap') conds.push(pgSql`jsonb_array_length(COALESCE(data->'tradeGaps','[]'::jsonb)) >= 3`);
+  const where = conds.length === 0
+    ? pgSql``
+    : conds.reduce((acc, c, i) => i === 0 ? pgSql`WHERE ${c}` : pgSql`${acc} AND ${c}`, pgSql``);
+
+  // For "(top)" without rep filter, cap at 100. Otherwise return all matching.
+  const limit = rep === '(top)' ? 100 : 5000;
+
+  try {
+    const [rows, statsRows, repRows] = await Promise.all([
+      pgSql<Array<{ data: unknown }>>`
+        SELECT data FROM intel_lifetime_touch
+         ${where}
+         ORDER BY score DESC NULLS LAST
+         LIMIT ${limit}
+      `,
+      includeStats
+        ? pgSql<Array<{
+            total_customers: number; top_tier_count: number; mid_tier_count: number;
+            with_storm_since: number; old_roof_count: number; contactable_count: number;
+            by_rep_count: number;
+          }>>`
+          SELECT
+            COUNT(*)::int AS total_customers,
+            COUNT(*) FILTER (WHERE score >= 60)::int AS top_tier_count,
+            COUNT(*) FILTER (WHERE score >= 40 AND score < 60)::int AS mid_tier_count,
+            COUNT(*) FILTER (WHERE storm_hits_since_last >= 1)::int AS with_storm_since,
+            COUNT(*) FILTER (WHERE years_since_last >= 12)::int AS old_roof_count,
+            COUNT(*) FILTER (WHERE customer_email IS NOT NULL OR customer_cell IS NOT NULL)::int AS contactable_count,
+            COUNT(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL)::int AS by_rep_count
+            FROM intel_lifetime_touch
+        `
+        : Promise.resolve([] as Array<{ total_customers: number }>),
+      includeReps
+        ? pgSql<Array<{ rep: string; count: number }>>`
+          SELECT sales_rep AS rep, COUNT(*)::int AS count
+            FROM intel_lifetime_touch
+           WHERE sales_rep IS NOT NULL
+           GROUP BY sales_rep
+           ORDER BY sales_rep
+        `
+        : Promise.resolve([] as Array<{ rep: string; count: number }>),
+    ]);
+
+    const result: Record<string, unknown> = {
+      rows: rows.map((r) => r.data),
+      total: rows.length,
+      took_ms: Date.now() - t0,
+    };
+    if (includeStats) {
+      const s = statsRows[0] ?? { total_customers: 0, top_tier_count: 0, mid_tier_count: 0, with_storm_since: 0, old_roof_count: 0, contactable_count: 0, by_rep_count: 0 };
+      result.stats = {
+        totalCustomers: num(s.total_customers),
+        topTierCount: num(s.top_tier_count),
+        midTierCount: num((s as { mid_tier_count: number }).mid_tier_count),
+        withStormSince: num((s as { with_storm_since: number }).with_storm_since),
+        oldRoofCount: num((s as { old_roof_count: number }).old_roof_count),
+        contactableCount: num((s as { contactable_count: number }).contactable_count),
+        byRepCount: num((s as { by_rep_count: number }).by_rep_count),
+      };
+    }
+    if (includeReps) {
+      result.reps = repRows.map((r) => ({ rep: r.rep, count: num(r.count) }));
+    }
+    res.json(result);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'lifetime_touch_query_failed', message: msg });
+  }
+}
+
+/* ============================================================================
  * /api/intel/solar-candidates
  * ----------------------------------------------------------------------------
  *  Customers whose most-recent completed roof job is the candidate row. Used

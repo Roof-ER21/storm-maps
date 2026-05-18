@@ -131,4 +131,7 @@ async function importDataset({ key, file }) {
   if (ok.some((r) => r.key === 'storm-exposure')) {
     await runBackfill('backfill-intel-customer-exposure.mjs', 'Backfilling intel_customer_exposure (Phase 4c)');
   }
+  if (ok.some((r) => r.key === 'lifetime-touch')) {
+    await runBackfill('backfill-intel-lifetime-touch.mjs', 'Backfilling intel_lifetime_touch (Phase 4d)');
+  }
 })();
