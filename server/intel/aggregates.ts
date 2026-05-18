@@ -2335,12 +2335,14 @@ export async function dashboardKpis(_req: Request, res: Response) {
     const p90Avg = p90(zipsForScore.map((z) => z.avgApprovedJob));
     let hotZips60 = 0;
     for (const z of zipsForScore) {
-      const score = 100 * (
+      // Round to match zip-stats' Math.round(...) so the dashboard count
+      // and the page list agree exactly (49.5 rounds to 50 → hot).
+      const score = Math.round(100 * (
         0.40 * Math.min(1, z.recentStorms / p90Storms) +
         0.25 * Math.min(1, z.closeRate) +
         0.20 * Math.min(1, z.avgApprovedJob / p90Avg) +
         0.15 * Math.min(1, z.signed / p90Jobs)
-      );
+      ));
       if (score >= 50) hotZips60++;
     }
 
