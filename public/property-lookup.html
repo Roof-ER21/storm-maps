@@ -79,7 +79,7 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
-let allJobs = [], allStorms = [], mapInst = null;
+let allStorms = [], mapInst = null;
 
 function haversine(lat1, lng1, lat2, lng2) {
   const R = 3958.7613;
@@ -110,17 +110,20 @@ async function look(address) {
     return;
   }
   $('status').textContent = `Found ${coords.matchedAddress} (${coords.lat.toFixed(4)}, ${coords.lng.toFixed(4)})`;
-  // Find Roof Docs jobs within 0.5 miles (probably the property)
+  // Server-side radius query at 0.5mi — split into property (≤0.1) vs neighbors.
   const PROP_RADIUS = 0.1;
   const NEIGHBOR_RADIUS = 0.5;
-  const ourJobs = [];
-  const neighborJobs = [];
-  for (const j of allJobs) {
-    if (j.lat == null || j.lng == null) continue;
-    const d = haversine(coords.lat, coords.lng, j.lat, j.lng);
-    if (d <= PROP_RADIUS) ourJobs.push({ ...j, distance: d });
-    else if (d <= NEIGHBOR_RADIUS) neighborJobs.push({ ...j, distance: d });
+  let allNearby = [];
+  try {
+    const res = await fetch(`/api/intel/jobs-nearby?lat=${coords.lat}&lng=${coords.lng}&radius=${NEIGHBOR_RADIUS}`);
+    const json = await res.json();
+    allNearby = json.jobs || [];
+  } catch (e) {
+    $('status').textContent = '❌ jobs-nearby failed: ' + e.message;
+    return;
   }
+  const ourJobs = allNearby.filter((j) => j.distance <= PROP_RADIUS);
+  const neighborJobs = allNearby.filter((j) => j.distance > PROP_RADIUS);
   // Storms within 2 miles, last 5 years
   const STORM_RADIUS = 2;
   const fiveYearsAgo = new Date(Date.now() - 5 * 365 * 86400000);
@@ -240,11 +243,8 @@ async function look(address) {
 }
 
 async function start() {
-  const [r1, r2] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
-    fetch('/api/intel/storms-light').then((r) => r.ok ? r.json() : null).catch(() => null),
-  ]);
-  allJobs = r1;
+  // Only fetch storms list; jobs come from server radius query per lookup.
+  const r2 = await fetch('/api/intel/storms-light').then((r) => r.ok ? r.json() : null).catch(() => null);
   // storms-light is GeoJSON FeatureCollection — flatten + normalize.
   if (r2) {
     const features = Array.isArray(r2) ? r2 : (r2?.features || []);

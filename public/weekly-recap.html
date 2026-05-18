@@ -92,48 +92,30 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
-let allJobs = [], allStorms = [], allExposure = [], resurrection = [], receivables = { accounts: [], downpayments: [] };
+let allStorms = [], resurrection = [];
 
 function dateDaysAgo(d) { return new Date(Date.now() - d * 86400000); }
 
-function buildRecap() {
+async function buildRecap() {
   const days = Number($('window').value);
   const state = $('state').value;
   const since = dateDaysAgo(days);
   const sinceStr = since.toISOString().slice(0, 10);
-  const today = new Date().toISOString().slice(0, 10);
   const weekLabel = `${since.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
 
-  let jobs = allJobs;
-  if (state) jobs = jobs.filter((j) => j.state === state);
+  // Server endpoint returns counts + top reps + receivables aggregates in one call.
+  const params = new URLSearchParams({ days: String(days) });
+  if (state) params.set('state', state);
+  const r = await fetch('/api/intel/weekly-recap?' + params.toString()).then((r) => r.json());
+  const newSigned = { length: r.numbers.newSigned };
+  const newCompleted = { length: r.numbers.newCompleted };
+  const newDead = { length: r.numbers.newDead };
+  const closedRev = r.numbers.closedRev;
+  const deltaSigned = r.numbers.deltaSigned;
+  const deltaRev = r.numbers.deltaRev;
+  const topReps = (r.topReps || []).map((rep) => [rep.name, { signed: rep.signed, revenue: rep.revenue }]);
 
-  // New signed this window
-  const newSigned = jobs.filter((j) => j.signedDate && j.signedDate >= sinceStr);
-  // Completed this window
-  const newCompleted = jobs.filter((j) => j.completedDate && j.completedDate >= sinceStr);
-  // Dead this window
-  const newDead = jobs.filter((j) => isDead(j) && (j.finalizedDate || j.signedDate) >= sinceStr);
-  // Revenue closed this window
-  const closedRev = newCompleted.reduce((s, j) => s + (j.jobTotal || 0), 0);
-  // Compare to prior window (for delta)
-  const priorSince = new Date(since.getTime() - days * 86400000).toISOString().slice(0, 10);
-  const priorSigned = jobs.filter((j) => j.signedDate && j.signedDate >= priorSince && j.signedDate < sinceStr);
-  const priorCompleted = jobs.filter((j) => j.completedDate && j.completedDate >= priorSince && j.completedDate < sinceStr);
-  const priorRev = priorCompleted.reduce((s, j) => s + (j.jobTotal || 0), 0);
-  const deltaSigned = newSigned.length - priorSigned.length;
-  const deltaRev = closedRev - priorRev;
-
-  // Top reps this window
-  const repAgg = {};
-  for (const j of newSigned) {
-    if (!j.salesRep) continue;
-    repAgg[j.salesRep] = repAgg[j.salesRep] || { signed: 0, revenue: 0 };
-    repAgg[j.salesRep].signed++;
-    if (j.jobTotal) repAgg[j.salesRep].revenue += j.jobTotal;
-  }
-  const topReps = Object.entries(repAgg).sort((a, b) => b[1].signed - a[1].signed).slice(0, 5);
-
-  // Storms this window
+  // Storms this window (still from local storms-light blob; geo radius lookups per storm).
   const recentStorms = allStorms.filter((s) => {
     if (!s.valid) return false;
     const ts = new Date(s.valid).getTime();
@@ -145,22 +127,14 @@ function buildRecap() {
     s.type === 'TORNADO'
   ).sort((a, b) => (b.valid || '').localeCompare(a.valid || ''));
 
-  // For each strong storm — how many customers within 3mi?
-  const stormCustomers = [];
-  function hav(la, lo, lb, lob) {
-    const R = 3958.7613, φ1=la*Math.PI/180, φ2=lb*Math.PI/180;
-    const dφ=(lb-la)*Math.PI/180, dλ=(lob-lo)*Math.PI/180;
-    const a = Math.sin(dφ/2)**2 + Math.cos(φ1)*Math.cos(φ2)*Math.sin(dλ/2)**2;
-    return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  }
-  for (const s of strongStorms.slice(0, 5)) {
-    let near = 0;
-    for (const j of jobs) {
-      if (j.lat == null || j.lng == null) continue;
-      if (hav(s.lat, s.lng, j.lat, j.lng) <= 3) near++;
-    }
-    stormCustomers.push({ ...s, nearbyCustomers: near });
-  }
+  // Per-storm nearby count — server radius query, top 5 storms only.
+  const stormCustomers = await Promise.all(strongStorms.slice(0, 5).map(async (s) => {
+    try {
+      const res = await fetch(`/api/intel/jobs-nearby?lat=${s.lat}&lng=${s.lng}&radius=3`);
+      const json = await res.json();
+      return { ...s, nearbyCustomers: (json.jobs || []).length };
+    } catch { return { ...s, nearbyCustomers: 0 }; }
+  }));
 
   // Resurrection new candidates (storm hit since past week)
   const newResurrection = resurrection.filter((r) => {
@@ -168,9 +142,8 @@ function buildRecap() {
     return sd && sd >= sinceStr;
   });
 
-  // AR snapshot
-  const arTotal = receivables.accounts.reduce((s, a) => s + (a.proj?.jobTotal || a.job?.jobTotal || 0), 0);
-  const cfPending = receivables.accounts.filter((a) => a.status === 'CF Pending' || a.status === 'CF Sent').length;
+  const { arTotal, cfPending, accountsTotal: receivablesAccounts, downpaymentsAwaiting } = r.receivables;
+  const receivables = { accounts: { length: receivablesAccounts }, downpayments: { filter: () => ({ length: downpaymentsAwaiting }) } };
 
   // Build HTML
   $('recap').innerHTML = `
@@ -238,13 +211,11 @@ function buildRecap() {
 }
 
 async function start() {
-  const [r1, r2, r3, r4] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
+  // projects + receivables come from /api/intel/weekly-recap server endpoint per recompute.
+  const [r2, r3] = await Promise.all([
     fetch('/api/intel/storms-light').then((r) => r.json()),
     fetch('/api/intel/resurrection').then((r) => r.json()).catch(() => []),
-    fetch('/api/intel/receivables').then((r) => r.json()).catch(() => ({ accounts: [], downpayments: [] })),
   ]);
-  allJobs = r1;
   // storms-light is GeoJSON FeatureCollection — unwrap + normalize.
   const features = Array.isArray(r2) ? r2 : (r2?.features || []);
   allStorms = features.map((f) => {
@@ -261,7 +232,7 @@ async function start() {
       lng: c[0],
     };
   }).filter(Boolean);
-  resurrection = r3; receivables = r4;
+  resurrection = r3;
   $('window').addEventListener('change', buildRecap);
   $('state').addEventListener('change', buildRecap);
   $('print').addEventListener('click', () => window.print());

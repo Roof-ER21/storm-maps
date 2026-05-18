@@ -1319,6 +1319,221 @@ export async function customersList(req: Request, res: Response) {
 }
 
 /* ============================================================================
+ * /api/intel/weekly-recap?days=7&state=VA
+ * ----------------------------------------------------------------------------
+ *  Date-windowed metrics for weekly-recap.html. Returns current vs prior
+ *  window deltas + top reps. Receivables totals come from intel_blobs since
+ *  that dataset isn't decomposed yet.
+ * ========================================================================= */
+export async function weeklyRecap(req: Request, res: Response) {
+  const t0 = Date.now();
+  const days = Math.max(1, Math.min(90, Number(req.query.days) || 7));
+  const state = String(req.query.state ?? '').trim().toUpperCase() || null;
+
+  // Date-string boundaries — using portal's YYYY-MM-DD format.
+  const now = Date.now();
+  const since = new Date(now - days * 86400_000).toISOString().slice(0, 10);
+  const priorSince = new Date(now - 2 * days * 86400_000).toISOString().slice(0, 10);
+
+  try {
+    const [
+      windowRows,
+      priorRows,
+      topRepsRows,
+      receivablesBlob,
+    ] = await Promise.all([
+      pgSql<Array<{
+        new_signed: number; new_completed: number; new_dead: number;
+        closed_rev: number;
+      }>>`
+        SELECT
+          COUNT(*) FILTER (WHERE signed_date >= ${since})::int AS new_signed,
+          COUNT(*) FILTER (WHERE completed_date >= ${since})::int AS new_completed,
+          COUNT(*) FILTER (
+            WHERE stage ~* 'dead|cancel' AND COALESCE(finalized_date, signed_date) >= ${since}
+          )::int AS new_dead,
+          COALESCE(SUM(job_total) FILTER (WHERE completed_date >= ${since}), 0)::numeric AS closed_rev
+          FROM intel_projects
+         WHERE 1=1 ${state ? pgSql`AND state = ${state}` : pgSql``}
+      `,
+      pgSql<Array<{ prior_signed: number; prior_rev: number }>>`
+        SELECT
+          COUNT(*) FILTER (WHERE signed_date >= ${priorSince} AND signed_date < ${since})::int AS prior_signed,
+          COALESCE(SUM(job_total) FILTER (
+            WHERE completed_date >= ${priorSince} AND completed_date < ${since}
+          ), 0)::numeric AS prior_rev
+          FROM intel_projects
+         WHERE 1=1 ${state ? pgSql`AND state = ${state}` : pgSql``}
+      `,
+      pgSql<Array<{ rep: string; signed: number; revenue: number }>>`
+        SELECT
+          TRIM(sales_rep) AS rep,
+          COUNT(*)::int AS signed,
+          COALESCE(SUM(job_total), 0)::numeric AS revenue
+          FROM intel_projects
+         WHERE signed_date >= ${since}
+           AND sales_rep IS NOT NULL AND sales_rep <> ''
+           ${state ? pgSql`AND state = ${state}` : pgSql``}
+         GROUP BY TRIM(sales_rep)
+         ORDER BY COUNT(*) DESC
+         LIMIT 5
+      `,
+      pgSql<Array<{ data: { accounts?: Array<{ status?: string; proj?: { jobTotal?: number }; job?: { jobTotal?: number } }>; downpayments?: Array<{ status?: string }> } }>>`
+        SELECT data FROM intel_blobs WHERE key = 'receivables' LIMIT 1
+      `,
+    ]);
+
+    const w = windowRows[0] ?? { new_signed: 0, new_completed: 0, new_dead: 0, closed_rev: 0 };
+    const p = priorRows[0] ?? { prior_signed: 0, prior_rev: 0 };
+    const newSigned = num(w.new_signed);
+    const newCompleted = num(w.new_completed);
+    const newDead = num(w.new_dead);
+    const closedRev = num(w.closed_rev);
+    const priorSigned = num(p.prior_signed);
+    const priorRev = num(p.prior_rev);
+
+    // Receivables aggregate from blob
+    const recv = receivablesBlob[0]?.data || {};
+    const accounts = recv.accounts || [];
+    let arTotal = 0;
+    let cfPending = 0;
+    for (const a of accounts) {
+      arTotal += a.proj?.jobTotal || a.job?.jobTotal || 0;
+      if (a.status === 'CF Pending' || a.status === 'CF Sent') cfPending++;
+    }
+    const downpayments = recv.downpayments || [];
+    const downAwaiting = downpayments.filter((d) => d.status !== 'Collected').length;
+
+    res.json({
+      window: { days, since, state },
+      numbers: {
+        newSigned,
+        newCompleted,
+        newDead,
+        closedRev,
+        deltaSigned: newSigned - priorSigned,
+        deltaRev: closedRev - priorRev,
+      },
+      topReps: topRepsRows.map((r) => ({
+        name: r.rep,
+        signed: num(r.signed),
+        revenue: num(r.revenue),
+      })),
+      receivables: {
+        arTotal,
+        cfPending,
+        accountsTotal: accounts.length,
+        downpaymentsAwaiting: downAwaiting,
+      },
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'weekly_recap_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/jobs-nearby?lat=38.95&lng=-77.3&radius=3
+ * ----------------------------------------------------------------------------
+ *  Haversine radius query over intel_projects (jobs with lat/lng). Used by
+ *  storm-intel.html (jobs near a storm) and property-lookup.html (jobs near
+ *  a geocoded address).
+ *
+ *  Returns: { jobs: [{...job, distance}], total, took_ms }
+ *  Pre-filter by lat/lng bbox using a degree-approximation (1° lat ≈ 69 mi)
+ *  then refine with exact haversine. Keeps the planner from full-scanning
+ *  intel_projects for nearby-query patterns.
+ * ========================================================================= */
+export async function jobsNearby(req: Request, res: Response) {
+  const t0 = Date.now();
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  const radius = Math.max(0.01, Math.min(50, Number(req.query.radius) || 3));
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    res.status(400).json({ error: 'missing_or_invalid_lat_lng' });
+    return;
+  }
+  // Bbox prefilter — 1° lat ≈ 69 mi; 1° lng ≈ 69 * cos(lat) mi.
+  const latDelta = radius / 69;
+  const cosLat = Math.cos((lat * Math.PI) / 180);
+  const lngDelta = radius / (69 * Math.max(0.01, Math.abs(cosLat)));
+
+  try {
+    const rows = await pgSql<Array<{
+      id: number;
+      customer: string | null;
+      address_line1: string | null;
+      city: string | null;
+      state: string | null;
+      zip: string | null;
+      lat: number;
+      lng: number;
+      insurance: string | null;
+      adjuster_name: string | null;
+      sales_rep: string | null;
+      stage: string | null;
+      job_type: string | null;
+      signed_date: string | null;
+      completed_date: string | null;
+      job_total: number | null;
+      customer_email: string | null;
+      customer_cell: string | null;
+      trades: unknown;
+      distance_miles: number;
+    }>>`
+      SELECT id, customer, address_line1, city, state, zip, lat, lng,
+             insurance, adjuster_name, sales_rep, stage, job_type,
+             signed_date, completed_date, job_total,
+             NULLIF(data->>'customerEmail','') AS customer_email,
+             NULLIF(data->>'customerCell','') AS customer_cell,
+             data->'trades' AS trades,
+             -- Haversine in miles (R = 3958.7613)
+             (3958.7613 * 2 * ASIN(SQRT(
+               POWER(SIN(RADIANS(${lat} - lat) / 2), 2)
+               + COS(RADIANS(${lat})) * COS(RADIANS(lat))
+                 * POWER(SIN(RADIANS(${lng} - lng) / 2), 2)
+             )))::numeric AS distance_miles
+        FROM intel_projects
+       WHERE lat IS NOT NULL AND lng IS NOT NULL
+         AND lat BETWEEN ${lat - latDelta} AND ${lat + latDelta}
+         AND lng BETWEEN ${lng - lngDelta} AND ${lng + lngDelta}
+    `;
+
+    const nearby = rows
+      .map((r) => ({
+        id: r.id,
+        customer: r.customer,
+        addressLine1: r.address_line1,
+        city: r.city,
+        state: r.state,
+        zip: r.zip,
+        lat: r.lat,
+        lng: r.lng,
+        insurance: r.insurance,
+        adjusterName: r.adjuster_name,
+        salesRep: r.sales_rep,
+        stage: r.stage,
+        jobType: r.job_type,
+        signedDate: r.signed_date,
+        completedDate: r.completed_date,
+        jobTotal: r.job_total != null ? num(r.job_total) : null,
+        customerEmail: r.customer_email,
+        customerCell: r.customer_cell,
+        trades: Array.isArray(r.trades) ? r.trades : [],
+        distance: num(r.distance_miles),
+      }))
+      .filter((j) => j.distance <= radius)
+      .sort((a, b) => a.distance - b.distance);
+
+    res.json({ jobs: nearby, total: nearby.length, radius, took_ms: Date.now() - t0 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'jobs_nearby_failed', message: msg });
+  }
+}
+
+/* ============================================================================
  * /api/intel/zip-deep?zip=20110
  * ----------------------------------------------------------------------------
  *  Per-ZIP deep dive: carriers/trades/reps/adjusters with rates + storms.

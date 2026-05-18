@@ -143,7 +143,7 @@ function haversine(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-let allStorms = [], allJobs = [], filteredStorms = [], activeStorm = null;
+let allStorms = [], filteredStorms = [], activeStorm = null;
 let activeBucket = 'all', activeCustomers = [];
 let mapInst = null, stormCircle = null;
 let sortKey = 'distance', sortDir = 'asc';
@@ -203,15 +203,20 @@ function renderStormList() {
   }));
 }
 
-function showStorm(s) {
+async function showStorm(s) {
   activeStorm = s;
   const radius = Number($('f-radius').value || 3);
-  // Find all jobs within radius
-  const nearby = [];
-  for (const j of allJobs) {
-    if (j.lat == null || j.lng == null) continue;
-    const d = haversine(s.lat, s.lng, j.lat, j.lng);
-    if (d <= radius) nearby.push({ ...j, distance: d });
+  $('detail-kpis').innerHTML = '<div class="loading">Loading nearby jobs…</div>';
+  // Server-side radius query — replaces 16k-job client-side haversine loop.
+  let nearby = [];
+  try {
+    const url = `/api/intel/jobs-nearby?lat=${s.lat}&lng=${s.lng}&radius=${radius}`;
+    const res = await fetch(url);
+    const json = await res.json();
+    nearby = json.jobs || [];
+  } catch (e) {
+    $('detail-kpis').innerHTML = `<div class="loading">Failed: ${e}</div>`;
+    return;
   }
   // Bucket
   const completed = nearby.filter(isCompleted);
@@ -335,11 +340,8 @@ function exportCSV() {
 }
 
 async function start() {
-  const [r1, r2] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
-    fetch('/api/intel/storms-light').then((r) => r.json()),
-  ]);
-  allJobs = r1;
+  // Only fetch storms list; jobs come from server radius query per storm click.
+  const r2 = await fetch('/api/intel/storms-light').then((r) => r.json());
   // storms-light is GeoJSON FeatureCollection — unwrap features + normalize.
   const features = Array.isArray(r2) ? r2 : (r2?.features || []);
   const normalized = features.map((f) => {
