@@ -447,6 +447,28 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_lead_source ON intel_projects (lead_source)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_latlng ON intel_projects USING BRIN (lat, lng)`;
 
+  // Phase 5: public short-code shareable lists (resurrection, orphans, hot-zips,
+  // etc.) Reps can share a snapshot to a manager or homeowner with no login.
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_shared_lists (
+      id SERIAL PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      list_type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      description TEXT,
+      snapshot_data JSONB NOT NULL,
+      filter_params JSONB DEFAULT '{}',
+      creator_email TEXT,
+      creator_label TEXT,
+      views INTEGER DEFAULT 0,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      expires_at TIMESTAMPTZ
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_shared_lists_slug ON intel_shared_lists(slug)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_shared_lists_creator ON intel_shared_lists(creator_email)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_shared_lists_expires ON intel_shared_lists(expires_at) WHERE expires_at IS NOT NULL`;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)

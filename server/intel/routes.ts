@@ -22,6 +22,7 @@ import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
 import { transcribeDenial } from './denial-transcribe.js';
 import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } from './denial-intake.js';
 import { projectsQuery, projectsAggregate } from './projects-query.js';
+import { createShare, getSharedList, listMyShares, deleteShare } from './sharing.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -82,8 +83,14 @@ const FILES: Record<string, { file: string; description: string }> = {
 // Storm light file lives in storms/ subdir
 const STORMS_LIGHT = path.join(DATA_DIR, 'storms', 'iem-hail-wind-2018-2026.json');
 
-// CORS + auth apply to everything under /api/intel/*
+// CORS for everything
 router.use(intelCors);
+
+// PUBLIC: shareable-list viewer — bypasses auth so unauthed browsers can read
+// a snapshot via short code. Must register BEFORE requireIntelAuth middleware.
+router.get('/api/intel/share/:slug', getSharedList);
+
+// Everything below requires session or x-riq-api-key.
 router.use(requireIntelAuth);
 
 /** Health + freshness — public-ish endpoint for monitoring.
@@ -229,6 +236,17 @@ router.get('/api/intel/zip-deep', zipDeep);
 router.get('/api/intel/jobs-nearby', jobsNearby);
 router.get('/api/intel/weekly-recap', weeklyRecap);
 router.get('/api/intel/exec-summary', execSummary);
+
+/**
+ * Phase 5: shareable-list management (auth-required).
+ *   POST   /api/intel/share        create a snapshot link
+ *   GET    /api/intel/share        list my shares
+ *   DELETE /api/intel/share/:slug  revoke
+ * (GET /api/intel/share/:slug is registered ABOVE the auth middleware.)
+ */
+router.post('/api/intel/share', createShare);
+router.get('/api/intel/share', listMyShares);
+router.delete('/api/intel/share/:slug', deleteShare);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

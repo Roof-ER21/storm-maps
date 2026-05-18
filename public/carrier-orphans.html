@@ -59,6 +59,7 @@
     </select>
   </label>
   <span style="flex:1"></span>
+  <button id="btn-share" style="background:#5ec8ff;color:#000;border:none;border-radius:4px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer">Share Link</button>
   <span id="count" style="color:#a09486;font-size:12px"></span>
 </div>
 
@@ -115,6 +116,9 @@ function populateRepFilter() {
 }
 
 function attachHandlers() {
+  document.getElementById('btn-share').addEventListener('click', () => {
+    window.RIQ.shareList('orphans', 'Carrier Orphans', `Insurance-typed jobs missing carrier on file (${view.length} actionable)`, view);
+  });
   for (const id of Object.values(filterEls)) {
     document.getElementById(id).addEventListener('change', refresh);
   }

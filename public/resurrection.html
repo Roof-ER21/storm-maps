@@ -90,6 +90,7 @@
             <input id="f-hail" type="number" step="0.25" placeholder="1.0" style="width:80px" />
           </label>
           <label>&nbsp;<button class="btn" id="btn-csv">Export CSV</button></label>
+          <label>&nbsp;<button class="btn" id="btn-share" style="background:#5ec8ff;color:#000">Share Link</button></label>
         </div>
         <div id="count-line" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
         <div class="scroll"><table id="tbl"></table></div>
@@ -412,6 +413,7 @@ async function start() {
     });
   }
   $('btn-csv').addEventListener('click', exportCSV);
+  $('btn-share').addEventListener('click', () => window.RIQ.shareList('resurrection', 'Resurrection Candidates', `Dead insurance jobs with new strong storm activity (${activeRows.length} candidates)`, activeRows));
   renderKPIs();
   applyFilters();
 }

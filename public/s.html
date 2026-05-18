@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Roof Docs — Shared List</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; position: sticky; top: 0; z-index: 10; }
+  header .brand { font-size: 13px; color: var(--muted); }
+  header .brand b { color: var(--accent); }
+  header h1 { margin: 4px 0 0; font-size: 22px; font-weight: 700; }
+  header .desc { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  header .meta { color: var(--muted); font-size: 11px; margin-top: 8px; display: flex; gap: 16px; flex-wrap: wrap; }
+  header .meta .pill { background: #342c23; padding: 2px 8px; border-radius: 4px; }
+  main { padding: 24px; max-width: 1400px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 6px; border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  tbody tr:hover { background: #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .money { color: var(--green); }
+  .pct { color: var(--accent); }
+  .pill-tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #342c23; color: var(--text); margin-right: 4px; }
+  .scroll { max-height: 80vh; overflow-y: auto; }
+  .loading, .empty { padding: 60px 20px; text-align: center; color: var(--muted); }
+  .error { padding: 30px; background: rgba(239,68,68,0.1); border: 1px solid var(--red); border-radius: 8px; color: var(--red); }
+  .footer { color: var(--muted); font-size: 11px; margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--border); text-align: center; }
+  .footer a { color: var(--accent); text-decoration: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><b>RIQ 21</b> · Shared List</div>
+  <h1 id="title">Loading…</h1>
+  <div id="desc" class="desc"></div>
+  <div id="meta" class="meta"></div>
+</header>
+
+<main>
+  <div id="loading" class="loading">Loading shared list…</div>
+  <div id="content" style="display:none">
+    <section><div id="table-wrap"></div></section>
+    <div class="footer">Internal Roof Docs intelligence · This is a read-only snapshot · <a href="https://riq21-production.up.railway.app">Open RIQ 21</a></div>
+  </div>
+  <div id="err" style="display:none"></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+const money = (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString();
+const pct = (v) => v == null ? '—' : (v * 100).toFixed(1) + '%';
+const int = (v) => v == null ? '—' : Number(v).toLocaleString();
+
+function isDateField(k) { return /date|at$|_at|signed|completed|finalized/i.test(k); }
+function isMoneyField(k) { return /total|revenue|rev$|deductible|acv|amount/i.test(k); }
+function isPctField(k) { return /rate|pct|percent/i.test(k); }
+function isNumField(k, v) { return typeof v === 'number'; }
+
+function autoFormat(k, v) {
+  if (v == null) return '—';
+  if (Array.isArray(v)) return v.map((x) => `<span class="pill-tag">${String(x)}</span>`).join(' ') || '—';
+  if (typeof v === 'object') return JSON.stringify(v).slice(0, 100);
+  if (isMoneyField(k)) return money(v);
+  if (isPctField(k)) return pct(v);
+  if (typeof v === 'number') return int(v);
+  return String(v);
+}
+
+function renderTable(rows, listType) {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    return '<div class="empty">No rows in this list.</div>';
+  }
+  // Pick columns from the most-populated row
+  const sample = rows.reduce((best, r) => Object.keys(r).length > Object.keys(best).length ? r : best, rows[0]);
+  const allKeys = Object.keys(sample);
+  // Skip dense internal fields when present
+  const SKIP = new Set(['key', 'customerKey', 'lat', 'lng', 'id', 'rep_id', 'repId', 'customer_id', 'customerId', 'statusId', 'status_id']);
+  let cols = allKeys.filter((k) => !SKIP.has(k));
+  // Cap at 8 columns for legibility
+  if (cols.length > 8) cols = cols.slice(0, 8);
+
+  const head = '<thead><tr>' + cols.map((c) => {
+    const label = c.replace(/([A-Z])/g, ' $1').replace(/_/g, ' ').replace(/^./, (m) => m.toUpperCase());
+    const cls = isNumField(c, sample[c]) || isMoneyField(c) || isPctField(c) ? 'num' : '';
+    return `<th class="${cls}">${label}</th>`;
+  }).join('') + '</tr></thead>';
+  const body = '<tbody>' + rows.slice(0, 1000).map((r) => {
+    return '<tr>' + cols.map((c) => {
+      const cls = isNumField(c, sample[c]) || isMoneyField(c) || isPctField(c) ? 'num' : '';
+      const colorCls = isMoneyField(c) ? 'money' : isPctField(c) ? 'pct' : '';
+      return `<td class="${cls} ${colorCls}">${autoFormat(c, r[c])}</td>`;
+    }).join('') + '</tr>';
+  }).join('') + '</tbody>';
+  const more = rows.length > 1000 ? `<div style="color:var(--muted);font-size:11px;padding:8px">Showing first 1000 of ${rows.length} rows</div>` : '';
+  return `<div class="scroll"><table>${head}${body}</table></div>${more}`;
+}
+
+async function load() {
+  const code = new URLSearchParams(location.search).get('c');
+  if (!code) {
+    $('err').style.display = '';
+    $('err').className = 'error';
+    $('err').textContent = 'Missing share code. Open the link you were sent.';
+    $('loading').style.display = 'none';
+    return;
+  }
+  try {
+    const res = await fetch('/api/intel/share/' + encodeURIComponent(code));
+    if (res.status === 404) {
+      $('err').style.display = '';
+      $('err').className = 'error';
+      $('err').textContent = 'This share link is no longer valid (not found or expired).';
+      $('loading').style.display = 'none';
+      $('title').textContent = 'Share Not Found';
+      return;
+    }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const d = await res.json();
+
+    $('title').textContent = d.title || 'Shared list';
+    $('desc').textContent = d.description || '';
+    const meta = [];
+    if (d.creatorLabel) meta.push(`<span class="pill">Shared by ${d.creatorLabel}</span>`);
+    if (d.createdAt) meta.push(`<span class="pill">Created ${new Date(d.createdAt).toLocaleDateString()}</span>`);
+    if (d.expiresAt) meta.push(`<span class="pill">Expires ${new Date(d.expiresAt).toLocaleDateString()}</span>`);
+    if (d.views) meta.push(`<span class="pill">${d.views.toLocaleString()} views</span>`);
+    if (d.listType) meta.push(`<span class="pill">Type: ${d.listType}</span>`);
+    $('meta').innerHTML = meta.join('');
+
+    const rows = Array.isArray(d.snapshotData)
+      ? d.snapshotData
+      : (d.snapshotData && Array.isArray(d.snapshotData.rows) ? d.snapshotData.rows
+         : d.snapshotData && Array.isArray(d.snapshotData.zips) ? d.snapshotData.zips
+         : d.snapshotData && Array.isArray(d.snapshotData.customers) ? d.snapshotData.customers
+         : []);
+    $('table-wrap').innerHTML = renderTable(rows, d.listType);
+    $('loading').style.display = 'none';
+    $('content').style.display = '';
+  } catch (e) {
+    $('err').style.display = '';
+    $('err').className = 'error';
+    $('err').textContent = 'Failed to load: ' + e.message;
+    $('loading').style.display = 'none';
+  }
+}
+load();
+</script>
+</body>
+</html>

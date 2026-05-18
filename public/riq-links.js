@@ -137,6 +137,65 @@
     }
   }
 
+  // Phase 5: shareable list helper. Posts current filtered data to
+  // /api/intel/share and shows a copyable short URL in a modal.
+  async function shareList(listType, title, description, rows) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+      alert('No rows to share. Adjust filters first.');
+      return;
+    }
+    // Cap to first 1000 rows to stay under the 1.5MB server cap.
+    const trimmed = rows.slice(0, 1000);
+    let resp;
+    try {
+      const res = await fetch('/api/intel/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          list_type: listType,
+          title,
+          description,
+          snapshot_data: trimmed,
+          filter_params: { capturedAt: new Date().toISOString(), totalRows: rows.length },
+          expires_in_days: 30,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'http_' + res.status }));
+        alert('Share failed: ' + (err.error || err.message || res.status));
+        return;
+      }
+      resp = await res.json();
+    } catch (e) {
+      alert('Share failed: ' + (e?.message || e));
+      return;
+    }
+    // Inline modal — uses page theme tokens, falls back to defaults if absent.
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999';
+    overlay.innerHTML = '<div style="background:#2a241e;border:1px solid #3d3528;border-radius:8px;padding:24px;max-width:520px;width:90%">' +
+      '<div style="font-size:14px;color:#a09486;margin-bottom:4px">RIQ 21 · Share Link Created</div>' +
+      '<h2 style="margin:0 0 12px;color:#f0ebe2;font-size:18px">' + escapeHtml(title) + '</h2>' +
+      '<div style="color:#a09486;font-size:12px;margin-bottom:16px">' + trimmed.length + ' rows · expires in 30 days</div>' +
+      '<input id="share-url" type="text" readonly value="' + escapeHtml(resp.url) + '" style="width:100%;background:#342c23;color:#f0ebe2;border:1px solid #3d3528;border-radius:4px;padding:10px;font-size:13px;font-family:monospace" />' +
+      '<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end">' +
+        '<button id="share-copy" style="background:#f4a738;color:#1a1612;border:none;border-radius:4px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer">Copy</button>' +
+        '<button id="share-close" style="background:transparent;color:#a09486;border:1px solid #3d3528;border-radius:4px;padding:8px 16px;font-size:13px;cursor:pointer">Close</button>' +
+      '</div></div>';
+    document.body.appendChild(overlay);
+    document.getElementById('share-copy').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(resp.url);
+        document.getElementById('share-copy').textContent = 'Copied!';
+        setTimeout(() => document.body.contains(overlay) && document.body.removeChild(overlay), 800);
+      } catch {
+        document.getElementById('share-url').select();
+      }
+    });
+    document.getElementById('share-close').addEventListener('click', () => document.body.removeChild(overlay));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) document.body.removeChild(overlay); });
+  }
+
   global.RIQ = global.RIQ || {};
   global.RIQ.custKey = custKey;
   global.RIQ.custProfileUrl = custProfileUrl;
@@ -147,4 +206,5 @@
   global.RIQ.portalLink = portalLink;
   global.RIQ.escapeHtml = escapeHtml;
   global.RIQ.installFreshnessBadge = installFreshnessBadge;
+  global.RIQ.shareList = shareList;
 })(window);
