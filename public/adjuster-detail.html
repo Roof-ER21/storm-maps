@@ -132,7 +132,7 @@ async function show(key) {
       <div class="kpi"><div class="label">Approved</div><div class="value">${a.completed}</div></div>
       <div class="kpi"><div class="label">Denied/Dead</div><div class="value">${a.dead}</div></div>
       <div class="kpi"><div class="label">Approval %</div><div class="value">${fmt.pct(a.approvalRate)}</div></div>
-      <div class="kpi"><div class="label">Total revenue</div><div class="value">${fmt.money(a.revenue)}</div></div>
+      <div class="kpi"><div class="label">Closed revenue</div><div class="value">${fmt.money(a.completedRevenue)}</div></div>
       <div class="kpi"><div class="label">Med deductible</div><div class="value">${fmt.money(med)}</div></div>
     </div>
 

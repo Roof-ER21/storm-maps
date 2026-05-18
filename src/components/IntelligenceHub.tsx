@@ -248,9 +248,8 @@ function HomePane({ setView }: { setView: (v: IntelView) => void }) {
         RIQ 21 — Roofing IQ Command Center
       </h1>
       <p style={{ color: 'var(--riq-text-muted)', fontSize: 13, marginTop: 6, marginBottom: 24 }}>
-        Internal sales + ops intelligence for The Roof Docs. 16,302 jobs · 48,449 storm events ·
-        458 carriers · 346 named adjusters · 12,225 deduped customers. Refreshes nightly from the
-        portal.
+        Internal sales + ops intelligence for The Roof Docs. Refreshes nightly from the portal —
+        see live counts in the tile KPIs below.
       </p>
 
       <RefreshButton />

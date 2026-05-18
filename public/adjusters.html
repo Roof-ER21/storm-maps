@@ -100,7 +100,7 @@ function renderKPIs() {
   const withPhone = adjusters.filter((a) => a.phones).length;
   const high = adjusters.filter((a) => a.completed >= 3 && a.approvalRate >= 0.8).length;
   $('kpis').innerHTML = `
-    <div class="kpi"><div class="label">Unique adjusters</div><div class="value">${fmt.int(total)}</div></div>
+    <div class="kpi"><div class="label">Adjuster × carrier rows</div><div class="value">${fmt.int(total)}</div></div>
     <div class="kpi"><div class="label">With email</div><div class="value">${fmt.int(withEmail)}</div></div>
     <div class="kpi"><div class="label">With phone</div><div class="value">${fmt.int(withPhone)}</div></div>
     <div class="kpi"><div class="label">High-approval (3+ jobs, ≥80%)</div><div class="value">${fmt.int(high)}</div></div>
@@ -129,7 +129,7 @@ function applyFilters() {
     return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
   active = rows;
-  $('count').textContent = `${rows.length} adjusters · ${rows.reduce((s, a) => s + a.signed, 0)} total jobs · ${fmt.money(rows.reduce((s, a) => s + a.revenue, 0))} revenue`;
+  $('count').textContent = `${rows.length} adjusters · ${rows.reduce((s, a) => s + a.signed, 0)} total jobs · ${fmt.money(rows.reduce((s, a) => s + a.completedRevenue, 0))} closed revenue`;
   render(rows);
 }
 

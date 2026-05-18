@@ -573,9 +573,12 @@ export async function customerLeads(req: Request, res: Response) {
 
   try {
     // 1) Customer-level aggregates from intel_projects.
-    //    Dedup key: lower(customer || '|' || coalesce(address_line1,''))
+    //    Primary dedup key: 3-part (customer|addressLine1|city) — matches
+    //    customers-list, customer-deep, dashboard-kpis. `exposure_key` is
+    //    the legacy 2-part variant used solely to join storm-exposure blob.
     type CustRow = {
       key: string;
+      exposure_key: string;
       customer: string | null;
       address_line1: string | null;
       city: string | null;
@@ -596,10 +599,15 @@ export async function customerLeads(req: Request, res: Response) {
     };
     // Two-CTE pattern (see customersList comment): trades LATERAL would inflate
     // jobs/completed/dead/total_rev by the per-job trade-count multiplier.
+    // 3-part dedup key (customer|addressLine1|city) matches customers-list,
+    // customer-deep, dashboard-kpis, and the shared riq-links.js custKey().
+    // The legacy 2-part key (customer|addressLine1) is kept ALONGSIDE for
+    // joining with the storm-exposure blob which still uses 2-part keys.
     const custRows = await pgSql<CustRow[]>`
       WITH base AS (
         SELECT
-          LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')) AS key,
+          LOWER(TRIM(COALESCE(customer,'')) || '|' || TRIM(COALESCE(address_line1,'')) || '|' || TRIM(COALESCE(city,''))) AS key,
+          LOWER(COALESCE(customer,'') || '|' || COALESCE(address_line1,'')) AS exposure_key,
           customer, address_line1, city, state, zip, lat, lng,
           NULLIF(data->>'customerEmail','') AS email,
           NULLIF(data->>'customerCell','') AS phone,
@@ -614,6 +622,7 @@ export async function customerLeads(req: Request, res: Response) {
       agg AS (
         SELECT
           key,
+          (ARRAY_AGG(exposure_key))[1] AS exposure_key,
           (ARRAY_AGG(customer ORDER BY effective_date DESC NULLS LAST))[1] AS customer,
           (ARRAY_AGG(address_line1 ORDER BY effective_date DESC NULLS LAST))[1] AS address_line1,
           (ARRAY_AGG(city ORDER BY effective_date DESC NULLS LAST))[1] AS city,
@@ -640,7 +649,7 @@ export async function customerLeads(req: Request, res: Response) {
          GROUP BY key
       )
       SELECT
-        a.key, a.customer, a.address_line1, a.city, a.state, a.zip,
+        a.key, a.exposure_key, a.customer, a.address_line1, a.city, a.state, a.zip,
         a.lat, a.lng, a.email, a.phone,
         a.jobs, a.completed_jobs, a.dead_jobs, a.total_rev, a.last_date,
         a.carriers, a.reps,
@@ -721,7 +730,10 @@ export async function customerLeads(req: Request, res: Response) {
     }
 
     // 4) Score each customer row.
-    const ROOF_TRADES = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing']);
+    // Match the client-side ROOF_TRADES on customers/upgrade-campaigns/solar
+    // pages — Cedar Shake + Slate were missing here, excluding those roof
+    // customers from hasRoofComplete classification.
+    const ROOF_TRADES = new Set(['Roofing', 'Metal Roofing', 'Flat Roofing', 'Cedar Shake Roofing', 'Slate Roofing']);
     const UPSELL_GAP = ['Siding', 'Gutters & Downspouts', 'Skylights', 'Trim'];
 
     const scored = custRows.map((r) => {
@@ -738,7 +750,7 @@ export async function customerLeads(req: Request, res: Response) {
       const zipCarrierScore = zs ? Math.min(100, zs.closeRate * 100) : 0;
       const zipJobValueScore = zs ? Math.min(100, (zs.avgApprovedJob / maxAvgJob) * 100) : 0;
 
-      const exp = expByKey.get(r.key);
+      const exp = expByKey.get(r.exposure_key);  // 2-part exposure-blob key
       const stormHits = exp ? (exp.stormCount || 0) : 0;
       const strongest = exp?.strongestStorm;
       const strongestMag = strongest
@@ -843,7 +855,10 @@ export async function adjustersSummary(_req: Request, res: Response) {
       SELECT
         TRIM(adjuster_name) AS name,
         COALESCE(insurance, 'Unknown') AS carrier,
-        COALESCE(ARRAY_AGG(DISTINCT adjuster_email) FILTER (WHERE adjuster_email IS NOT NULL AND adjuster_email <> ''), ARRAY[]::text[]) AS emails,
+        -- adjuster_email column gets poisoned with phone numbers + free text
+        -- (1,006 of 3,607 rows have non-email content). Filter for an @ sign
+        -- so the page doesn't render mailto: links that won't work.
+        COALESCE(ARRAY_AGG(DISTINCT adjuster_email) FILTER (WHERE adjuster_email IS NOT NULL AND adjuster_email LIKE '%@%'), ARRAY[]::text[]) AS emails,
         COALESCE(ARRAY_AGG(DISTINCT adjuster_phone) FILTER (WHERE adjuster_phone IS NOT NULL AND adjuster_phone <> ''), ARRAY[]::text[]) AS phones,
         COALESCE(ARRAY_AGG(DISTINCT city) FILTER (WHERE city IS NOT NULL AND city <> ''), ARRAY[]::text[]) AS cities,
         COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL AND sales_rep <> ''), ARRAY[]::text[]) AS reps,
@@ -920,7 +935,7 @@ export async function adjusterDeep(req: Request, res: Response) {
     ] = await Promise.all([
       pgSql<Array<{ emails: string[]; phones: string[]; supervisors: string[] }>>`
         SELECT
-          COALESCE(ARRAY_AGG(DISTINCT adjuster_email) FILTER (WHERE adjuster_email IS NOT NULL AND adjuster_email <> ''), ARRAY[]::text[]) AS emails,
+          COALESCE(ARRAY_AGG(DISTINCT adjuster_email) FILTER (WHERE adjuster_email IS NOT NULL AND adjuster_email LIKE '%@%'), ARRAY[]::text[]) AS emails,
           COALESCE(ARRAY_AGG(DISTINCT adjuster_phone) FILTER (WHERE adjuster_phone IS NOT NULL AND adjuster_phone <> ''), ARRAY[]::text[]) AS phones,
           COALESCE(ARRAY_AGG(DISTINCT data->>'supervisorName') FILTER (WHERE data->>'supervisorName' IS NOT NULL AND data->>'supervisorName' <> ''), ARRAY[]::text[]) AS supervisors
           FROM intel_projects WHERE ${filter}
@@ -2054,7 +2069,7 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
   else if (tier === 'mid') conds.push(pgSql`score >= 40 AND score < 60`);
   else if (tier === 'low') conds.push(pgSql`score < 40`);
   if (reason === 'storm') conds.push(pgSql`storm_hits_since_last >= 1`);
-  else if (reason === 'old') conds.push(pgSql`years_since_last >= 12`);
+  else if (reason === 'old') conds.push(pgSql`years_since_last >= 8`);
   else if (reason === 'gap') conds.push(pgSql`jsonb_array_length(COALESCE(data->'tradeGaps','[]'::jsonb)) >= 3`);
   const where = conds.length === 0
     ? pgSql``
@@ -2082,7 +2097,7 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
             COUNT(*) FILTER (WHERE score >= 60)::int AS top_tier_count,
             COUNT(*) FILTER (WHERE score >= 40 AND score < 60)::int AS mid_tier_count,
             COUNT(*) FILTER (WHERE storm_hits_since_last >= 1)::int AS with_storm_since,
-            COUNT(*) FILTER (WHERE years_since_last >= 12)::int AS old_roof_count,
+            COUNT(*) FILTER (WHERE years_since_last >= 8)::int AS old_roof_count,
             COUNT(*) FILTER (WHERE customer_email IS NOT NULL OR customer_cell IS NOT NULL)::int AS contactable_count,
             COUNT(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL)::int AS by_rep_count
             FROM intel_lifetime_touch
@@ -2138,6 +2153,8 @@ export async function solarCandidates(_req: Request, res: Response) {
   const t0 = Date.now();
   try {
     // DISTINCT ON picks the most recent completed roof per customer key.
+    // Restrict to roofs aged 1-7 years (rolling window) — brand-new roofs
+    // aren't solar-ready and 8+ year roofs are past the warranty sweet spot.
     const rows = await pgSql<Array<{
       customer: string | null;
       address_line1: string | null;
@@ -2155,30 +2172,33 @@ export async function solarCandidates(_req: Request, res: Response) {
       rep: string | null;
       trades: unknown;
     }>>`
-      SELECT DISTINCT ON (LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')))
-        customer,
-        address_line1,
-        city,
-        state,
-        zip,
-        lat,
-        lng,
-        NULLIF(data->>'customerEmail','') AS email,
-        NULLIF(data->>'customerCell','') AS phone,
-        COALESCE(NULLIF(completed_date,''), signed_date) AS completed_date,
-        job_total,
-        insurance AS carrier,
-        house_type,
-        sales_rep AS rep,
-        data->'trades' AS trades
-        FROM intel_projects
-       WHERE stage ~* 'completed|finalized'
-         AND COALESCE(data->'trades', '[]'::jsonb) ?| ARRAY['Roofing','Metal Roofing','Flat Roofing','Cedar Shake Roofing','Slate Roofing']
-         AND COALESCE(NULLIF(completed_date,''), signed_date) IS NOT NULL
-         AND (COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> '')
-       ORDER BY
-         LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')),
-         COALESCE(NULLIF(completed_date,''), signed_date) DESC NULLS LAST
+      SELECT * FROM (
+        SELECT DISTINCT ON (LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')))
+          customer,
+          address_line1,
+          city,
+          state,
+          zip,
+          lat,
+          lng,
+          NULLIF(data->>'customerEmail','') AS email,
+          NULLIF(data->>'customerCell','') AS phone,
+          COALESCE(NULLIF(completed_date,''), signed_date) AS completed_date,
+          job_total,
+          insurance AS carrier,
+          house_type,
+          sales_rep AS rep,
+          data->'trades' AS trades
+          FROM intel_projects
+         WHERE stage ~* 'completed|finalized'
+           AND COALESCE(data->'trades', '[]'::jsonb) ?| ARRAY['Roofing','Metal Roofing','Flat Roofing','Cedar Shake Roofing','Slate Roofing']
+           AND COALESCE(NULLIF(completed_date,''), signed_date) IS NOT NULL
+           AND (COALESCE(customer,'') <> '' OR COALESCE(address_line1,'') <> '')
+         ORDER BY
+           LOWER(COALESCE(customer,'')) || '|' || LOWER(COALESCE(address_line1,'')),
+           COALESCE(NULLIF(completed_date,''), signed_date) DESC NULLS LAST
+      ) latest_per_customer
+      WHERE completed_date::date BETWEEN (NOW() - INTERVAL '7 years')::date AND (NOW() - INTERVAL '1 year')::date
     `;
 
     const today = Date.now();

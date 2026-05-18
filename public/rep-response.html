@@ -80,7 +80,7 @@ async function applyFilters() {
   let rows = allReps;
   if (minJobs) rows = rows.filter((r) => r.jobs >= minJobs);
   const avg = rows.length ? Math.round(rows.reduce((s, r) => s + (r.medianDays || 0), 0) / rows.length) : 0;
-  $('count').textContent = `${rows.length} reps · median across all: ${avg}d`;
+  $('count').textContent = `${rows.length} reps · avg of per-rep medians: ${avg}d`;
   render(rows);
 }
 

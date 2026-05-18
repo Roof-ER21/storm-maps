@@ -161,12 +161,15 @@ const CAMPAIGNS = {
     filter: (c) => c.trades.has('Siding') && ![...c.trades].some((t) => ROOF_TRADES.includes(t)),
   },
   'solar': {
-    label: 'Solar Candidates — Completed roof 2018-2024',
+    label: 'Solar Candidates — Completed roof 1-7 years old',
     desc: 'Customers with a completed Roof Docs roof installed 1-7 years ago. Mature roof in solid condition, ideal for solar mount partnerships.',
     filter: (c) => {
-      if (!c.hasCompletedRoof) return false;
-      const y = yearOf(c.lastCompletedRoofDate);
-      return y && y >= 2018 && y <= 2024;
+      if (!c.hasCompletedRoof || !c.lastCompletedRoofDate) return false;
+      // Rolling 1-7y window — matches /api/intel/solar-candidates and exec-summary.
+      const completedMs = new Date(c.lastCompletedRoofDate).getTime();
+      if (!Number.isFinite(completedMs)) return false;
+      const ageYears = (Date.now() - completedMs) / (365 * 86400 * 1000);
+      return ageYears >= 1 && ageYears <= 7;
     },
   },
   'gutter-upsell': {

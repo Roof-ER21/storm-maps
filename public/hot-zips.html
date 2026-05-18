@@ -108,7 +108,7 @@ let zips = [], active = [];
 
 function renderKPIs() {
   $('kpis').innerHTML = `
-    <div class="kpi"><div class="label">Unique ZIPs tracked</div><div class="value">${zips.length}</div></div>
+    <div class="kpi"><div class="label">Qualifying ZIPs (≥${$('f-minjobs').value || 3} jobs)</div><div class="value">${zips.length}</div></div>
     <div class="kpi"><div class="label">ZIPs with recent storms</div><div class="value">${zips.filter((z) => z.recentStorms > 0).length}</div></div>
     <div class="kpi"><div class="label">High-score ZIPs (50+)</div><div class="value">${zips.filter((z) => z.score >= 50).length}</div></div>
     <div class="kpi"><div class="label">Avg Hot Score</div><div class="value">${(zips.reduce((s, z) => s + z.score, 0) / zips.length).toFixed(1)}</div></div>

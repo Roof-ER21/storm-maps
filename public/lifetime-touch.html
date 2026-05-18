@@ -89,7 +89,7 @@
         <select id="reason-select">
           <option value="all">All reasons</option>
           <option value="storm">Storm hit</option>
-          <option value="old">Old roof (12+ yr)</option>
+          <option value="old">Old roof (8+ yr)</option>
           <option value="gap">Trade gap</option>
         </select>
         <input id="search" placeholder="Search name/address/city/zip…" />
@@ -152,7 +152,7 @@ async function load() {
     ['High-Priority (60+)', s.topTierCount],
     ['Mid-Priority (40-59)', s.midTierCount],
     ['Storm Hit Since Last', s.withStormSince],
-    ['Old Roof (12+ yr)', s.oldRoofCount],
+    ['Old Roof (8+ yr)', s.oldRoofCount],
     ['Reps with Lists', s.byRepCount],
   ].map(([l, v]) => '<div class="stat"><div class="v">' + (v || 0).toLocaleString() + '</div><div class="l">' + l + '</div></div>').join('');
 
@@ -162,8 +162,9 @@ async function load() {
   sel.innerHTML = '<option value="(top)">⭐ Top 100 across all reps</option>' +
     reps.map((r) => '<option value="' + escape(r.rep) + '">' + escape(r.rep) + ' (' + r.count + ')</option>').join('');
 
-  // Pre-select Ahmed's rep if exists
-  if (reps.find((r) => r.toLowerCase().includes('ahmed'))) sel.value = reps.find((r) => r.toLowerCase().includes('ahmed'));
+  // Pre-select Ahmed's rep if exists (reps is [{rep, count}], not strings)
+  const ahmedMatch = reps.find((r) => r.rep && r.rep.toLowerCase().includes('ahmed'));
+  if (ahmedMatch) sel.value = ahmedMatch.rep;
 
   sel.addEventListener('change', applyFilters);
   $('tier-select').addEventListener('change', applyFilters);
@@ -235,7 +236,7 @@ function render() {
     const cls = r.score >= 60 ? 'high' : r.score >= 40 ? 'mid' : 'low';
     const signals = [];
     if (r.stormHitsSinceLast >= 1) signals.push('<span class="badge storm" title="Storm hit since last job">⛈ ' + r.stormHitsSinceLast + ' hits</span>');
-    if (r.yearsSinceLast >= 12) signals.push('<span class="badge old" title="Old roof">📅 ' + r.yearsSinceLast.toFixed(0) + 'yr</span>');
+    if (r.yearsSinceLast >= 8) signals.push('<span class="badge old" title="Old roof">📅 ' + r.yearsSinceLast.toFixed(0) + 'yr</span>');
     if ((r.tradeGaps || []).length >= 3) signals.push('<span class="badge gap" title="Trade gap">🧩 +' + r.tradeGaps.length + '</span>');
     if (r.contactQuality === 'full') signals.push('<span class="badge contact" title="Email + cell">📞✉️</span>');
 

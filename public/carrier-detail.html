@@ -146,7 +146,7 @@ async function showCarrier(name) {
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top adjusters</h2><div class="scroll"><table>
         <thead><tr><th>Adjuster</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Approval %</th></tr></thead>
-        <tbody>${adjusters.map((r) => `<tr><td><a class="riq-link" href="adjuster-detail.html?name=${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
+        <tbody>${adjusters.map((r) => `<tr><td><a class="riq-link" href="adjuster-detail.html?name=${encodeURIComponent(r.n)}&carrier=${encodeURIComponent(c.name)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Year-over-year</h2><div class="scroll"><table>
         <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Close%</th><th class="num">Revenue</th></tr></thead>
