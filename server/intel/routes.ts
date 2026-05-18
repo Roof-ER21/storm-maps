@@ -168,6 +168,10 @@ router.get('/api/intel/_meta', (_req, res) => {
       'POST /api/intel/analyze-denial':     'Gemini-powered denial-letter analyzer',
       'POST /api/intel/transcribe-denial':  'PDF/image denial-letter → text',
       'POST /api/intel/refresh':            'Trigger a stealth refresh (no portal calls)',
+      'GET  /api/intel/predictor/score':    'Lead-score predictor (query-params)',
+      'POST /api/intel/predictor/webhook':  'CC21 lead-pipeline webhook (JSON body)',
+      'POST /api/intel/share':              'Create a public shareable list (no-auth viewer)',
+      'GET  /api/intel/share/:slug':        'PUBLIC: read shared list snapshot',
     },
     datasets: Object.fromEntries(
       Object.entries(FILES).map(([k, v]) => [k, v.description]),
