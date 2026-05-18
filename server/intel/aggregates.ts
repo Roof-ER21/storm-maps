@@ -630,29 +630,46 @@ export async function customerLeads(req: Request, res: Response) {
       zipStatsMap.set(z.zip, { closeRate, avgApprovedJob });
     }
 
-    // 3) Storm exposure — keyed by lower(customer || '|' || addressLine1).
-    //    Lives in intel_blobs as a JSON array; we read once and index in memory.
+    // 3) Storm exposure — Phase 4c indexed table; fall back to blob.
     type ExposureEntry = {
       customer?: string;
       addressLine1?: string;
       stormCount?: number;
       strongestStorm?: { type?: string; mag?: number };
     };
-    let exposureBlob: ExposureEntry[] = [];
-    try {
-      const rows = await pgSql<Array<{ data: ExposureEntry[] }>>`
-        SELECT data FROM intel_blobs WHERE key = 'storm-exposure' LIMIT 1
-      `;
-      exposureBlob = Array.isArray(rows[0]?.data) ? rows[0].data : [];
-    } catch {
-      exposureBlob = [];
-    }
     const expByKey = new Map<string, ExposureEntry>();
     let maxStormHits = 1;
-    for (const c of exposureBlob) {
-      const k = ((c.customer || '') + '|' + (c.addressLine1 || '')).toLowerCase();
-      expByKey.set(k, c);
-      if ((c.stormCount || 0) > maxStormHits) maxStormHits = c.stormCount || 1;
+    try {
+      const tableRows = await pgSql<Array<{
+        key: string; storm_count: number;
+        strongest_storm_type: string | null; strongest_storm_mag: number | null;
+      }>>`
+        SELECT key, storm_count, strongest_storm_type, strongest_storm_mag
+          FROM intel_customer_exposure
+      `;
+      for (const r of tableRows) {
+        expByKey.set(r.key, {
+          stormCount: r.storm_count,
+          strongestStorm: r.strongest_storm_type != null ? {
+            type: r.strongest_storm_type ?? undefined,
+            mag: r.strongest_storm_mag ?? undefined,
+          } : undefined,
+        });
+        if ((r.storm_count || 0) > maxStormHits) maxStormHits = r.storm_count || 1;
+      }
+    } catch {
+      // Fallback: read blob if table missing.
+      try {
+        const rows = await pgSql<Array<{ data: ExposureEntry[] }>>`
+          SELECT data FROM intel_blobs WHERE key = 'storm-exposure' LIMIT 1
+        `;
+        const blob = Array.isArray(rows[0]?.data) ? rows[0].data : [];
+        for (const c of blob) {
+          const k = ((c.customer || '') + '|' + (c.addressLine1 || '')).toLowerCase();
+          expByKey.set(k, c);
+          if ((c.stormCount || 0) > maxStormHits) maxStormHits = c.stormCount || 1;
+        }
+      } catch { /* keep empty map */ }
     }
 
     // 4) Score each customer row.
@@ -2292,22 +2309,31 @@ export async function customerDeep(req: Request, res: Response) {
       return;
     }
 
-    // Storm exposure lookup — dedup key in exposure blob is just customer|addressLine1.
+    // Storm exposure lookup — Phase 4c indexed table, falls back to blob.
     type ExposureEntry = {
       customer?: string; addressLine1?: string;
       allStorms?: Array<{ date?: string; type?: string; mag?: number; unit?: string; distance?: number }>;
     };
     let exposure: ExposureEntry | null = null;
+    const expKey = `${keyCustomer}|${keyAddr}`;
     try {
-      const rows = await pgSql<Array<{ data: ExposureEntry[] }>>`
-        SELECT data FROM intel_blobs WHERE key = 'storm-exposure' LIMIT 1
+      const rows = await pgSql<Array<{ data: ExposureEntry }>>`
+        SELECT data FROM intel_customer_exposure WHERE key = ${expKey} LIMIT 1
       `;
-      const blob = Array.isArray(rows[0]?.data) ? rows[0].data : [];
-      exposure = blob.find((e) =>
-        (e.customer || '').trim().toLowerCase() === keyCustomer &&
-        (e.addressLine1 || '').trim().toLowerCase() === keyAddr
-      ) || null;
-    } catch { /* exposure stays null */ }
+      if (rows.length > 0) exposure = rows[0].data;
+    } catch { /* fall through to blob */ }
+    if (exposure === null) {
+      try {
+        const rows = await pgSql<Array<{ data: ExposureEntry[] }>>`
+          SELECT data FROM intel_blobs WHERE key = 'storm-exposure' LIMIT 1
+        `;
+        const blob = Array.isArray(rows[0]?.data) ? rows[0].data : [];
+        exposure = blob.find((e) =>
+          (e.customer || '').trim().toLowerCase() === keyCustomer &&
+          (e.addressLine1 || '').trim().toLowerCase() === keyAddr
+        ) || null;
+      } catch { /* exposure stays null */ }
+    }
 
     // Map rows to camelCase shape the page expects.
     const jobs = jobRows.map((r) => ({

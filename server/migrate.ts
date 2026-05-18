@@ -447,6 +447,46 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_lead_source ON intel_projects (lead_source)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_projects_latlng ON intel_projects USING BRIN (lat, lng)`;
 
+  // Phase 4c: decomposed storm-exposure (one row per customer with their
+  // storm history). Backfilled from intel_blobs[storm-exposure] by
+  // scripts/roofdocs/backfill-intel-customer-exposure.mjs after the blob
+  // updates.
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_customer_exposure (
+      key TEXT PRIMARY KEY,
+      customer TEXT,
+      address_line1 TEXT,
+      city TEXT,
+      state TEXT,
+      zip TEXT,
+      lat REAL,
+      lng REAL,
+      customer_email TEXT,
+      customer_cell TEXT,
+      storm_count INTEGER DEFAULT 0,
+      hail_count INTEGER DEFAULT 0,
+      strongest_storm_type TEXT,
+      strongest_storm_mag REAL,
+      strongest_storm_unit TEXT,
+      strongest_storm_date TEXT,
+      most_recent_storm_date TEXT,
+      most_recent_storm_type TEXT,
+      most_recent_storm_mag REAL,
+      first_contact TEXT,
+      last_date TEXT,
+      job_count INTEGER DEFAULT 0,
+      completed_job_count INTEGER DEFAULT 0,
+      total_rev REAL DEFAULT 0,
+      has_roof BOOLEAN DEFAULT FALSE,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_cust_exp_state_zip ON intel_customer_exposure (state, zip)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_cust_exp_storm_count ON intel_customer_exposure (storm_count DESC) WHERE storm_count > 0`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_cust_exp_recent ON intel_customer_exposure (most_recent_storm_date DESC) WHERE most_recent_storm_date IS NOT NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_cust_exp_latlng ON intel_customer_exposure USING BRIN (lat, lng)`;
+
   // Phase 5: public short-code shareable lists (resurrection, orphans, hot-zips,
   // etc.) Reps can share a snapshot to a manager or homeowner with no login.
   await sql`
