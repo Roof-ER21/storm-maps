@@ -562,6 +562,8 @@ export async function customerLeads(req: Request, res: Response) {
       carriers: string[];
       reps: string[];
     };
+    // Two-CTE pattern (see customersList comment): trades LATERAL would inflate
+    // jobs/completed/dead/total_rev by the per-job trade-count multiplier.
     const custRows = await pgSql<CustRow[]>`
       WITH base AS (
         SELECT
@@ -576,29 +578,43 @@ export async function customerLeads(req: Request, res: Response) {
           FROM intel_projects
          WHERE COALESCE(customer,'') <> '' AND COALESCE(address_line1,'') <> ''
            ${state ? pgSql`AND state = ${state}` : pgSql``}
+      ),
+      agg AS (
+        SELECT
+          key,
+          (ARRAY_AGG(customer ORDER BY effective_date DESC NULLS LAST))[1] AS customer,
+          (ARRAY_AGG(address_line1 ORDER BY effective_date DESC NULLS LAST))[1] AS address_line1,
+          (ARRAY_AGG(city ORDER BY effective_date DESC NULLS LAST))[1] AS city,
+          (ARRAY_AGG(state ORDER BY effective_date DESC NULLS LAST))[1] AS state,
+          (ARRAY_AGG(zip ORDER BY effective_date DESC NULLS LAST))[1] AS zip,
+          (ARRAY_AGG(lat ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lat IS NOT NULL))[1] AS lat,
+          (ARRAY_AGG(lng ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lng IS NOT NULL))[1] AS lng,
+          (ARRAY_AGG(email) FILTER (WHERE email IS NOT NULL))[1] AS email,
+          (ARRAY_AGG(phone) FILTER (WHERE phone IS NOT NULL))[1] AS phone,
+          COUNT(*)::int AS jobs,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed_jobs,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead_jobs,
+          COALESCE(SUM(job_total), 0)::numeric AS total_rev,
+          MAX(effective_date) AS last_date,
+          COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
+          COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps
+          FROM base
+         GROUP BY key
+      ),
+      trades_agg AS (
+        SELECT key, ARRAY_AGG(DISTINCT trade) AS trades
+          FROM base, jsonb_array_elements_text(COALESCE(trades_json, '[]'::jsonb)) AS trade
+         WHERE trade IS NOT NULL
+         GROUP BY key
       )
       SELECT
-        key,
-        (ARRAY_AGG(customer ORDER BY effective_date DESC NULLS LAST))[1] AS customer,
-        (ARRAY_AGG(address_line1 ORDER BY effective_date DESC NULLS LAST))[1] AS address_line1,
-        (ARRAY_AGG(city ORDER BY effective_date DESC NULLS LAST))[1] AS city,
-        (ARRAY_AGG(state ORDER BY effective_date DESC NULLS LAST))[1] AS state,
-        (ARRAY_AGG(zip ORDER BY effective_date DESC NULLS LAST))[1] AS zip,
-        (ARRAY_AGG(lat ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lat IS NOT NULL))[1] AS lat,
-        (ARRAY_AGG(lng ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lng IS NOT NULL))[1] AS lng,
-        (ARRAY_AGG(email) FILTER (WHERE email IS NOT NULL))[1] AS email,
-        (ARRAY_AGG(phone) FILTER (WHERE phone IS NOT NULL))[1] AS phone,
-        COUNT(*)::int AS jobs,
-        COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed_jobs,
-        COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead_jobs,
-        COALESCE(SUM(job_total), 0)::numeric AS total_rev,
-        MAX(effective_date) AS last_date,
-        COALESCE(ARRAY_AGG(DISTINCT trade) FILTER (WHERE trade IS NOT NULL), ARRAY[]::text[]) AS trades,
-        COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
-        COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps
-        FROM base
-        LEFT JOIN LATERAL jsonb_array_elements_text(COALESCE(trades_json, '[]'::jsonb)) AS trade ON TRUE
-       GROUP BY key
+        a.key, a.customer, a.address_line1, a.city, a.state, a.zip,
+        a.lat, a.lng, a.email, a.phone,
+        a.jobs, a.completed_jobs, a.dead_jobs, a.total_rev, a.last_date,
+        a.carriers, a.reps,
+        COALESCE(t.trades, ARRAY[]::text[]) AS trades
+        FROM agg a
+        LEFT JOIN trades_agg t USING (key)
     `;
 
     // 2) Zip aggregates (for closeRate + avgApprovedJob normalization).
@@ -1233,6 +1249,9 @@ export async function customersList(req: Request, res: Response) {
     // ROOF_TRADES literal is matched in SQL via ARRAY_AGG so the page can
     // filter on hasCompletedRoof / lastCompletedRoofDate / maxDeductible
     // without having to scan all jobs.
+    // Two-CTE pattern: aggregate counts/sums from one-row-per-job, then JOIN a
+    // separately-aggregated trades array. Doing the trades LATERAL inside the
+    // main aggregation inflates COUNT/SUM by the trade-count multiplier.
     const rows = await pgSql<Array<{
       name: string;
       address_line1: string | null;
@@ -1262,38 +1281,52 @@ export async function customersList(req: Request, res: Response) {
           insurance, sales_rep, stage, job_total, deductible,
           COALESCE(NULLIF(completed_date,''), signed_date) AS effective_date,
           data->'trades' AS trades_json,
-          -- Boolean: this job is a completed roofing job (any of the roof trade variants).
           (stage ~* 'completed|finalized'
             AND COALESCE(data->'trades', '[]'::jsonb) ?| ARRAY['Roofing','Metal Roofing','Flat Roofing','Cedar Shake Roofing']
           ) AS is_completed_roof
           FROM intel_projects
          WHERE COALESCE(customer,'') <> ''
            ${state ? pgSql`AND state = ${state}` : pgSql``}
+      ),
+      agg AS (
+        SELECT
+          key,
+          (ARRAY_AGG(customer ORDER BY effective_date DESC NULLS LAST))[1] AS name,
+          (ARRAY_AGG(address_line1 ORDER BY effective_date DESC NULLS LAST))[1] AS address_line1,
+          (ARRAY_AGG(city ORDER BY effective_date DESC NULLS LAST))[1] AS city,
+          (ARRAY_AGG(state ORDER BY effective_date DESC NULLS LAST))[1] AS state,
+          (ARRAY_AGG(zip ORDER BY effective_date DESC NULLS LAST))[1] AS zip,
+          (ARRAY_AGG(lat ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lat IS NOT NULL))[1] AS lat,
+          (ARRAY_AGG(lng ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lng IS NOT NULL))[1] AS lng,
+          COUNT(*)::int AS jobs,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
+          COALESCE(SUM(job_total), 0)::numeric AS total_rev,
+          MIN(effective_date) AS first_date,
+          MAX(effective_date) AS last_date,
+          COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
+          COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps,
+          BOOL_OR(is_completed_roof) AS has_completed_roof,
+          MAX(effective_date) FILTER (WHERE is_completed_roof) AS last_completed_roof_date,
+          MAX(deductible) FILTER (WHERE deductible > 0 AND deductible <= 50000) AS max_deductible
+          FROM base
+         GROUP BY key
+      ),
+      trades_agg AS (
+        SELECT key, ARRAY_AGG(DISTINCT trade) AS trades
+          FROM base, jsonb_array_elements_text(COALESCE(trades_json, '[]'::jsonb)) AS trade
+         WHERE trade IS NOT NULL
+         GROUP BY key
       )
       SELECT
-        (ARRAY_AGG(customer ORDER BY effective_date DESC NULLS LAST))[1] AS name,
-        (ARRAY_AGG(address_line1 ORDER BY effective_date DESC NULLS LAST))[1] AS address_line1,
-        (ARRAY_AGG(city ORDER BY effective_date DESC NULLS LAST))[1] AS city,
-        (ARRAY_AGG(state ORDER BY effective_date DESC NULLS LAST))[1] AS state,
-        (ARRAY_AGG(zip ORDER BY effective_date DESC NULLS LAST))[1] AS zip,
-        (ARRAY_AGG(lat ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lat IS NOT NULL))[1] AS lat,
-        (ARRAY_AGG(lng ORDER BY effective_date DESC NULLS LAST) FILTER (WHERE lng IS NOT NULL))[1] AS lng,
-        COUNT(*)::int AS jobs,
-        COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
-        COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
-        COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
-        COALESCE(SUM(job_total), 0)::numeric AS total_rev,
-        MIN(effective_date) AS first_date,
-        MAX(effective_date) AS last_date,
-        COALESCE(ARRAY_AGG(DISTINCT trade) FILTER (WHERE trade IS NOT NULL), ARRAY[]::text[]) AS trades,
-        COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
-        COALESCE(ARRAY_AGG(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL), ARRAY[]::text[]) AS reps,
-        BOOL_OR(is_completed_roof) AS has_completed_roof,
-        MAX(effective_date) FILTER (WHERE is_completed_roof) AS last_completed_roof_date,
-        MAX(deductible) FILTER (WHERE deductible > 0 AND deductible <= 50000) AS max_deductible
-        FROM base
-        LEFT JOIN LATERAL jsonb_array_elements_text(COALESCE(trades_json, '[]'::jsonb)) AS trade ON TRUE
-       GROUP BY key
+        a.name, a.address_line1, a.city, a.state, a.zip, a.lat, a.lng,
+        a.jobs, a.completed, a.dead, a.open, a.total_rev,
+        a.first_date, a.last_date, a.carriers, a.reps,
+        a.has_completed_roof, a.last_completed_roof_date, a.max_deductible,
+        COALESCE(t.trades, ARRAY[]::text[]) AS trades
+        FROM agg a
+        LEFT JOIN trades_agg t USING (key)
     `;
 
     const today = Date.now();
