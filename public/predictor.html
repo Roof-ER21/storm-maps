@@ -118,15 +118,18 @@ const fmt = {
   money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
   pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
 };
-let patterns = null;
 
-function pillForRate(r) {
-  if (r >= 0.75) return 'good';
-  if (r >= 0.5) return 'med';
-  return 'bad';
-}
+// Phase 6 v2: this page now calls /api/intel/predictor/score directly.
+// The previous version computed scoring client-side against the legacy
+// patterns.json blob (built with the OLD /(jobs-dead) close-rate formula),
+// producing rates 15-25pp higher than the rest of the platform. The server
+// endpoint uses the canonical /(completed+dead) formula matching the Field
+// Portal's Approval Rate.
 
-function predict() {
+let carriers = [], reps = [];
+
+async function predict() {
+  const params = new URLSearchParams();
   const carrier = $('f-carrier').value;
   const state = $('f-state').value;
   const zip = ($('f-zip').value || '').slice(0, 5);
@@ -134,246 +137,95 @@ function predict() {
   const hail = Number($('f-hail').value || 0);
   const days = Number($('f-days').value || 0);
   const rep = $('f-rep').value;
-  const age = Number($('f-age').value || 0);
+  // home age input is unused server-side (no historical feature) — kept in UI
+  // for future use.
 
-  const factors = [];
-  // Base rate
-  let baseRate = 0.726;  // overall completion rate of signed jobs
-  let confidence = 'low';
-
-  // Carrier baseline
-  const carrierData = patterns.carriers.find((c) => c.name === carrier);
-  let carrierRate = baseRate;
-  if (carrierData) {
-    carrierRate = carrierData.approvalRate;
-    factors.push({
-      name: `Carrier baseline: ${carrier} (${carrierData.jobs} jobs)`,
-      impact: (carrierRate * 100).toFixed(1) + '%',
-      dir: carrierRate >= baseRate ? 'up' : 'down',
-    });
-    confidence = 'medium';
-  } else if (carrier) {
-    factors.push({ name: `Carrier ${carrier} — no historical data`, impact: 'unknown', dir: 'neutral' });
-  }
-
-  // Carrier × State interaction
-  const csKey = patterns.carrierByState.find((c) => c.carrier === carrier && c.state === state);
-  if (csKey) {
-    factors.push({
-      name: `${carrier} in ${state} — ${csKey.jobs} jobs`,
-      impact: (csKey.approvalRate * 100).toFixed(1) + '%',
-      dir: csKey.approvalRate >= carrierRate ? 'up' : 'down',
-    });
-    carrierRate = csKey.approvalRate;
-    confidence = 'medium';
-  }
-
-  // Carrier × ZIP — strongest combo signal
-  const czKey = patterns.carrierByZip.find((c) => c.carrier === carrier && c.zip === zip);
-  if (czKey) {
-    factors.push({
-      name: `${carrier} in ZIP ${zip} — ${czKey.jobs} prior jobs`,
-      impact: (czKey.approvalRate * 100).toFixed(1) + '%',
-      dir: czKey.approvalRate >= carrierRate ? 'up' : 'down',
-    });
-    carrierRate = czKey.approvalRate;
-    confidence = 'high';
-  } else if (carrier && zip) {
-    const allZip = patterns.zips.find((z) => z.zip === zip);
-    if (allZip) {
-      factors.push({
-        name: `ZIP ${zip} overall — ${allZip.jobs} jobs (${allZip.dominantCarrier} dominant)`,
-        impact: (allZip.approvalRate * 100).toFixed(1) + '%',
-        dir: allZip.approvalRate >= baseRate ? 'up' : 'down',
-      });
-    }
-  }
-
-  // Adjuster lookup (only if known and ≥2 jobs)
-  if (adjuster) {
-    const adjData = patterns.adjusters.find((a) => a.name.toLowerCase() === adjuster.toLowerCase() && a.carrier === carrier);
-    if (adjData) {
-      factors.push({
-        name: `Adjuster ${adjData.name} (${carrier}) — ${adjData.jobs} jobs`,
-        impact: (adjData.approvalRate * 100).toFixed(1) + '%',
-        dir: adjData.approvalRate >= carrierRate ? 'up' : 'down',
-      });
-      // Adjuster identity > damage per research — weight heavily
-      carrierRate = (carrierRate + adjData.approvalRate * 2) / 3;
-      confidence = 'high';
-    } else {
-      factors.push({ name: `Adjuster ${adjuster} — no prior history`, impact: 'unknown', dir: 'neutral' });
-    }
-  }
-
-  // Hail magnitude
-  let hailModifier = 0;
+  if (carrier) params.set('carrier', carrier);
+  if (state) params.set('state', state);
+  if (zip) params.set('zip', zip);
+  if (adjuster) params.set('adjuster', adjuster);
+  if (rep) params.set('rep', rep);
   if (hail > 0) {
-    let bucket;
-    if (hail < 0.75) bucket = 'lt_0.75';
-    else if (hail < 1.0) bucket = '0.75_1.0';
-    else if (hail < 1.25) bucket = '1.0_1.25';
-    else if (hail < 1.5) bucket = '1.25_1.5';
-    else if (hail < 2.0) bucket = '1.5_2.0';
-    else bucket = 'gte_2.0';
-    const tier = patterns.hailTiers.find((t) => t.bucket === bucket);
-    if (tier && tier.jobs >= 50) {
-      factors.push({
-        name: `Hail ${hail}" tier (${bucket.replace(/_/g, '–')}) — ${tier.jobs} jobs`,
-        impact: (tier.approvalRate * 100).toFixed(1) + '%',
-        dir: tier.approvalRate >= 0.65 ? 'up' : 'down',
-      });
-      hailModifier = (tier.approvalRate - baseRate);
-    }
+    params.set('storm_type', 'HAIL');
+    params.set('storm_mag', String(hail));
+    params.set('storm_unit', 'inch');
+  }
+  if (days > 0) params.set('days_since_loss', String(days));
+
+  $('result').innerHTML = '<div style="padding:24px;text-align:center;color:var(--muted)">Computing…</div>';
+  let d;
+  try {
+    const res = await fetch('/api/intel/predictor/score?' + params.toString());
+    d = await res.json();
+  } catch (e) {
+    $('result').innerHTML = '<div class="recommendation warn">Failed to score: ' + (e?.message || e) + '</div>';
+    return;
+  }
+  if (d.error) {
+    $('result').innerHTML = '<div class="recommendation warn">Server error: ' + d.error + '</div>';
+    return;
   }
 
-  // Days since loss
-  let speedModifier = 0;
-  if (days > 0) {
-    let bucket;
-    if (days <= 7) bucket = '0-7d';
-    else if (days <= 30) bucket = '8-30d';
-    else if (days <= 90) bucket = '31-90d';
-    else if (days <= 180) bucket = '91-180d';
-    else bucket = '181-365d';
-    const tier = patterns.speedToSign.find((t) => t.bucket === bucket);
-    if (tier) {
-      factors.push({
-        name: `Speed: ${days}d from loss (${bucket}) — ${tier.jobs} jobs`,
-        impact: (tier.approvalRate * 100).toFixed(1) + '%',
-        dir: tier.approvalRate >= 0.7 ? 'up' : 'down',
-      });
-      speedModifier = (tier.approvalRate - baseRate);
-    }
-  }
+  const cls = d.score >= 70 ? 'high' : d.score >= 45 ? 'med' : 'low';
+  // Add state-specific tactical notes — these aren't a server feature but
+  // they're genuinely informative; keep as client-side post-hoc additions.
+  const recs = [...(d.recommendations || [])];
+  if (state === 'PA') recs.push('PA matching law adverse (Greene v. USAA) — build slope-only estimates first; argue Collins exception if applicable.');
+  else if (state === 'MD') recs.push('MD §27-303 leverage (strongest bad-faith statute) — cite on first denial ($2,500-$125,000 penalty for arbitrary/capricious denials).');
+  else if (state === 'VA') recs.push('VA: long 5-year SOL but weak bad-faith leverage (§38.2-209). Use procedural escalation.');
+  if (hail >= 1.25 && hail < 1.5) recs.push('Engineer-zone hail (1.25-1.5") — carriers often route to engineering reports here. Bring an independent HAAG-certified inspector.');
+  if (carrier === 'State Farm') recs.push('State Farm note: Demand Xactimate "Restoration" pricing (not "New Construction"). Highest carrier complaint volume per NAIC.');
+  if (carrier === 'Allstate') recs.push('Allstate note: 50.9% of claims close without payment (Weiss Ratings 2024). Document aggressively; check for cosmetic damage endorsement.');
+  if (carrier === 'Travelers' && hail > 0) recs.push('Travelers note: Heavy engineer use (HAAG/Donan). For hail claims, expect engineer involvement — bring an independent inspector.');
 
-  // Rep
-  if (rep) {
-    const repData = patterns.reps.find((r) => r.name === rep);
-    if (repData) {
-      factors.push({
-        name: `Rep ${rep} overall — ${repData.jobs} jobs`,
-        impact: (repData.approvalRate * 100).toFixed(1) + '%',
-        dir: repData.approvalRate >= baseRate ? 'up' : 'down',
-      });
-      // Rep × carrier match
-      if (repData.bestCarrier && repData.bestCarrier.carrier === carrier) {
-        factors.push({
-          name: `${rep}'s best carrier IS ${carrier}`,
-          impact: (repData.bestCarrier.approvalRate * 100).toFixed(1) + '%',
-          dir: 'up',
-        });
-      }
-    }
-  }
-
-  // Roof age (industry threshold)
-  if (age > 0) {
-    if (age >= 15) {
-      factors.push({ name: `Roof age ${age}y ≥ 15y reinspection cliff`, impact: '−10%', dir: 'down' });
-      hailModifier -= 0.1;
-    } else if (age >= 10) {
-      factors.push({ name: `Roof age ${age}y triggers RCV→ACV depreciation`, impact: '−5%', dir: 'down' });
-      hailModifier -= 0.05;
-    } else {
-      factors.push({ name: `Roof age ${age}y — favorable (new roof)`, impact: '+5%', dir: 'up' });
-      hailModifier += 0.05;
-    }
-  }
-
-  // State-specific modifier (per research)
-  let stateNote = '';
-  if (state === 'PA') {
-    factors.push({ name: 'PA matching law adverse (Greene v. USAA)', impact: '−5%', dir: 'down' });
-    hailModifier -= 0.05;
-    stateNote = 'PA: matching law adverse. Build slope-only estimates first; argue Collins exception if applicable.';
-  } else if (state === 'MD') {
-    factors.push({ name: 'MD §27-303 leverage (strongest bad-faith statute)', impact: '+3%', dir: 'up' });
-    hailModifier += 0.03;
-    stateNote = 'MD: cite §27-303 (arbitrary/capricious denial → $2,500-$125,000 penalty) on first denial.';
-  } else if (state === 'VA') {
-    stateNote = 'VA: long 5-year SOL but weak bad-faith leverage (§38.2-209). Use procedural escalation.';
-  }
-
-  // Combine
-  let finalRate = carrierRate + hailModifier + speedModifier;
-  finalRate = Math.max(0.05, Math.min(0.95, finalRate));
-  const finalScore = Math.round(finalRate * 100);
-  const cls = finalScore >= 70 ? 'high' : finalScore >= 45 ? 'med' : 'low';
-
-  // Predict job value
-  let predValue = carrierData?.avgApprovedJob || 25000;
-  if (czKey && czKey.completed > 0) {
-    const zipObj = patterns.zips.find((z) => z.zip === zip);
-    if (zipObj) predValue = (predValue + zipObj.avgApprovedJob) / 2;
-  }
-
-  // Recommendation
-  const recs = [];
-  if (finalRate >= 0.7) {
-    recs.push({ tone: 'good', text: `<strong>High-probability lead.</strong> Get to the door fast. Schedule inspection within 7 days.` });
-  } else if (finalRate >= 0.5) {
-    recs.push({ tone: '', text: `<strong>Moderate.</strong> Solid lead but pre-document aggressively. Pre-inspect on foot with chalk + phone macro photos before adjuster arrives.` });
-  } else {
-    recs.push({ tone: 'warn', text: `<strong>Lower probability.</strong> Pre-inspection essential. Heavy photo documentation (every slope, chalk circles). On first denial, escalate IN WRITING to the supervisor adjuster + request re-inspection. Don't accept verbal denials.` });
-  }
-  if (hail >= 1.25 && hail < 1.5) {
-    recs.push({ tone: 'warn', text: `<strong>Engineer-zone hail (1.25-1.5").</strong> Carriers often route to engineering reports here. Bring an independent HAAG-certified inspector to first meeting.` });
-  }
-  if (days > 180) {
-    recs.push({ tone: 'warn', text: `<strong>Stale claim window (${days}d).</strong> Approval rate drops to 62% past 180d. Check policy SOL — PA is only 2 years.` });
-  }
-  if (czKey && czKey.approvalRate >= 0.8 && czKey.jobs >= 10) {
-    recs.push({ tone: 'good', text: `<strong>${carrier} historically pays in ZIP ${zip} (${(czKey.approvalRate * 100).toFixed(0)}% approval, ${czKey.jobs} jobs).</strong> Lean on local pattern in customer conversations.` });
-  }
-  if (stateNote) recs.push({ tone: '', text: stateNote });
-  if (carrier === 'State Farm') {
-    recs.push({ tone: '', text: `<strong>State Farm note:</strong> Demand Xactimate "Restoration" pricing (not "New Construction"). Highest carrier complaint volume per NAIC.` });
-  }
-  if (carrier === 'Allstate') {
-    recs.push({ tone: 'warn', text: `<strong>Allstate note:</strong> 50.9% of claims close without payment (Weiss Ratings 2024). Document aggressively; check for cosmetic damage endorsement.` });
-  }
-  if (carrier === 'Travelers' && hail > 0) {
-    recs.push({ tone: 'warn', text: `<strong>Travelers note:</strong> Heavy engineer use (HAAG/Donan). For hail claims, expect engineer involvement — bring an independent inspector.` });
-  }
-
-  // Render
   $('result').innerHTML = `
     <div class="layout">
       <section>
         <h2>Predicted Approval</h2>
         <div class="score-card">
-          <div class="big ${cls}">${finalScore}%</div>
-          <div class="label">Probability of approval · Confidence: ${confidence}</div>
+          <div class="big ${cls}">${d.score}%</div>
+          <div class="label">Probability of approval · Confidence: ${d.confidence} · Base rate: ${(d.baseRate*100).toFixed(0)}%</div>
         </div>
-        <div style="text-align:center;margin-bottom:12px"><strong>Estimated approved $ if won: <span class="money">${fmt.money(predValue)}</span></strong></div>
+        <div style="text-align:center;color:var(--muted);font-size:11px;margin-bottom:12px">
+          Model: ${d.modelVersion} · computed in ${d.tookMs}ms
+        </div>
         <h2 style="font-size:14px">Factors that moved the score</h2>
-        ${factors.map((f) => `<div class="factor ${f.dir}"><div class="name">${f.name}</div><div class="impact">${f.impact}</div></div>`).join('')}
+        ${(d.factors || []).map((f) => `<div class="factor ${f.direction}"><div class="name">${escapeHtml(f.name)}: ${escapeHtml(f.value)}</div><div class="impact">${f.contribution >= 0 ? '+' : ''}${f.contribution}pp</div></div>`).join('') || '<div class="empty">No matching historical data — score uses base rate only.</div>'}
       </section>
       <section>
         <h2>Recommended Plays</h2>
-        ${recs.map((r) => `<div class="recommendation ${r.tone}">${r.text}</div>`).join('')}
-        <h2 style="font-size:14px;margin-top:16px">Similar past wins in this segment</h2>
-        ${czKey ? `<div class="empty">${czKey.completed} approved in ${carrier} × ZIP ${zip} historically.</div>` :
-          carrierData ? `<div class="empty">${carrierData.completed} approved with ${carrier} historically (across all ZIPs).</div>` :
-          `<div class="empty">No historical data for this exact combo.</div>`}
+        ${recs.map((r) => `<div class="recommendation">${r.replace(/^(Strongest signal|Watch out|Fresh \d|Score is low|We&#39;ve signed)([^:.]*[.:])/, '<strong>$1$2</strong>')}</div>`).join('')}
       </section>
     </div>
   `;
 }
 
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
 async function start() {
-  patterns = await fetch('/api/intel/patterns').then((r) => r.json());
+  // Populate dropdowns from current canonical endpoints (not the stale
+  // patterns blob). Both contain count + closeRate per entity so we can
+  // show context in the dropdown label.
+  const [cs, rs] = await Promise.all([
+    fetch('/api/intel/carriers-summary').then((r) => r.json()),
+    fetch('/api/intel/reps-summary').then((r) => r.json()),
+  ]);
+  carriers = (cs.carriers || []).filter((c) => c.name !== 'Retail / No Carrier');
+  reps = (rs.reps || []).filter((r) => r.signed >= 5);
   $('loading').style.display = 'none';
   $('content').style.display = '';
-  // Populate carrier dropdown
-  for (const c of patterns.carriers.slice(0, 50)) {
-    const o = document.createElement('option'); o.value = c.name; o.textContent = `${c.name} (${c.jobs} jobs · ${(c.approvalRate * 100).toFixed(0)}%)`;
+  for (const c of carriers) {
+    const o = document.createElement('option');
+    o.value = c.name;
+    o.textContent = `${c.name} (${c.signed} jobs · ${(c.closeRate * 100).toFixed(0)}%)`;
     $('f-carrier').appendChild(o);
   }
-  // Populate rep dropdown
-  for (const r of patterns.reps.slice(0, 60)) {
-    const o = document.createElement('option'); o.value = r.name; o.textContent = `${r.name} (${r.jobs} jobs · ${(r.approvalRate * 100).toFixed(0)}%)`;
+  for (const r of reps.sort((a, b) => b.signed - a.signed).slice(0, 80)) {
+    const o = document.createElement('option');
+    o.value = r.name;
+    o.textContent = `${r.name} (${r.signed} jobs · ${(r.closeRate * 100).toFixed(0)}%)`;
     $('f-rep').appendChild(o);
   }
   $('btn-predict').addEventListener('click', predict);
