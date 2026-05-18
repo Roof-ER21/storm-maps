@@ -173,7 +173,7 @@ async function start() {
     { title: 'Resurrection candidates', desc: 'Dead insurance jobs hit by new strong storms', count: t.resurrection, link: 'resurrection.html' },
     { title: 'Warm customers w/ new damage', desc: 'Strong storm within 2mi since first contact', count: t.stormExposure, link: 'storm-exposure.html' },
     { title: 'Siding upsell pool', desc: 'Roof customers who never bought siding', count: t.sidingUpsell, link: 'upgrade-campaigns.html' },
-    { title: 'Solar candidates', desc: 'Completed roof 2018-2024 (right age for solar)', count: e.solarCandidates, link: 'upgrade-campaigns.html' },
+    { title: 'Solar candidates', desc: 'Completed roof 1-7 years old (right age for solar)', count: e.solarCandidates, link: 'upgrade-campaigns.html' },
     { title: 'Open AR ($)', desc: 'Money awaiting collection right now', count: fmt.bigMoney(t.arTotal), link: 'receivables.html' },
   ];
   $('opportunities').innerHTML = opps.map((o) => `

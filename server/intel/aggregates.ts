@@ -222,12 +222,14 @@ export async function carrierDeep(req: Request, res: Response) {
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
           FROM intel_projects WHERE insurance = ${name}
       `,
-      // Trades: unnest JSONB array, count + revenue per trade (revenue shared across trades on a job)
-      pgSql<Array<{ trade: string; signed: number; completed: number; revenue: number }>>`
+      // Trades: unnest JSONB array, count + revenue per trade (revenue shared across trades on a job).
+      // `dead` is selected so closeRate uses the canonical /(signed-dead) denominator.
+      pgSql<Array<{ trade: string; signed: number; completed: number; dead: number; revenue: number }>>`
         SELECT
           trade,
           COUNT(*)::int AS signed,
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(
             CASE WHEN stage ~* 'completed|finalized'
                  THEN job_total / NULLIF(jsonb_array_length(data->'trades'), 0)
@@ -240,23 +242,25 @@ export async function carrierDeep(req: Request, res: Response) {
          ORDER BY COUNT(*) DESC
          LIMIT 10
       `,
-      pgSql<Array<{ zip: string; city: string | null; signed: number; completed: number; revenue: number }>>`
+      pgSql<Array<{ zip: string; city: string | null; signed: number; completed: number; dead: number; revenue: number }>>`
         SELECT
           LEFT(zip, 5) AS zip,
           MODE() WITHIN GROUP (ORDER BY city) AS city,
           COUNT(*)::int AS signed,
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
           FROM intel_projects WHERE insurance = ${name} AND zip IS NOT NULL AND LENGTH(zip) >= 5
          GROUP BY LEFT(zip, 5)
          ORDER BY COUNT(*) DESC
          LIMIT 12
       `,
-      pgSql<Array<{ rep: string; signed: number; completed: number; revenue: number }>>`
+      pgSql<Array<{ rep: string; signed: number; completed: number; dead: number; revenue: number }>>`
         SELECT
           sales_rep AS rep,
           COUNT(*)::int AS signed,
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
           FROM intel_projects WHERE insurance = ${name} AND sales_rep IS NOT NULL AND sales_rep <> ''
          GROUP BY sales_rep
@@ -274,11 +278,12 @@ export async function carrierDeep(req: Request, res: Response) {
          ORDER BY COUNT(*) FILTER (WHERE stage ~* 'completed|finalized') DESC, COUNT(*) DESC
          LIMIT 10
       `,
-      pgSql<Array<{ year: string; signed: number; completed: number; revenue: number }>>`
+      pgSql<Array<{ year: string; signed: number; completed: number; dead: number; revenue: number }>>`
         SELECT
           LEFT(signed_date, 4) AS year,
           COUNT(*)::int AS signed,
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
           FROM intel_projects WHERE insurance = ${name} AND signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
          GROUP BY LEFT(signed_date, 4)
@@ -333,38 +338,46 @@ export async function carrierDeep(req: Request, res: Response) {
     const dead = num(sum.dead);
     const revenue = num(sum.revenue);
 
+    // All sub-aggregate closeRate uses the canonical /(signed-dead) denominator,
+    // matching the carrier-summary close rate. Was incorrectly /signed before.
     const trades = tradeRows.map((r) => {
       const s = num(r.signed);
       const c = num(r.completed);
+      const d = num(r.dead);
       return {
         t: r.trade,
         signed: s,
         completed: c,
+        dead: d,
         revenue: num(r.revenue),
-        closeRate: s > 0 ? c / s : 0,
+        closeRate: s - d > 0 ? c / (s - d) : 0,
       };
     });
     const zips = zipRows.map((r) => {
       const s = num(r.signed);
       const c = num(r.completed);
+      const d = num(r.dead);
       return {
         z: r.zip,
         city: r.city ?? '',
         signed: s,
         completed: c,
+        dead: d,
         revenue: num(r.revenue),
-        closeRate: s > 0 ? c / s : 0,
+        closeRate: s - d > 0 ? c / (s - d) : 0,
       };
     });
     const reps = repRows.map((r) => {
       const s = num(r.signed);
       const c = num(r.completed);
+      const d = num(r.dead);
       return {
         n: r.rep,
         signed: s,
         completed: c,
+        dead: d,
         revenue: num(r.revenue),
-        closeRate: s > 0 ? c / s : 0,
+        closeRate: s - d > 0 ? c / (s - d) : 0,
       };
     });
     const adjusters = adjusterRows.map((r) => {
@@ -382,12 +395,14 @@ export async function carrierDeep(req: Request, res: Response) {
     const years = yearRows.map((r) => {
       const s = num(r.signed);
       const c = num(r.completed);
+      const d = num(r.dead);
       return {
         y: r.year,
         signed: s,
         completed: c,
+        dead: d,
         revenue: num(r.revenue),
-        closeRate: s > 0 ? c / s : 0,
+        closeRate: s - d > 0 ? c / (s - d) : 0,
       };
     });
     const storms = stormRows.map((r) => ({
@@ -1424,11 +1439,12 @@ export async function execSummary(_req: Request, res: Response) {
          WHERE zip IS NOT NULL AND LENGTH(zip) >= 5
          GROUP BY LEFT(zip, 5) ORDER BY revenue DESC LIMIT 5
       `,
-      pgSql<Array<{ year: string; signed: number; completed: number; revenue: number }>>`
+      pgSql<Array<{ year: string; signed: number; completed: number; dead: number; revenue: number }>>`
         SELECT
           LEFT(signed_date, 4) AS year,
           COUNT(*)::int AS signed,
           COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
           FROM intel_projects WHERE signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
          GROUP BY LEFT(signed_date, 4) ORDER BY LEFT(signed_date, 4) DESC
@@ -1478,6 +1494,10 @@ export async function execSummary(_req: Request, res: Response) {
           )::int AS supplements_open
           FROM intel_projects
       `,
+      // Solar candidates: customers whose most-recent completed roof job is
+      // between 1 and 7 years old (the solar-friendly age range). Rolling
+      // window — was a fixed 2018-2024 literal, which drifted out of sync
+      // with solar.html's "1-7y" filter as years passed.
       pgSql<Array<{ count: number }>>`
         SELECT COUNT(*)::int AS count
           FROM (
@@ -1491,7 +1511,7 @@ export async function execSummary(_req: Request, res: Response) {
                       COALESCE(NULLIF(completed_date,''), signed_date) DESC NULLS LAST
           ) latest
          WHERE d IS NOT NULL
-           AND LEFT(d, 4)::int BETWEEN 2018 AND 2024
+           AND d::date BETWEEN (NOW() - INTERVAL '7 years')::date AND (NOW() - INTERVAL '1 year')::date
       `,
     ]);
 
@@ -1516,11 +1536,14 @@ export async function execSummary(_req: Request, res: Response) {
       yoy: yoyRows.map((r) => {
         const signed = num(r.signed);
         const completed = num(r.completed);
+        const dead = num(r.dead);
         return {
           year: r.year,
-          signed, completed,
+          signed, completed, dead,
           revenue: num(r.revenue),
-          closeRate: signed > 0 ? completed / signed : 0,
+          // Canonical close rate — completed / (signed - dead). Matches
+          // carriers-summary, zip-stats, predictor base rate, etc.
+          closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
         };
       }),
       topCarriersByRev: topCarriersRows.map((r) => ({
