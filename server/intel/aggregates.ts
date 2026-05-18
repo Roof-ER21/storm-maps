@@ -1319,6 +1319,223 @@ export async function customersList(req: Request, res: Response) {
 }
 
 /* ============================================================================
+ * /api/intel/zip-deep?zip=20110
+ * ----------------------------------------------------------------------------
+ *  Per-ZIP deep dive: carriers/trades/reps/adjusters with rates + storms.
+ *  Used by zip-intel.html right pane.
+ * ========================================================================= */
+export async function zipDeep(req: Request, res: Response) {
+  const t0 = Date.now();
+  const zip = String(req.query.zip ?? '').trim().slice(0, 5);
+  if (!zip) {
+    res.status(400).json({ error: 'missing_zip' });
+    return;
+  }
+  const filter = pgSql`LEFT(zip, 5) = ${zip}`;
+
+  try {
+    const [
+      summaryRows,
+      carrierRows,
+      tradeRows,
+      repRows,
+      adjusterRows,
+      stormRows,
+    ] = await Promise.all([
+      pgSql<Array<{
+        city: string | null; signed: number; completed: number; dead: number;
+        revenue: number; completed_rev: number; med_deductible: number | null;
+        storm_count: number;
+      }>>`
+        SELECT
+          MODE() WITHIN GROUP (ORDER BY city) AS city,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COALESCE(SUM(job_total), 0)::numeric AS revenue,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS completed_rev,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY deductible)
+            FILTER (WHERE deductible > 0 AND deductible <= 50000)::numeric AS med_deductible,
+          COUNT(*) FILTER (
+            WHERE data->'stormMatch' IS NOT NULL AND data->'stormMatch' <> 'null'::jsonb
+          )::int AS storm_count
+          FROM intel_projects WHERE ${filter}
+      `,
+      pgSql<Array<{ name: string; signed: number; completed: number; dead: number; rev: number }>>`
+        SELECT
+          insurance AS name,
+          COUNT(*)::int AS signed,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS rev
+          FROM intel_projects WHERE ${filter} AND insurance IS NOT NULL
+         GROUP BY insurance ORDER BY COUNT(*) DESC
+      `,
+      pgSql<Array<{ trade: string; count: number }>>`
+        SELECT trade, COUNT(*)::int AS count
+          FROM intel_projects,
+               jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
+         WHERE ${filter}
+         GROUP BY trade ORDER BY COUNT(*) DESC LIMIT 8
+      `,
+      pgSql<Array<{ rep: string; count: number }>>`
+        SELECT sales_rep AS rep, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND sales_rep IS NOT NULL
+         GROUP BY sales_rep ORDER BY COUNT(*) DESC LIMIT 5
+      `,
+      pgSql<Array<{ adjuster: string; count: number }>>`
+        SELECT adjuster_name AS adjuster, COUNT(*)::int AS count
+          FROM intel_projects WHERE ${filter} AND adjuster_name IS NOT NULL AND adjuster_name <> ''
+         GROUP BY adjuster_name ORDER BY COUNT(*) DESC LIMIT 5
+      `,
+      pgSql<Array<{
+        storm_date: string | null;
+        storm_type: string | null;
+        storm_magnitude: string | null;
+        storm_unit: string | null;
+        storm_distance: string | null;
+      }>>`
+        SELECT
+          data->'stormMatch'->>'stormDate' AS storm_date,
+          data->'stormMatch'->>'stormType' AS storm_type,
+          data->'stormMatch'->>'stormMagnitude' AS storm_magnitude,
+          data->'stormMatch'->>'stormUnit' AS storm_unit,
+          data->'stormMatch'->>'stormDistanceMiles' AS storm_distance
+          FROM intel_projects
+         WHERE ${filter} AND data->'stormMatch'->>'stormDate' IS NOT NULL
+         ORDER BY data->'stormMatch'->>'stormDate' DESC LIMIT 5
+      `,
+    ]);
+
+    const s = summaryRows[0] ?? { city: null, signed: 0, completed: 0, dead: 0, revenue: 0, completed_rev: 0, med_deductible: null, storm_count: 0 };
+    const signed = num(s.signed);
+    const completed = num(s.completed);
+    const dead = num(s.dead);
+    const completedRev = num(s.completed_rev);
+
+    const carriers = carrierRows.map((c) => {
+      const cs = num(c.signed);
+      const cc = num(c.completed);
+      const cd = num(c.dead);
+      return {
+        name: c.name,
+        signed: cs, completed: cc, dead: cd, rev: num(c.rev),
+        closeRate: cs - cd > 0 ? cc / (cs - cd) : 0,
+      };
+    });
+
+    res.json({
+      zip,
+      city: s.city,
+      summary: {
+        signed, completed, dead,
+        revenue: num(s.revenue),
+        completedRev,
+        closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
+        avgApprovedJob: completed > 0 ? completedRev / completed : null,
+        medianDeductible: s.med_deductible != null ? num(s.med_deductible) : null,
+        stormCount: num(s.storm_count),
+      },
+      carriers,
+      trades: tradeRows.map((r) => ({ name: r.trade, count: num(r.count) })),
+      reps: repRows.map((r) => ({ name: r.rep, count: num(r.count) })),
+      adjusters: adjusterRows.map((r) => ({ name: r.adjuster, count: num(r.count) })),
+      recentStorms: stormRows.map((s) => ({
+        stormDate: s.storm_date,
+        stormType: s.storm_type,
+        stormMagnitude: s.storm_magnitude ? num(s.storm_magnitude) : null,
+        stormUnit: s.storm_unit,
+        stormDistanceMiles: s.storm_distance ? num(s.storm_distance) : null,
+      })),
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'zip_deep_failed', message: msg });
+  }
+}
+
+/* ============================================================================
+ * /api/intel/rep-response?year=2026
+ * ----------------------------------------------------------------------------
+ *  Per-rep storm-response stats: median/25th/75th percentile of
+ *  daysLossToSign (clamped to 0-365), pct-within-30-days, and per-rep job
+ *  counts. Only counts jobs that have a stormMatch and a valid daysLossToSign.
+ *  Used by rep-response.html.
+ *
+ *  Also returns the list of years present in signed_date so the page can
+ *  populate its year filter without a separate fetch.
+ * ========================================================================= */
+export async function repResponse(req: Request, res: Response) {
+  const t0 = Date.now();
+  const year = String(req.query.year ?? '').trim() || null;
+
+  try {
+    const [repRows, yearRows] = await Promise.all([
+      pgSql<Array<{
+        rep: string;
+        jobs: number;
+        completed: number;
+        revenue: number;
+        median_days: number;
+        p25: number;
+        p75: number;
+        fast30: number;
+      }>>`
+        SELECT
+          TRIM(sales_rep) AS rep,
+          COUNT(*)::int AS jobs,
+          COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY NULLIF(data->>'daysLossToSign','')::int)::numeric AS median_days,
+          PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY NULLIF(data->>'daysLossToSign','')::int)::numeric AS p25,
+          PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY NULLIF(data->>'daysLossToSign','')::int)::numeric AS p75,
+          COUNT(*) FILTER (WHERE NULLIF(data->>'daysLossToSign','')::int <= 30)::int AS fast30
+          FROM intel_projects
+         WHERE TRIM(COALESCE(sales_rep,'')) <> ''
+           AND data->'stormMatch' IS NOT NULL AND data->'stormMatch' <> 'null'::jsonb
+           AND NULLIF(data->>'daysLossToSign','')::int BETWEEN 0 AND 365
+           ${year ? pgSql`AND LEFT(signed_date, 4) = ${year}` : pgSql``}
+         GROUP BY TRIM(sales_rep)
+      `,
+      pgSql<Array<{ year: string }>>`
+        SELECT DISTINCT LEFT(signed_date, 4) AS year
+          FROM intel_projects
+         WHERE signed_date IS NOT NULL AND LENGTH(signed_date) >= 4
+         ORDER BY year DESC
+      `,
+    ]);
+
+    const reps = repRows.map((r) => {
+      const jobs = num(r.jobs);
+      const fast30 = num(r.fast30);
+      return {
+        name: r.rep,
+        jobs,
+        completed: num(r.completed),
+        revenue: num(r.revenue),
+        medianDays: r.median_days != null ? Math.round(num(r.median_days)) : null,
+        p25: r.p25 != null ? Math.round(num(r.p25)) : null,
+        p75: r.p75 != null ? Math.round(num(r.p75)) : null,
+        pctFast30: jobs > 0 ? fast30 / jobs : 0,
+      };
+    });
+    reps.sort((a, b) => (a.medianDays ?? 999) - (b.medianDays ?? 999));
+
+    res.json({
+      reps,
+      years: yearRows.map((y) => y.year),
+      year,
+      total: reps.length,
+      took_ms: Date.now() - t0,
+    });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    res.status(500).json({ error: 'rep_response_failed', message: msg });
+  }
+}
+
+/* ============================================================================
  * /api/intel/solar-candidates
  * ----------------------------------------------------------------------------
  *  Customers whose most-recent completed roof job is the candidate row. Used

@@ -111,67 +111,20 @@ const fmt = {
   int: (v) => v == null ? '—' : v.toLocaleString(),
   pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
 };
-const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
-const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 let zips = [];
-
-function build(jobs) {
-  const m = new Map();
-  for (const j of jobs) {
-    if (!j.zip) continue;
-    const z = j.zip.slice(0, 5);
-    if (!m.has(z)) m.set(z, { zip: z, jobs: [], cities: {}, carriers: {}, trades: {}, reps: {}, adjusters: {}, deductibles: [], storms: [] });
-    const e = m.get(z);
-    e.jobs.push(j);
-    if (j.city) e.cities[j.city] = (e.cities[j.city] || 0) + 1;
-    if (j.insurance) {
-      if (!e.carriers[j.insurance]) e.carriers[j.insurance] = { signed: 0, completed: 0, dead: 0, rev: 0 };
-      e.carriers[j.insurance].signed++;
-      if (isCompleted(j)) { e.carriers[j.insurance].completed++; e.carriers[j.insurance].rev += j.jobTotal || 0; }
-      else if (isDead(j)) e.carriers[j.insurance].dead++;
-    }
-    for (const t of (j.trades || [])) e.trades[t] = (e.trades[t] || 0) + 1;
-    if (j.salesRep) e.reps[j.salesRep] = (e.reps[j.salesRep] || 0) + 1;
-    if (j.adjusterName) e.adjusters[j.adjusterName] = (e.adjusters[j.adjusterName] || 0) + 1;
-    if (j.deductible) e.deductibles.push(j.deductible);
-    if (j.stormMatch) e.storms.push({ ...j.stormMatch, jobId: j.id });
-  }
-  return [...m.values()].map((e) => {
-    const signed = e.jobs.length;
-    const completed = e.jobs.filter(isCompleted).length;
-    const dead = e.jobs.filter(isDead).length;
-    const revenue = e.jobs.reduce((s, j) => s + (j.jobTotal || 0), 0);
-    const completedRev = e.jobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
-    e.deductibles.sort((a, b) => a - b);
-    e.storms.sort((a, b) => (b.stormDate || '').localeCompare(a.stormDate || ''));
-    return {
-      ...e,
-      city: Object.entries(e.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '',
-      signed, completed, dead, revenue, completedRev,
-      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
-      avgApprovedJob: completed ? completedRev / completed : null,
-      medianDeductible: e.deductibles.length ? e.deductibles[Math.floor(e.deductibles.length / 2)] : null,
-    };
-  });
-}
 
 function renderList() {
   const q = ($('search').value || '').trim().toLowerCase();
-  const stateF = $('f-state').value;
   const minJobs = parseInt($('f-min').value, 10) || 0;
   const sortBy = $('f-sort').value;
   let rows = zips;
-  if (q) rows = rows.filter((z) => z.zip.includes(q) || z.city.toLowerCase().includes(q));
-  if (stateF) {
-    // Approximate state filter — first prevalent state in the zip's jobs.
-    rows = rows.filter((z) => z.jobs.some((j) => j.state === stateF));
-  }
+  if (q) rows = rows.filter((z) => z.zip.includes(q) || (z.city || '').toLowerCase().includes(q));
   if (minJobs > 0) rows = rows.filter((z) => z.signed >= minJobs);
   rows.sort((a, b) => (b[sortBy] || 0) - (a[sortBy] || 0));
   $('count').textContent = `${rows.length.toLocaleString()} zips · sorted by ${sortBy}`;
   $('zip-list').innerHTML = rows.slice(0, 300).map((z) => `
     <div class="zip-item" data-zip="${z.zip}">
-      <div class="zip">${z.zip} — ${z.city}</div>
+      <div class="zip">${z.zip} — ${z.city || ''}</div>
       <div class="stats">${z.signed} jobs · ${z.completed} done · ${fmt.money(z.revenue)} · ${fmt.pct(z.closeRate)}</div>
     </div>
   `).join('');
@@ -182,25 +135,24 @@ function renderList() {
   }));
 }
 
-function topList(obj, n = 6) {
-  return Object.entries(obj).sort((a, b) => b[1] - a[1]).slice(0, n);
-}
-
-function showZip(zip) {
-  const z = zips.find((x) => x.zip === zip);
-  if (!z) return;
-  const carriers = Object.entries(z.carriers).map(([name, c]) => ({
-    name, ...c,
-    closeRate: c.signed - c.dead > 0 ? c.completed / (c.signed - c.dead) : 0,
-  })).sort((a, b) => b.signed - a.signed);
+async function showZip(zip) {
+  $('detail').innerHTML = '<div class="loading">Loading…</div>';
+  let deep;
+  try {
+    const res = await fetch('/api/intel/zip-deep?zip=' + encodeURIComponent(zip));
+    deep = await res.json();
+  } catch (e) {
+    $('detail').innerHTML = '<div class="loading">Failed: ' + e + '</div>';
+    return;
+  }
+  const z = { ...deep.summary, zip: deep.zip, city: deep.city || '' };
+  const carriers = deep.carriers || [];
   const topCarrier = carriers[0];
-  const recentStorms = z.storms.slice(0, 5);
-  const trades = topList(z.trades, 8);
-  const reps = topList(z.reps, 5);
-  const adjusters = topList(z.adjusters, 5);
+  const recentStorms = deep.recentStorms || [];
+  const trades = (deep.trades || []).map((t) => [t.name, t.count]);
+  const reps = (deep.reps || []).map((r) => [r.name, r.count]);
+  const adjusters = (deep.adjusters || []).map((a) => [a.name, a.count]);
 
-  // Generate knock script
-  const scriptCarrier = topCarrier ? `${topCarrier.name} (${fmt.pct(topCarrier.closeRate)} approval rate, ${topCarrier.signed} prior jobs)` : 'an insurance carrier';
   const scriptTrade = trades[0]?.[0] || 'roof';
   const scriptMostRecentStorm = recentStorms[0];
   const scriptIntro = scriptMostRecentStorm
@@ -217,7 +169,7 @@ function showZip(zip) {
       <div class="kpi"><div class="label">Close rate</div><div class="value">${fmt.pct(z.closeRate)}</div></div>
       <div class="kpi"><div class="label">Avg approved $</div><div class="value">${fmt.money(z.avgApprovedJob)}</div></div>
       <div class="kpi"><div class="label">Median deductible</div><div class="value">${fmt.money(z.medianDeductible)}</div></div>
-      <div class="kpi"><div class="label">Storm matches</div><div class="value">${z.storms.length}</div></div>
+      <div class="kpi"><div class="label">Storm matches</div><div class="value">${z.stormCount}</div></div>
     </div>
 
     <div class="script-box">
@@ -270,15 +222,25 @@ function showZip(zip) {
   `;
 }
 
+async function fetchZipList() {
+  // window=0 → any-time recent-storms; we don't use the score here.
+  const stateF = $('f-state').value;
+  const url = '/api/intel/zip-stats?window=0' + (stateF ? '&state=' + encodeURIComponent(stateF) : '');
+  const res = await fetch(url);
+  const json = await res.json();
+  zips = json.zips || [];
+  renderList();
+}
+
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  const jobs = await res.json();
-  zips = build(jobs);
+  await fetchZipList();
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
-  ['f-state', 'f-min', 'f-sort'].forEach((id) => $(id).addEventListener('change', renderList));
-  renderList();
+  // State change re-fetches; min/sort just re-renders client-side from `zips`.
+  $('f-state').addEventListener('change', fetchZipList);
+  $('f-min').addEventListener('change', renderList);
+  $('f-sort').addEventListener('change', renderList);
   setTimeout(() => $('zip-list').querySelector('.zip-item')?.click(), 50);
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });

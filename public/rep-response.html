@@ -69,44 +69,18 @@ const fmt = {
   money: (v) => v == null || v === 0 ? '—' : '$' + Math.round(v).toLocaleString(),
   int: (v) => v == null ? '—' : v.toLocaleString(),
 };
-const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
-let allJobs = [], reps = [];
+let allReps = [], yearList = [];
 
-function build(year) {
-  const m = new Map();
-  for (const j of allJobs) {
-    if (!j.salesRep) continue;
-    if (j.daysLossToSign == null || j.daysLossToSign < 0 || j.daysLossToSign > 365) continue;
-    if (!j.stormMatch) continue;
-    if (year && (j.signedDate || '').slice(0, 4) !== year) continue;
-    if (!m.has(j.salesRep)) m.set(j.salesRep, { name: j.salesRep, daysList: [], jobs: 0, completed: 0, revenue: 0 });
-    const e = m.get(j.salesRep);
-    e.daysList.push(j.daysLossToSign);
-    e.jobs++;
-    if (isCompleted(j)) { e.completed++; e.revenue += j.jobTotal || 0; }
-  }
-  const rows = [];
-  for (const e of m.values()) {
-    e.daysList.sort((a, b) => a - b);
-    const median = e.daysList[Math.floor(e.daysList.length / 2)];
-    const fast30 = e.daysList.filter((d) => d <= 30).length;
-    rows.push({
-      name: e.name, jobs: e.jobs, completed: e.completed, revenue: e.revenue,
-      medianDays: median, p25: e.daysList[Math.floor(e.daysList.length * 0.25)],
-      p75: e.daysList[Math.floor(e.daysList.length * 0.75)],
-      pctFast30: e.daysList.length ? fast30 / e.daysList.length : 0,
-    });
-  }
-  return rows;
-}
-
-function applyFilters() {
+async function applyFilters() {
   const minJobs = Number($('f-minjobs').value || 0);
   const year = $('f-year').value;
-  let rows = build(year);
+  const res = await fetch('/api/intel/rep-response' + (year ? '?year=' + encodeURIComponent(year) : ''));
+  const json = await res.json();
+  allReps = json.reps || [];
+  let rows = allReps;
   if (minJobs) rows = rows.filter((r) => r.jobs >= minJobs);
-  rows.sort((a, b) => a.medianDays - b.medianDays);
-  $('count').textContent = `${rows.length} reps · median across all: ${Math.round(rows.reduce((s, r) => s + r.medianDays, 0) / rows.length)}d`;
+  const avg = rows.length ? Math.round(rows.reduce((s, r) => s + (r.medianDays || 0), 0) / rows.length) : 0;
+  $('count').textContent = `${rows.length} reps · median across all: ${avg}d`;
   render(rows);
 }
 
@@ -138,18 +112,19 @@ function render(rows) {
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  allJobs = await res.json();
-  const years = new Set();
-  for (const j of allJobs) if (j.signedDate) years.add(j.signedDate.slice(0, 4));
-  for (const y of [...years].sort().reverse()) {
+  // First load — also seeds the year dropdown from the server.
+  const res = await fetch('/api/intel/rep-response');
+  const json = await res.json();
+  allReps = json.reps || [];
+  yearList = json.years || [];
+  for (const y of yearList) {
     const o = document.createElement('option'); o.value = y; o.textContent = y; $('f-year').appendChild(o);
   }
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('f-minjobs').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 200); });
   $('f-year').addEventListener('change', applyFilters);
-  applyFilters();
+  applyFilters();  // re-fetch with current filter state
 }
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
 </script>
