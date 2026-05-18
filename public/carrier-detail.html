@@ -81,30 +81,7 @@ const fmt = {
   int: (v) => v == null ? '—' : v.toLocaleString(),
   pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
 };
-const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
-const isDead = (r) => /dead|cancel/i.test(r.stage || '');
-let jobs = [], carriers = [];
-
-function buildCarriers() {
-  const m = new Map();
-  for (const j of jobs) {
-    if (!j.insurance) continue;
-    if (!m.has(j.insurance)) m.set(j.insurance, { name: j.insurance, jobs: [] });
-    m.get(j.insurance).jobs.push(j);
-  }
-  return [...m.values()].map((c) => {
-    const signed = c.jobs.length;
-    const completed = c.jobs.filter(isCompleted);
-    const dead = c.jobs.filter(isDead).length;
-    const revenue = completed.reduce((s, j) => s + (j.jobTotal || 0), 0);
-    return {
-      ...c,
-      signed, completed: completed.length, dead, revenue,
-      closeRate: signed - dead > 0 ? completed.length / (signed - dead) : 0,
-      avgApprovedJob: completed.length ? revenue / completed.length : 0,
-    };
-  }).sort((a, b) => b.signed - a.signed);
-}
+let carriers = [];
 
 function renderList() {
   const q = ($('search').value || '').trim().toLowerCase();
@@ -124,75 +101,22 @@ function renderList() {
   }));
 }
 
-function topList(obj, n = 8) {
-  return Object.entries(obj).sort((a, b) => (b[1].signed || b[1]) - (a[1].signed || a[1])).slice(0, n);
-}
-
-function showCarrier(name) {
+async function showCarrier(name) {
   const c = carriers.find((x) => x.name === name);
   if (!c) return;
+  $('detail').innerHTML = '<div class="loading">Loading…</div>';
 
-  // Aggregations
-  const trades = {}, zips = {}, cities = {}, reps = {}, adjusters = {};
-  const deductibles = [];
-  const upliftValues = [];
-  const yearAgg = {};
-  const stormAgg = {};
-
-  for (const j of c.jobs) {
-    for (const t of (j.trades || [])) {
-      trades[t] = trades[t] || { signed: 0, completed: 0, revenue: 0 };
-      trades[t].signed++;
-      if (isCompleted(j)) { trades[t].completed++; trades[t].revenue += (j.jobTotal || 0) / (j.trades.length || 1); }
-    }
-    if (j.zip) {
-      const z = j.zip.slice(0, 5);
-      zips[z] = zips[z] || { signed: 0, completed: 0, revenue: 0, cities: {} };
-      zips[z].signed++;
-      if (j.city) zips[z].cities[j.city] = (zips[z].cities[j.city] || 0) + 1;
-      if (isCompleted(j)) { zips[z].completed++; zips[z].revenue += j.jobTotal || 0; }
-    }
-    if (j.city) cities[j.city] = (cities[j.city] || 0) + 1;
-    if (j.salesRep) {
-      reps[j.salesRep] = reps[j.salesRep] || { signed: 0, completed: 0, revenue: 0 };
-      reps[j.salesRep].signed++;
-      if (isCompleted(j)) { reps[j.salesRep].completed++; reps[j.salesRep].revenue += j.jobTotal || 0; }
-    }
-    if (j.adjusterName) {
-      adjusters[j.adjusterName] = adjusters[j.adjusterName] || { signed: 0, completed: 0, dead: 0 };
-      adjusters[j.adjusterName].signed++;
-      if (isCompleted(j)) adjusters[j.adjusterName].completed++;
-      else if (isDead(j)) adjusters[j.adjusterName].dead++;
-    }
-    if (j.deductible && j.deductible > 0 && j.deductible <= 50000) deductibles.push(j.deductible);
-    if (j.initialEstimate && j.revisedEstimate && j.initialEstimate > 0) {
-      upliftValues.push((j.revisedEstimate - j.initialEstimate) / j.initialEstimate);
-    }
-    if (j.signedDate) {
-      const y = j.signedDate.slice(0, 4);
-      yearAgg[y] = yearAgg[y] || { signed: 0, completed: 0, revenue: 0 };
-      yearAgg[y].signed++;
-      if (isCompleted(j)) { yearAgg[y].completed++; yearAgg[y].revenue += j.jobTotal || 0; }
-    }
-    if (j.stormMatch) {
-      const sid = j.stormMatch.stormId;
-      stormAgg[sid] = stormAgg[sid] || { date: j.stormMatch.stormDate, type: j.stormMatch.stormType, mag: j.stormMatch.stormMagnitude, unit: j.stormMatch.stormUnit, jobs: 0, revenue: 0 };
-      stormAgg[sid].jobs++;
-      if (j.jobTotal) stormAgg[sid].revenue += j.jobTotal;
-    }
+  let deep;
+  try {
+    const res = await fetch('/api/intel/carrier-deep?name=' + encodeURIComponent(name));
+    deep = await res.json();
+  } catch (e) {
+    $('detail').innerHTML = '<div class="loading">Failed: ' + e + '</div>';
+    return;
   }
-
-  deductibles.sort((a, b) => a - b);
-  const medDeductible = deductibles[Math.floor(deductibles.length / 2)];
-  upliftValues.sort((a, b) => a - b);
-  const medUplift = upliftValues[Math.floor(upliftValues.length / 2)];
-
-  const topTrades = Object.entries(trades).map(([t, s]) => ({ t, ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.signed - a.signed).slice(0, 10);
-  const topZips = Object.entries(zips).map(([z, s]) => ({ z, city: Object.entries(s.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '', ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.signed - a.signed).slice(0, 12);
-  const topReps = Object.entries(reps).map(([n, s]) => ({ n, ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.completed - a.completed).slice(0, 10);
-  const topAdjusters = Object.entries(adjusters).map(([n, s]) => ({ n, ...s, approvalRate: s.signed - s.dead > 0 ? s.completed / (s.signed - s.dead) : 0 })).sort((a, b) => b.completed - a.completed).slice(0, 10);
-  const years = Object.entries(yearAgg).map(([y, s]) => ({ y, ...s, closeRate: s.signed > 0 ? s.completed / s.signed : 0 })).sort((a, b) => b.y.localeCompare(a.y));
-  const topStorms = Object.values(stormAgg).sort((a, b) => b.jobs - a.jobs).slice(0, 8);
+  const { trades = [], zips = [], reps = [], adjusters = [], years = [], storms = [], medians = {} } = deep;
+  const medDeductible = medians.deductible;
+  const medUplift = medians.upliftPct;
 
   $('detail').innerHTML = `
     <h2>${c.name} <a class="riq-link" href="cheat-sheet.html?type=carrier&name=${encodeURIComponent(c.name)}" style="font-size:13px;margin-left:8px">🎓 Cheat Sheet →</a></h2>
@@ -210,19 +134,19 @@ function showCarrier(name) {
     <div class="grid-2">
       <div><h2 style="font-size:13px;margin-top:0">Top trades</h2><div class="scroll"><table>
         <thead><tr><th>Trade</th><th class="num">Jobs</th><th class="num">Close%</th></tr></thead>
-        <tbody>${topTrades.map((r) => `<tr><td>${r.t}</td><td class="num">${r.signed}</td><td class="num pct">${fmt.pct(r.closeRate)}</td></tr>`).join('')}</tbody>
+        <tbody>${trades.map((r) => `<tr><td>${r.t}</td><td class="num">${r.signed}</td><td class="num pct">${fmt.pct(r.closeRate)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top ZIPs</h2><div class="scroll"><table>
         <thead><tr><th>ZIP</th><th>City</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>
-        <tbody>${topZips.map((r) => `<tr><td>${r.z}</td><td>${r.city}</td><td class="num">${r.signed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
+        <tbody>${zips.map((r) => `<tr><td>${r.z}</td><td>${r.city}</td><td class="num">${r.signed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top reps for this carrier</h2><div class="scroll"><table>
         <thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Revenue</th></tr></thead>
-        <tbody>${topReps.map((r) => `<tr><td><a class="riq-link" href="reps.html#${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
+        <tbody>${reps.map((r) => `<tr><td><a class="riq-link" href="reps.html#${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top adjusters</h2><div class="scroll"><table>
         <thead><tr><th>Adjuster</th><th class="num">Jobs</th><th class="num">Approved</th><th class="num">Approval %</th></tr></thead>
-        <tbody>${topAdjusters.map((r) => `<tr><td><a class="riq-link" href="adjuster-detail.html?name=${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
+        <tbody>${adjusters.map((r) => `<tr><td><a class="riq-link" href="adjuster-detail.html?name=${encodeURIComponent(r.n)}">${r.n}</a></td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num pct">${fmt.pct(r.approvalRate)}</td></tr>`).join('')}</tbody>
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Year-over-year</h2><div class="scroll"><table>
         <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Close%</th><th class="num">Revenue</th></tr></thead>
@@ -230,16 +154,16 @@ function showCarrier(name) {
       </table></div></div>
       <div><h2 style="font-size:13px;margin-top:0">Top storms (this carrier)</h2><div class="scroll"><table>
         <thead><tr><th>Date</th><th>Type</th><th>Mag</th><th class="num">Jobs</th><th class="num">Revenue</th></tr></thead>
-        <tbody>${topStorms.map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type}</td><td>${s.mag || '—'} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
+        <tbody>${storms.map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type}</td><td>${s.mag || '—'} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
       </table></div></div>
     </div>
   `;
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  jobs = await res.json();
-  carriers = buildCarriers();
+  const res = await fetch('/api/intel/carriers-summary');
+  const json = await res.json();
+  carriers = json.carriers || [];
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });

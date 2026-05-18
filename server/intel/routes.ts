@@ -22,6 +22,7 @@ import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
 import { transcribeDenial } from './denial-transcribe.js';
 import { ensureIntakeTables, listIntake, getIntake, postOutcome, intakeStats } from './denial-intake.js';
 import { projectsQuery, projectsAggregate } from './projects-query.js';
+import { zipStats, carriersSummary, carrierDeep, mapPins, customerLeads } from './aggregates.js';
 
 // Fire-and-forget on module load — table creation is idempotent and the
 // app shouldn't crash if Postgres is temporarily unavailable at boot.
@@ -192,6 +193,17 @@ router.get('/api/intel/manifest', (_req, res) => {
  */
 router.get('/api/intel/projects-query', projectsQuery);
 router.get('/api/intel/projects-aggregate', projectsAggregate);
+
+/**
+ * Phase 4b page-aggregation endpoints. Replace 36 MB blob fetches with
+ * page-ready aggregates computed server-side over intel_projects.
+ * Same registration rule as above: BEFORE the /:key catch-all.
+ */
+router.get('/api/intel/zip-stats', zipStats);
+router.get('/api/intel/carriers-summary', carriersSummary);
+router.get('/api/intel/carrier-deep', carrierDeep);
+router.get('/api/intel/map-pins', mapPins);
+router.get('/api/intel/customer-leads', customerLeads);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

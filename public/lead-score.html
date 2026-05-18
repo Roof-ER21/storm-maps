@@ -129,7 +129,7 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
-let allJobs = [], exposure = [], customers = [], scored = [], zipStats = {};
+let scored = [], zipStats = {};
 let rankSortKey = 'score', rankSortDir = 'desc';
 function rankSortVal(r, k) {
   if (k === 'score') return r.score;
@@ -143,103 +143,6 @@ function rankSortVal(r, k) {
   return 0;
 }
 
-function buildZipStats() {
-  const m = {};
-  for (const j of allJobs) {
-    if (!j.zip) continue;
-    const z = j.zip.slice(0, 5);
-    if (!m[z]) m[z] = { signed: 0, completed: 0, dead: 0, revenue: 0, recentStorms: 0 };
-    m[z].signed++;
-    if (isCompleted(j)) { m[z].completed++; m[z].revenue += j.jobTotal || 0; }
-    else if (isDead(j)) m[z].dead++;
-    if (j.stormMatch && j.stormMatch.stormDate) {
-      const days = (Date.now() - new Date(j.stormMatch.stormDate).getTime()) / 86400000;
-      if (days < 365) m[z].recentStorms++;
-    }
-  }
-  for (const z of Object.keys(m)) {
-    const s = m[z];
-    s.closeRate = (s.signed - s.dead) > 0 ? s.completed / (s.signed - s.dead) : 0;
-    s.avgApprovedJob = s.completed > 0 ? s.revenue / s.completed : 0;
-  }
-  return m;
-}
-
-function buildCustomerScores() {
-  const expByKey = new Map();
-  for (const c of exposure) {
-    const k = ((c.customer || '') + '|' + (c.addressLine1 || '')).toLowerCase();
-    expByKey.set(k, c);
-  }
-
-  // Group customer jobs
-  const m = new Map();
-  for (const j of allJobs) {
-    const k = ((j.customer || '') + '|' + (j.addressLine1 || '')).toLowerCase();
-    if (!k.replace(/\|/g, '').trim()) continue;
-    if (!m.has(k)) m.set(k, { jobs: [], trades: new Set(), carriers: new Set(), reps: new Set() });
-    const e = m.get(k);
-    e.jobs.push(j);
-    for (const t of (j.trades || [])) e.trades.add(t);
-    if (j.insurance) e.carriers.add(j.insurance);
-    if (j.salesRep) e.reps.add(j.salesRep);
-  }
-
-  // Pre-compute global maxes for normalization
-  const maxStormHits = Math.max(1, ...exposure.map((c) => c.stormCount));
-  const maxAvgJob = Math.max(1, ...Object.values(zipStats).map((z) => z.avgApprovedJob));
-
-  const rows = [];
-  for (const [k, e] of m) {
-    const j0 = e.jobs[0];
-    const completedJobs = e.jobs.filter(isCompleted).length;
-    const totalRev = e.jobs.reduce((s, j) => s + (j.jobTotal || 0), 0);
-    const dead = e.jobs.filter(isDead).length;
-    const personalCloseRate = e.jobs.length - dead > 0 ? completedJobs / (e.jobs.length - dead) : 0;
-    const lastDate = e.jobs.map((j) => j.completedDate || j.signedDate).filter(Boolean).sort().reverse()[0];
-    const daysSinceLast = lastDate ? Math.floor((Date.now() - new Date(lastDate).getTime()) / 86400000) : null;
-    const exp = expByKey.get(k);
-    const stormHits = exp ? exp.stormCount : 0;
-    const strongestMag = exp ? (exp.strongestStorm.type === 'HAIL' ? (exp.strongestStorm.mag || 0) * 10 : (exp.strongestStorm.mag || 0)) : 0;
-    const stormScore = stormHits > 0 ? Math.min(100, (stormHits / maxStormHits) * 60 + (strongestMag / 30) * 40) : 0;
-    const z = j0.zip ? j0.zip.slice(0, 5) : null;
-    const zs = z ? zipStats[z] : null;
-    const zipCarrierScore = zs ? Math.min(100, zs.closeRate * 100) : 0;
-    const zipJobValueScore = zs ? Math.min(100, (zs.avgApprovedJob / maxAvgJob) * 100) : 0;
-    const ROOF_TRADES = ['Roofing', 'Metal Roofing', 'Flat Roofing'];
-    const UPSELL_GAP = ['Siding', 'Gutters & Downspouts', 'Skylights', 'Trim'];
-    const tradeGapCount = UPSELL_GAP.filter((t) => !e.trades.has(t)).length;
-    const hasRoofComplete = [...e.trades].some((t) => ROOF_TRADES.includes(t)) && completedJobs > 0;
-    const tradeGapScore = hasRoofComplete ? Math.min(100, tradeGapCount * 25) : 25;
-    const personalScore = personalCloseRate * 100;
-    const recencyScore = daysSinceLast == null ? 50 : (daysSinceLast > 730 ? 80 : daysSinceLast > 365 ? 60 : daysSinceLast > 90 ? 40 : 20);
-    const score = Math.round(
-      0.40 * stormScore +
-      0.15 * personalScore +
-      0.15 * tradeGapScore +
-      0.10 * zipCarrierScore +
-      0.10 * zipJobValueScore +
-      0.10 * recencyScore
-    );
-    rows.push({
-      customer: j0.customer,
-      address: [j0.addressLine1, j0.city, j0.state, j0.zip].filter(Boolean).join(', '),
-      addressLine1: j0.addressLine1, city: j0.city, state: j0.state, zip: j0.zip,
-      lat: j0.lat, lng: j0.lng,
-      email: j0.customerEmail, phone: j0.customerCell,
-      jobs: e.jobs.length, completedJobs, totalRev,
-      trades: [...e.trades],
-      tradeGaps: UPSELL_GAP.filter((t) => !e.trades.has(t)),
-      carriers: [...e.carriers],
-      reps: [...e.reps],
-      stormHits, strongestStorm: exp ? exp.strongestStorm : null, lastDate, daysSinceLast,
-      stormScore, personalScore, tradeGapScore, zipCarrierScore, zipJobValueScore, recencyScore,
-      score,
-    });
-  }
-  rows.sort((a, b) => b.score - a.score);
-  return rows;
-}
 
 function rankRender(rows) {
   rows = [...rows].sort((a, b) => {
@@ -318,12 +221,8 @@ function scoreZip(z) {
   z = z.slice(0, 5);
   const zs = zipStats[z];
   if (!zs) { $('zip-result').innerHTML = `<div style="color:var(--muted);padding:20px">No data for ZIP ${z}</div>`; return; }
-  const recentJobs = allJobs.filter((j) => j.zip && j.zip.slice(0, 5) === z);
-  const cust = recentJobs[0];
-  const recentStormsCount = recentJobs.filter((j) => {
-    if (!j.stormMatch?.stormDate) return false;
-    return (Date.now() - new Date(j.stormMatch.stormDate).getTime()) / 86400000 < 365;
-  }).length;
+  // recentStorms is already 365-day window from /api/intel/zip-stats?window=365
+  const recentStormsCount = zs.recentStorms || 0;
   const stormScore = Math.min(100, recentStormsCount * 5);
   const closeRateScore = (zs.closeRate || 0) * 100;
   const valueScore = Math.min(100, (zs.avgApprovedJob || 0) / 500);
@@ -334,7 +233,7 @@ function scoreZip(z) {
     <div class="scoreblock">
       <div class="big ${cls}">${score}</div>
       <div class="head">
-        <div class="title">ZIP ${z}${cust ? ' — ' + (cust.city || '') : ''}</div>
+        <div class="title">ZIP ${z}${zs.city ? ' — ' + zs.city : ''}</div>
         <div class="addr">${zs.signed} prior jobs · ${zs.completed} approved · ${fmt.money(zs.revenue)} revenue</div>
       </div>
     </div>
@@ -349,13 +248,12 @@ function scoreZip(z) {
 
 async function start() {
   const [r1, r2] = await Promise.all([
-    fetch('/api/intel/projects').then((r) => r.json()),
-    fetch('/api/intel/storm-exposure').then((r) => r.json()).catch(() => []),
+    fetch('/api/intel/customer-leads?limit=1500').then((r) => r.json()),
+    fetch('/api/intel/zip-stats?window=365').then((r) => r.json()),
   ]);
-  allJobs = r1;
-  exposure = r2;
-  zipStats = buildZipStats();
-  scored = buildCustomerScores();
+  scored = r1.rows || [];
+  zipStats = {};
+  for (const z of (r2.zips || [])) zipStats[z.zip] = z;
   $('loading').style.display = 'none';
   $('content').style.display = '';
 

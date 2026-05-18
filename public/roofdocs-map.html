@@ -144,7 +144,7 @@
 <script src="https://unpkg.com/@googlemaps/markerclusterer@2/dist/index.min.js"></script>
 <script src="/riq-links.js"></script>
 <script>
-const FILE = '/api/intel/projects';
+const FILE = '/api/intel/map-pins';
 
 // Google Maps loader (uses key from server-side config)
 let _gmapsPromise = null;
@@ -307,13 +307,10 @@ function render() {
 
 async function start() {
   document.getElementById('stat-count').textContent = 'loading…';
-  const [r1, r2] = await Promise.all([fetch(FILE), fetch('/api/intel/job-storms').catch(() => null)]);
-  all = await r1.json();
-  if (r2 && r2.ok) {
-    const storms = await r2.json();
-    const m = new Map(storms.map((s) => [s.jobId, s]));
-    for (const p of all) p.stormMatch = m.get(p.id) || null;
-  }
+  // map-pins already includes stormMatch + lat/lng filter; no need to join job-storms.
+  const r1 = await fetch(FILE);
+  const payload = await r1.json();
+  all = payload.pins || payload;  // {pins:[]} new shape; fall back to raw array if old endpoint replied
 
   // Init Google Maps (Roadmap + Satellite + Hybrid + Terrain toggle, Street View pegman, fullscreen)
   await loadGoogleMaps();

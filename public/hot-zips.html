@@ -103,58 +103,7 @@ const fmt = {
 const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
-let jobs = [], zips = [], active = [];
-
-function build(window) {
-  const cutoff = window > 0 ? Date.now() - window * 86400000 : 0;
-  const m = new Map();
-  for (const j of jobs) {
-    if (!j.zip) continue;
-    const z = j.zip.slice(0, 5);
-    if (!m.has(z)) m.set(z, { zip: z, jobs: [], cities: {}, state: j.state, recentStorms: 0, recentHail: 0 });
-    const e = m.get(z);
-    e.jobs.push(j);
-    if (j.city) e.cities[j.city] = (e.cities[j.city] || 0) + 1;
-    if (!e.state && j.state) e.state = j.state;
-    if (j.stormMatch && j.stormMatch.stormDate) {
-      const ts = new Date(j.stormMatch.stormDate).getTime();
-      if (ts >= cutoff) {
-        e.recentStorms++;
-        if (j.stormMatch.stormType === 'HAIL') e.recentHail++;
-      }
-    }
-  }
-  const rows = [];
-  for (const e of m.values()) {
-    const signed = e.jobs.length;
-    const completed = e.jobs.filter(isCompleted).length;
-    const dead = e.jobs.filter(isDead).length;
-    const completedRev = e.jobs.filter(isCompleted).reduce((s, j) => s + (j.jobTotal || 0), 0);
-    rows.push({
-      zip: e.zip, state: e.state,
-      city: Object.entries(e.cities).sort((a, b) => b[1] - a[1])[0]?.[0] || '',
-      signed, completed, dead,
-      closeRate: signed - dead > 0 ? completed / (signed - dead) : 0,
-      avgApprovedJob: completed ? completedRev / completed : 0,
-      revenue: completedRev,
-      recentStorms: e.recentStorms,
-      recentHail: e.recentHail,
-    });
-  }
-  // Normalize
-  const maxStorms = Math.max(1, ...rows.map((r) => r.recentStorms));
-  const maxJobs = Math.max(1, ...rows.map((r) => r.signed));
-  const maxAvg = Math.max(1, ...rows.map((r) => r.avgApprovedJob));
-  for (const r of rows) {
-    const stormN = r.recentStorms / maxStorms;
-    const closeN = r.closeRate;
-    const avgN = r.avgApprovedJob / maxAvg;
-    const densN = r.signed / maxJobs;
-    r.score = Math.round(100 * (0.40 * stormN + 0.25 * closeN + 0.20 * avgN + 0.15 * densN));
-  }
-  rows.sort((a, b) => b.score - a.score);
-  return rows;
-}
+let zips = [], active = [];
 
 function renderKPIs() {
   $('kpis').innerHTML = `
@@ -223,16 +172,21 @@ function exportCSV() {
   URL.revokeObjectURL(url);
 }
 
-function recalc() {
-  zips = build(Number($('f-window').value));
+async function recalc() {
+  const w = Number($('f-window').value);
+  const minJ = Number($('f-minjobs').value || 0);
+  const st = $('f-state').value;
+  const params = new URLSearchParams({ window: String(w), min_jobs: String(minJ) });
+  if (st) params.set('state', st);
+  const res = await fetch('/api/intel/zip-stats?' + params.toString());
+  const json = await res.json();
+  zips = json.zips || [];
   renderKPIs();
   applyFilters();
 }
 
 async function start() {
-  const res = await fetch('/api/intel/projects');
-  jobs = await res.json();
-  recalc();
+  await recalc();
   $('loading').style.display = 'none';
   $('content').style.display = '';
   const states = new Set();
@@ -240,8 +194,10 @@ async function start() {
   for (const s of [...states].sort()) {
     const o = document.createElement('option'); o.value = s; o.textContent = s; $('f-state').appendChild(o);
   }
-  for (const f of ['f-search', 'f-minjobs']) $(f).addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 200); });
-  $('f-state').addEventListener('change', applyFilters);
+  // Search filter is purely client-side (no re-fetch); state/min_jobs/window re-fetch via recalc.
+  $('f-search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(applyFilters, 200); });
+  $('f-minjobs').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(recalc, 250); });
+  $('f-state').addEventListener('change', recalc);
   $('f-window').addEventListener('change', recalc);
   $('btn-csv').addEventListener('click', exportCSV);
 }
