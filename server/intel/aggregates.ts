@@ -1638,11 +1638,11 @@ export async function opsTeamSummary(req: Request, res: Response) {
     res.status(400).json({ error: 'invalid_role', allowed: [...OPS_ROLES] });
     return;
   }
-  // Field is in JSONB (not promoted) — `data->>'<role>'`.
-  // Use pgSql(role) to inline as identifier-safe (we whitelisted role above).
-  const roleExpr = pgSql`data->>${role}`;
 
   try {
+    // Promote the role JSONB field to a column via subquery so GROUP BY can
+    // reference it by name (Postgres can't match identical parameterized
+    // expressions across SELECT/WHERE/GROUP BY).
     const rows = await pgSql<Array<{
       name: string;
       signed: number;
@@ -1651,14 +1651,17 @@ export async function opsTeamSummary(req: Request, res: Response) {
       revenue: number;
     }>>`
       SELECT
-        ${roleExpr} AS name,
+        person AS name,
         COUNT(*)::int AS signed,
         COUNT(*) FILTER (WHERE stage ~* 'completed|finalized')::int AS completed,
         COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
         COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
-        FROM intel_projects
-       WHERE ${roleExpr} IS NOT NULL AND ${roleExpr} <> ''
-       GROUP BY ${roleExpr}
+        FROM (
+          SELECT data->>${role} AS person, stage, job_total
+            FROM intel_projects
+        ) sub
+       WHERE person IS NOT NULL AND person <> ''
+       GROUP BY person
        ORDER BY COUNT(*) DESC
     `;
     const people = rows.map((r) => {
@@ -1698,7 +1701,6 @@ export async function opsTeamDeep(req: Request, res: Response) {
     res.status(400).json({ error: 'missing_key' });
     return;
   }
-  const filter = pgSql`data->>${role} = ${key}`;
 
   try {
     const [
@@ -1718,33 +1720,33 @@ export async function opsTeamDeep(req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
           COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS revenue
-          FROM intel_projects WHERE ${filter}
+          FROM intel_projects WHERE data->>${role} = ${key}
       `,
       pgSql<Array<{ name: string; count: number }>>`
         SELECT city AS name, COUNT(*)::int AS count
-          FROM intel_projects WHERE ${filter} AND city IS NOT NULL
+          FROM intel_projects WHERE data->>${role} = ${key} AND city IS NOT NULL
          GROUP BY city ORDER BY COUNT(*) DESC LIMIT 8
       `,
       pgSql<Array<{ name: string; count: number }>>`
         SELECT insurance AS name, COUNT(*)::int AS count
-          FROM intel_projects WHERE ${filter} AND insurance IS NOT NULL
+          FROM intel_projects WHERE data->>${role} = ${key} AND insurance IS NOT NULL
          GROUP BY insurance ORDER BY COUNT(*) DESC LIMIT 8
       `,
       pgSql<Array<{ name: string; count: number }>>`
         SELECT sales_rep AS name, COUNT(*)::int AS count
-          FROM intel_projects WHERE ${filter} AND sales_rep IS NOT NULL
+          FROM intel_projects WHERE data->>${role} = ${key} AND sales_rep IS NOT NULL
          GROUP BY sales_rep ORDER BY COUNT(*) DESC LIMIT 8
       `,
       pgSql<Array<{ name: string; count: number }>>`
         SELECT trade AS name, COUNT(*)::int AS count
           FROM intel_projects,
                jsonb_array_elements_text(COALESCE(data->'trades', '[]'::jsonb)) AS trade
-         WHERE ${filter}
+         WHERE data->>${role} = ${key}
          GROUP BY trade ORDER BY COUNT(*) DESC LIMIT 8
       `,
       pgSql<Array<{ name: string; count: number }>>`
         SELECT LEFT(zip, 5) AS name, COUNT(*)::int AS count
-          FROM intel_projects WHERE ${filter} AND zip IS NOT NULL AND LENGTH(zip) >= 5
+          FROM intel_projects WHERE data->>${role} = ${key} AND zip IS NOT NULL AND LENGTH(zip) >= 5
          GROUP BY LEFT(zip, 5) ORDER BY COUNT(*) DESC LIMIT 8
       `,
       pgSql<Array<{ med_complete: number | null }>>`
@@ -1753,14 +1755,14 @@ export async function opsTeamDeep(req: Request, res: Response) {
         ) FILTER (
           WHERE NULLIF(data->>'daysToComplete','')::int BETWEEN 0 AND 729
         )::numeric AS med_complete
-          FROM intel_projects WHERE ${filter}
+          FROM intel_projects WHERE data->>${role} = ${key}
       `,
       pgSql<Array<{
         customer: string | null; address_line1: string | null; city: string | null;
         state: string | null; stage: string | null; signed_date: string | null; job_total: number | null;
       }>>`
         SELECT customer, address_line1, city, state, stage, signed_date, job_total
-          FROM intel_projects WHERE ${filter} AND job_total > 0
+          FROM intel_projects WHERE data->>${role} = ${key} AND job_total > 0
          ORDER BY job_total DESC NULLS LAST LIMIT 10
       `,
     ]);
