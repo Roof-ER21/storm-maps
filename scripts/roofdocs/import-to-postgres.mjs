@@ -109,4 +109,21 @@ async function importDataset({ key, file }) {
   console.log(`Summary: ${ok.length} imported, ${skipped.length} skipped/failed`);
 
   await sql.end();
+
+  // Phase 4b: if projects was imported, also backfill the decomposed indexed
+  // table so the per-row query endpoints don't fall behind the blob.
+  const projectsImported = ok.some((r) => r.key === 'projects');
+  if (projectsImported) {
+    console.log('');
+    console.log('→ Backfilling intel_projects (Phase 4b indexed table)…');
+    const { spawn } = await import('node:child_process');
+    const { fileURLToPath } = await import('node:url');
+    const path = await import('node:path');
+    const here = path.dirname(fileURLToPath(import.meta.url));
+    const child = spawn('node', [path.join(here, 'backfill-intel-projects.mjs')], {
+      stdio: 'inherit',
+      env: process.env,
+    });
+    await new Promise((resolve) => child.on('close', resolve));
+  }
 })();

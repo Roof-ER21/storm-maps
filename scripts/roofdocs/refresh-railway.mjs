@@ -168,6 +168,9 @@ async function pushDerivedToDb() {
 
     await pushDerivedToDb();
 
+    log('Phase 4b: backfilling intel_projects (decomposed indexed table)…');
+    await runChild('node', ['scripts/roofdocs/backfill-intel-projects.mjs']);
+
     const elapsed = ((Date.now() - startedAt) / 1000).toFixed(1);
     log(`=== DONE in ${elapsed}s ===`);
     await sql.end();
