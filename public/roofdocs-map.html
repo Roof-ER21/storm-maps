@@ -346,7 +346,8 @@ async function start() {
     if (p.jobType) types.add(p.jobType);
     if (p.insurance) ins.add(p.insurance);
     if (p.salesRep) reps.add(p.salesRep);
-    if (p.state) states.add(p.state);
+    // Filter out junk state codes (EV, SE, N/, VI, etc.) — only real US 2-letter codes.
+    if (p.state && /^[A-Z]{2}$/.test(p.state) && ['VA','MD','PA','DC','DE','NJ','NY','WV','NC','SC','OH','CT','VI','GA','FL','TN','KY'].includes(p.state)) states.add(p.state);
     if (p.leadSource) leads.add(p.leadSource);
     if (p.city) cities.add(p.city.trim());
     if (p.stage) stages.add(p.stage);
