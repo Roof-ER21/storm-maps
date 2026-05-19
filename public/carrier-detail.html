@@ -191,7 +191,61 @@ async function showCarrier(name) {
         <tbody>${storms.map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type}</td><td>${s.mag || '—'} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
       </table></div></div>
     </div>
+
+    <div id="ar-friction" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <h2 style="font-size:13px;margin:0 0 6px">💸 AR Friction <span style="color:var(--muted);font-weight:400;font-size:11px">— how this carrier actually pays</span></h2>
+      <div id="ar-friction-body" style="color:var(--muted);font-size:12px">Loading AR data…</div>
+    </div>
   `;
+
+  // Fire-and-forget AR rollup for this carrier
+  fetch(`/api/intel/receivables/rollup?carrier=${encodeURIComponent(c.name)}`)
+    .then((r) => r.json())
+    .then((ar) => {
+      const target = document.getElementById('ar-friction-body');
+      if (!target) return;
+      if (!ar || ar.noData || (ar.totals?.count ?? 0) === 0) {
+        target.innerHTML = '<span>No open AR for this carrier — paid or pre-billing.</span>';
+        return;
+      }
+      const t = ar.totals;
+      const carrierRow = (ar.byCarrier || [])[0];
+      const aging = ar.aging || {};
+      const bucketCell = (k) => `<td class="num">${aging[k]?.count || 0}<div style="color:var(--muted);font-size:10px">${fmt.money(aging[k]?.outstanding || 0)}</div></td>`;
+      target.innerHTML = `
+        <div class="kpi-row" style="margin-bottom:10px">
+          <div class="kpi"><div class="label">Open accounts</div><div class="value">${fmt.int(t.count)}</div></div>
+          <div class="kpi"><div class="label">Outstanding</div><div class="value">${fmt.money(t.outstanding)}</div></div>
+          <div class="kpi"><div class="label">Avg days outstanding</div><div class="value">${carrierRow?.avgDays ?? '—'}</div></div>
+          <div class="kpi"><div class="label">Oldest</div><div class="value">${carrierRow?.oldestDays ? carrierRow.oldestDays + 'd' : '—'}</div></div>
+        </div>
+        <div class="scroll"><table>
+          <thead><tr>
+            <th>Aging</th>
+            <th class="num">0–30 d</th>
+            <th class="num">31–60</th>
+            <th class="num">61–90</th>
+            <th class="num">91–180</th>
+            <th class="num" style="color:var(--red)">180+</th>
+          </tr></thead>
+          <tbody><tr>
+            <td><strong>${c.name}</strong></td>
+            ${bucketCell('0-30')}
+            ${bucketCell('31-60')}
+            ${bucketCell('61-90')}
+            ${bucketCell('91-180')}
+            ${bucketCell('180+')}
+          </tr></tbody>
+        </table></div>
+        <div style="color:var(--muted);font-size:11px;margin-top:6px">
+          As of ${ar.asOf}. Source: <code>/api/intel/receivables/rollup?carrier=…</code>. Each cell shows account count + dollars outstanding.
+        </div>
+      `;
+    })
+    .catch((err) => {
+      const target = document.getElementById('ar-friction-body');
+      if (target) target.innerHTML = `<span style="color:var(--red)">AR load failed: ${err.message || err}</span>`;
+    });
 }
 
 async function start() {

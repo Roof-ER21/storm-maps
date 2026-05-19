@@ -25,6 +25,7 @@ import { projectsQuery, projectsAggregate } from './projects-query.js';
 import { createShare, getSharedList, listMyShares, deleteShare } from './sharing.js';
 import { predictorScore, predictorWebhook } from './predictor.js';
 import { carrierComplaints } from './naic-complaints.js';
+import { arRollup } from './ar-rollup.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -172,6 +173,7 @@ router.get('/api/intel/_meta', (_req, res) => {
       'GET  /api/intel/predictor/score':    'Lead-score predictor (query-params)',
       'POST /api/intel/predictor/webhook':  'CC21 lead-pipeline webhook (JSON body)',
       'GET  /api/intel/carrier-complaints': 'NAIC complaint index per carrier (Indiana 2022 baseline)',
+      'GET  /api/intel/receivables/rollup': 'AR aging + carrier friction (?carrier= to filter)',
       'POST /api/intel/share':              'Create a public shareable list (no-auth viewer)',
       'GET  /api/intel/share/:slug':        'PUBLIC: read shared list snapshot',
     },
@@ -270,6 +272,13 @@ router.post('/api/intel/predictor/webhook', predictorWebhook);
  *   GET /api/intel/carrier-complaints?carrier=X    — single carrier
  */
 router.get('/api/intel/carrier-complaints', carrierComplaints);
+
+/* ----------------------------------------------------------------------------
+ *  AR friction rollup — aging + carrier breakdown from receivables blob.
+ *   GET /api/intel/receivables/rollup              — full
+ *   GET /api/intel/receivables/rollup?carrier=X    — single carrier slice
+ */
+router.get('/api/intel/receivables/rollup', arRollup);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

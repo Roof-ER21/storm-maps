@@ -73,6 +73,7 @@
     <div class="tabs">
       <div class="tab active" data-tab="ar">Open AR (Completion + Final)</div>
       <div class="tab" data-tab="dp">Pending Downpayments</div>
+      <div class="tab" data-tab="friction">💸 Carrier Friction</div>
     </div>
 
     <section id="sec-ar">
@@ -95,6 +96,15 @@
       </div>
       <div id="dp-count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
       <div class="scroll"><table id="tbl-dp"></table></div>
+    </section>
+
+    <section id="sec-friction" style="display:none">
+      <div style="color:var(--muted); font-size:12px; margin-bottom:10px">
+        Which carriers actually pay vs. drag. Ranked by outstanding dollars. Avg days is mean across the carrier's open accounts (only counts accounts with a <code>sentOn</code> date).
+      </div>
+      <div id="friction-totals" class="kpi-row" style="margin-bottom:14px"></div>
+      <div class="scroll"><table id="tbl-friction"></table></div>
+      <div id="friction-asof" style="color:var(--muted); font-size:11px; margin-top:8px"></div>
     </section>
   </div>
 </main>
@@ -310,11 +320,64 @@ async function start() {
     t.classList.add('active');
     $('sec-ar').style.display = t.dataset.tab === 'ar' ? '' : 'none';
     $('sec-dp').style.display = t.dataset.tab === 'dp' ? '' : 'none';
+    $('sec-friction').style.display = t.dataset.tab === 'friction' ? '' : 'none';
+    if (t.dataset.tab === 'friction') loadFriction();
   }));
 
   renderKPIs();
   applyAR();
   applyDP();
+}
+
+let frictionLoaded = false;
+async function loadFriction() {
+  if (frictionLoaded) return;
+  frictionLoaded = true;
+  try {
+    const r = await fetch('/api/intel/receivables/rollup');
+    const ar = await r.json();
+    const totals = ar.totals || {};
+    const aging = ar.aging || {};
+    $('friction-totals').innerHTML = [
+      { l: 'Open accounts',   v: fmt.int(totals.count) },
+      { l: 'Outstanding',     v: fmt.money(totals.outstanding) },
+      { l: '91-180 days',     v: fmt.money(aging['91-180']?.outstanding) + ` <span style="color:var(--muted);font-size:11px">(${aging['91-180']?.count || 0})</span>` },
+      { l: '180+ days',       v: fmt.money(aging['180+']?.outstanding) + ` <span style="color:var(--muted);font-size:11px">(${aging['180+']?.count || 0})</span>` },
+      { l: 'Pending deposits',v: fmt.int(totals.depositsAwaiting) },
+    ].map((k) => `<div class="kpi"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+    const bucketCell = (n) => `<td class="num">${n || 0}</td>`;
+    const carriers = ar.byCarrier || [];
+    $('tbl-friction').innerHTML = `
+      <thead><tr>
+        <th>Carrier</th>
+        <th class="num">Open</th>
+        <th class="num">Outstanding</th>
+        <th class="num">Avg days</th>
+        <th class="num">Oldest</th>
+        <th class="num">0–30</th>
+        <th class="num">31–60</th>
+        <th class="num">61–90</th>
+        <th class="num">91–180</th>
+        <th class="num" style="color:var(--red)">180+</th>
+      </tr></thead>
+      <tbody>${carriers.map((c) => `<tr>
+        <td><a href="carrier-detail.html?carrier=${encodeURIComponent(c.carrier)}" style="color:var(--accent);text-decoration:none">${c.carrier}</a></td>
+        <td class="num">${c.count}</td>
+        <td class="num">${fmt.money(c.outstanding)}</td>
+        <td class="num">${c.avgDays ?? '—'}</td>
+        <td class="num">${c.oldestDays ? c.oldestDays + 'd' : '—'}</td>
+        ${bucketCell(c.aging['0-30'])}
+        ${bucketCell(c.aging['31-60'])}
+        ${bucketCell(c.aging['61-90'])}
+        ${bucketCell(c.aging['91-180'])}
+        ${bucketCell(c.aging['180+'])}
+      </tr>`).join('')}</tbody>
+    `;
+    $('friction-asof').innerHTML = `As of ${ar.asOf}. Source: <code>/api/intel/receivables/rollup</code>. Carrier names normalized via <code>server/intel/carrier-normalize.mjs</code>.`;
+  } catch (err) {
+    $('tbl-friction').innerHTML = `<tbody><tr><td style="color:var(--red);padding:20px">Failed to load: ${err.message || err}</td></tr></tbody>`;
+  }
 }
 
 start().catch((e) => { $('loading').textContent = 'Failed: ' + e; });
