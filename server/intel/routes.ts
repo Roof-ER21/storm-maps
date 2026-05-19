@@ -82,6 +82,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'denial-corpus':   { file: 'denial-corpus.json',   description: 'Real denial archive mined from GroupMe + Gmail + PDFs + Susan canon (for few-shot prompting)' },
   'carrier-boilerplate': { file: 'carrier-boilerplate.json', description: 'Per-carrier n-gram phrases that appear in 2+ denials — boilerplate template detector (V1: corpus too small for most carriers; matures with intake)' },
   'employee-roster': { file: 'employee-roster.json', description: 'UUID → display-name map for ops/AR/field-tech surfaces (manual; populate from portal /api/users)' },
+  'adjustments-open': { file: 'adjustments-open.json', description: 'Open public-adjuster cases (Phil Hetrick is sole assignee — 22 records, oldest 5+ years stale)' },
 };
 
 // Storm light file lives in storms/ subdir

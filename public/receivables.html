@@ -74,6 +74,7 @@
       <div class="tab active" data-tab="ar">Open AR (Completion + Final)</div>
       <div class="tab" data-tab="dp">Pending Downpayments</div>
       <div class="tab" data-tab="friction">💸 Carrier Friction</div>
+      <div class="tab" data-tab="pa">📋 Open PA Cases</div>
     </div>
 
     <section id="sec-ar">
@@ -96,6 +97,14 @@
       </div>
       <div id="dp-count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
       <div class="scroll"><table id="tbl-dp"></table></div>
+    </section>
+
+    <section id="sec-pa" style="display:none">
+      <div style="color:var(--muted); font-size:12px; margin-bottom:10px">
+        Open public-adjuster cases (homeowner has a PA representing them). Sole assignee currently is Phil Hetrick. Oldest cases are 5+ years stale — backlog to triage. Source: portal <code>publicAdjustmentTracker</code> endpoint.
+      </div>
+      <div id="pa-totals" class="kpi-row" style="margin-bottom:14px"></div>
+      <div class="scroll"><table id="tbl-pa"></table></div>
     </section>
 
     <section id="sec-friction" style="display:none">
@@ -321,12 +330,71 @@ async function start() {
     $('sec-ar').style.display = t.dataset.tab === 'ar' ? '' : 'none';
     $('sec-dp').style.display = t.dataset.tab === 'dp' ? '' : 'none';
     $('sec-friction').style.display = t.dataset.tab === 'friction' ? '' : 'none';
+    $('sec-pa').style.display = t.dataset.tab === 'pa' ? '' : 'none';
     if (t.dataset.tab === 'friction') loadFriction();
+    if (t.dataset.tab === 'pa') loadPA();
   }));
 
   renderKPIs();
   applyAR();
   applyDP();
+}
+
+let paLoaded = false;
+async function loadPA() {
+  if (paLoaded) return;
+  paLoaded = true;
+  try {
+    const r = await fetch('/api/intel/adjustments-open');
+    const json = await r.json();
+    const rows = json.adjustments || [];
+    const today = new Date();
+    const ages = rows.map((a) => {
+      const d = a.dateAdded ? Math.floor((today - new Date(a.dateAdded)) / 86400000) : null;
+      return { ...a, daysOpen: d };
+    });
+    const byCarrier = {};
+    for (const a of ages) {
+      const c = a.insurance?.company || '(unknown)';
+      byCarrier[c] = (byCarrier[c] || 0) + 1;
+    }
+    const oldest = ages.reduce((m, a) => (a.daysOpen != null && a.daysOpen > m ? a.daysOpen : m), 0);
+    const newest = ages.reduce((m, a) => (a.daysOpen != null && a.daysOpen < m ? a.daysOpen : m), Infinity);
+    const overOneYear = ages.filter((a) => (a.daysOpen ?? 0) > 365).length;
+    $('pa-totals').innerHTML = [
+      { l: 'Open cases', v: fmt.int(rows.length) },
+      { l: 'Oldest', v: oldest + 'd <span style="color:var(--muted);font-size:11px">(' + (oldest / 365).toFixed(1) + 'y)</span>' },
+      { l: 'Newest', v: (Number.isFinite(newest) ? newest + 'd' : '—') },
+      { l: 'Over 1 year', v: fmt.int(overOneYear) + ' <span style="color:var(--muted);font-size:11px">(' + Math.round(100 * overOneYear / rows.length) + '%)</span>' },
+      { l: 'Top carrier', v: Object.entries(byCarrier).sort((a, b) => b[1] - a[1])[0]?.[0] || '—' },
+    ].map((k) => `<div class="kpi"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+    ages.sort((a, b) => (b.daysOpen ?? 0) - (a.daysOpen ?? 0));
+    $('tbl-pa').innerHTML = `
+      <thead><tr>
+        <th>Customer</th>
+        <th>Carrier</th>
+        <th>Claim #</th>
+        <th>Adjuster</th>
+        <th>Assignee</th>
+        <th class="num">Days open</th>
+        <th>Status</th>
+        <th>Address</th>
+      </tr></thead>
+      <tbody>${ages.map((a) => `<tr>
+        <td>${a.customer ? `${a.customer.firstName} ${a.customer.lastName}` : '—'}</td>
+        <td>${a.insurance?.company || '—'}</td>
+        <td>${a.insurance?.claimNumber || '—'}</td>
+        <td>${a.insurance?.adjusterName || '—'}</td>
+        <td>${a.assignee ? `${a.assignee.firstName} ${a.assignee.lastName}` : '<span style="color:var(--muted)">unassigned</span>'}</td>
+        <td class="num" style="color:${(a.daysOpen ?? 0) > 730 ? 'var(--red)' : (a.daysOpen ?? 0) > 365 ? 'var(--yellow)' : 'var(--text)'}">${a.daysOpen ?? '—'}</td>
+        <td>${a.status || '—'}</td>
+        <td>${a.job ? `${a.job.addressLine1 || ''}, ${a.job.city || ''} ${a.job.state || ''}` : '—'}</td>
+      </tr>`).join('')}</tbody>
+    `;
+  } catch (err) {
+    $('tbl-pa').innerHTML = `<tbody><tr><td style="color:var(--red);padding:20px">Failed to load: ${err.message || err}</td></tr></tbody>`;
+  }
 }
 
 let frictionLoaded = false;

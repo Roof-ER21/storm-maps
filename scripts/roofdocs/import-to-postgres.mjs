@@ -36,6 +36,8 @@ const DATASETS = [
   { key: 'lifetime-touch',   file: 'lifetime-touch.json' },
   { key: 'denial-corpus',    file: 'denial-corpus.json' },
   { key: 'carrier-boilerplate', file: 'carrier-boilerplate.json' },
+  { key: 'adjustments-open', file: 'adjustments-open.json' },
+  { key: 'employee-roster',  file: 'employee-roster.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
 ];
 
