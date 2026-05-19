@@ -51,6 +51,60 @@ function isStanceVariant(s: unknown): s is StanceVariant {
   return typeof s === 'string' && (STANCE_VARIANTS as readonly string[]).includes(s);
 }
 
+// Carrier-aware stance pick (V2 auto-flip). Queries outcome stats for the
+// given carrier; if a stance has ≥ MIN_OUTCOMES outcomes and a strictly
+// higher flip rate than alternatives, pick it. Else fall back to uniform
+// random. Returns { stance, source: 'recommended' | 'random' } so the
+// caller can log + the response can surface why a particular stance was
+// chosen (useful for evaluating the recommendation engine).
+const MIN_OUTCOMES_FOR_RECOMMENDATION = 3;
+async function pickStanceForCarrier(
+  carrierRaw: string | null,
+): Promise<{ stance: StanceVariant; source: 'recommended' | 'random' }> {
+  if (!carrierRaw) return { stance: selectStance(), source: 'random' };
+  try {
+    const { normalizeCarrier } = await import('./carrier-normalize.mjs');
+    const canonical = normalizeCarrier(carrierRaw) || carrierRaw;
+    const rows = await pgSql<Array<{ stance_variant: string; outcome: string }>>`
+      SELECT di.stance_variant, lo.outcome
+      FROM denial_intake di
+      JOIN LATERAL (
+        SELECT outcome FROM denial_outcomes
+        WHERE intake_id = di.id
+        ORDER BY created_at DESC LIMIT 1
+      ) lo ON true
+      WHERE di.stance_variant IS NOT NULL
+        AND lo.outcome IN ('approved','partial','denied')
+        AND COALESCE(di.identified_carrier, di.carrier) IS NOT NULL
+        AND ${canonical} = ANY(
+          ARRAY[di.identified_carrier, di.carrier]
+        )
+    `;
+    if (rows.length === 0) return { stance: selectStance(), source: 'random' };
+    // Bucket by stance
+    type Bucket = { total: number; flipped: number };
+    const buckets = new Map<string, Bucket>();
+    for (const r of rows) {
+      const b = buckets.get(r.stance_variant) || { total: 0, flipped: 0 };
+      b.total += 1;
+      if (r.outcome === 'approved' || r.outcome === 'partial') b.flipped += 1;
+      buckets.set(r.stance_variant, b);
+    }
+    let best: { stance: StanceVariant; flipRate: number; total: number } | null = null;
+    for (const [stance, b] of buckets) {
+      if (b.total < MIN_OUTCOMES_FOR_RECOMMENDATION) continue;
+      if (!isStanceVariant(stance)) continue;
+      const flipRate = b.flipped / b.total;
+      if (!best || flipRate > best.flipRate) best = { stance, flipRate, total: b.total };
+    }
+    if (best) return { stance: best.stance, source: 'recommended' };
+    return { stance: selectStance(), source: 'random' };
+  } catch {
+    // Any error → safe fallback to random (don't block analysis on DB issues).
+    return { stance: selectStance(), source: 'random' };
+  }
+}
+
 interface PatentExtracted {
   summary?: string;
   imageFeaturesScanned?: string[];
@@ -395,7 +449,24 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
   const body = req.body || {};
   const denialText: string = (body.denialText || '').toString();
   const carrierHint: string = (body.carrier || '').toString();
-  const stanceVariant: StanceVariant = isStanceVariant(body.stanceVariant) ? body.stanceVariant : selectStance();
+  // Stance selection precedence:
+  //   1. Explicit body.stanceVariant → use it (testing / replay)
+  //   2. carrierHint provided → carrier-aware pick (uses recommended winner
+  //      from denial_outcomes if that carrier has ≥3 outcomes per stance)
+  //   3. Else → uniform random
+  let stanceVariant: StanceVariant;
+  let stanceSource: 'forced' | 'recommended' | 'random';
+  if (isStanceVariant(body.stanceVariant)) {
+    stanceVariant = body.stanceVariant;
+    stanceSource = 'forced';
+  } else if (carrierHint) {
+    const picked = await pickStanceForCarrier(carrierHint);
+    stanceVariant = picked.stance;
+    stanceSource = picked.source;
+  } else {
+    stanceVariant = selectStance();
+    stanceSource = 'random';
+  }
 
   if (!denialText.trim() || denialText.length < 50) {
     res.status(400).json({ error: 'invalid_input', detail: 'denialText must be at least 50 chars' });
@@ -484,6 +555,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
       model: MODEL,
       carrierHint,
       stanceVariant,
+      stanceSource,
       patentsConsidered,
       corpusExamplesUsed,
       boilerplateMatches,

@@ -155,15 +155,9 @@ function renderRows() {
                        r.appeal_strength === 'weak' ?
                         '<span class="pill red">' + escape(r.appeal_strength) + '</span>' :
                         '<span class="pill gray">—</span>';
-    const markButtons = outcome ? '<span style="font-size:11px;color:var(--muted);">set</span>' :
-      '<select onchange="markOutcome(' + r.id + ', this.value)" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:3px 6px;font-size:11px;">' +
-      '<option value="">— mark —</option>' +
-      '<option value="approved">✓ Approved</option>' +
-      '<option value="partial">◐ Partial</option>' +
-      '<option value="denied">✗ Denied</option>' +
-      '<option value="pending">… Pending</option>' +
-      '<option value="withdrawn">↩ Withdrawn</option>' +
-      '</select>';
+    const markButtons = outcome
+      ? '<button onclick="openOutcomeForm(' + r.id + ')" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer">+ update</button>'
+      : '<button onclick="openOutcomeForm(' + r.id + ')" style="background:var(--accent);color:#1a1612;border:none;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">Mark outcome</button>';
     return ['<tr id="row-' + r.id + '">',
       '<td>#' + r.id + '</td>',
       '<td>' + date + '</td>',
@@ -178,6 +172,70 @@ function renderRows() {
   }).join('');
 }
 
+function openOutcomeForm(id) {
+  // Close any other open form first
+  document.querySelectorAll('.outcome-form-row').forEach((el) => el.remove());
+  const row = document.getElementById('row-' + id);
+  if (!row) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const form = document.createElement('tr');
+  form.className = 'outcome-form-row';
+  form.innerHTML =
+    '<td colspan="9" style="background:#1e1a16;padding:14px 18px;border-bottom:1px solid var(--border)">' +
+      '<div style="display:flex;flex-wrap:wrap;gap:12px;align-items:end;font-size:12px">' +
+        '<label style="display:flex;flex-direction:column;gap:3px">' +
+          '<span style="color:var(--muted);font-size:11px;text-transform:uppercase">Outcome *</span>' +
+          '<select id="of-out-' + id + '" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 8px">' +
+            '<option value="">—</option>' +
+            '<option value="approved">✓ Approved (full flip)</option>' +
+            '<option value="partial">◐ Partial flip</option>' +
+            '<option value="denied">✗ Denied (re-affirmed)</option>' +
+            '<option value="pending">… Still pending</option>' +
+            '<option value="withdrawn">↩ Withdrawn</option>' +
+          '</select>' +
+        '</label>' +
+        '<label style="display:flex;flex-direction:column;gap:3px">' +
+          '<span style="color:var(--muted);font-size:11px;text-transform:uppercase">Outcome date</span>' +
+          '<input id="of-date-' + id + '" type="date" value="' + today + '" style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 8px" />' +
+        '</label>' +
+        '<label style="display:flex;align-items:center;gap:6px;padding-bottom:5px">' +
+          '<input id="of-sent-' + id + '" type="checkbox" />' +
+          '<span style="color:var(--text)">Counter-letter sent</span>' +
+        '</label>' +
+        '<label style="display:flex;flex-direction:column;gap:3px;flex:1;min-width:260px">' +
+          '<span style="color:var(--muted);font-size:11px;text-transform:uppercase">Notes (what carrier said / what we sent)</span>' +
+          '<textarea id="of-notes-' + id + '" rows="2" placeholder="Free-text: which arguments worked, adjuster response, etc." style="background:#342c23;color:var(--text);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-family:inherit;resize:vertical"></textarea>' +
+        '</label>' +
+        '<div style="display:flex;gap:8px">' +
+          '<button onclick="submitOutcomeForm(' + id + ')" style="background:var(--accent);color:#1a1612;border:none;border-radius:4px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Save</button>' +
+          '<button onclick="this.closest(\'tr\').remove()" style="background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:4px;padding:6px 14px;font-size:12px;cursor:pointer">Cancel</button>' +
+        '</div>' +
+      '</div>' +
+    '</td>';
+  row.parentNode.insertBefore(form, row.nextSibling);
+  document.getElementById('of-out-' + id).focus();
+}
+
+async function submitOutcomeForm(id) {
+  const outcome = document.getElementById('of-out-' + id).value;
+  if (!outcome) { alert('Pick an outcome'); return; }
+  const outcomeDate = document.getElementById('of-date-' + id).value || null;
+  const counterSent = document.getElementById('of-sent-' + id).checked;
+  const notes = document.getElementById('of-notes-' + id).value.trim() || null;
+  try {
+    const r = await fetch('/api/intel/denial-intake/' + id + '/outcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ outcome, outcomeDate, counterSent, notes }),
+    });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    await load();
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  }
+}
+
+// Backwards compat (in case anything still calls the old single-arg path)
 async function markOutcome(id, outcome) {
   if (!outcome) return;
   try {
@@ -187,7 +245,6 @@ async function markOutcome(id, outcome) {
       body: JSON.stringify({ outcome }),
     });
     if (!r.ok) throw new Error('HTTP ' + r.status);
-    // Reload so stats + the row update
     await load();
   } catch (e) {
     alert('Failed: ' + e.message);
