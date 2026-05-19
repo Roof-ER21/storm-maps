@@ -106,21 +106,25 @@ const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
 let customers = [];
 let activeRows = [];
-let sortKey = 'totalRev';
+// Default sort by lifetime earned (completed jobs only) — what reps care about.
+// Falls back to totalRev for older records that don't have completedRev set.
+let sortKey = 'completedRev';
 let sortDir = 'desc';
 
 function renderKPIs() {
   const total = customers.length;
   const multi = customers.filter((c) => c.jobCount > 1).length;
   const ever = customers.filter((c) => c.completedJobs > 0).length;
-  const rev = customers.reduce((s, c) => s + c.totalRev, 0);
+  // Lifetime earned = sum across completed jobs only. Was previously totalRev
+  // which inflated by ~$27M of dead/open job dollars (Roof Docs didn't earn).
+  const rev = customers.reduce((s, c) => s + (c.completedRev ?? 0), 0);
   const stale = customers.filter((c) => c.daysSince != null && c.daysSince > 730).length;
   const cards = [
     { label: 'Unique customers', value: fmt.int(total) },
     { label: 'Multi-job customers', value: fmt.int(multi), sub: ((multi / total) * 100).toFixed(1) + '%' },
     { label: 'Customers ever completed', value: fmt.int(ever) },
     { label: 'Stale (>2y no contact)', value: fmt.int(stale) },
-    { label: 'Lifetime revenue', value: fmt.money(rev) },
+    { label: 'Lifetime earned', value: fmt.money(rev), sub: 'completed jobs only' },
   ];
   $('kpis').innerHTML = cards.map((c) => `
     <div class="kpi"><div class="label">${c.label}</div><div class="value">${c.value}</div>${c.sub ? `<div style="color:var(--muted);font-size:12px">${c.sub}</div>` : ''}</div>
@@ -157,7 +161,7 @@ function applyFilters() {
     return sortDir === 'asc' ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
   activeRows = rows;
-  $('count-line').textContent = `${rows.length.toLocaleString()} of ${customers.length.toLocaleString()} customers · ${fmt.money(rows.reduce((s, c) => s + c.totalRev, 0))} lifetime revenue`;
+  $('count-line').textContent = `${rows.length.toLocaleString()} of ${customers.length.toLocaleString()} customers · ${fmt.money(rows.reduce((s, c) => s + (c.completedRev ?? 0), 0))} lifetime earned`;
   renderTable(rows);
 }
 
@@ -170,7 +174,9 @@ const COLUMNS = [
   { key: 'deadJobs', label: 'Dead', num: true },
   { key: 'openJobs', label: 'Open', num: true },
   { key: 'tradeCount', label: 'Trades', num: true },
-  { key: 'totalRev', label: 'Lifetime $', num: true, money: true },
+  // Lifetime earned = SUM(job_total) over completed/finalized jobs only.
+  // totalRev is still on the object if any consumer needs the all-stages number.
+  { key: 'completedRev', label: 'Lifetime earned $', num: true, money: true },
   { key: 'lastDate', label: 'Last contact' },
   { key: 'daysSince', label: 'Days since', num: true },
 ];
@@ -210,14 +216,17 @@ function renderTable(rows) {
 
 function exportCSV() {
   if (!activeRows.length) return;
-  const headers = ['Customer', 'Address', 'City', 'State', 'Zip', 'Jobs', 'Completed', 'Dead', 'Open', 'Trades', 'Carriers', 'Reps', 'Lifetime Revenue', 'First Contact', 'Last Contact'];
+  // Lifetime Earned $ = completedRev (completed jobs only). Lifetime Signed $ =
+  // totalRev (all stages incl. dead/open). Both included so analysts can see
+  // the difference without rerunning the query.
+  const headers = ['Customer', 'Address', 'City', 'State', 'Zip', 'Jobs', 'Completed', 'Dead', 'Open', 'Trades', 'Carriers', 'Reps', 'Lifetime Earned $', 'Lifetime Signed $', 'First Contact', 'Last Contact'];
   const lines = [headers.join(',')];
   for (const c of activeRows) {
     const row = [
       c.name, c.addressLine1, c.city, c.state, c.zip,
       c.jobCount, c.completedJobs, c.deadJobs, c.openJobs,
       [...c.trades].sort().join(';'), [...c.carriers].sort().join(';'), [...c.reps].sort().join(';'),
-      Math.round(c.totalRev), c.firstDate, c.lastDate,
+      Math.round(c.completedRev ?? 0), Math.round(c.totalRev), c.firstDate, c.lastDate,
     ].map((v) => v == null ? '' : `"${String(v).replace(/"/g, '""')}"`);
     lines.push(row.join(','));
   }

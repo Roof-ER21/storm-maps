@@ -1356,6 +1356,7 @@ export async function customersList(req: Request, res: Response) {
       dead: number;
       open: number;
       total_rev: number;
+      completed_rev: number;
       first_date: string | null;
       last_date: string | null;
       trades: string[];
@@ -1394,6 +1395,7 @@ export async function customersList(req: Request, res: Response) {
           COUNT(*) FILTER (WHERE stage ~* 'dead|cancel')::int AS dead,
           COUNT(*) FILTER (WHERE NOT (stage ~* 'completed|finalized|dead|cancel'))::int AS open,
           COALESCE(SUM(job_total), 0)::numeric AS total_rev,
+          COALESCE(SUM(job_total) FILTER (WHERE stage ~* 'completed|finalized'), 0)::numeric AS completed_rev,
           MIN(effective_date) AS first_date,
           MAX(effective_date) AS last_date,
           COALESCE(ARRAY_AGG(DISTINCT insurance) FILTER (WHERE insurance IS NOT NULL), ARRAY[]::text[]) AS carriers,
@@ -1412,7 +1414,7 @@ export async function customersList(req: Request, res: Response) {
       )
       SELECT
         a.name, a.address_line1, a.city, a.state, a.zip, a.lat, a.lng,
-        a.jobs, a.completed, a.dead, a.open, a.total_rev,
+        a.jobs, a.completed, a.dead, a.open, a.total_rev, a.completed_rev,
         a.first_date, a.last_date, a.carriers, a.reps,
         a.has_completed_roof, a.last_completed_roof_date, a.max_deductible,
         COALESCE(t.trades, ARRAY[]::text[]) AS trades
@@ -1439,6 +1441,7 @@ export async function customersList(req: Request, res: Response) {
         deadJobs: num(r.dead),
         openJobs: num(r.open),
         totalRev: num(r.total_rev),
+        completedRev: num(r.completed_rev),
         firstDate: r.first_date,
         lastDate,
         daysSince,
