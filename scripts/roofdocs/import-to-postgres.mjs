@@ -42,6 +42,7 @@ const DATASETS = [
   { key: 'credits',          file: 'credits.json' },
   { key: 'pricing-margins',  file: 'pricing-margins.json' },
   { key: 'pricing-templates', file: 'pricing-templates.json' },
+  { key: 'pricing-library',  file: 'pricing-library.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
 ];
 

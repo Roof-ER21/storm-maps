@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Pricing Library</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --blue:#60a5fa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 12px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1500px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--accent); }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 14px; line-height: 1.5; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #342c23; border-radius: 6px; padding: 11px 14px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 22px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab { padding: 10px 18px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-size: 13px; }
+  .tab.active { color: var(--accent); border-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; vertical-align: top; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 600px; overflow-y: auto; }
+  .filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; margin-bottom: 12px; }
+  .filter-bar input, .filter-bar select { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 6px 10px; font-size: 13px; }
+  .filter-bar label { font-size: 11px; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .pill { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #342c23; color: var(--muted); }
+</style>
+</head>
+<body data-riq-sort-all>
+<header>
+  <h1>📚 RIQ 21 — Pricing Library</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="pricing-margins.html">Margins</a>
+    <a href="pricing-library.html" class="active">Library</a>
+    <a href="carrier-detail.html">Carriers</a>
+  </div>
+</header>
+<script src="/riq-links.js"></script>
+<script src="/riq-sort.js"></script>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+
+    <section>
+      <h2>Library overview</h2>
+      <p class="desc">Reference catalogue from the portal's pricing system. Use as a lookup — "what materials are available for Roofing?", "which project-meeting items have the highest markup?", etc. Cross-references with the <a href="pricing-margins.html" style="color:var(--accent)">Pricing Margins</a> page for the contractor-cost view.</p>
+      <div class="kpi-row" id="overview-tiles"></div>
+    </section>
+
+    <section>
+      <div class="tabs">
+        <div class="tab active" data-tab="materials">🧱 Materials (227)</div>
+        <div class="tab" data-tab="project">📋 Project items (96)</div>
+        <div class="tab" data-tab="components">🔩 Components (72)</div>
+        <div class="tab" data-tab="trades">🛠 Trades (14)</div>
+      </div>
+
+      <div id="sec-materials">
+        <div class="filter-bar">
+          <label>Trade <select id="mat-trade"><option value="">All trades</option></select></label>
+          <label>Search <input id="mat-search" placeholder="material name / component" style="width:280px" /></label>
+        </div>
+        <div id="mat-count" style="color:var(--muted);font-size:11px;margin-bottom:8px"></div>
+        <div class="scroll"><table id="mat-table">
+          <thead><tr>
+            <th>Material</th>
+            <th>Trade</th>
+            <th>Subtrade</th>
+            <th>Component</th>
+            <th>Unit</th>
+            <th class="num">Price</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <div id="sec-project" style="display:none">
+        <div class="filter-bar">
+          <label>Trade <select id="proj-trade"><option value="">All trades</option></select></label>
+          <label>Search <input id="proj-search" placeholder="description / component" style="width:280px" /></label>
+        </div>
+        <div id="proj-count" style="color:var(--muted);font-size:11px;margin-bottom:8px"></div>
+        <div class="scroll"><table id="proj-table">
+          <thead><tr>
+            <th>Description</th>
+            <th>Trade</th>
+            <th>Subtrade</th>
+            <th>Component</th>
+            <th>Selection</th>
+            <th class="num">Markup %</th>
+            <th class="num">Line items</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <div id="sec-components" style="display:none">
+        <div class="scroll"><table id="comp-table">
+          <thead><tr>
+            <th>Component</th>
+            <th>Description</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </div>
+
+      <div id="sec-trades" style="display:none">
+        <table id="trade-table">
+          <thead><tr>
+            <th class="num">ID</th>
+            <th>Trade</th>
+            <th class="num">Materials</th>
+            <th class="num">Project items</th>
+            <th class="num">Avg material $</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <p style="color:var(--muted);font-size:11px;margin-top:10px">Source: <code>/api/intel/pricing-library</code>. Built from 4 portal reference tables (<code>pricing-material</code> + <code>pricing-project</code> + <code>pricing-components</code> + <code>trades</code>).</p>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null || v === 0 ? '—' : '$' + Number(v).toFixed(2),
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+let DATA = null;
+
+async function load() {
+  try {
+    const r = await fetch('/api/intel/pricing-library');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    DATA = await r.json();
+
+    const t = DATA.totals;
+    $('overview-tiles').innerHTML = [
+      { l: 'Trades', v: fmt.int(t.trades) },
+      { l: 'Components', v: fmt.int(t.components) },
+      { l: 'Materials', v: fmt.int(t.materials) },
+      { l: 'Project items', v: fmt.int(t.projectItems) },
+    ].map((k) => `<div class="kpi"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+    // Populate trade filters
+    const allTrades = [...new Set([...Object.keys(DATA.materialsByTrade), ...Object.keys(DATA.projectItemsByTrade)])].sort();
+    for (const sel of ['mat-trade', 'proj-trade']) {
+      const el = $(sel);
+      for (const t of allTrades) el.insertAdjacentHTML('beforeend', `<option value="${t}">${t}</option>`);
+    }
+
+    renderMaterials();
+    renderProject();
+    renderComponents();
+    renderTrades();
+
+    $('mat-trade').addEventListener('change', renderMaterials);
+    $('mat-search').addEventListener('input', () => { clearTimeout(window._mat); window._mat = setTimeout(renderMaterials, 200); });
+    $('proj-trade').addEventListener('change', renderProject);
+    $('proj-search').addEventListener('input', () => { clearTimeout(window._proj); window._proj = setTimeout(renderProject, 200); });
+
+    document.querySelectorAll('.tab').forEach((tab) => tab.addEventListener('click', () => {
+      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      for (const k of ['materials', 'project', 'components', 'trades']) {
+        $('sec-' + k).style.display = tab.dataset.tab === k ? '' : 'none';
+      }
+    }));
+
+    $('loading').style.display = 'none';
+    $('content').style.display = '';
+  } catch (err) {
+    $('loading').innerHTML = `<div style="color:var(--red)">Failed to load: ${err.message}</div>`;
+  }
+}
+
+function renderMaterials() {
+  const trade = $('mat-trade').value;
+  const q = $('mat-search').value.trim().toLowerCase();
+  let rows = [];
+  for (const [t, v] of Object.entries(DATA.materialsByTrade || {})) {
+    if (trade && t !== trade) continue;
+    for (const m of v.items) rows.push({ ...m, trade: t });
+  }
+  if (q) rows = rows.filter((r) => (r.description || '').toLowerCase().includes(q) || (r.component || '').toLowerCase().includes(q));
+  $('mat-count').textContent = `${rows.length} materials`;
+  $('mat-table').querySelector('tbody').innerHTML = rows.map((m) => `
+    <tr>
+      <td>${m.description || m.displayName || '—'}</td>
+      <td>${m.trade}</td>
+      <td style="color:var(--muted)">${m.subtrade || '—'}</td>
+      <td>${m.component || '—'}</td>
+      <td><span class="pill">${m.ordering || '—'}</span></td>
+      <td class="num">${fmt.money(m.price)}</td>
+    </tr>
+  `).join('');
+}
+
+function renderProject() {
+  const trade = $('proj-trade').value;
+  const q = $('proj-search').value.trim().toLowerCase();
+  let rows = [];
+  for (const [t, items] of Object.entries(DATA.projectItemsByTrade || {})) {
+    if (trade && t !== trade) continue;
+    for (const p of items) rows.push({ ...p, trade: t });
+  }
+  if (q) rows = rows.filter((r) => (r.description || '').toLowerCase().includes(q) || (r.component || '').toLowerCase().includes(q));
+  $('proj-count').textContent = `${rows.length} project items`;
+  $('proj-table').querySelector('tbody').innerHTML = rows.map((p) => `
+    <tr>
+      <td>${p.description || '—'}</td>
+      <td>${p.trade}</td>
+      <td style="color:var(--muted)">${p.subtrade || '—'}</td>
+      <td>${p.component || '—'}</td>
+      <td><span class="pill">${p.selectionType || '—'}</span></td>
+      <td class="num">${p.markUpPercent != null ? p.markUpPercent + '%' : '—'}</td>
+      <td class="num">${p.componentCount}</td>
+    </tr>
+  `).join('');
+}
+
+function renderComponents() {
+  const rows = DATA.components || [];
+  $('comp-table').querySelector('tbody').innerHTML = rows.map((c) => `
+    <tr>
+      <td><strong>${c.component}</strong></td>
+      <td style="color:var(--muted)">${c.description || '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function renderTrades() {
+  const matByTrade = DATA.materialsByTrade || {};
+  const projByTrade = DATA.projectItemsByTrade || {};
+  $('trade-table').querySelector('tbody').innerHTML = (DATA.trades || []).map((t) => {
+    const m = matByTrade[t.name];
+    const p = projByTrade[t.name];
+    return `<tr>
+      <td class="num">${t.tradeID}</td>
+      <td><strong>${t.name}</strong></td>
+      <td class="num">${m ? m.count : 0}</td>
+      <td class="num">${p ? p.length : 0}</td>
+      <td class="num">${m && m.avgPrice ? fmt.money(m.avgPrice) : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+load();
+</script>
+</body>
+</html>
