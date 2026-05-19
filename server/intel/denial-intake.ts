@@ -387,12 +387,61 @@ export async function intakeStats(_req: Request, res: Response): Promise<void> {
       })
       .sort((a, b) => b.analyzed - a.analyzed);
 
+    // Carrier × stance heatmap (V2 roadmap). Sparse early — most cells will be
+    // 0 until enough denials with stance_variant accumulate per carrier. Once
+    // a cell has ≥3 outcomes the flipRate becomes meaningful + the UI shows
+    // it as a coloured tile; below that it's just a count.
+    const cxsRows = await pgSql<Array<{ stance_variant: string; identified_carrier: string | null; carrier: string | null; outcome: string }>>`
+      SELECT di.stance_variant, di.identified_carrier, di.carrier, lo.outcome
+      FROM denial_intake di
+      JOIN LATERAL (
+        SELECT outcome FROM denial_outcomes
+        WHERE intake_id = di.id
+        ORDER BY created_at DESC LIMIT 1
+      ) lo ON true
+      WHERE di.stance_variant IS NOT NULL
+        AND lo.outcome IN ('approved','partial','denied')
+    `;
+    type CSBucket = { total: number; approved: number; partial: number; denied: number };
+    const cxsMap = new Map<string, Map<string, CSBucket>>(); // carrier -> stance -> bucket
+    for (const r of cxsRows) {
+      const raw = r.identified_carrier || r.carrier || '(unknown)';
+      const carrier = normalizeCarrier(raw) || raw || '(unknown)';
+      if (!cxsMap.has(carrier)) cxsMap.set(carrier, new Map());
+      const inner = cxsMap.get(carrier)!;
+      const b = inner.get(r.stance_variant) || { total: 0, approved: 0, partial: 0, denied: 0 };
+      b.total += 1;
+      if (r.outcome === 'approved') b.approved += 1;
+      else if (r.outcome === 'partial') b.partial += 1;
+      else if (r.outcome === 'denied') b.denied += 1;
+      inner.set(r.stance_variant, b);
+    }
+    const carrierStanceMatrix = [...cxsMap.entries()]
+      .map(([carrier, stanceMap]) => {
+        const cells: Record<string, { total: number; approved: number; partial: number; denied: number; flipRate: number | null } | null> = {};
+        let carrierTotal = 0;
+        let bestStance: string | null = null;
+        let bestFlip = -1;
+        for (const [stance, b] of stanceMap) {
+          carrierTotal += b.total;
+          const flipRate = (b.approved + b.partial) / Math.max(1, b.total);
+          cells[stance] = { total: b.total, approved: b.approved, partial: b.partial, denied: b.denied, flipRate };
+          if (b.total >= 3 && flipRate > bestFlip) {
+            bestFlip = flipRate;
+            bestStance = stance;
+          }
+        }
+        return { carrier, totalOutcomes: carrierTotal, cells, recommendedStance: bestStance, recommendedFlipRate: bestStance ? bestFlip : null };
+      })
+      .sort((a, b) => b.totalOutcomes - a.totalOutcomes);
+
     res.json({
       total: Number(totals[0]?.count || 0),
       byCarrier,
       byOutcome: byOutcome.map((r) => ({ outcome: r.outcome, count: Number(r.n) })),
       winRates,
       stanceRollup,
+      carrierStanceMatrix,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown';

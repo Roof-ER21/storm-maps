@@ -118,6 +118,23 @@
     </section>
 
     <section>
+      <h2>Carrier × stance heatmap</h2>
+      <p class="desc">Per-carrier flip-rate by stance. Once a cell reaches ≥3 outcomes (the "stable enough" floor), it shows as a colored tile and contributes to the recommended-stance pick for that carrier. Until then, only counts appear. <strong>Sparse early</strong> — heatmap fills in as more denials with each stance accumulate per carrier.</p>
+      <table id="cxs-table" style="min-width:600px">
+        <thead><tr>
+          <th>Carrier</th>
+          <th class="num">Outcomes</th>
+          <th class="num">Firm-legal</th>
+          <th class="num">Collaborative</th>
+          <th class="num">Escalation</th>
+          <th>Recommended</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="footnote">When carrier has ≥3 outcomes per stance, the cell is color-coded (green ≥75% / yellow 50-74% / red &lt;50%). "Recommended" picks the highest flip-rate stance with at least 3 outcomes. If no stance has ≥3, recommendation stays blank and analyzer keeps random-selecting.</p>
+    </section>
+
+    <section>
       <h2>Flip rate by carrier</h2>
       <p class="desc">Where our counter-letters actually work. <strong>Flip rate</strong> = (approved + partial) / total denials with an outcome. Carriers with fewer than 3 outcomes are de-emphasized — the percentage is volatile at low N.</p>
       <table id="winrate-table">
@@ -226,6 +243,37 @@ function renderStanceRollup(data) {
     .join('');
 }
 
+function renderCarrierStance(data) {
+  const rows = data.carrierStanceMatrix || [];
+  const tbody = document.querySelector('#cxs-table tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No outcome data per carrier × stance yet. As analyses get outcomes marked in the Archive, this heatmap fills in.</td></tr>';
+    return;
+  }
+  const stanceLabel = { 'firm-legal': 'Firm-legal', 'collaborative-evidence': 'Collaborative-evidence', 'escalation-focused': 'Escalation-focused' };
+  function cell(stanceCells, stance) {
+    const c = stanceCells?.[stance];
+    if (!c || c.total === 0) return `<td class="num" style="color:var(--muted)">—</td>`;
+    if (c.total < 3) return `<td class="num" style="color:var(--muted);font-size:11px">n=${c.total}</td>`;
+    const fr = c.flipRate;
+    const bg = fr >= 0.75 ? 'rgba(16,185,129,0.20)' : fr >= 0.50 ? 'rgba(245,158,11,0.20)' : 'rgba(239,68,68,0.20)';
+    const color = fr >= 0.75 ? 'var(--green)' : fr >= 0.50 ? 'var(--yellow)' : 'var(--red)';
+    return `<td class="num" style="background:${bg};color:${color};font-weight:600" title="${c.approved} approved / ${c.partial} partial / ${c.denied} denied">${fmtPct(fr)}<div style="font-size:10px;font-weight:400;opacity:0.8">n=${c.total}</div></td>`;
+  }
+  tbody.innerHTML = rows.map((r) => `
+    <tr>
+      <td><a class="carrier-link" href="${carrierHref(r.carrier)}">${r.carrier}</a></td>
+      <td class="num">${fmtNum(r.totalOutcomes)}</td>
+      ${cell(r.cells, 'firm-legal')}
+      ${cell(r.cells, 'collaborative-evidence')}
+      ${cell(r.cells, 'escalation-focused')}
+      <td>${r.recommendedStance
+        ? `<span class="pill green">${stanceLabel[r.recommendedStance] || r.recommendedStance}</span> <span style="color:var(--muted);font-size:11px">@ ${fmtPct(r.recommendedFlipRate)}</span>`
+        : '<span class="pill gray">need more data</span>'}</td>
+    </tr>
+  `).join('');
+}
+
 function renderWinRates(data) {
   const rows = (data.winRates || []).filter(r => r.total > 0);
   const tbody = document.querySelector('#winrate-table tbody');
@@ -301,6 +349,7 @@ async function load() {
     renderVolume(data);
     renderOutcomes(data);
     renderStanceRollup(data);
+    renderCarrierStance(data);
     renderWinRates(data);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
