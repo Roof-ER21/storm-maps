@@ -16,6 +16,8 @@ interface ARAccount {
   sentOn?: string | null;
   completionPayment?: number | null;
   finalPayment?: number | null;
+  assigneeId?: string | null;
+  assigneeName?: string | null;
   insurance?: { company?: string | null } | null;
   job?: { jobTotal?: number | null; state?: string | null } | null;
   proj?: { jobTotal?: number | null; salesRep?: string | null } | null;
@@ -116,6 +118,17 @@ export async function arRollup(req: Request, res: Response): Promise<void> {
       aging: Record<AgingBucket, number>;
     };
     const carrierMap = new Map<string, CarrierBucket>();
+    type CollectorBucket = {
+      name: string;
+      count: number;
+      outstanding: number;
+      daysSum: number;
+      daysN: number;
+      oldestDays: number;
+      aging: Record<AgingBucket, number>;
+      statuses: Map<string, number>;
+    };
+    const collectorMap = new Map<string, CollectorBucket>();
 
     let totalOutstanding = 0;
     let withSentOn = 0;
@@ -152,6 +165,33 @@ export async function arRollup(req: Request, res: Response): Promise<void> {
         withSentOn += 1;
       }
       carrierMap.set(carrier, cb);
+
+      // Collector rollup (AR assignee). Skip if no assigneeId (unassigned).
+      if (a.assigneeId) {
+        const collectorKey = a.assigneeId;
+        const colName = a.assigneeName || `Tech ${a.assigneeId.slice(0, 8)}`;
+        const col = collectorMap.get(collectorKey) ?? {
+          name: colName,
+          count: 0,
+          outstanding: 0,
+          daysSum: 0,
+          daysN: 0,
+          oldestDays: 0,
+          aging: { '0-30': 0, '31-60': 0, '61-90': 0, '91-180': 0, '180+': 0 },
+          statuses: new Map<string, number>(),
+        };
+        col.count += 1;
+        col.outstanding += out;
+        const statusKey = a.status ?? '(unknown)';
+        col.statuses.set(statusKey, (col.statuses.get(statusKey) ?? 0) + 1);
+        if (days != null) {
+          col.daysSum += days;
+          col.daysN += 1;
+          if (days > col.oldestDays) col.oldestDays = days;
+          col.aging[bucketize(days)] += 1;
+        }
+        collectorMap.set(collectorKey, col);
+      }
     }
 
     const downpaymentStatusMap = new Map<string, number>();
@@ -180,6 +220,21 @@ export async function arRollup(req: Request, res: Response): Promise<void> {
       }))
       .sort((a, b) => b.outstanding - a.outstanding);
 
+    const byCollector = [...collectorMap.entries()]
+      .map(([assigneeId, b]) => ({
+        assigneeId,
+        name: b.name,
+        count: b.count,
+        outstanding: Math.round(b.outstanding),
+        avgDays: b.daysN > 0 ? Math.round(b.daysSum / b.daysN) : null,
+        oldestDays: b.oldestDays || null,
+        aging: b.aging,
+        statuses: [...b.statuses.entries()]
+          .map(([status, count]) => ({ status, count }))
+          .sort((a, b) => b.count - a.count),
+      }))
+      .sort((a, b) => b.outstanding - a.outstanding);
+
     res.json({
       asOf: asOf.toISOString().slice(0, 10),
       carrierFilter,
@@ -196,6 +251,7 @@ export async function arRollup(req: Request, res: Response): Promise<void> {
       statusBreakdown,
       downpaymentStatus,
       byCarrier,
+      byCollector,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown';

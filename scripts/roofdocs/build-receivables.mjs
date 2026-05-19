@@ -34,6 +34,9 @@ const accounts = (raw.accounts || []).map((a) => {
     jobId: a.jobId,
     customerId: a.customerId,
     assigneeId: a.assigneeId,
+    // Preserve assignee name so AR-collector views don't show raw UUIDs.
+    // assignee is the AR collector working this account, not the customer.
+    assigneeName: a.assignee ? `${a.assignee.firstName || ''} ${a.assignee.lastName || ''}`.trim() : null,
     invoiceId: a.invoiceId,
     customer: cleanUser(a.user),
     job: a.job ? { jobID: a.job.jobID, addressLine1: a.job.addressLine1, city: a.job.city, state: a.job.state, zipCode: a.job.zipCode, jobTotal: a.job.currentJobTotal, completedDate: a.job.jobCompletedDate, finalizedDate: a.job.jobFinalizedDate } : null,

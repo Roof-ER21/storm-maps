@@ -374,6 +374,44 @@ async function loadFriction() {
         ${bucketCell(c.aging['180+'])}
       </tr>`).join('')}</tbody>
     `;
+    // Collector performance — who's working what, who's sitting on what
+    const collectors = ar.byCollector || [];
+    if (collectors.length > 0) {
+      const html = `
+        <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:14px">
+          <h3 style="font-size:13px;color:var(--accent);margin:0 0 6px">👥 Collector performance</h3>
+          <div style="color:var(--muted);font-size:11px;margin-bottom:10px">AR assignees and what's on their plate. Avg days = mean days outstanding across their assigned accounts.</div>
+          <div class="scroll"><table>
+            <thead><tr>
+              <th>Collector</th>
+              <th class="num">Accounts</th>
+              <th class="num">Outstanding</th>
+              <th class="num">Avg days</th>
+              <th class="num">Oldest</th>
+              <th class="num">0–30</th>
+              <th class="num">31–60</th>
+              <th class="num">61–90</th>
+              <th class="num">91–180</th>
+              <th class="num" style="color:var(--red)">180+</th>
+            </tr></thead>
+            <tbody>${collectors.map((c) => `<tr>
+              <td><strong>${c.name}</strong></td>
+              <td class="num">${c.count}</td>
+              <td class="num">${fmt.money(c.outstanding)}</td>
+              <td class="num">${c.avgDays ?? '—'}</td>
+              <td class="num">${c.oldestDays ? c.oldestDays + 'd' : '—'}</td>
+              <td class="num">${c.aging['0-30'] || 0}</td>
+              <td class="num">${c.aging['31-60'] || 0}</td>
+              <td class="num">${c.aging['61-90'] || 0}</td>
+              <td class="num">${c.aging['91-180'] || 0}</td>
+              <td class="num">${c.aging['180+'] || 0}</td>
+            </tr>`).join('')}</tbody>
+          </table></div>
+        </div>
+      `;
+      $('tbl-friction').insertAdjacentHTML('afterend', html);
+    }
+
     $('friction-asof').innerHTML = `As of ${ar.asOf}. Source: <code>/api/intel/receivables/rollup</code>. Carrier names normalized via <code>server/intel/carrier-normalize.mjs</code>.`;
   } catch (err) {
     $('tbl-friction').innerHTML = `<tbody><tr><td style="color:var(--red);padding:20px">Failed to load: ${err.message || err}</td></tr></tbody>`;
