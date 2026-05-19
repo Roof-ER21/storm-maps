@@ -1,0 +1,12 @@
+{
+  "_instructions": "Maps internal user UUIDs to display names for ops/AR/field-tech surfaces. Populate by pulling user list from portal.theroofdocs.com /api/users endpoint, or by hand as new IDs appear. Lookup key is the UUID; value is { name, role } where role is one of 'fieldTech' | 'collector' | 'estimator' | 'projectCoordinator' | 'salesRep'. Leaving a key absent makes the UI fall back to 'FT <last-8>' or similar truncation.",
+  "_lastUpdated": "2026-05-19",
+  "byUserId": {
+    "6e58770d-a78e-4b37-a8d7-f847b23185d6": { "name": "Jermaine Perkins", "role": "collector" },
+    "1cf772f3-c2bb-4f83-93e0-5924b1277ff9": { "name": "Natia Tutberidze", "role": "collector" },
+    "64174115-87e2-41fb-aa5e-dff970ee5c0e": { "name": null, "role": "fieldTech", "_note": "name unknown — populate from portal" },
+    "120751b4-06a1-48de-bb2b-73f4b6baefa1": { "name": null, "role": "fieldTech", "_note": "name unknown — populate from portal" },
+    "3dc90bbb-8f49-4cf8-9a78-03a079ec165c": { "name": null, "role": "fieldTech", "_note": "name unknown — populate from portal" },
+    "359cfcfd-9290-455b-bd09-81255a0d7249": { "name": null, "role": "fieldTech", "_note": "name unknown — populate from portal" }
+  }
+}

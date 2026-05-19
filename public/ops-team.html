@@ -89,6 +89,25 @@ const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 let role = 'projectCoordinator';
 let cachedPeople = [];
+let roster = {};
+
+async function loadRoster() {
+  try {
+    const r = await fetch('/api/intel/employee-roster');
+    if (!r.ok) return;
+    const json = await r.json();
+    roster = (json && json.byUserId) || {};
+  } catch (_) { /* roster optional */ }
+}
+function rosterName(uuid) {
+  const entry = roster[uuid];
+  return (entry && entry.name) || null;
+}
+function ftDisplay(uuid) {
+  const name = rosterName(uuid);
+  if (name) return name;
+  return `Field Tech ${String(uuid).slice(0, 8)}…`;
+}
 
 async function fetchPeople() {
   const res = await fetch('/api/intel/ops-team-summary?role=' + encodeURIComponent(role));
@@ -105,7 +124,7 @@ async function renderList() {
   $('count').textContent = `${rows.length} people`;
   $('list').innerHTML = rows.map((p) => `
     <div class="item" data-k="${String(p.name).replace(/"/g, '&quot;')}">
-      <div class="name">${role === 'fieldTechId' ? 'FT ' + String(p.name).slice(0, 8) : p.name}</div>
+      <div class="name">${role === 'fieldTechId' ? ftDisplay(p.name) : p.name}</div>
       <div class="stats">${p.signed} jobs · ${p.completed} done · ${fmt.money(p.revenue)}</div>
     </div>
   `).join('');
@@ -137,7 +156,7 @@ async function show(key) {
   const trades = (deep.trades || []).map((r) => [r.name, r.count]);
   const big = deep.bigJobs || [];
   const med = deep.medianCompleteDays;
-  const displayName = role === 'fieldTechId' ? `Field Tech ${String(key).slice(0, 12)}…` : key;
+  const displayName = role === 'fieldTechId' ? ftDisplay(key) : key;
 
   $('detail').innerHTML = `
     <h2>${displayName}</h2>
@@ -174,6 +193,7 @@ async function activateTab(tab) {
 }
 
 async function start() {
+  await loadRoster();
   $('loading').style.display = 'none';
   $('content').style.display = '';
   $('search').addEventListener('input', () => { clearTimeout(window._t); window._t = setTimeout(renderList, 200); });
