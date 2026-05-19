@@ -25,6 +25,32 @@ if (GEMINI_API_KEY) ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 
 const MODEL = 'gemini-2.0-flash';
 
+// Phase 5 (V2 roadmap) A/B stance variants. Picked uniformly at random per
+// analysis so denial-stats can later rank flip-rate by carrier x stance. The
+// directive only steers the counterLetter + recommendedActions tone — the
+// analytical fields (denialReasons / matchedPatents / contradictions / aiTells /
+// badFaithSignals / appealStrength) stay neutral. Override at request time via
+// `body.stanceVariant` for forced selection / replay.
+const STANCE_VARIANTS = ['firm-legal', 'collaborative-evidence', 'escalation-focused'] as const;
+type StanceVariant = typeof STANCE_VARIANTS[number];
+
+const STANCE_DIRECTIVES: Record<StanceVariant, string> = {
+  'firm-legal':
+    'STANCE = FIRM-LEGAL. For counterLetter and recommendedActions ONLY: lead with policy-language demands and citation of the carrier patent contradictions you just identified. Include an explicit 10-business-day deadline and bad-faith-preservation language in the counter-letter body. Frame recommended actions as compliance + preservation steps (document everything, notify DOI if no response, retain counsel as next escalation). Tone: precise, citation-heavy, no apologies, no softening qualifiers.',
+  'collaborative-evidence':
+    'STANCE = COLLABORATIVE-EVIDENCE. For counterLetter and recommendedActions ONLY: lead the counter-letter with property-specific evidence the AI/adjuster appears to have missed (measurements, photos, manufacturer specs, recent storm events). Frame the supervisor-review request as "help us reconcile this finding" rather than accusatory. Save bad-faith-preservation language for the closing paragraph only. Frame recommended actions as concrete evidence-gathering steps the rep + customer can take this week. Tone: factual, cooperative, evidence-forward.',
+  'escalation-focused':
+    'STANCE = ESCALATION-FOCUSED. For counterLetter and recommendedActions ONLY: lead with the demand for written disclosure of AI / automated-decision-tool use in this claim review, citing emerging state regulation. Request a named human supervisor for the second review. Set a hard 10-business-day deadline with the explicit next-step trigger written out (DOI complaint, OAG notification, counsel referral). Preserve bad-faith. Frame recommended actions as a sequenced escalation ladder (today / this week / day-11-if-silent). Tone: time-pressured, regulatory, no-nonsense.',
+};
+
+function selectStance(): StanceVariant {
+  return STANCE_VARIANTS[Math.floor(Math.random() * STANCE_VARIANTS.length)];
+}
+
+function isStanceVariant(s: unknown): s is StanceVariant {
+  return typeof s === 'string' && (STANCE_VARIANTS as readonly string[]).includes(s);
+}
+
 interface PatentExtracted {
   summary?: string;
   imageFeaturesScanned?: string[];
@@ -352,6 +378,10 @@ SPECIFIC ADJUSTER INTEL (we have prior history with these adjusters — use know
 {{ADJUSTERS}}
 
 ================
+STANCE DIRECTIVE (controls ONLY the counterLetter + recommendedActions tone — every other field stays neutral analytical):
+{{STANCE}}
+
+================
 DENIAL LETTER (verbatim):
 {{LETTER}}
 `;
@@ -365,6 +395,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
   const body = req.body || {};
   const denialText: string = (body.denialText || '').toString();
   const carrierHint: string = (body.carrier || '').toString();
+  const stanceVariant: StanceVariant = isStanceVariant(body.stanceVariant) ? body.stanceVariant : selectStance();
 
   if (!denialText.trim() || denialText.length < 50) {
     res.status(400).json({ error: 'invalid_input', detail: 'denialText must be at least 50 chars' });
@@ -410,6 +441,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
     .replace('{{BOILERPLATE}}', boilerplateText)
     .replace('{{STRATEGIES}}', shapeStrategies(strategies))
     .replace('{{ADJUSTERS}}', shapeAdjusters(matchedAdjusters))
+    .replace('{{STANCE}}', STANCE_DIRECTIVES[stanceVariant])
     .replace('{{LETTER}}', denialText.slice(0, 25000));
 
   try {
@@ -441,6 +473,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
         analysis: parsed,
         patentsConsidered,
         corpusExamplesUsed,
+        stanceVariant,
       });
     } catch {
       // Already swallowed inside recordIntake — defensive double-catch
@@ -450,6 +483,7 @@ export async function analyzeDenial(req: Request, res: Response): Promise<void> 
       generated: new Date().toISOString(),
       model: MODEL,
       carrierHint,
+      stanceVariant,
       patentsConsidered,
       corpusExamplesUsed,
       boilerplateMatches,
