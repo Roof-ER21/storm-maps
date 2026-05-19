@@ -72,7 +72,8 @@ for (const j of projects) {
 const insSignedTeam = projects.filter((j) => isSigned(j) && INS_TYPES.has(j.jobType));
 const teamApprovedCount = insSignedTeam.filter(isCompleted).length;
 const teamDeadCount = insSignedTeam.filter(isDead).length;
-const teamBaselineApproval = pct(teamApprovedCount, insSignedTeam.length - teamDeadCount);
+// Formula B (canonical per b6930c9 — Field Portal parity). approved / (approved + dead).
+const teamBaselineApproval = pct(teamApprovedCount, teamApprovedCount + teamDeadCount);
 const teamMedianDaysLossToSign = median(insSignedTeam.map((j) => j.daysLossToSign).filter((v) => v != null && v >= 0 && v < 365));
 const teamMedianDaysSignToComplete = median(insSignedTeam.map((j) => j.daysToComplete).filter((v) => v != null && v >= 0 && v < 730));
 
@@ -148,17 +149,17 @@ const repCheats = Object.values(reps).map((r) => {
   const retSigned = r._retail.length;
   const retApproved = r._retail.filter(isCompleted).length;
   const retTotal = r._retail.reduce((s, j) => s + (j.jobTotal || 0), 0);
-  const repApproval = pct(insApproved, insSignedCount - insDead);
+  const repApproval = pct(insApproved, insApproved + insDead);
   const byCarrier = Object.entries(r._byCarrier)
     .map(([carrier, c]) => ({
       carrier,
       jobs: c.jobs.length,
       approved: c.approved,
       dead: c.dead,
-      approvalRate: pct(c.approved, c.jobs.length - c.dead),
+      approvalRate: pct(c.approved, c.approved + c.dead),
       insTotal: c.insTotal,
       avgApprovedJob: c.approved > 0 ? c.insTotal / c.approved : null,
-      deltaVsRepBaseline: pct(c.approved, c.jobs.length - c.dead) - repApproval,
+      deltaVsRepBaseline: pct(c.approved, c.approved + c.dead) - repApproval,
     }))
     .sort((a, b) => b.jobs - a.jobs);
 
@@ -166,8 +167,8 @@ const repCheats = Object.values(reps).map((r) => {
     .filter((a) => a.jobs >= 2)
     .map((a) => ({
       ...a,
-      approvalRate: pct(a.approved, a.jobs - a.dead),
-      deltaVsRepBaseline: pct(a.approved, a.jobs - a.dead) - repApproval,
+      approvalRate: pct(a.approved, a.approved + a.dead),
+      deltaVsRepBaseline: pct(a.approved, a.approved + a.dead) - repApproval,
     }))
     .sort((a, b) => b.jobs - a.jobs)
     .slice(0, 20);
@@ -277,7 +278,7 @@ const carrierCheats = Object.values(carriers).map((c) => {
   const jobs = c._jobs;
   const approved = jobs.filter(isCompleted).length;
   const dead = jobs.filter(isDead).length;
-  const approvalRate = pct(approved, jobs.length - dead);
+  const approvalRate = pct(approved, approved + dead);
   const carrierBaseline = approvalRate;
   const deductibles = jobs.map((j) => j.deductible).filter((v) => v && v <= 50000);
   const acvs = jobs.map((j) => j.acv).filter((v) => v != null);
@@ -293,9 +294,9 @@ const carrierCheats = Object.values(carriers).map((c) => {
     .filter((a) => a.jobs >= MIN_N)
     .map((a) => ({
       name: a.name, jobs: a.jobs, approved: a.approved, dead: a.dead,
-      approvalRate: pct(a.approved, a.jobs - a.dead),
+      approvalRate: pct(a.approved, a.approved + a.dead),
       medianUplift: median(a.uplifts),
-      deltaVsCarrier: pct(a.approved, a.jobs - a.dead) - carrierBaseline,
+      deltaVsCarrier: pct(a.approved, a.approved + a.dead) - carrierBaseline,
     }))
     .sort((a, b) => b.jobs - a.jobs).slice(0, 25);
 
@@ -303,20 +304,20 @@ const carrierCheats = Object.values(carriers).map((c) => {
     .filter((r) => r.jobs >= MIN_N)
     .map((r) => ({
       name: r.name, jobs: r.jobs, approved: r.approved, dead: r.dead,
-      approvalRate: pct(r.approved, r.jobs - r.dead),
+      approvalRate: pct(r.approved, r.approved + r.dead),
       insTotal: r.insTotal,
-      deltaVsCarrier: pct(r.approved, r.jobs - r.dead) - carrierBaseline,
+      deltaVsCarrier: pct(r.approved, r.approved + r.dead) - carrierBaseline,
     }))
     .sort((a, b) => b.insTotal - a.insTotal).slice(0, 20);
 
   const byState = Object.values(c._byState).map((s) => ({
     ...s,
-    approvalRate: pct(s.approved, s.jobs - s.dead),
+    approvalRate: pct(s.approved, s.approved + s.dead),
     medianDeductible: median(s.deductibles),
   })).sort((a, b) => b.jobs - a.jobs);
 
   const byHail = Object.values(c._byHail).map((h) => ({
-    ...h, approvalRate: pct(h.approved, h.jobs - h.dead),
+    ...h, approvalRate: pct(h.approved, h.approved + h.dead),
   })).sort((a, b) => {
     const order = ['<0.75', '0.75-1.0', '1.0-1.25', '1.25-1.5', '1.5-2.0', '≥2.0'];
     return order.indexOf(a.tier) - order.indexOf(b.tier);
@@ -385,13 +386,13 @@ const adjusterCheats = Object.values(adjusters)
     const jobs = a._jobs;
     const approved = jobs.filter(isCompleted).length;
     const dead = jobs.filter(isDead).length;
-    const approvalRate = pct(approved, jobs.length - dead);
+    const approvalRate = pct(approved, approved + dead);
     const carrierBaseline = carrierBaselines[a.carrier] ?? null;
     const uplifts = jobs.filter((j) => j.initialEstimate && j.revisedEstimate && j.initialEstimate > 0)
       .map((j) => (j.revisedEstimate - j.initialEstimate) / j.initialEstimate);
     const deductibles = jobs.map((j) => j.deductible).filter((v) => v && v <= 50000);
     const reps = Object.values(a._byRep).map((r) => ({
-      ...r, approvalRate: pct(r.approved, r.jobs - r.dead),
+      ...r, approvalRate: pct(r.approved, r.approved + r.dead),
     })).sort((a, b) => b.jobs - a.jobs).slice(0, 10);
     const cities = Object.entries(a._byCity).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([city, n]) => ({ city, jobs: n }));
     return {
@@ -451,15 +452,15 @@ const stateOut = Object.values(stateCheats).map((s) => {
   const insTotal = ins.reduce((sum, j) => sum + (j.insuranceTotal || 0), 0);
   const deductibles = ins.map((j) => j.deductible).filter((v) => v && v <= 50000);
   const topCarriers = Object.values(s._carriers).filter((c) => c.jobs >= MIN_N)
-    .map((c) => ({ ...c, approvalRate: pct(c.approved, c.jobs - c.dead) }))
+    .map((c) => ({ ...c, approvalRate: pct(c.approved, c.approved + c.dead) }))
     .sort((a, b) => b.jobs - a.jobs).slice(0, 12);
   const topAdjusters = Object.values(s._adjusters).filter((a) => a.jobs >= MIN_N)
-    .map((a) => ({ name: a.name, jobs: a.jobs, approvalRate: pct(a.approved, a.jobs - a.dead), carriers: [...a.carriers].slice(0, 3) }))
+    .map((a) => ({ name: a.name, jobs: a.jobs, approvalRate: pct(a.approved, a.approved + a.dead), carriers: [...a.carriers].slice(0, 3) }))
     .sort((a, b) => b.jobs - a.jobs).slice(0, 15);
   return {
     state: s.state,
     insJobs: ins.length, insApproved, insDead,
-    insApprovalRate: pct(insApproved, ins.length - insDead),
+    insApprovalRate: pct(insApproved, insApproved + insDead),
     insTotal,
     medianDeductible: median(deductibles),
     retailJobs: s._retail.length,
@@ -502,7 +503,7 @@ const zipOut = Object.values(zips).filter((z) => z._jobs.length >= MIN_N).map((z
   const dead = ins.filter(isDead).length;
   const deductibles = ins.map((j) => j.deductible).filter((v) => v && v <= 50000);
   const topCarriers = Object.values(z._carriers)
-    .map((c) => ({ ...c, approvalRate: pct(c.approved, c.jobs - c.dead) }))
+    .map((c) => ({ ...c, approvalRate: pct(c.approved, c.approved + c.dead) }))
     .sort((a, b) => b.jobs - a.jobs).slice(0, 8);
   const topReps = Object.values(z._reps).sort((a, b) => b.jobs - a.jobs).slice(0, 5);
   const topAdjusters = Object.values(z._adjusters).filter((a) => a.jobs >= 2)
@@ -511,7 +512,7 @@ const zipOut = Object.values(zips).filter((z) => z._jobs.length >= MIN_N).map((z
   return {
     zip: z.zip, city: z.city,
     insJobs: ins.length, insApproved: approved, insDead: dead,
-    insApprovalRate: pct(approved, ins.length - dead),
+    insApprovalRate: pct(approved, approved + dead),
     dominantCarrier: topCarriers[0]?.name || null,
     medianDeductible: median(deductibles),
     topCarriers, topReps, topAdjusters,
