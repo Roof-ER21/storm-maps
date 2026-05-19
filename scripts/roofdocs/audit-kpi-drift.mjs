@@ -101,6 +101,21 @@ async function computeRiq() {
      WHERE job_type ILIKE 'insurance'
   `;
 
+  // projectLifecycle: signed_date → finalized_date avg, insurance only.
+  // Calibrated 2026-05-19 — best match to portal's 191.15 (2.4% drift).
+  // Excludes negative durations (data quality: 28 jobs platform-wide have
+  // finalized_date before signed_date due to portal data quirks).
+  const [{ lifecycle_avg, lifecycle_n }] = await sql`
+    SELECT
+      AVG(finalized_date::date - signed_date::date)::numeric AS lifecycle_avg,
+      COUNT(*)::int AS lifecycle_n
+      FROM intel_projects
+     WHERE job_type ILIKE 'insurance'
+       AND signed_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+       AND finalized_date ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}'
+       AND finalized_date::date >= signed_date::date
+  `;
+
   return {
     insurance_count: Number(insurance_count),
     retail_count: Number(retail_count),
@@ -110,6 +125,8 @@ async function computeRiq() {
     addon_count: Number(addon_count),
     approval_rate: approval_rate != null ? Number(approval_rate) : null,
     revenue_total: Number(revenue_total),
+    lifecycle_avg: lifecycle_avg != null ? Number(lifecycle_avg) : null,
+    lifecycle_n: Number(lifecycle_n),
     total_rows: Number(total_rows),
   };
 }
@@ -139,53 +156,56 @@ function fmtNum(n) {
 (async () => {
   const riq = await computeRiq();
 
-  // Per 2026-05-19 audit: portal insuranceCount ≈ signed-date ≥ 2023 cut
-  // (matches RIQ since-2023 subset within 0.14%). Other categories drift
-  // beyond the simple date cut — portal applies per-category stage filters
-  // we haven't reverse-engineered. RIQ stays all-time by design.
-  const SCOPE_NOTE_GENERIC = 'RIQ = all-time; portal admin/reporting = ~36-month window + per-category stage filters';
-  const SCOPE_NOTE_INSURANCE = 'RIQ = all-time; portal ≈ signed-date ≥ 2023 (RIQ since-2023 subset matches within 0.14%)';
+  // Per 2026-05-19 audit:
+  //   - portal insuranceCount = signed-date ≥ 2023 cut (within 0.14%)
+  //   - portal projectLifecycle = signed_date → finalized_date for insurance (within 2.4%)
+  //   - retail/conversion/addOn: no single rule matches portal (composite filter)
+  //   - repair/PA: portal counts MORE than RIQ — categorization difference
+  // RIQ stays all-time by design.
+  const SCOPE_UNKNOWN = 'RIQ = all-time; portal applies internal stage/status filter that no single tested rule matches';
+  const SCOPE_PORTAL_MORE = 'RIQ = all-time; portal counts MORE than any RIQ subset — portal categorizes jobs RIQ tags as other job_type';
+  const SCOPE_INSURANCE = 'RIQ = all-time; portal ≈ signed-date ≥ 2023 (RIQ since-2023 subset matches within 0.14%)';
   const rows = [
     {
       metric: 'insuranceCount',
       portal: portalKpis.insuranceCount,
       riq: riq.insurance_count,
-      note: SCOPE_NOTE_INSURANCE,
+      note: SCOPE_INSURANCE,
       baseline: true,
     },
     {
       metric: 'retailCount',
       portal: portalKpis.retailCount,
       riq: riq.retail_count,
-      note: SCOPE_NOTE_GENERIC,
+      note: SCOPE_UNKNOWN,
       baseline: true,
     },
     {
       metric: 'repairCount',
       portal: portalKpis.repairCount,
       riq: riq.repair_count,
-      note: SCOPE_NOTE_GENERIC + ' — portal > RIQ; portal may include jobs RIQ tags differently',
+      note: SCOPE_PORTAL_MORE,
       baseline: true,
     },
     {
       metric: 'insuranceConversionCount',
       portal: portalKpis.insuranceConversionCount,
       riq: riq.conversion_count,
-      note: SCOPE_NOTE_GENERIC,
+      note: SCOPE_UNKNOWN,
       baseline: true,
     },
     {
       metric: 'publicAdjusterCount',
       portal: portalKpis.publicAdjusterCount,
       riq: riq.pa_count,
-      note: SCOPE_NOTE_GENERIC + ' — portal > RIQ; portal may include jobs RIQ tags differently',
+      note: SCOPE_PORTAL_MORE,
       baseline: true,
     },
     {
       metric: 'addOnCount',
       portal: portalKpis.addOnCount,
       riq: riq.addon_count,
-      note: SCOPE_NOTE_GENERIC,
+      note: SCOPE_UNKNOWN,
       baseline: true,
     },
     {
@@ -198,19 +218,19 @@ function fmtNum(n) {
       metric: 'roofingSquares (avg)',
       portal: portalKpis.roofingSquares,
       riq: null,
-      note: 'requires intel_projects.roofing_squares (not yet promoted)',
+      note: 'data not in intel_projects (job_type categories only; trades array is names, not measurements)',
     },
     {
       metric: 'projectLifecycle (days)',
       portal: portalKpis.projectLifecycle,
-      riq: null,
-      note: 'requires lead → completion timestamp pair (not yet computed)',
+      riq: riq.lifecycle_avg,
+      note: `signed_date → finalized_date avg, insurance jobs only (n=${riq.lifecycle_n.toLocaleString()})`,
     },
     {
       metric: 'daysForInstall',
       portal: portalKpis.daysForInstall,
       riq: null,
-      note: 'requires approval → install date pair',
+      note: 'requires stage-transition history (Schedule Pending → install date pair, not stored)',
     },
     {
       metric: 'leadConversion',
@@ -231,7 +251,7 @@ function fmtNum(n) {
       metric: 'insuranceTotal ($)',
       portal: portalProfit.insuranceTotal,
       riq: riq.revenue_total,
-      note: SCOPE_NOTE_INSURANCE + ' (SUM job_total)',
+      note: SCOPE_INSURANCE + ' (SUM job_total)',
       baseline: true,
     });
   }
