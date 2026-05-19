@@ -61,7 +61,7 @@
   .empty { padding: 30px; text-align: center; color: var(--muted); }
 </style>
 </head>
-<body>
+<body data-riq-sort-all>
 <header>
   <h1>👤 Customer Detail</h1>
   <div class="links">
@@ -90,6 +90,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="/riq-links.js"></script>
+<script src="/riq-sort.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = {

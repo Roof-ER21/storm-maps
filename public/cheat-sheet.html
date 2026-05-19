@@ -62,7 +62,7 @@
   @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
 </style>
 </head>
-<body>
+<body data-riq-sort-all>
 <header>
   <h1>🎓 Cheat Sheet</h1>
   <div class="links">
@@ -95,6 +95,7 @@
 </main>
 
 <script src="/riq-links.js"></script>
+<script src="/riq-sort.js"></script>
 <script>
 const $ = (id) => document.getElementById(id);
 const fmt = {
