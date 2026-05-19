@@ -141,7 +141,8 @@ async function showRep(name) {
       <div class="kpi"><div class="label">Signed</div><div class="value">${fmt.int(r.signed)}</div></div>
       <div class="kpi"><div class="label">Completed</div><div class="value">${fmt.int(r.completed)}</div></div>
       <div class="kpi"><div class="label">Dead</div><div class="value">${fmt.int(r.dead)}</div></div>
-      <div class="kpi"><div class="label">Close rate</div><div class="value">${fmt.pct(r.closeRate)}</div></div>
+      <div class="kpi" title="Insurance jobs only (Insurance + Insurance Conversion + Public Adjuster). Canonical platform formula B: completed / (completed + dead). Matches Field Portal's Approval Rate."><div class="label">Ins approval rate</div><div class="value">${fmt.pct(r.insApprovalRate)}</div><div class="sub" style="font-size:11px;color:var(--muted,#a09486);margin-top:2px">${fmt.int(r.insCompletedCount)} of ${fmt.int(r.insCompletedCount + r.insDeadCount)}</div></div>
+      <div class="kpi" title="All jobs (insurance + retail). Canonical platform formula B: completed / (completed + dead)."><div class="label">Close rate (all)</div><div class="value">${fmt.pct(r.closeRate)}</div></div>
       <div class="kpi"><div class="label">Closed revenue</div><div class="value">${fmt.money(r.completedRevenue)}</div></div>
       <div class="kpi"><div class="label">Avg approved job</div><div class="value">${fmt.money(r.avgApprovedJob)}</div></div>
       <div class="kpi"><div class="label">Median loss→sign</div><div class="value">${r.medianSpeedDays != null ? r.medianSpeedDays + 'd' : '—'}</div></div>

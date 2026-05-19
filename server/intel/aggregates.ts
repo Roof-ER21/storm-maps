@@ -1057,6 +1057,21 @@ export async function adjusterDeep(req: Request, res: Response) {
 export async function repsSummary(_req: Request, res: Response) {
   const t0 = Date.now();
   try {
+    // INS_TYPES = ('Insurance','Insurance Conversion','Public Adjuster') —
+    // matches build-cheat-sheets.mjs's `INS_TYPES` set so the rep-level
+    // INS-only counts here line up with what cheat-sheet pulls for the same
+    // rep. The pre-existing `insSignedCount` / `insSalesTotal` columns stay
+    // narrower (Insurance + Insurance Conversion) for backwards-compat with
+    // consumers that key off them; the new `insSignedFullCount` /
+    // approval-rate fields use the full INS_TYPES bucket.
+    //
+    // `closeRate` uses the canonical platform formula B —
+    // completed / (completed + dead) — standardized in b6930c9 to match
+    // Field Portal's "Approval Rate" so reps see the same number across RIQ
+    // and their portal dashboard. `insApprovalRate` uses the same formula B
+    // shape but over INS_TYPES only — that's the rep-level INS approval
+    // metric Varun asked for, and it makes #2 (rank-by-approval) sortable
+    // on reps.html via the existing riq-sort.js.
     const rows = await pgSql<Array<{
       name: string;
       signed: number;
@@ -1069,6 +1084,9 @@ export async function repsSummary(_req: Request, res: Response) {
       retail_sales_total: number;
       ins_signed_count: number;
       retail_signed_count: number;
+      ins_signed_full_count: number;
+      ins_completed_count: number;
+      ins_dead_count: number;
     }>>`
       SELECT
         TRIM(sales_rep) AS name,
@@ -1081,7 +1099,10 @@ export async function repsSummary(_req: Request, res: Response) {
         COALESCE(SUM(insurance_total) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion')), 0)::numeric AS ins_sales_total,
         COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND job_type = 'Retail'), 0)::numeric AS retail_sales_total,
         COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion'))::int AS ins_signed_count,
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type = 'Retail')::int AS retail_signed_count
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type = 'Retail')::int AS retail_signed_count,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster'))::int AS ins_signed_full_count,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster') AND stage ~* 'completed|finalized')::int AS ins_completed_count,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster') AND stage ~* 'dead|cancel')::int AS ins_dead_count
         FROM intel_projects
        WHERE sales_rep IS NOT NULL AND TRIM(sales_rep) <> ''
        GROUP BY TRIM(sales_rep)
@@ -1094,6 +1115,9 @@ export async function repsSummary(_req: Request, res: Response) {
       const completedRev = num(r.completed_revenue);
       const insSales = num(r.ins_sales_total);
       const retailSales = num(r.retail_sales_total);
+      const insSignedFull = num(r.ins_signed_full_count);
+      const insCompleted = num(r.ins_completed_count);
+      const insDead = num(r.ins_dead_count);
       return {
         name: r.name,
         signed,
@@ -1106,8 +1130,16 @@ export async function repsSummary(_req: Request, res: Response) {
         retailSalesTotal: retailSales,
         insSignedCount: num(r.ins_signed_count),
         retailSignedCount: num(r.retail_signed_count),
+        insSignedFullCount: insSignedFull,
+        insCompletedCount: insCompleted,
+        insDeadCount: insDead,
         totalSalesAllTime: insSales + retailSales,
+        // All-jobs close rate using canonical formula B (b6930c9).
         closeRate: completed + dead > 0 ? completed / (completed + dead) : 0,
+        // INS-only approval rate using canonical formula B over INS_TYPES.
+        // This is the rep-level "Insurance Approval Rate" that Varun asked
+        // for and that #2 (rank reps by approval rate) sorts by on reps.html.
+        insApprovalRate: insCompleted + insDead > 0 ? insCompleted / (insCompleted + insDead) : 0,
         avgApprovedJob: completed > 0 ? completedRev / completed : null,
       };
     });
