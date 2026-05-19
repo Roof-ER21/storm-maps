@@ -39,6 +39,7 @@ const DATASETS = [
   { key: 'adjustments-open', file: 'adjustments-open.json' },
   { key: 'employee-roster',  file: 'employee-roster.json' },
   { key: 'active-work',      file: 'active-work.json' },
+  { key: 'credits',          file: 'credits.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
 ];
 

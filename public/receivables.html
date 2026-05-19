@@ -75,6 +75,7 @@
       <div class="tab" data-tab="dp">Pending Downpayments</div>
       <div class="tab" data-tab="friction">💸 Carrier Friction</div>
       <div class="tab" data-tab="pa">📋 Open PA Cases</div>
+      <div class="tab" data-tab="credits">💳 Vendor Credits</div>
     </div>
 
     <section id="sec-ar">
@@ -97,6 +98,23 @@
       </div>
       <div id="dp-count" style="color:var(--muted); font-size:12px; margin-bottom:8px"></div>
       <div class="scroll"><table id="tbl-dp"></table></div>
+    </section>
+
+    <section id="sec-credits" style="display:none">
+      <div style="color:var(--muted); font-size:12px; margin-bottom:10px">
+        Vendor credits sitting unrequested. Every dollar here is money Roof Docs has already earned with the supplier but hasn't pulled back yet. Surface by creditor to see which vendor accounts to work first.
+      </div>
+      <div id="credits-totals" class="kpi-row" style="margin-bottom:14px"></div>
+      <div class="col-2" style="display:grid;grid-template-columns:1fr 2fr;gap:16px;align-items:start">
+        <div>
+          <h3 style="font-size:13px;margin:0 0 8px;color:var(--text)">By creditor</h3>
+          <div class="scroll" style="max-height:400px"><table id="tbl-credits-by"></table></div>
+        </div>
+        <div>
+          <h3 style="font-size:13px;margin:0 0 8px;color:var(--text)">All credits (newest first)</h3>
+          <div class="scroll" style="max-height:400px"><table id="tbl-credits"></table></div>
+        </div>
+      </div>
     </section>
 
     <section id="sec-pa" style="display:none">
@@ -331,13 +349,67 @@ async function start() {
     $('sec-dp').style.display = t.dataset.tab === 'dp' ? '' : 'none';
     $('sec-friction').style.display = t.dataset.tab === 'friction' ? '' : 'none';
     $('sec-pa').style.display = t.dataset.tab === 'pa' ? '' : 'none';
+    $('sec-credits').style.display = t.dataset.tab === 'credits' ? '' : 'none';
     if (t.dataset.tab === 'friction') loadFriction();
     if (t.dataset.tab === 'pa') loadPA();
+    if (t.dataset.tab === 'credits') loadCredits();
   }));
 
   renderKPIs();
   applyAR();
   applyDP();
+}
+
+let creditsLoaded = false;
+async function loadCredits() {
+  if (creditsLoaded) return;
+  creditsLoaded = true;
+  try {
+    const r = await fetch('/api/intel/credits');
+    const json = await r.json();
+    const summary = json.summary || {};
+    const credits = json.credits || [];
+
+    $('credits-totals').innerHTML = [
+      { l: 'Open credits', v: fmt.int(summary.totalCount) },
+      { l: 'Total $', v: fmt.money(summary.totalAmount) },
+      { l: 'Unrequested $', v: fmt.money(summary.unrequestedAmount) },
+      { l: 'Collected $', v: fmt.money(summary.collectedAmount) },
+    ].map((k) => `<div class="kpi"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+    $('tbl-credits-by').innerHTML = `
+      <thead><tr><th>Creditor</th><th class="num">Count</th><th class="num">Amount</th></tr></thead>
+      <tbody>${(summary.byCreditor || []).map((c) => `
+        <tr>
+          <td><strong>${c.creditor}</strong></td>
+          <td class="num">${c.count}</td>
+          <td class="num">${fmt.money(c.amount)}</td>
+        </tr>
+      `).join('')}</tbody>
+    `;
+
+    const sorted = credits.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    $('tbl-credits').innerHTML = `
+      <thead><tr>
+        <th>Date</th>
+        <th>Creditor</th>
+        <th class="num">Amount</th>
+        <th>Customer</th>
+        <th>Memo</th>
+      </tr></thead>
+      <tbody>${sorted.map((c) => `
+        <tr>
+          <td>${(c.createdAt || '').slice(0, 10)}</td>
+          <td>${c.creditor || '—'}</td>
+          <td class="num">${fmt.money(c.amount)}</td>
+          <td>${c.job?.customer ? `${c.job.customer.firstName} ${c.job.customer.lastName}` : '—'}</td>
+          <td style="color:var(--muted);font-size:11px;max-width:340px">${(c.memo || '').slice(0, 120)}${c.memo && c.memo.length > 120 ? '…' : ''}</td>
+        </tr>
+      `).join('')}</tbody>
+    `;
+  } catch (err) {
+    $('tbl-credits').innerHTML = `<tbody><tr><td style="color:var(--red);padding:20px">Failed to load: ${err.message || err}</td></tr></tbody>`;
+  }
 }
 
 let paLoaded = false;

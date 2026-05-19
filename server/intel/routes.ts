@@ -84,6 +84,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'employee-roster': { file: 'employee-roster.json', description: 'UUID → display-name map for ops/AR/field-tech surfaces (manual; populate from portal /api/users)' },
   'adjustments-open': { file: 'adjustments-open.json', description: 'Open public-adjuster cases (Phil Hetrick is sole assignee — 22 records, oldest 5+ years stale)' },
   'active-work':     { file: 'active-work.json',     description: 'Active-jobs intel: supplement tracker × carrier, cross-sell pipeline, install readiness (derived from 4.4k active portal jobs)' },
+  'credits':         { file: 'credits.json',         description: 'Vendor credits — 138 records, $22.8K unrequested (ABC Supply 115 / Superior 22 / Beacon 1)' },
 };
 
 // Storm light file lives in storms/ subdir
