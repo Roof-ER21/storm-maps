@@ -1,0 +1,258 @@
+#!/usr/bin/env node
+// Phase 8b: KPI drift auditor.
+//
+// Computes RIQ 21's version of each portal-reported KPI from intel_projects
+// and diffs against the portal's authoritative numbers.
+//
+// Portal numbers come from data/roofdocs-reference/portal-kpi-{summary,profit}.json
+// (refreshed via refresh-all.sh — pulls /v1/admin/reporting/kpis and /profit).
+//
+// Exit codes:
+//   0 — all metrics within 5% of portal
+//   1 — at least one metric > 5% drift (warn)
+//   2 — at least one metric > 15% drift (fail)
+//
+//   DATABASE_URL=$RIQ_DB_PUBLIC_URL node scripts/roofdocs/audit-kpi-drift.mjs
+
+import postgres from 'postgres';
+import fs from 'node:fs';
+
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const PORTAL_KPI_FILE = `${RIQ_BASE}/data/portal-kpi-summary.json`;
+const PORTAL_PROFIT_FILE = `${RIQ_BASE}/data/portal-kpi-profit.json`;
+
+const DATABASE_URL = process.env.DATABASE_URL;
+if (!DATABASE_URL) {
+  console.error('DATABASE_URL is required (use DATABASE_PUBLIC_URL from Railway)');
+  process.exit(3);
+}
+
+if (!fs.existsSync(PORTAL_KPI_FILE)) {
+  console.error(`Missing ${PORTAL_KPI_FILE} — run refresh-all.sh first`);
+  process.exit(3);
+}
+
+const portalKpis = JSON.parse(fs.readFileSync(PORTAL_KPI_FILE, 'utf8')).data;
+const portalProfit = fs.existsSync(PORTAL_PROFIT_FILE)
+  ? JSON.parse(fs.readFileSync(PORTAL_PROFIT_FILE, 'utf8')).data
+  : null;
+
+const sql = postgres(DATABASE_URL, { ssl: 'require', max: 4 });
+
+/* ──────────────────────────── Compute RIQ-side metrics ──────────────────────────── */
+
+async function computeRiq() {
+  // Job type counts
+  const [{ insurance_count }] = await sql`
+    SELECT COUNT(*)::int AS insurance_count
+      FROM intel_projects
+     WHERE job_type ILIKE 'insurance'
+  `;
+  const [{ retail_count }] = await sql`
+    SELECT COUNT(*)::int AS retail_count
+      FROM intel_projects
+     WHERE job_type ILIKE 'retail'
+  `;
+  const [{ repair_count }] = await sql`
+    SELECT COUNT(*)::int AS repair_count
+      FROM intel_projects
+     WHERE job_type ILIKE 'repair'
+  `;
+  const [{ conversion_count }] = await sql`
+    SELECT COUNT(*)::int AS conversion_count
+      FROM intel_projects
+     WHERE job_type ILIKE '%conversion%'
+  `;
+  const [{ pa_count }] = await sql`
+    SELECT COUNT(*)::int AS pa_count
+      FROM intel_projects
+     WHERE job_type ILIKE '%adjuster%'
+  `;
+  const [{ addon_count }] = await sql`
+    SELECT COUNT(*)::int AS addon_count
+      FROM intel_projects
+     WHERE job_type ILIKE '%add%on%' OR job_type ILIKE '%addon%'
+  `;
+
+  // Approval rate — completed/(completed + dead/cancelled)
+  // This formula is canonical in RIQ 21 (Phase 4 audit, 2026-05-18 evening)
+  const [{ approval_rate }] = await sql`
+    SELECT
+      (COUNT(*) FILTER (WHERE stage ~* 'completed|finalized'))::numeric
+        / NULLIF(COUNT(*) FILTER (WHERE stage ~* 'completed|finalized|dead|cancel'), 0)
+        * 100 AS approval_rate
+      FROM intel_projects
+     WHERE job_type ILIKE 'insurance'
+  `;
+
+  // Total counts for context
+  const [{ total_rows }] = await sql`SELECT COUNT(*)::int AS total_rows FROM intel_projects`;
+
+  // Profit totals — pull from intel_projects job_total / ACV breakdowns if available
+  // intel_projects may not store ACV/upgrades line-by-line. Best-effort sum from projects.json blob via SUM(job_total).
+  const [{ revenue_total }] = await sql`
+    SELECT COALESCE(SUM(job_total), 0)::numeric AS revenue_total
+      FROM intel_projects
+     WHERE job_type ILIKE 'insurance'
+  `;
+
+  return {
+    insurance_count: Number(insurance_count),
+    retail_count: Number(retail_count),
+    repair_count: Number(repair_count),
+    conversion_count: Number(conversion_count),
+    pa_count: Number(pa_count),
+    addon_count: Number(addon_count),
+    approval_rate: approval_rate != null ? Number(approval_rate) : null,
+    revenue_total: Number(revenue_total),
+    total_rows: Number(total_rows),
+  };
+}
+
+/* ──────────────────────────── Diff + emit ──────────────────────────── */
+
+function diff(portal, riq) {
+  if (portal == null || riq == null) return { abs: null, pct: null };
+  const abs = riq - portal;
+  const pct = portal === 0 ? null : (abs / portal) * 100;
+  return { abs, pct };
+}
+
+function fmtPct(p) {
+  if (p == null) return '   --';
+  const s = p >= 0 ? '+' : '';
+  return `${s}${p.toFixed(2)}%`;
+}
+
+function fmtNum(n) {
+  if (n == null) return '--';
+  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (Math.abs(n) >= 1000) return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+  return typeof n === 'number' ? n.toFixed(2) : String(n);
+}
+
+(async () => {
+  const riq = await computeRiq();
+
+  const rows = [
+    {
+      metric: 'insuranceCount',
+      portal: portalKpis.insuranceCount,
+      riq: riq.insurance_count,
+      note: 'portal LIFETIME — RIQ 21 = export window',
+    },
+    {
+      metric: 'retailCount',
+      portal: portalKpis.retailCount,
+      riq: riq.retail_count,
+    },
+    {
+      metric: 'repairCount',
+      portal: portalKpis.repairCount,
+      riq: riq.repair_count,
+    },
+    {
+      metric: 'insuranceConversionCount',
+      portal: portalKpis.insuranceConversionCount,
+      riq: riq.conversion_count,
+    },
+    {
+      metric: 'publicAdjusterCount',
+      portal: portalKpis.publicAdjusterCount,
+      riq: riq.pa_count,
+    },
+    {
+      metric: 'addOnCount',
+      portal: portalKpis.addOnCount,
+      riq: riq.addon_count,
+    },
+    {
+      metric: 'approvalPercentage',
+      portal: portalKpis.approvalPercentage,
+      riq: riq.approval_rate,
+      note: 'KEY METRIC — Phase 4 audit gate',
+    },
+    {
+      metric: 'roofingSquares (avg)',
+      portal: portalKpis.roofingSquares,
+      riq: null,
+      note: 'requires intel_projects.roofing_squares (not yet promoted)',
+    },
+    {
+      metric: 'projectLifecycle (days)',
+      portal: portalKpis.projectLifecycle,
+      riq: null,
+      note: 'requires lead → completion timestamp pair (not yet computed)',
+    },
+    {
+      metric: 'daysForInstall',
+      portal: portalKpis.daysForInstall,
+      riq: null,
+      note: 'requires approval → install date pair',
+    },
+    {
+      metric: 'leadConversion',
+      portal: portalKpis.leadConversion,
+      riq: null,
+      note: 'requires intel_leads (Phase 8a)',
+    },
+    {
+      metric: 'leadClosed',
+      portal: portalKpis.leadClosed,
+      riq: null,
+      note: 'requires intel_leads (Phase 8a)',
+    },
+  ];
+
+  if (portalProfit) {
+    rows.push({
+      metric: 'insuranceTotal ($)',
+      portal: portalProfit.insuranceTotal,
+      riq: riq.revenue_total,
+      note: 'portal LIFETIME — RIQ 21 = export window sum(job_total)',
+    });
+  }
+
+  /* ──────────────────────────── Output ──────────────────────────── */
+
+  let maxDrift = 0;
+  console.log('\n' + '═'.repeat(82));
+  console.log('  RIQ 21 vs Portal KPI Drift Audit');
+  console.log('  RIQ rows in intel_projects: ' + riq.total_rows.toLocaleString());
+  console.log('═'.repeat(82));
+  console.log('  ' + 'metric'.padEnd(30) + 'portal'.padStart(14) + 'riq 21'.padStart(14) + 'drift'.padStart(11));
+  console.log('  ' + '-'.repeat(78));
+  for (const r of rows) {
+    const d = diff(r.portal, r.riq);
+    const driftPct = d.pct != null ? Math.abs(d.pct) : 0;
+    if (driftPct > maxDrift) maxDrift = driftPct;
+    const tag = r.riq == null ? '  pending' : driftPct > 15 ? '  FAIL' : driftPct > 5 ? '  WARN' : '  OK';
+    console.log(
+      '  ' + r.metric.padEnd(30) +
+      fmtNum(r.portal).padStart(14) +
+      fmtNum(r.riq).padStart(14) +
+      fmtPct(d.pct).padStart(11) +
+      tag
+    );
+    if (r.note) console.log('  ' + ' '.repeat(28) + '↳ ' + r.note);
+  }
+  console.log('═'.repeat(82));
+
+  let exitCode = 0;
+  if (maxDrift > 15) {
+    console.log(`  RESULT: FAIL (max drift ${maxDrift.toFixed(1)}%)`);
+    exitCode = 2;
+  } else if (maxDrift > 5) {
+    console.log(`  RESULT: WARN (max drift ${maxDrift.toFixed(1)}%)`);
+    exitCode = 1;
+  } else {
+    console.log(`  RESULT: OK (max drift ${maxDrift.toFixed(1)}%)`);
+  }
+  console.log('═'.repeat(82) + '\n');
+
+  await sql.end();
+  process.exit(exitCode);
+})().catch((e) => {
+  console.error(e);
+  process.exit(3);
+});

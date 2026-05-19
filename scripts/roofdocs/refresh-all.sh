@@ -57,13 +57,26 @@ for ep_pair in \
   "dashboard/adjustment/open:adjustments-open" \
   "dashboard/receivable/open:receivables-open" \
   "dashboard/jobs/all:dashboard-jobs-active" \
-  "trades/all:trades"; do
+  "trades/all:trades" \
+  "admin/reporting/profit:portal-kpi-profit" \
+  "admin/reporting/kpis:portal-kpi-summary" \
+  "admin/reporting/insurance:portal-insurance-names" \
+  "admin/finance:finance-plans"; do
   ep="${ep_pair%%:*}"; name="${ep_pair##*:}"
   curl -s -o "$BASE/data/roofdocs-reference/$name.json" \
     "https://api.theroofdocs.com/v1/$ep" \
     -H "x-access-token: $TOKEN" -H "Origin: https://portal.theroofdocs.com" -m 30
 done
 echo "  ✓ Reference data refreshed"
+
+# Phase 8b: promote portal KPI files into data/ (committed dir).
+# /api/intel/portal-kpis reads from data/ so the endpoint stays consistent
+# whether the file was committed in the repo or just refreshed.
+for f in portal-kpi-profit portal-kpi-summary portal-insurance-names finance-plans; do
+  if [ -s "$BASE/data/roofdocs-reference/$f.json" ]; then
+    cp "$BASE/data/roofdocs-reference/$f.json" "$BASE/data/$f.json"
+  fi
+done
 
 echo "→ [6/12] Geocoding new missing-coord records…"
 node "$BASE/scripts/roofdocs/geocode-missing.mjs" 2>&1 | tail -2

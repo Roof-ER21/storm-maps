@@ -26,6 +26,7 @@ import { createShare, getSharedList, listMyShares, deleteShare } from './sharing
 import { predictorScore, predictorWebhook } from './predictor.js';
 import { carrierComplaints } from './naic-complaints.js';
 import { arRollup } from './ar-rollup.js';
+import { portalKpis } from './portal-kpis.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -286,6 +287,16 @@ router.get('/api/intel/carrier-complaints', carrierComplaints);
  *   GET /api/intel/receivables/rollup?carrier=X    — single carrier slice
  */
 router.get('/api/intel/receivables/rollup', arRollup);
+
+/**
+ * Phase 8b: portal KPI truth source.
+ * Portal numbers from data/roofdocs-reference/portal-kpi-*.json (file-backed).
+ * RIQ 21 numbers computed live from intel_projects.
+ *   GET /api/intel/portal-kpis            — portal + riq + drift
+ *   GET /api/intel/portal-kpis?view=portal — portal only (no DB)
+ *   GET /api/intel/portal-kpis?view=drift  — drift table only
+ */
+router.get('/api/intel/portal-kpis', portalKpis);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

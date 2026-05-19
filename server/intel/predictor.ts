@@ -87,6 +87,36 @@ export type ScoreResult = {
  * ~96%. Tiny buckets (n<3) ignored.
  * ========================================================================= */
 
+/* ============================================================================
+ * Portal-truth calibration constants (Phase 8b, 2026-05-19)
+ *
+ * Sourced from /v1/admin/reporting/{kpis,profit} captured during the May 19
+ * passive admin session. These are the portal's authoritative global priors;
+ * RIQ 21's intel_projects window may diverge slightly because the export is a
+ * recent slice rather than lifetime. When we fall back (e.g. an empty bucket
+ * for some carrier), prefer portal truth over a guessed default.
+ *
+ * Source files:
+ *   data/roofdocs-reference/portal-kpi-summary.json
+ *   data/roofdocs-reference/portal-kpi-profit.json
+ *
+ * Last updated: 2026-05-19 (passive capture session)
+ * ========================================================================= */
+export const PORTAL_TRUTH = {
+  baseRate: 0.5123,              // approvalPercentage — completed / (completed + dead)
+  lifetimeInsuranceCount: 7874,  // insuranceCount — true population size
+  lifetimeRetailCount: 151,
+  lifetimeRepairCount: 66,
+  lifetimePublicAdjusterCount: 19,
+  avgRoofingSquares: 25.76,
+  avgSidingSquares: 16.85,
+  avgProjectLifecycleDays: 191.15,
+  avgDaysInBalancePending: 26.55,
+  avgDaysForInstall: 40.20,
+  leadToContactPct: 99.37,       // leadConversion — leads with contact made
+  leadClosedPct: 52.97,          // leadClosed — closed-won %
+} as const;
+
 const FACTOR_WEIGHTS: Record<string, number> = {
   carrier_zip:     0.30,  // strongest signal when we have it
   carrier_state:   0.15,  // fallback for carrier+state when no zip match
@@ -194,7 +224,10 @@ export async function computeScore(features: LeadFeatures): Promise<ScoreResult>
     ` : Promise.resolve([{ rate: null, n: 0 }]),
   ]);
 
-  const baseRate = num(baseRow[0]?.rate ?? 0.72);
+  // Fall back to portal-authoritative global approval rate (51.23%) when
+  // intel_projects has no data — previously hardcoded to 0.72 which over-rated
+  // empty buckets by ~20pp.
+  const baseRate = num(baseRow[0]?.rate ?? PORTAL_TRUTH.baseRate);
   const factors: Factor[] = [];
   let blendedRate = baseRate;
   let totalWeightApplied = 0;
@@ -381,7 +414,7 @@ export async function computeScore(features: LeadFeatures): Promise<ScoreResult>
     baseRate,
     factors,
     recommendations,
-    modelVersion: 'heuristic-v1',
+    modelVersion: 'heuristic-v1.1-portal-calibrated',
     computedAt: new Date().toISOString(),
     tookMs: Date.now() - t0,
   };
