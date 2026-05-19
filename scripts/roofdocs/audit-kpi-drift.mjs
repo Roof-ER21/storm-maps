@@ -139,48 +139,53 @@ function fmtNum(n) {
 (async () => {
   const riq = await computeRiq();
 
-  const SCOPE_NOTE = 'volume count — RIQ projects population ⊋ portal admin/reporting scope';
+  // Per 2026-05-19 audit: portal insuranceCount ≈ signed-date ≥ 2023 cut
+  // (matches RIQ since-2023 subset within 0.14%). Other categories drift
+  // beyond the simple date cut — portal applies per-category stage filters
+  // we haven't reverse-engineered. RIQ stays all-time by design.
+  const SCOPE_NOTE_GENERIC = 'RIQ = all-time; portal admin/reporting = ~36-month window + per-category stage filters';
+  const SCOPE_NOTE_INSURANCE = 'RIQ = all-time; portal ≈ signed-date ≥ 2023 (RIQ since-2023 subset matches within 0.14%)';
   const rows = [
     {
       metric: 'insuranceCount',
       portal: portalKpis.insuranceCount,
       riq: riq.insurance_count,
-      note: SCOPE_NOTE,
+      note: SCOPE_NOTE_INSURANCE,
       baseline: true,
     },
     {
       metric: 'retailCount',
       portal: portalKpis.retailCount,
       riq: riq.retail_count,
-      note: SCOPE_NOTE,
+      note: SCOPE_NOTE_GENERIC,
       baseline: true,
     },
     {
       metric: 'repairCount',
       portal: portalKpis.repairCount,
       riq: riq.repair_count,
-      note: SCOPE_NOTE,
+      note: SCOPE_NOTE_GENERIC + ' — portal > RIQ; portal may include jobs RIQ tags differently',
       baseline: true,
     },
     {
       metric: 'insuranceConversionCount',
       portal: portalKpis.insuranceConversionCount,
       riq: riq.conversion_count,
-      note: SCOPE_NOTE,
+      note: SCOPE_NOTE_GENERIC,
       baseline: true,
     },
     {
       metric: 'publicAdjusterCount',
       portal: portalKpis.publicAdjusterCount,
       riq: riq.pa_count,
-      note: SCOPE_NOTE,
+      note: SCOPE_NOTE_GENERIC + ' — portal > RIQ; portal may include jobs RIQ tags differently',
       baseline: true,
     },
     {
       metric: 'addOnCount',
       portal: portalKpis.addOnCount,
       riq: riq.addon_count,
-      note: SCOPE_NOTE,
+      note: SCOPE_NOTE_GENERIC,
       baseline: true,
     },
     {
@@ -226,7 +231,7 @@ function fmtNum(n) {
       metric: 'insuranceTotal ($)',
       portal: portalProfit.insuranceTotal,
       riq: riq.revenue_total,
-      note: SCOPE_NOTE + ' (SUM job_total)',
+      note: SCOPE_NOTE_INSURANCE + ' (SUM job_total)',
       baseline: true,
     });
   }

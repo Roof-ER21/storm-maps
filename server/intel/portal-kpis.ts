@@ -218,22 +218,37 @@ function buildDrift(portal: PortalKpis | null, profit: PortalProfit | null, riq:
     return { metric, portal: portalVal, riq: riqVal, driftAbs, driftPct, status, note: opts.note };
   };
 
-  // Notes calibrated to live data 2026-05-19:
-  //   approvalPercentage drift = 0.21% (OK) — rate metrics are like-for-like.
-  //   Volume counts drift wildly: RIQ insurance 10937 vs portal 7874 — RIQ's
-  //   intel_projects population is BROADER than whatever admin/reporting/kpis
-  //   considers "insurance jobs" (portal likely filters to currently-active or
-  //   a specific status set). We don't know the portal's exact predicate, so
-  //   we tag these `baseline` rather than `fail`.
-  const SCOPE_NOTE = 'volume count — RIQ projects population ⊋ portal admin/reporting scope';
+  // Audit findings 2026-05-19 (psql ad-hoc against intel_projects):
+  //
+  //   approvalPercentage: RIQ 51.34% vs portal 51.23% — 0.21% drift, like-for-like ✓
+  //
+  //   insuranceCount: RIQ all-time 10,937. Of those, 7,863 are signed since
+  //     2023-01-01 — within 11 jobs of portal's 7,874 (0.14% miss). Portal
+  //     therefore appears to use signed-date ≥ 2023 (~3-year rolling window).
+  //     The 3,074-job delta is jobs signed pre-2023 (2019: 109, 2020: 411,
+  //     2021: 832, 2022: 1,659, plus 63 with no signed_date).
+  //
+  //   retailCount / addOnCount / insuranceConversionCount: RIQ since-2023 is
+  //     still ~2× portal, so portal applies an additional stage/status filter
+  //     beyond date. We don't know the exact predicate.
+  //
+  //   repairCount / publicAdjusterCount: portal counts MORE than RIQ since-2023
+  //     (66 vs 50, 19 vs 10) — portal likely tags some jobs as repair/PA that
+  //     RIQ classifies under another job_type. Cross-tab needed to confirm.
+  //
+  // RIQ stays all-time intentionally — predictor / lifetime-touch / carrier
+  // intel all want the full job history. Drift rows are `baseline` because the
+  // portal-vs-RIQ comparison is apples-to-oranges by design.
+  const SCOPE_NOTE_GENERIC = 'RIQ = all-time; portal admin/reporting = ~36-month window + per-category stage filters';
+  const SCOPE_NOTE_INSURANCE = 'RIQ = all-time; portal ≈ signed-date ≥ 2023 (RIQ since-2023 subset matches portal within 0.14%)';
 
   const rows: DriftRow[] = [
-    mk('insuranceCount', portal.insuranceCount, riq.insuranceCount, { note: SCOPE_NOTE, baseline: true }),
-    mk('retailCount', portal.retailCount, riq.retailCount, { note: SCOPE_NOTE, baseline: true }),
-    mk('repairCount', portal.repairCount, riq.repairCount, { note: SCOPE_NOTE, baseline: true }),
-    mk('insuranceConversionCount', portal.insuranceConversionCount, riq.insuranceConversionCount, { note: SCOPE_NOTE, baseline: true }),
-    mk('publicAdjusterCount', portal.publicAdjusterCount, riq.publicAdjusterCount, { note: SCOPE_NOTE, baseline: true }),
-    mk('addOnCount', portal.addOnCount, riq.addOnCount, { note: SCOPE_NOTE, baseline: true }),
+    mk('insuranceCount', portal.insuranceCount, riq.insuranceCount, { note: SCOPE_NOTE_INSURANCE, baseline: true }),
+    mk('retailCount', portal.retailCount, riq.retailCount, { note: SCOPE_NOTE_GENERIC, baseline: true }),
+    mk('repairCount', portal.repairCount, riq.repairCount, { note: SCOPE_NOTE_GENERIC + ' — portal > RIQ; portal may include jobs RIQ tags differently', baseline: true }),
+    mk('insuranceConversionCount', portal.insuranceConversionCount, riq.insuranceConversionCount, { note: SCOPE_NOTE_GENERIC, baseline: true }),
+    mk('publicAdjusterCount', portal.publicAdjusterCount, riq.publicAdjusterCount, { note: SCOPE_NOTE_GENERIC + ' — portal > RIQ; portal may include jobs RIQ tags differently', baseline: true }),
+    mk('addOnCount', portal.addOnCount, riq.addOnCount, { note: SCOPE_NOTE_GENERIC, baseline: true }),
     mk('approvalPercentage', portal.approvalPercentage, riq.approvalPercentage, { note: 'Phase 4 audit gate metric (rate, like-for-like)' }),
     mk('roofingSquares', portal.roofingSquares, null, { note: 'requires intel_projects.roofing_squares column (not promoted)' }),
     mk('sidingSquares', portal.sidingSquares, null, { note: 'requires intel_projects.siding_squares column (not promoted)' }),
@@ -245,7 +260,7 @@ function buildDrift(portal: PortalKpis | null, profit: PortalProfit | null, riq:
   ];
 
   if (profit) {
-    rows.push(mk('insuranceTotal', profit.insuranceTotal, riq.insuranceTotal, { note: SCOPE_NOTE + ' (SUM job_total)', baseline: true }));
+    rows.push(mk('insuranceTotal', profit.insuranceTotal, riq.insuranceTotal, { note: SCOPE_NOTE_INSURANCE + ' (SUM job_total)', baseline: true }));
   }
 
   return rows;
