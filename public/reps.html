@@ -148,6 +148,24 @@ async function showRep(name) {
       <div class="kpi"><div class="label">Median loss→sign</div><div class="value">${r.medianSpeedDays != null ? r.medianSpeedDays + 'd' : '—'}</div></div>
       <div class="kpi"><div class="label">Median sign→complete</div><div class="value">${r.medianCompleteDays != null ? r.medianCompleteDays + 'd' : '—'}</div></div>
     </div>
+
+    <h2 style="font-size:13px;margin:18px 0 6px;color:var(--accent,#f4a738)">📈 Trailing windows</h2>
+    <div class="desc" style="color:var(--muted,#a09486);font-size:12px;margin-bottom:8px">Velocity trend by signed_date. 30d = recent activity (most jobs still open — close rate is "fast closers" only). 200d = stable enough that most jobs have resolved.</div>
+    <div class="kpi-row">
+      <div class="kpi" title="Jobs signed in the trailing 30 days (open + closed)."><div class="label">Signed (30d)</div><div class="value">${fmt.int(r.trailing30d?.signed ?? 0)}</div></div>
+      <div class="kpi" title="Of 30d-signed jobs, completed so far."><div class="label">Completed (30d)</div><div class="value">${fmt.int(r.trailing30d?.completed ?? 0)}</div></div>
+      <div class="kpi" title="Of 30d-signed jobs, marked dead/cancel."><div class="label">Dead (30d)</div><div class="value">${fmt.int(r.trailing30d?.dead ?? 0)}</div></div>
+      <div class="kpi" title="Closed revenue from 30d-signed jobs."><div class="label">Closed rev (30d)</div><div class="value">${fmt.money(r.trailing30d?.revenue)}</div></div>
+      <div class="kpi" title="Close rate among 30d-signed jobs that have resolved (small denominator)."><div class="label">Close rate (30d)</div><div class="value">${fmt.pct(r.trailing30d?.closeRate)}</div></div>
+    </div>
+    <div class="kpi-row" style="margin-top:6px">
+      <div class="kpi" title="Jobs signed in the trailing 200 days."><div class="label">Signed (200d)</div><div class="value">${fmt.int(r.trailing200d?.signed ?? 0)}</div></div>
+      <div class="kpi" title="Of 200d-signed jobs, completed so far."><div class="label">Completed (200d)</div><div class="value">${fmt.int(r.trailing200d?.completed ?? 0)}</div></div>
+      <div class="kpi" title="Of 200d-signed jobs, marked dead/cancel."><div class="label">Dead (200d)</div><div class="value">${fmt.int(r.trailing200d?.dead ?? 0)}</div></div>
+      <div class="kpi" title="Closed revenue from 200d-signed jobs."><div class="label">Closed rev (200d)</div><div class="value">${fmt.money(r.trailing200d?.revenue)}</div></div>
+      <div class="kpi" title="Close rate among 200d-signed jobs that have resolved — most stable trailing read."><div class="label">Close rate (200d)</div><div class="value">${fmt.pct(r.trailing200d?.closeRate)}</div></div>
+    </div>
+
     <div class="grid-2">
       <div>
         <h2 style="font-size:13px;margin-top:0">Top trades</h2>

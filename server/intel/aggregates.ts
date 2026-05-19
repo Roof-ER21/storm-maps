@@ -1087,6 +1087,14 @@ export async function repsSummary(_req: Request, res: Response) {
       ins_signed_full_count: number;
       ins_completed_count: number;
       ins_dead_count: number;
+      signed_30d: number;
+      completed_30d: number;
+      dead_30d: number;
+      revenue_30d: number;
+      signed_200d: number;
+      completed_200d: number;
+      dead_200d: number;
+      revenue_200d: number;
     }>>`
       SELECT
         TRIM(sales_rep) AS name,
@@ -1102,7 +1110,18 @@ export async function repsSummary(_req: Request, res: Response) {
         COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type = 'Retail')::int AS retail_signed_count,
         COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster'))::int AS ins_signed_full_count,
         COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster') AND stage ~* 'completed|finalized')::int AS ins_completed_count,
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster') AND stage ~* 'dead|cancel')::int AS ins_dead_count
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster') AND stage ~* 'dead|cancel')::int AS ins_dead_count,
+        -- Varun #3: 30d trailing — jobs SIGNED in last 30 days + current close state.
+        -- Most 30d-signed jobs are still open; "rate" here is "fast closers" not full conversion.
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days')::int AS signed_30d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days' AND stage ~* 'completed|finalized')::int AS completed_30d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days' AND stage ~* 'dead|cancel')::int AS dead_30d,
+        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days' AND stage ~* 'completed|finalized'), 0)::numeric AS revenue_30d,
+        -- 200d trailing: long enough that most jobs have closed → stable approval rate.
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days')::int AS signed_200d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days' AND stage ~* 'completed|finalized')::int AS completed_200d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days' AND stage ~* 'dead|cancel')::int AS dead_200d,
+        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days' AND stage ~* 'completed|finalized'), 0)::numeric AS revenue_200d
         FROM intel_projects
        WHERE sales_rep IS NOT NULL AND TRIM(sales_rep) <> ''
        GROUP BY TRIM(sales_rep)
@@ -1141,6 +1160,26 @@ export async function repsSummary(_req: Request, res: Response) {
         // for and that #2 (rank reps by approval rate) sorts by on reps.html.
         insApprovalRate: insCompleted + insDead > 0 ? insCompleted / (insCompleted + insDead) : 0,
         avgApprovedJob: completed > 0 ? completedRev / completed : null,
+        // Trailing-window stats (Varun #3) — counts + revenue from signed_date filter.
+        // closeRate uses canonical formula B over the window.
+        trailing30d: {
+          signed: num(r.signed_30d),
+          completed: num(r.completed_30d),
+          dead: num(r.dead_30d),
+          revenue: num(r.revenue_30d),
+          closeRate: num(r.completed_30d) + num(r.dead_30d) > 0
+            ? num(r.completed_30d) / (num(r.completed_30d) + num(r.dead_30d))
+            : null,
+        },
+        trailing200d: {
+          signed: num(r.signed_200d),
+          completed: num(r.completed_200d),
+          dead: num(r.dead_200d),
+          revenue: num(r.revenue_200d),
+          closeRate: num(r.completed_200d) + num(r.dead_200d) > 0
+            ? num(r.completed_200d) / (num(r.completed_200d) + num(r.dead_200d))
+            : null,
+        },
       };
     });
     reps.sort((a, b) => b.totalSalesAllTime - a.totalSalesAllTime);
