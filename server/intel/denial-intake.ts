@@ -40,6 +40,12 @@ export async function ensureIntakeTables(): Promise<void> {
   await pgSql`CREATE INDEX IF NOT EXISTS denial_intake_carrier_idx ON denial_intake(carrier)`;
   await pgSql`CREATE INDEX IF NOT EXISTS denial_intake_hash_idx ON denial_intake(letter_hash)`;
 
+  // Phase 5 (V2 roadmap): A/B stance variant on the counter-letter draft.
+  // Set per analysis so denial-stats can rank flip-rate by carrier × stance.
+  // Partial index keeps it cheap while legacy rows are NULL.
+  await pgSql`ALTER TABLE denial_intake ADD COLUMN IF NOT EXISTS stance_variant TEXT`;
+  await pgSql`CREATE INDEX IF NOT EXISTS denial_intake_stance_idx ON denial_intake(stance_variant) WHERE stance_variant IS NOT NULL`;
+
   await pgSql`
     CREATE TABLE IF NOT EXISTS denial_outcomes (
       id BIGSERIAL PRIMARY KEY,
@@ -101,6 +107,7 @@ export async function recordIntake(req: Request, args: {
   analysis: Record<string, unknown>;
   patentsConsidered: string[];
   corpusExamplesUsed: Array<{ id: string; source: string; carrier: string | null }>;
+  stanceVariant?: string | null;
 }): Promise<number | null> {
   try {
     const letterHash = hashLetter(args.denialText);
@@ -122,7 +129,8 @@ export async function recordIntake(req: Request, args: {
       INSERT INTO denial_intake (
         consumer, carrier, identified_carrier, identified_adjuster,
         claim_number, denial_date, denial_category, appeal_strength,
-        denial_text, analysis, patents_considered, corpus_examples_used, letter_hash
+        denial_text, analysis, patents_considered, corpus_examples_used, letter_hash,
+        stance_variant
       ) VALUES (
         ${consumerLabel(req)},
         ${canonicalCarrier},
@@ -136,7 +144,8 @@ export async function recordIntake(req: Request, args: {
         ${JSON.stringify(args.analysis)}::jsonb,
         ${args.patentsConsidered as unknown as string[]},
         ${JSON.stringify(args.corpusExamplesUsed)}::jsonb,
-        ${letterHash}
+        ${letterHash},
+        ${args.stanceVariant ?? null}
       )
       RETURNING id
     `;
@@ -164,6 +173,7 @@ export async function listIntake(req: Request, res: Response): Promise<void> {
           SELECT di.id, di.created_at, di.carrier, di.identified_carrier,
                  di.identified_adjuster, di.claim_number, di.denial_date,
                  di.denial_category, di.appeal_strength, di.letter_hash,
+                 di.stance_variant,
                  substring(di.denial_text, 1, 400) AS preview,
                  (SELECT outcome FROM denial_outcomes o WHERE o.intake_id = di.id ORDER BY o.created_at DESC LIMIT 1) AS latest_outcome,
                  (SELECT created_at FROM denial_outcomes o WHERE o.intake_id = di.id ORDER BY o.created_at DESC LIMIT 1) AS latest_outcome_at
@@ -177,6 +187,7 @@ export async function listIntake(req: Request, res: Response): Promise<void> {
           SELECT di.id, di.created_at, di.carrier, di.identified_carrier,
                  di.identified_adjuster, di.claim_number, di.denial_date,
                  di.denial_category, di.appeal_strength, di.letter_hash,
+                 di.stance_variant,
                  substring(di.denial_text, 1, 400) AS preview,
                  (SELECT outcome FROM denial_outcomes o WHERE o.intake_id = di.id ORDER BY o.created_at DESC LIMIT 1) AS latest_outcome,
                  (SELECT created_at FROM denial_outcomes o WHERE o.intake_id = di.id ORDER BY o.created_at DESC LIMIT 1) AS latest_outcome_at
