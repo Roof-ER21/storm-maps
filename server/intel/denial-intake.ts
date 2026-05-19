@@ -338,11 +338,61 @@ export async function intakeStats(_req: Request, res: Response): Promise<void> {
         flipRate: (b.approved + b.partial) / Math.max(1, b.total),
       }));
 
+    // Stance rollup (V2 Phase 5 — A/B). Counts analyses by stance_variant +
+    // joins to denial_outcomes to compute flip rate per stance. Sparse at first
+    // (only analyses produced after the 2026-05-18 schema change have a variant).
+    const stanceVolume = await pgSql<Array<{ stance_variant: string; n: string }>>`
+      SELECT stance_variant, COUNT(*)::text AS n
+      FROM denial_intake
+      WHERE stance_variant IS NOT NULL
+      GROUP BY stance_variant
+    `;
+    const stanceOutcomeRows = await pgSql<Array<{ stance_variant: string; outcome: string }>>`
+      SELECT di.stance_variant, lo.outcome
+      FROM denial_intake di
+      JOIN LATERAL (
+        SELECT outcome FROM denial_outcomes
+        WHERE intake_id = di.id
+        ORDER BY created_at DESC LIMIT 1
+      ) lo ON true
+      WHERE di.stance_variant IS NOT NULL
+        AND lo.outcome IN ('approved','partial','denied')
+    `;
+    type StanceBucket = { total: number; approved: number; partial: number; denied: number };
+    const stanceBuckets = new Map<string, StanceBucket>();
+    for (const v of stanceVolume) {
+      stanceBuckets.set(v.stance_variant, { total: 0, approved: 0, partial: 0, denied: 0 });
+    }
+    for (const r of stanceOutcomeRows) {
+      const b = stanceBuckets.get(r.stance_variant) || { total: 0, approved: 0, partial: 0, denied: 0 };
+      b.total += 1;
+      if (r.outcome === 'approved') b.approved += 1;
+      else if (r.outcome === 'partial') b.partial += 1;
+      else if (r.outcome === 'denied') b.denied += 1;
+      stanceBuckets.set(r.stance_variant, b);
+    }
+    const stanceRollup = [...stanceBuckets.entries()]
+      .map(([stance, b]) => {
+        const volumeRow = stanceVolume.find((v) => v.stance_variant === stance);
+        const analyzed = Number(volumeRow?.n || 0);
+        return {
+          stance,
+          analyzed,
+          withOutcome: b.total,
+          approved: b.approved,
+          partial: b.partial,
+          denied: b.denied,
+          flipRate: b.total > 0 ? (b.approved + b.partial) / b.total : null,
+        };
+      })
+      .sort((a, b) => b.analyzed - a.analyzed);
+
     res.json({
       total: Number(totals[0]?.count || 0),
       byCarrier,
       byOutcome: byOutcome.map((r) => ({ outcome: r.outcome, count: Number(r.n) })),
       winRates,
+      stanceRollup,
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'unknown';

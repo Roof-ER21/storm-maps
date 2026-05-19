@@ -102,6 +102,22 @@
     </div>
 
     <section>
+      <h2>Stance A/B performance</h2>
+      <p class="desc">RIQ randomly picks one of three counter-letter stances per analysis (firm-legal, collaborative-evidence, escalation-focused) and records which one was used. Once enough outcomes accumulate, the winning stance per carrier flips on automatically. <strong>Low-volume table early on</strong> — needs ~50+ outcomes before the per-stance flip rate stabilizes.</p>
+      <table id="stance-table">
+        <thead><tr>
+          <th>Stance</th>
+          <th class="num">Analyses</th>
+          <th class="num">With outcome</th>
+          <th>Distribution</th>
+          <th class="num">Flip Rate</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+      <p class="footnote">Variant directives steer the <code>counterLetter</code> + <code>recommendedActions</code> tone only. Analytical fields (carrier, adjuster, denial reasons, patent matches, bad-faith signals) stay stance-neutral so comparisons across variants are apples-to-apples.</p>
+    </section>
+
+    <section>
       <h2>Flip rate by carrier</h2>
       <p class="desc">Where our counter-letters actually work. <strong>Flip rate</strong> = (approved + partial) / total denials with an outcome. Carriers with fewer than 3 outcomes are de-emphasized — the percentage is volatile at low N.</p>
       <table id="winrate-table">
@@ -170,6 +186,43 @@ function renderOutcomes(data) {
   tbody.innerHTML = rows
     .sort((a, b) => b.count - a.count)
     .map(r => `<tr><td>${pillForOutcome(r.outcome)}</td><td class="num">${fmtNum(r.count)}</td><td class="num">${fmtPct(r.count / Math.max(1, total))}</td></tr>`)
+    .join('');
+}
+
+function renderStanceRollup(data) {
+  const rows = data.stanceRollup || [];
+  const tbody = document.querySelector('#stance-table tbody');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No stance-tagged analyses yet. New analyses are tagged automatically — run a few through the Analyzer and they\'ll appear here.</td></tr>';
+    return;
+  }
+  const stanceLabel = {
+    'firm-legal': 'Firm-legal',
+    'collaborative-evidence': 'Collaborative-evidence',
+    'escalation-focused': 'Escalation-focused',
+  };
+  tbody.innerHTML = rows
+    .map(r => {
+      const low = r.withOutcome < 3;
+      const opacity = low ? '0.5' : '1';
+      const aw = r.withOutcome ? (r.approved / r.withOutcome) * 100 : 0;
+      const pw = r.withOutcome ? (r.partial  / r.withOutcome) * 100 : 0;
+      const dw = r.withOutcome ? (r.denied   / r.withOutcome) * 100 : 0;
+      const bar = r.withOutcome > 0
+        ? `<div class="bar-cell" title="approved ${r.approved} / partial ${r.partial} / denied ${r.denied}">
+            <span class="bar" style="width:${aw.toFixed(1)}px"></span>
+            <span class="bar partial" style="width:${pw.toFixed(1)}px"></span>
+            <span class="bar denied" style="width:${dw.toFixed(1)}px"></span>
+          </div>`
+        : '<span class="pill gray">no outcomes yet</span>';
+      return `<tr style="opacity:${opacity}">
+        <td><strong>${stanceLabel[r.stance] || r.stance}</strong>${low && r.withOutcome > 0 ? ' <span class="pill gray">low N</span>' : ''}</td>
+        <td class="num">${fmtNum(r.analyzed)}</td>
+        <td class="num">${fmtNum(r.withOutcome)}</td>
+        <td>${bar}</td>
+        <td class="num"><strong>${fmtPct(r.flipRate)}</strong></td>
+      </tr>`;
+    })
     .join('');
 }
 
@@ -247,6 +300,7 @@ async function load() {
     renderKPIs(data);
     renderVolume(data);
     renderOutcomes(data);
+    renderStanceRollup(data);
     renderWinRates(data);
     document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
