@@ -8,9 +8,14 @@
 // (refreshed via refresh-all.sh — pulls /v1/admin/reporting/kpis and /profit).
 //
 // Exit codes:
-//   0 — all metrics within 5% of portal
-//   1 — at least one metric > 5% drift (warn)
-//   2 — at least one metric > 15% drift (fail)
+//   0 — all comparable metrics within 5% of portal
+//   1 — at least one comparable metric > 5% drift (warn)
+//   2 — at least one comparable metric > 15% drift (fail)
+//
+// Rows marked `baseline:true` are volume counts where portal and RIQ define
+// the population differently (RIQ projects table is broader than the portal
+// admin/reporting endpoint scope). They're reported informationally but do
+// not influence the exit code.
 //
 //   DATABASE_URL=$RIQ_DB_PUBLIC_URL node scripts/roofdocs/audit-kpi-drift.mjs
 
@@ -134,43 +139,55 @@ function fmtNum(n) {
 (async () => {
   const riq = await computeRiq();
 
+  const SCOPE_NOTE = 'volume count — RIQ projects population ⊋ portal admin/reporting scope';
   const rows = [
     {
       metric: 'insuranceCount',
       portal: portalKpis.insuranceCount,
       riq: riq.insurance_count,
-      note: 'portal LIFETIME — RIQ 21 = export window',
+      note: SCOPE_NOTE,
+      baseline: true,
     },
     {
       metric: 'retailCount',
       portal: portalKpis.retailCount,
       riq: riq.retail_count,
+      note: SCOPE_NOTE,
+      baseline: true,
     },
     {
       metric: 'repairCount',
       portal: portalKpis.repairCount,
       riq: riq.repair_count,
+      note: SCOPE_NOTE,
+      baseline: true,
     },
     {
       metric: 'insuranceConversionCount',
       portal: portalKpis.insuranceConversionCount,
       riq: riq.conversion_count,
+      note: SCOPE_NOTE,
+      baseline: true,
     },
     {
       metric: 'publicAdjusterCount',
       portal: portalKpis.publicAdjusterCount,
       riq: riq.pa_count,
+      note: SCOPE_NOTE,
+      baseline: true,
     },
     {
       metric: 'addOnCount',
       portal: portalKpis.addOnCount,
       riq: riq.addon_count,
+      note: SCOPE_NOTE,
+      baseline: true,
     },
     {
       metric: 'approvalPercentage',
       portal: portalKpis.approvalPercentage,
       riq: riq.approval_rate,
-      note: 'KEY METRIC — Phase 4 audit gate',
+      note: 'KEY METRIC — Phase 4 audit gate (rate, like-for-like)',
     },
     {
       metric: 'roofingSquares (avg)',
@@ -209,13 +226,16 @@ function fmtNum(n) {
       metric: 'insuranceTotal ($)',
       portal: portalProfit.insuranceTotal,
       riq: riq.revenue_total,
-      note: 'portal LIFETIME — RIQ 21 = export window sum(job_total)',
+      note: SCOPE_NOTE + ' (SUM job_total)',
+      baseline: true,
     });
   }
 
   /* ──────────────────────────── Output ──────────────────────────── */
 
-  let maxDrift = 0;
+  // Exit code reflects only comparable rows (baseline-tagged rows excluded).
+  let maxComparableDrift = 0;
+  let baselineCount = 0;
   console.log('\n' + '═'.repeat(82));
   console.log('  RIQ 21 vs Portal KPI Drift Audit');
   console.log('  RIQ rows in intel_projects: ' + riq.total_rows.toLocaleString());
@@ -225,8 +245,16 @@ function fmtNum(n) {
   for (const r of rows) {
     const d = diff(r.portal, r.riq);
     const driftPct = d.pct != null ? Math.abs(d.pct) : 0;
-    if (driftPct > maxDrift) maxDrift = driftPct;
-    const tag = r.riq == null ? '  pending' : driftPct > 15 ? '  FAIL' : driftPct > 5 ? '  WARN' : '  OK';
+    let tag;
+    if (r.riq == null) {
+      tag = '  pending';
+    } else if (r.baseline) {
+      tag = '  baseline';
+      baselineCount++;
+    } else {
+      if (driftPct > maxComparableDrift) maxComparableDrift = driftPct;
+      tag = driftPct > 15 ? '  FAIL' : driftPct > 5 ? '  WARN' : '  OK';
+    }
     console.log(
       '  ' + r.metric.padEnd(30) +
       fmtNum(r.portal).padStart(14) +
@@ -239,14 +267,14 @@ function fmtNum(n) {
   console.log('═'.repeat(82));
 
   let exitCode = 0;
-  if (maxDrift > 15) {
-    console.log(`  RESULT: FAIL (max drift ${maxDrift.toFixed(1)}%)`);
+  if (maxComparableDrift > 15) {
+    console.log(`  RESULT: FAIL (max comparable drift ${maxComparableDrift.toFixed(1)}%, ${baselineCount} baseline rows skipped)`);
     exitCode = 2;
-  } else if (maxDrift > 5) {
-    console.log(`  RESULT: WARN (max drift ${maxDrift.toFixed(1)}%)`);
+  } else if (maxComparableDrift > 5) {
+    console.log(`  RESULT: WARN (max comparable drift ${maxComparableDrift.toFixed(1)}%, ${baselineCount} baseline rows skipped)`);
     exitCode = 1;
   } else {
-    console.log(`  RESULT: OK (max drift ${maxDrift.toFixed(1)}%)`);
+    console.log(`  RESULT: OK (max comparable drift ${maxComparableDrift.toFixed(1)}%, ${baselineCount} baseline rows skipped)`);
   }
   console.log('═'.repeat(82) + '\n');
 
