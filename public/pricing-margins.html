@@ -128,6 +128,23 @@
     </div>
 
     <p class="footnote">Source: <code>/api/intel/pricing-margins</code>. Computed nightly from <code>pricing-items.json</code> (Roof Docs library) × <code>pricing-contractor.json</code> (subcontractor pricing). 718 contractor↔line matches.</p>
+
+    <section>
+      <h2>📋 Pricing templates</h2>
+      <p class="desc">Estimate templates used in scoping — bundled line-item collections by trade. Type categories: <strong>ProjectMeeting</strong> (initial scope), <strong>Supplement</strong> (carrier supp packets), <strong>Contractor</strong> (sub labor groupings), <strong>Labor</strong> (in-house labor).</p>
+      <div class="kpi-row" id="tpl-tiles"></div>
+      <div class="scroll"><table id="tpl-table">
+        <thead><tr>
+          <th>Template</th>
+          <th>Type</th>
+          <th>Trade</th>
+          <th class="num">Items</th>
+          <th class="num">Total value</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+      <p class="footnote">Source: <code>/api/intel/pricing-templates</code>. Empty templates (0 items) typically mean a stub created but not populated yet.</p>
+    </section>
   </div>
 </main>
 
@@ -211,6 +228,27 @@ async function load() {
 
     $('loading').style.display = 'none';
     $('content').style.display = '';
+
+    // Templates (separate fetch — non-blocking)
+    fetch('/api/intel/pricing-templates').then((r) => r.json()).then((t) => {
+      const totals = t.totals || {};
+      $('tpl-tiles').innerHTML = [
+        { l: 'Templates', v: fmt.int(totals.count) },
+        { l: 'With items', v: fmt.int(totals.withItems) },
+        { l: 'Avg items/template', v: totals.avgItems != null ? totals.avgItems.toFixed(1) : '—' },
+        { l: 'Total line value', v: fmt.money(totals.totalLineValue) },
+      ].map((k) => `<div class="kpi"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+      $('tpl-table').querySelector('tbody').innerHTML = (t.templates || []).map((tpl) => `
+        <tr>
+          <td><strong>${tpl.name}</strong></td>
+          <td>${tpl.type || '—'}</td>
+          <td>${tpl.trade || '<span style="color:var(--muted)">uncategorized</span>'}</td>
+          <td class="num" style="${tpl.itemCount === 0 ? 'color:var(--muted)' : ''}">${tpl.itemCount}</td>
+          <td class="num">${fmt.money(tpl.totalPrice)}</td>
+        </tr>
+      `).join('');
+    }).catch(() => {});
   } catch (err) {
     $('loading').innerHTML = `<div style="color:var(--red)">Failed to load: ${err.message}</div>`;
   }

@@ -86,6 +86,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'active-work':     { file: 'active-work.json',     description: 'Active-jobs intel: supplement tracker × carrier, cross-sell pipeline, install readiness (derived from 4.4k active portal jobs)' },
   'credits':         { file: 'credits.json',         description: 'Vendor credits — 138 records, $22.8K unrequested (ABC Supply 115 / Superior 22 / Beacon 1)' },
   'pricing-margins': { file: 'pricing-margins.json', description: 'Subcontractor margin analysis — 718 line matches, avg -0.6%, 119 underwater (sub > us). Per-trade + per-contractor + worst/best lines.' },
+  'pricing-templates': { file: 'pricing-templates.json', description: 'Estimate template definitions — 48 templates (34 ProjectMeeting / 9 Supplement / 3 Contractor / 2 Labor) keyed by trade with line-item counts + total values.' },
 };
 
 // Storm light file lives in storms/ subdir
