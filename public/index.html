@@ -318,6 +318,12 @@
         <div class="desc">Supplements in flight by carrier, cross-sell pipeline ($3.2M base), install readiness, overdue starts. From the portal's active-jobs dashboard.</div>
         <div class="kpi"><div><div class="v" id="kpi-supp">—</div><div class="l">Active supplements</div></div></div>
       </a>
+      <a class="tile ops" href="pricing-margins.html">
+        <div class="icon">💰</div>
+        <div class="title">Pricing Margins</div>
+        <div class="desc">Subcontractor margin analysis: 718 line items × 21 contractors. <strong>119 lines underwater</strong> (sub costs > our charge). Worst leaks by trade + by contractor.</div>
+        <div class="kpi"><div><div class="v" id="kpi-margin">—</div><div class="l">Avg margin</div></div></div>
+      </a>
     </div>
   </div>
 </main>
@@ -400,6 +406,14 @@ async function load() {
   fetch('/api/intel/active-work').then((r) => r.json()).then((d) => {
     const n = (d && d.totals && d.totals.withOpenSupplement) || 0;
     if (n > 0 && $('kpi-supp')) $('kpi-supp').textContent = fmt.int(n);
+  }).catch(() => {});
+  fetch('/api/intel/pricing-margins').then((r) => r.json()).then((d) => {
+    const m = d && d.overall && d.overall.avgMargin;
+    if (m != null && $('kpi-margin')) {
+      const el = $('kpi-margin');
+      el.textContent = (m * 100).toFixed(1) + '%';
+      if (m < 0) el.style.color = 'var(--red)';
+    }
   }).catch(() => {});
 
   $('meta-pulled').textContent = new Date(2026, 4, 12).toLocaleDateString();

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Pricing Margins</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --blue:#60a5fa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 12px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1500px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--accent); }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 14px; line-height: 1.5; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #342c23; border-radius: 6px; padding: 11px 14px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 22px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .kpi.red .value { color: var(--red); }
+  .kpi.yellow .value { color: var(--yellow); }
+  .kpi.green .value { color: var(--green); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 500px; overflow-y: auto; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .col-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .col-2 { grid-template-columns: 1fr; } }
+  .pct.good { color: var(--green); }
+  .pct.bad { color: var(--red); }
+  .pct.neutral { color: var(--text); }
+  .desc strong { color: var(--text); }
+  .warning { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.3); border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; color: var(--red); font-size: 13px; }
+  .footnote { color: var(--muted); font-size: 11px; margin-top: 10px; line-height: 1.5; }
+</style>
+</head>
+<body data-riq-sort-all>
+<header>
+  <h1>💰 RIQ 21 — Pricing Margins</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="receivables.html">AR</a>
+    <a href="active-work.html">Active Work</a>
+    <a href="pricing-margins.html" class="active">Pricing</a>
+    <a href="carrier-detail.html">Carriers</a>
+  </div>
+</header>
+<script src="/riq-links.js"></script>
+<script src="/riq-sort.js"></script>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+
+    <div id="alert"></div>
+
+    <section>
+      <h2>Pricing margin — overall</h2>
+      <p class="desc">For each contractor pricing entry (subcontractor cost per line item), compare against Roof Docs's charged price from the pricing library. <strong>Margin = (our price − sub price) / our price.</strong> Directional signal, not bottom-line P&amp;L — doesn't account for quantity, supplements, or overhead.</p>
+      <div class="kpi-row" id="overall-tiles"></div>
+    </section>
+
+    <section>
+      <h2>By trade — where the leaks are</h2>
+      <p class="desc">Sorted by average margin. Negative = we charge less than the sub costs, on average across that trade's line items.</p>
+      <table id="trade-table">
+        <thead><tr>
+          <th>Trade</th>
+          <th class="num">Lines</th>
+          <th class="num">Avg margin</th>
+          <th class="num">Avg our price</th>
+          <th class="num">Avg sub price</th>
+          <th class="num">Worst line</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>By contractor — who we're upside-down with</h2>
+      <p class="desc">Subcontractors sorted from worst average margin upward. "Underwater lines" = how many of their priced line items have our charge below their cost.</p>
+      <div class="scroll"><table id="contractor-table">
+        <thead><tr>
+          <th>Contractor</th>
+          <th class="num">Lines priced</th>
+          <th class="num">Avg margin</th>
+          <th class="num">Underwater lines</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <div class="col-2">
+      <section>
+        <h2>⚠️ Worst lines (sub costs us more than we charge)</h2>
+        <p class="desc">Action items. Either renegotiate the sub, raise our charge, or document why we're eating the loss.</p>
+        <div class="scroll"><table id="worst-table">
+          <thead><tr>
+            <th>Line</th>
+            <th>Contractor</th>
+            <th class="num">Ours</th>
+            <th class="num">Sub</th>
+            <th class="num">Margin</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <section>
+        <h2>✅ Best margin lines</h2>
+        <p class="desc">Where we make the most. Keep doing what's working.</p>
+        <div class="scroll"><table id="best-table">
+          <thead><tr>
+            <th>Line</th>
+            <th>Contractor</th>
+            <th class="num">Ours</th>
+            <th class="num">Sub</th>
+            <th class="num">Margin</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <p class="footnote">Source: <code>/api/intel/pricing-margins</code>. Computed nightly from <code>pricing-items.json</code> (Roof Docs library) × <code>pricing-contractor.json</code> (subcontractor pricing). 718 contractor↔line matches.</p>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const fmt = {
+  money: (v) => v == null ? '—' : '$' + Number(v).toFixed(2),
+  pct: (v) => v == null ? '—' : (v * 100).toFixed(1) + '%',
+  int: (v) => v == null ? '—' : v.toLocaleString(),
+};
+function marginClass(m) {
+  if (m == null) return 'neutral';
+  if (m < 0) return 'bad';
+  if (m >= 0.20) return 'good';
+  return 'neutral';
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/intel/pricing-margins');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const o = d.overall || {};
+
+    // Alert if avg margin is negative
+    if (o.avgMargin < 0) {
+      $('alert').innerHTML = `<div class="warning"><strong>⚠️ Average margin is negative (${fmt.pct(o.avgMargin)}).</strong> ${o.underwaterLines} of ${o.totalLines} line items charge less than the subcontractor costs us. Top offenders below.</div>`;
+    }
+
+    $('overall-tiles').innerHTML = [
+      { l: 'Total line items', v: fmt.int(o.totalLines) },
+      { l: 'Avg margin', v: fmt.pct(o.avgMargin), cls: o.avgMargin < 0 ? 'red' : o.avgMargin < 0.10 ? 'yellow' : 'green' },
+      { l: 'Underwater', v: fmt.int(o.underwaterLines), cls: 'red' },
+      { l: 'Break-even (<5%)', v: fmt.int(o.brokeEvenLines), cls: 'yellow' },
+      { l: 'Healthy (≥20%)', v: fmt.int(o.healthyLines), cls: 'green' },
+    ].map((k) => `<div class="kpi ${k.cls||''}"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
+
+    // By trade
+    $('trade-table').querySelector('tbody').innerHTML = (d.byTrade || []).map((t) => `
+      <tr>
+        <td><strong>${t.trade}</strong></td>
+        <td class="num">${t.lineCount}</td>
+        <td class="num pct ${marginClass(t.avgMargin)}">${fmt.pct(t.avgMargin)}</td>
+        <td class="num">${fmt.money(t.avgOurPrice)}</td>
+        <td class="num">${fmt.money(t.avgContractorPrice)}</td>
+        <td class="num pct bad">${fmt.pct(t.worstMargin)}</td>
+      </tr>
+    `).join('');
+
+    // By contractor
+    $('contractor-table').querySelector('tbody').innerHTML = (d.byContractor || []).map((c) => `
+      <tr>
+        <td><strong>${c.contractorName}</strong></td>
+        <td class="num">${c.lineCount}</td>
+        <td class="num pct ${marginClass(c.avgMargin)}">${fmt.pct(c.avgMargin)}</td>
+        <td class="num" style="color:${c.underwaterLines > 5 ? 'var(--red)' : c.underwaterLines > 0 ? 'var(--yellow)' : 'var(--muted)'}">${c.underwaterLines}</td>
+      </tr>
+    `).join('');
+
+    // Worst lines
+    $('worst-table').querySelector('tbody').innerHTML = (d.worstByPercent || []).map((l) => `
+      <tr>
+        <td>${l.description}</td>
+        <td style="color:var(--muted);font-size:11px">${l.contractorName}</td>
+        <td class="num">${fmt.money(l.ourPrice)}</td>
+        <td class="num">${fmt.money(l.contractorPrice)}</td>
+        <td class="num pct bad">${fmt.pct(l.margin)}</td>
+      </tr>
+    `).join('');
+
+    // Best lines
+    $('best-table').querySelector('tbody').innerHTML = (d.bestByPercent || []).map((l) => `
+      <tr>
+        <td>${l.description}</td>
+        <td style="color:var(--muted);font-size:11px">${l.contractorName}</td>
+        <td class="num">${fmt.money(l.ourPrice)}</td>
+        <td class="num">${fmt.money(l.contractorPrice)}</td>
+        <td class="num pct good">${fmt.pct(l.margin)}</td>
+      </tr>
+    `).join('');
+
+    $('loading').style.display = 'none';
+    $('content').style.display = '';
+  } catch (err) {
+    $('loading').innerHTML = `<div style="color:var(--red)">Failed to load: ${err.message}</div>`;
+  }
+}
+load();
+</script>
+</body>
+</html>
