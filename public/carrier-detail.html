@@ -198,6 +198,11 @@ async function showCarrier(name) {
       <h2 style="font-size:13px;margin:0 0 6px">💸 AR Friction <span style="color:var(--muted);font-weight:400;font-size:11px">— how this carrier actually pays</span></h2>
       <div id="ar-friction-body" style="color:var(--muted);font-size:12px">Loading AR data…</div>
     </div>
+
+    <div id="active-work" style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">
+      <h2 style="font-size:13px;margin:0 0 6px">🔧 Active Work <span style="color:var(--muted);font-weight:400;font-size:11px">— supplements in flight + cross-sell pipeline</span></h2>
+      <div id="active-work-body" style="color:var(--muted);font-size:12px">Loading active work…</div>
+    </div>
   `;
 
   // Fire-and-forget AR rollup for this carrier
@@ -247,6 +252,41 @@ async function showCarrier(name) {
     .catch((err) => {
       const target = document.getElementById('ar-friction-body');
       if (target) target.innerHTML = `<span style="color:var(--red)">AR load failed: ${err.message || err}</span>`;
+    });
+
+  // Active-work intel for this carrier — supplements + cross-sell
+  fetch('/api/intel/active-work')
+    .then((r) => r.json())
+    .then((aw) => {
+      const target = document.getElementById('active-work-body');
+      if (!target) return;
+      const supp = (aw.supplement?.byCarrier || []).find((x) => x.carrier === c.name);
+      const xsell = (aw.crossSell?.byCarrier || []).find((x) => x.carrier === c.name);
+      if (!supp && !xsell) {
+        target.innerHTML = '<span>No active supplements or cross-sell bids in flight for this carrier.</span>';
+        return;
+      }
+      const suppHtml = supp ? `
+        <div style="margin-bottom:10px">
+          <div style="color:var(--text);font-weight:600;font-size:12px;margin-bottom:4px">📨 Active supplements: ${supp.total} jobs · ${fmt.money(supp.totalValue)} touched</div>
+          <div>${Object.entries(supp.byStatus).sort((a, b) => b[1] - a[1]).map(([s, n]) =>
+            `<span style="display:inline-block;background:#342c23;color:var(--accent);padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px;margin-bottom:3px">${s}: ${n}</span>`
+          ).join('')}</div>
+        </div>
+      ` : '';
+      const xsellHtml = xsell ? `
+        <div>
+          <div style="color:var(--text);font-weight:600;font-size:12px;margin-bottom:4px">💵 Cross-sell pipeline: ${xsell.count} jobs · ${fmt.money(xsell.baseJobValue)} base value</div>
+          <div>${Object.entries(xsell.bidCounts).sort((a, b) => b[1] - a[1]).map(([b, n]) =>
+            `<span style="display:inline-block;background:#342c23;color:var(--green);padding:2px 8px;border-radius:4px;font-size:11px;margin-right:4px;margin-bottom:3px">${b}: ${n}</span>`
+          ).join('')}</div>
+        </div>
+      ` : '';
+      target.innerHTML = suppHtml + xsellHtml + `<div style="color:var(--muted);font-size:11px;margin-top:8px">Source: <code>/api/intel/active-work</code>. Full breakdown: <a href="active-work.html" style="color:var(--accent)">Active Work dashboard →</a></div>`;
+    })
+    .catch((err) => {
+      const target = document.getElementById('active-work-body');
+      if (target) target.innerHTML = `<span style="color:var(--red)">Active-work load failed: ${err.message || err}</span>`;
     });
 }
 

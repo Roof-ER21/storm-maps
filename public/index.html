@@ -312,6 +312,12 @@
         <div class="desc">Auto-generated SMS reminder scripts for: downpayments pending, AR balance pending, resurrection candidates. Click-to-send.</div>
         <div class="kpi"><div><div class="v">3</div><div class="l">Reminder templates</div></div></div>
       </a>
+      <a class="tile ops" href="active-work.html">
+        <div class="icon">🔧</div>
+        <div class="title">Active Work</div>
+        <div class="desc">Supplements in flight by carrier, cross-sell pipeline ($3.2M base), install readiness, overdue starts. From the portal's active-jobs dashboard.</div>
+        <div class="kpi"><div><div class="v" id="kpi-supp">—</div><div class="l">Active supplements</div></div></div>
+      </a>
     </div>
   </div>
 </main>
@@ -390,6 +396,10 @@ async function load() {
   fetch('/api/intel/denial-intake/stats').then((r) => r.json()).then((d) => {
     const n = (d && d.total) || 0;
     if ($('kpi-archive')) $('kpi-archive').textContent = fmt.int(n);
+  }).catch(() => {});
+  fetch('/api/intel/active-work').then((r) => r.json()).then((d) => {
+    const n = (d && d.totals && d.totals.withOpenSupplement) || 0;
+    if (n > 0 && $('kpi-supp')) $('kpi-supp').textContent = fmt.int(n);
   }).catch(() => {});
 
   $('meta-pulled').textContent = new Date(2026, 4, 12).toLocaleDateString();
