@@ -160,6 +160,12 @@ Public proxy (`gondola.proxy.rlwy.net:48564`) is slower than local. If a query t
 
 90% of the time this is env var differences. Compare `printenv | grep -E 'DATABASE|RIQ|GEMINI'` (Mac) vs `gci env: | ? Name -match 'DATABASE|RIQ|GEMINI'` (Desktop). Mac's `.env.local` is gitignored, so it's an invisible source of drift.
 
+### `git push` says `Permission denied to <wrong-username>`
+
+Windows Credential Manager can cache an old GitHub HTTPS cred for a different account even after `gh auth login` switches you. Symptom: `gh auth status` shows the right account, but `git push` 403s as someone else.
+
+Fix: `gh auth setup-git` — writes a credential helper that defers to the active gh token. One-time, persists.
+
 ## Cross-CC coordination
 
 Coord file: `D:\shadow21\COORD-YYYY-MM-DD.md` (per `feedback_shadow21-cross-cc-coord` memory). When both Mac CC and Desktop CC are active, append progress + claims there so we don't write past each other. Today's file = today's UTC-ish date; new file at midnight local.
