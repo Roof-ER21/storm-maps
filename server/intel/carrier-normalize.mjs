@@ -91,6 +91,23 @@ export const CANONICAL = [
     ],
   },
   {
+    name: 'Homesite',
+    matches: [
+      'homesite indemnity',
+      'homesite midwest',
+      'homesite insurance',
+      'homesite',
+    ],
+  },
+  {
+    name: 'Assurant',
+    matches: [
+      'american bankers insurance',
+      'american bankers',
+      'assurant',
+    ],
+  },
+  {
     name: 'Utica National',
     matches: [
       'utica national insurance group',
