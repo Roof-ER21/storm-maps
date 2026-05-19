@@ -124,6 +124,16 @@
       "index": null,
       "rating": "high-complaint outlier",
       "note": "InsuranceNewsNet 2024: 'American Banker, an affiliate of Assurant, had the highest complaint score among homeowners'. No specific Indiana 2022 entry."
+    },
+    "Utica National": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Northeast-regional carrier — no Indiana 2022 entry. Add state-specific DOI data when VA/MD/PA sources are integrated."
+    },
+    "Selective": {
+      "index": null,
+      "rating": "unrated",
+      "note": "Mid-Atlantic / Northeast focus — not in Indiana's 2022 report at material premium. Add state-specific data when VA/MD/PA sources are integrated."
     }
   }
 }
