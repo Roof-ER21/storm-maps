@@ -317,7 +317,7 @@ router.get('/api/intel/lead-deep', leadDeep);
 router.get('/api/intel/lead-pipeline', leadPipeline);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
-  const key = req.params.key;
+  const key = String(req.params.key);
   if (['health', '_meta', 'manifest', 'refresh'].includes(key)) {
     res.status(404).json({ error: 'unknown_key' });
     return;

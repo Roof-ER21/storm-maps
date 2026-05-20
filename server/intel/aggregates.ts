@@ -2206,12 +2206,12 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
       took_ms: Date.now() - t0,
     };
     if (includeStats) {
-      const s = statsRows[0] ?? { total_customers: 0, top_tier_count: 0, mid_tier_count: 0, with_storm_since: 0, old_roof_count: 0, contactable_count: 0, by_rep_count: 0 };
+      const s = statsRows[0] ?? { total_customers: 0, top_tier_count: 0, mid_tier_count: 0, with_storm_since: 0, old_roof_count: 0, contactable_count: 0, by_rep_count: 0 } as { total_customers: number; top_tier_count: number; mid_tier_count: number; with_storm_since: number; old_roof_count: number; contactable_count: number; by_rep_count: number };
       result.stats = {
         totalCustomers: num(s.total_customers),
         topTierCount: num(s.top_tier_count),
-        midTierCount: num((s as { mid_tier_count: number }).mid_tier_count),
-        withStormSince: num((s as { with_storm_since: number }).with_storm_since),
+        midTierCount: num(s.mid_tier_count),
+        withStormSince: num(s.with_storm_since),
         oldRoofCount: num((s as { old_roof_count: number }).old_roof_count),
         contactableCount: num((s as { contactable_count: number }).contactable_count),
         byRepCount: num((s as { by_rep_count: number }).by_rep_count),
@@ -2412,7 +2412,7 @@ export async function dashboardKpis(_req: Request, res: Response) {
       `,
     ]);
 
-    const core = coreRows[0] ?? { total: 0, completed: 0, dead: 0, completed_revenue: 0, total_revenue: 0, cust_count: 0, zip_count: 0, rep_count: 0, carrier_count: 0, adjuster_count: 0, storm_matched: 0 };
+    const core = coreRows[0] ?? { total: 0, completed: 0, dead: 0, completed_revenue: 0, total_revenue: 0, cust_count: 0, zip_count: 0, rep_count: 0, carrier_count: 0, adjuster_count: 0, storm_matched: 0, ins_signed: 0, ins_completed: 0, ins_dead: 0, ret_signed: 0, ret_completed: 0, ret_dead: 0 };
 
     // Hot-zips 60+ score post-process (same formula as zipStats).
     const zipsForScore = zipAggRows.map((r) => ({
