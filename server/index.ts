@@ -152,8 +152,13 @@ app.get('/*splat', (req, res, next) => {
   next();
 });
 
-app.listen(PORT, () => {
-  console.log(`[riq21] running on port ${PORT}`);
-  // Daily stealth refresh — replaces the Mac launchd cron.
-  startRefreshScheduler();
-});
+// Vercel serverless: skip listen + scheduler (VERCEL=1 set automatically by platform).
+// Railway / local dev: start normally.
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[riq21] running on port ${PORT}`);
+    startRefreshScheduler();
+  });
+}
+
+export default app;
