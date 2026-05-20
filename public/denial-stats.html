@@ -66,6 +66,11 @@
 </header>
 <main>
   <div id="loading" class="loading">Loading stats…</div>
+  <div id="error-state" style="display:none; padding: 60px 20px; text-align: center; color: var(--muted);">
+    <div style="font-size: 32px; margin-bottom: 16px;">📊</div>
+    <div style="font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 8px;">No outcome data yet</div>
+    <div style="font-size: 13px; line-height: 1.6; max-width: 480px; margin: 0 auto;">Submit denial letters through the <a href="denial-analyzer.html" style="color: var(--accent);">Analyzer</a>, then mark outcomes in the <a href="denial-archive.html" style="color: var(--accent);">Archive</a>. Stats populate automatically as outcomes accumulate.</div>
+  </div>
   <div id="content" style="display:none">
 
     <section>
@@ -345,16 +350,22 @@ async function load() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const data = await r.json();
     lastData = data;
+    const hasData = (data.total || 0) > 0;
+    document.getElementById('loading').style.display = 'none';
+    if (!hasData) {
+      document.getElementById('error-state').style.display = 'block';
+      return;
+    }
     renderKPIs(data);
     renderVolume(data);
     renderOutcomes(data);
     renderStanceRollup(data);
     renderCarrierStance(data);
     renderWinRates(data);
-    document.getElementById('loading').style.display = 'none';
     document.getElementById('content').style.display = 'block';
   } catch (err) {
-    document.getElementById('loading').innerHTML = `<div style="color:var(--red)">Failed to load: ${err.message}</div>`;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error-state').style.display = 'block';
   }
 }
 load();

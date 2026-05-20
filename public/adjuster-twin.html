@@ -108,6 +108,10 @@
         <textarea id="scope-notes" placeholder="e.g. Full roof replacement, 28sq comp shingle. Hail bruising visible on all 4 slopes, ~12-15 hits per test square. Soft metals (gutter screens, downpouts) all show impact. 1.25&quot; MRMS swath confirmed. Before-storm baseline photos available."></textarea>
       </div>
     </div>
+    <div id="lenient-banner" style="display:none; background: rgba(16,185,129,0.1); border: 1px solid var(--green); border-radius: 6px; padding: 12px 16px; margin-bottom: 14px;">
+      <div style="color: var(--green); font-weight: 700; font-size: 13px; margin-bottom: 4px;">✅ LENIENT ADJUSTER — lean in on full scope</div>
+      <div id="lenient-detail" style="color: var(--text); font-size: 13px; line-height: 1.5;"></div>
+    </div>
     <button class="primary" id="predict-btn" onclick="predict()">Run Simulation</button>
   </section>
 
@@ -128,6 +132,23 @@ function escape(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 }
 
+const adjusterMap = {};
+
+function updateLenientBanner() {
+  const sel = $('adj-select');
+  const name = sel.value;
+  const a = adjusterMap[name];
+  const banner = $('lenient-banner');
+  if (a && a.stance === 'lenient') {
+    const delta = a.deltaVsCarrier != null ? ((a.deltaVsCarrier > 0 ? '+' : '') + (a.deltaVsCarrier * 100).toFixed(0) + 'pp vs ' + escape(a.carrier || 'carrier')) : '';
+    const rate = a.approvalRate != null ? (a.approvalRate * 100).toFixed(0) + '% approval rate' : '';
+    $('lenient-detail').innerHTML = escape(a.name) + ' runs ' + [rate, delta].filter(Boolean).join(' — ') + '. Push full scope with documentation — this adjuster approves above carrier baseline. Highest-value moment to be aggressive on line items.';
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
 async function loadAdjusters() {
   try {
     const r = await fetch('/api/intel/adjuster-twin/list');
@@ -137,8 +158,12 @@ async function loadAdjusters() {
       sel.innerHTML = '<option value="">No adjuster cheat sheets available — refresh data first</option>';
       return;
     }
+    // Sort: lenient first, then baseline, then strict
+    const stanceOrder = { lenient: 0, baseline: 1, strict: 2 };
+    const sorted = [...data.adjusters].sort((a, b) => (stanceOrder[a.stance] ?? 1) - (stanceOrder[b.stance] ?? 1));
+    sorted.forEach((a) => { adjusterMap[a.name] = a; });
     sel.innerHTML = '<option value="">— Pick an adjuster —</option>' +
-      data.adjusters.map((a) => {
+      sorted.map((a) => {
         const stance = a.stance ? ' · ' + a.stance : '';
         const rate = a.approvalRate != null ? ' · ' + (a.approvalRate * 100).toFixed(0) + '%' : '';
         return '<option data-carrier="' + escape(a.carrier || '') + '" value="' + escape(a.name) + '">' + escape(a.name) + ' (' + a.totalJobs + ' jobs' + rate + ' · ' + escape(a.carrier || '?') + stance + ')</option>';
@@ -146,7 +171,15 @@ async function loadAdjusters() {
     sel.addEventListener('change', () => {
       const opt = sel.options[sel.selectedIndex];
       if (opt) $('carrier-input').value = opt.dataset.carrier || '';
+      updateLenientBanner();
     });
+    // Pre-select from URL param ?adjuster=Name
+    const paramAdj = new URLSearchParams(location.search).get('adjuster');
+    if (paramAdj && adjusterMap[paramAdj]) {
+      sel.value = paramAdj;
+      $('carrier-input').value = adjusterMap[paramAdj].carrier || '';
+      updateLenientBanner();
+    }
   } catch (e) {
     $('adj-select').innerHTML = '<option value="">Failed to load adjusters: ' + escape(e.message) + '</option>';
   }

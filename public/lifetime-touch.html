@@ -93,6 +93,11 @@
           <option value="old">Stale 4+ yr since last contact</option>
           <option value="gap">Trade gap</option>
         </select>
+        <select id="snooze-select">
+          <option value="show">Show all</option>
+          <option value="hide">Hide recently contacted (30d)</option>
+          <option value="only">Only recently contacted</option>
+        </select>
         <input id="search" placeholder="Search name/address/city/zip…" />
         <button onclick="exportCsv()" style="background: var(--accent); color: var(--bg); border: 0; padding: 7px 14px; border-radius: 5px; font-weight: 700; cursor: pointer;">Export CSV</button>
         <button onclick="window.RIQ.shareList('leads', 'Lifetime Touch Queue', `${CURRENT.length} customer re-engagement candidates`, CURRENT)" style="background: #5ec8ff; color: #000; border: 0; padding: 7px 14px; border-radius: 5px; font-weight: 700; cursor: pointer; margin-left:6px">Share Link</button>
@@ -170,6 +175,7 @@ async function load() {
   sel.addEventListener('change', applyFilters);
   $('tier-select').addEventListener('change', applyFilters);
   $('reason-select').addEventListener('change', applyFilters);
+  $('snooze-select').addEventListener('change', applyFilters);
   $('search').addEventListener('input', applyFilters);
 
   // Sort handlers
@@ -205,6 +211,15 @@ async function applyFilters() {
     if (myToken !== applyFiltersInflight) return;  // stale response — superseded
     rows = j.rows || [];
   } catch { /* render empty */ }
+
+  const snoozeMode = $('snooze-select').value;
+  if (snoozeMode !== 'show') {
+    rows = rows.filter((r) => {
+      const id = r.customerId || r.customer;
+      const snoozed = id && isSnoozed(id);
+      return snoozeMode === 'hide' ? !snoozed : snoozed;
+    });
+  }
 
   if (q) rows = rows.filter((r) => {
     const hay = [r.customer, r.address, r.city, r.zip, r.suggestedPitch].filter(Boolean).join(' ').toLowerCase();
@@ -264,11 +279,35 @@ function contactCell(r) {
   return parts.length ? parts.join('<br>') : '<span style="color: var(--muted);">none</span>';
 }
 
+// Snooze: mark a customer as "contacted" for 30 days — stored in localStorage
+const SNOOZE_KEY = 'riq21_touch_snoozed';
+function loadSnoozed() {
+  try { return JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'); } catch { return {}; }
+}
+function saveSnoozed(obj) {
+  localStorage.setItem(SNOOZE_KEY, JSON.stringify(obj));
+}
+function snoozeCustomer(customerId) {
+  const obj = loadSnoozed();
+  obj[customerId] = Date.now();
+  saveSnoozed(obj);
+  applyFilters();
+}
+function isSnoozed(customerId) {
+  const obj = loadSnoozed();
+  const ts = obj[customerId];
+  if (!ts) return false;
+  return (Date.now() - ts) < 30 * 24 * 60 * 60 * 1000;
+}
+
 function actionsCell(r) {
+  const id = r.customerId || r.customer;
+  const snoozed = id && isSnoozed(id);
   const parts = [];
   if (r.customerCell) parts.push('<a href="tel:' + escape(r.customerCell) + '">📞 Call</a>');
   if (r.customerCell) parts.push('<a href="sms:' + escape(r.customerCell) + '">💬 SMS</a>');
   if (r.portalLink) parts.push('<a href="' + escape(r.portalLink) + '" target="_blank">🔗</a>');
+  if (id) parts.push('<a href="#" onclick="snoozeCustomer(' + JSON.stringify(id) + ');return false;" title="Mark as contacted — hides for 30 days">' + (snoozed ? '✅ Contacted' : '📌 Mark contacted') + '</a>');
   return parts.join('');
 }
 
