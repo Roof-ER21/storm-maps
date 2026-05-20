@@ -2188,7 +2188,7 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
             COUNT(DISTINCT sales_rep) FILTER (WHERE sales_rep IS NOT NULL)::int AS by_rep_count
             FROM intel_lifetime_touch
         `
-        : Promise.resolve([] as Array<{ total_customers: number }>),
+        : Promise.resolve([] as Array<{ total_customers: number; top_tier_count: number; mid_tier_count: number; with_storm_since: number; old_roof_count: number; contactable_count: number; by_rep_count: number }>),
       includeReps
         ? pgSql<Array<{ rep: string; count: number }>>`
           SELECT sales_rep AS rep, COUNT(*)::int AS count
@@ -2206,15 +2206,15 @@ export async function lifetimeTouchQuery(req: Request, res: Response) {
       took_ms: Date.now() - t0,
     };
     if (includeStats) {
-      const s = statsRows[0] ?? { total_customers: 0, top_tier_count: 0, mid_tier_count: 0, with_storm_since: 0, old_roof_count: 0, contactable_count: 0, by_rep_count: 0 } as { total_customers: number; top_tier_count: number; mid_tier_count: number; with_storm_since: number; old_roof_count: number; contactable_count: number; by_rep_count: number };
+      const s = statsRows[0] ?? { total_customers: 0, top_tier_count: 0, mid_tier_count: 0, with_storm_since: 0, old_roof_count: 0, contactable_count: 0, by_rep_count: 0 };
       result.stats = {
         totalCustomers: num(s.total_customers),
         topTierCount: num(s.top_tier_count),
         midTierCount: num(s.mid_tier_count),
         withStormSince: num(s.with_storm_since),
-        oldRoofCount: num((s as { old_roof_count: number }).old_roof_count),
-        contactableCount: num((s as { contactable_count: number }).contactable_count),
-        byRepCount: num((s as { by_rep_count: number }).by_rep_count),
+        oldRoofCount: num(s.old_roof_count),
+        contactableCount: num(s.contactable_count),
+        byRepCount: num(s.by_rep_count),
       };
     }
     if (includeReps) {
