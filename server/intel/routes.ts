@@ -27,6 +27,7 @@ import { predictorScore, predictorWebhook } from './predictor.js';
 import { carrierComplaints } from './naic-complaints.js';
 import { arRollup } from './ar-rollup.js';
 import { portalKpis } from './portal-kpis.js';
+import { leadsSummary, leadsQuery, leadDeep, leadPipeline } from './leads.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -297,6 +298,18 @@ router.get('/api/intel/receivables/rollup', arRollup);
  *   GET /api/intel/portal-kpis?view=drift  — drift table only
  */
 router.get('/api/intel/portal-kpis', portalKpis);
+
+/**
+ * Phase 8a: leads pipeline (pre-conversion intel).
+ *   GET /api/intel/leads-summary           — funnel + rollups (file-backed)
+ *   GET /api/intel/leads-query?...         — filtered list (intel_leads)
+ *   GET /api/intel/lead-deep?leadID=X      — single lead + nearby projects
+ *   GET /api/intel/lead-pipeline?rep=X     — rep's funnel
+ */
+router.get('/api/intel/leads-summary', leadsSummary);
+router.get('/api/intel/leads-query', leadsQuery);
+router.get('/api/intel/lead-deep', leadDeep);
+router.get('/api/intel/lead-pipeline', leadPipeline);
 
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = req.params.key;

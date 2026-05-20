@@ -141,4 +141,9 @@ async function importDataset({ key, file }) {
   if (ok.some((r) => r.key === 'lifetime-touch')) {
     await runBackfill('backfill-intel-lifetime-touch.mjs', 'Backfilling intel_lifetime_touch (Phase 4d)');
   }
+  // Phase 8a: leads backfill is file-driven, not blob-driven. Runs whenever
+  // data/leads.json exists (refresh-all.sh writes it from admin/leads pull).
+  if (fs.existsSync(path.join(DATA_DIR, 'leads.json'))) {
+    await runBackfill('backfill-intel-leads.mjs', 'Backfilling intel_leads (Phase 8a)');
+  }
 })();

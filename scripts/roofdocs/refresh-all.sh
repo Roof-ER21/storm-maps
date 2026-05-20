@@ -61,7 +61,9 @@ for ep_pair in \
   "admin/reporting/profit:portal-kpi-profit" \
   "admin/reporting/kpis:portal-kpi-summary" \
   "admin/reporting/insurance:portal-insurance-names" \
-  "admin/finance:finance-plans"; do
+  "admin/finance:finance-plans" \
+  "admin/leads:leads" \
+  "admin/leads/employees:leads-employees-raw"; do
   ep="${ep_pair%%:*}"; name="${ep_pair##*:}"
   curl -s -o "$BASE/data/roofdocs-reference/$name.json" \
     "https://api.theroofdocs.com/v1/$ep" \
@@ -72,11 +74,34 @@ echo "  ✓ Reference data refreshed"
 # Phase 8b: promote portal KPI files into data/ (committed dir).
 # /api/intel/portal-kpis reads from data/ so the endpoint stays consistent
 # whether the file was committed in the repo or just refreshed.
-for f in portal-kpi-profit portal-kpi-summary portal-insurance-names finance-plans; do
+for f in portal-kpi-profit portal-kpi-summary portal-insurance-names finance-plans leads; do
   if [ -s "$BASE/data/roofdocs-reference/$f.json" ]; then
     cp "$BASE/data/roofdocs-reference/$f.json" "$BASE/data/$f.json"
   fi
 done
+
+# Phase 8a: scrub passwords from leads-employees before promoting to data/.
+# The raw response contains bcrypt password hashes + Google servicePasswords
+# (portal Security Finding #1+2). Strip them at ingestion.
+if [ -s "$BASE/data/roofdocs-reference/leads-employees-raw.json" ]; then
+  python3 -c "
+import json
+src = '$BASE/data/roofdocs-reference/leads-employees-raw.json'
+dst = '$BASE/data/leads-employees.json'
+raw = json.load(open(src))
+data = raw.get('data', raw) if isinstance(raw, dict) else raw
+scrubbed = [{k: v for k, v in e.items() if k not in {'password', 'servicePassword'}} for e in data]
+out = {'data': scrubbed, '_scrubbed': ['password', 'servicePassword']}
+if isinstance(raw, dict):
+    for k in ('name', 'responseCode', 'message'):
+        if k in raw: out[k] = raw[k]
+json.dump(out, open(dst, 'w'), separators=(',', ':'))
+print(f'  ✓ leads-employees.json scrubbed: {len(scrubbed)} records')
+"
+fi
+
+# Phase 8a: build leads rollup (funnel + by-rep + stuck-leads).
+node "$BASE/scripts/roofdocs/build-leads.mjs" 2>&1 | tail -5
 
 echo "→ [6/12] Geocoding new missing-coord records…"
 node "$BASE/scripts/roofdocs/geocode-missing.mjs" 2>&1 | tail -2

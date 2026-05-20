@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Leads Pipeline</title>
+<link rel="icon" href="data:," />
+<style>
+  :root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --blue:#60a5fa; --purple:#a78bfa; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .links a { color: var(--muted); margin-left: 12px; text-decoration: none; font-size: 12px; }
+  header .links a.active { color: var(--accent); font-weight: 600; }
+  main { padding: 24px; max-width: 1500px; margin: 0 auto; }
+  section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 22px; margin-bottom: 16px; }
+  section h2 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--accent); }
+  section .desc { color: var(--muted); font-size: 12px; margin-bottom: 14px; line-height: 1.5; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #342c23; border-radius: 6px; padding: 11px 14px; }
+  .kpi .label { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .kpi .value { font-size: 22px; font-weight: 700; color: var(--accent); margin-top: 4px; }
+  .kpi .sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+  .kpi.green .value { color: var(--green); }
+  .kpi.yellow .value { color: var(--yellow); }
+  .kpi.red .value { color: var(--red); }
+  .kpi.blue .value { color: var(--blue); }
+  .kpi.purple .value { color: var(--purple); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 10px; text-transform: uppercase; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  td { padding: 7px 6px; border-bottom: 1px solid #342c23; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .scroll { max-height: 500px; overflow-y: auto; }
+  a.riq-link { color: var(--accent); text-decoration: none; }
+  a.riq-link:hover { text-decoration: underline; }
+  .loading { padding: 40px; text-align: center; color: var(--accent); }
+  .col-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .col-2 { grid-template-columns: 1fr; } }
+  .pill { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 10px; font-weight: 600; background: #342c23; color: var(--muted); margin-right: 4px; }
+  .pill.green { background: rgba(16,185,129,0.18); color: var(--green); }
+  .pill.yellow { background: rgba(245,158,11,0.18); color: var(--yellow); }
+  .pill.red { background: rgba(239,68,68,0.18); color: var(--red); }
+  .pill.blue { background: rgba(96,165,250,0.18); color: var(--blue); }
+  .pill.purple { background: rgba(167,139,250,0.18); color: var(--purple); }
+  .footnote { color: var(--muted); font-size: 11px; margin-top: 8px; line-height: 1.5; }
+  /* Funnel viz */
+  .funnel { display: flex; flex-direction: column; gap: 8px; max-width: 600px; margin: 0 auto; }
+  .funnel-stage { background: #342c23; border-left: 4px solid var(--muted); padding: 10px 14px; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+  .funnel-stage.stage-knock { border-left-color: var(--muted); }
+  .funnel-stage.stage-conv { border-left-color: var(--blue); }
+  .funnel-stage.stage-insp { border-left-color: var(--yellow); }
+  .funnel-stage.stage-appt { border-left-color: var(--green); }
+  .funnel-stage.stage-conv-customer { border-left-color: var(--accent); }
+  .funnel-stage .stage-name { font-weight: 600; }
+  .funnel-stage .stage-count { font-size: 18px; font-weight: 700; }
+  .funnel-stage .stage-pct { color: var(--muted); font-size: 11px; margin-left: 6px; }
+</style>
+</head>
+<body data-riq-sort-all>
+<header>
+  <h1>📞 RIQ 21 — Leads Pipeline</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="active-work.html">Active Work</a>
+    <a href="leads.html" class="active">Leads</a>
+    <a href="receivables.html">💰 AR</a>
+    <a href="reps.html">Reps</a>
+    <a href="predictor.html">Predictor</a>
+  </div>
+</header>
+<script src="/riq-links.js"></script>
+<script src="/riq-sort.js"></script>
+<main>
+  <div id="loading" class="loading">Loading…</div>
+  <div id="content" style="display:none">
+
+    <section>
+      <h2>📊 Funnel — pre-conversion pipeline</h2>
+      <p class="desc">Door-knocking journey: leads captured → contact made → inspection booked → appointment set → converted. Snapshot of <strong id="total-leads">—</strong> active leads across the territory.</p>
+      <div class="kpi-row" id="funnel-tiles"></div>
+      <div class="funnel" id="funnel-viz"></div>
+    </section>
+
+    <div class="col-2">
+      <section>
+        <h2>🏆 Rep leaderboard — leads in pipeline</h2>
+        <p class="desc">Reps by lead volume. Conversion % = leads that reached at least Conversation status. Appointment % = leads that became appointments.</p>
+        <div class="scroll"><table id="rep-table">
+          <thead><tr>
+            <th>Rep</th>
+            <th class="num">Leads</th>
+            <th class="num">Conv</th>
+            <th class="num">Appts</th>
+            <th class="num">Conv %</th>
+            <th class="num">Appt %</th>
+            <th>Last lead</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <section>
+        <h2>⚠️ Stuck leads</h2>
+        <p class="desc">Leads in <em>Conversation</em> status with no movement for 14+ days. These need a follow-up.</p>
+        <div class="kpi-row">
+          <div class="kpi yellow"><div class="label">Stuck count</div><div class="value" id="stuck-count">—</div></div>
+        </div>
+        <div class="scroll"><table id="stuck-table">
+          <thead><tr>
+            <th>Lead</th>
+            <th>Address</th>
+            <th>Rep</th>
+            <th class="num">Days</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <div class="col-2">
+      <section>
+        <h2>🔥 Top zips — lead density</h2>
+        <p class="desc">Highest-volume zip codes. Use as hot-zone overlay for door-knocking routes.</p>
+        <div class="scroll" style="max-height:400px"><table id="zip-table">
+          <thead><tr>
+            <th>Zip</th>
+            <th class="num">Leads</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+
+      <section>
+        <h2>📡 Lead source</h2>
+        <p class="desc">Where leads come from — door-knocking vs referrals.</p>
+        <div class="scroll" style="max-height:200px"><table id="referral-table">
+          <thead><tr>
+            <th>Source</th>
+            <th class="num">Leads</th>
+            <th class="num">% of total</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+        <h2 style="margin-top: 22px">🏘️ States</h2>
+        <div class="scroll" style="max-height:160px"><table id="state-table">
+          <thead><tr>
+            <th>State</th>
+            <th class="num">Leads</th>
+          </tr></thead>
+          <tbody></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <section>
+      <h2>👥 Lead-eligible employees by role</h2>
+      <p class="desc">Roles that can receive leads in the portal. Portal-using % shows who has logged in recently.</p>
+      <div class="scroll" style="max-height:300px"><table id="role-table">
+        <thead><tr>
+          <th>Role ID</th>
+          <th class="num">Total</th>
+          <th class="num">Active</th>
+          <th class="num">Using portal</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </section>
+
+    <p class="footnote">
+      Source: <code>portal.theroofdocs.com /v1/admin/leads</code> + <code>/v1/admin/leads/employees</code>.
+      Rolled up by <code>scripts/roofdocs/build-leads.mjs</code>. Refreshed via <code>refresh-all.sh</code>.
+      Sensitive employee fields (password / servicePassword) are scrubbed at ingestion.
+    </p>
+  </div>
+</main>
+
+<script>
+(async () => {
+  const r = await fetch('/api/intel/leads-summary', { credentials: 'include' });
+  if (!r.ok) {
+    document.getElementById('loading').textContent = 'Failed to load: ' + r.status;
+    return;
+  }
+  const d = await r.json();
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('content').style.display = 'block';
+
+  document.getElementById('total-leads').textContent = d.totalLeads.toLocaleString();
+  document.getElementById('stuck-count').textContent = d.stuckLeads.count;
+
+  // Funnel tiles
+  const f = d.funnel;
+  const tilesHtml = `
+    <div class="kpi"><div class="label">Total leads</div><div class="value">${f.total.toLocaleString()}</div></div>
+    <div class="kpi blue"><div class="label">Conversations</div><div class="value">${f.conversations.toLocaleString()}</div><div class="sub">${((f.conversations/f.total)*100).toFixed(1)}% of all</div></div>
+    <div class="kpi yellow"><div class="label">Inspections</div><div class="value">${f.inspections.toLocaleString()}</div></div>
+    <div class="kpi green"><div class="label">Appointments</div><div class="value">${f.appointments.toLocaleString()}</div></div>
+    <div class="kpi purple"><div class="label">Converted to customer</div><div class="value">${f.converted.toLocaleString()}</div></div>
+    <div class="kpi red"><div class="label">Do Not Knock</div><div class="value">${f.doNotKnock.toLocaleString()}</div></div>
+  `;
+  document.getElementById('funnel-tiles').innerHTML = tilesHtml;
+
+  // Funnel viz
+  const funnelStages = [
+    { name: 'Total doors', count: f.total, cls: 'stage-knock' },
+    { name: 'Conversations', count: f.conversations, cls: 'stage-conv' },
+    { name: 'Inspections', count: f.inspections, cls: 'stage-insp' },
+    { name: 'Appointments', count: f.appointments, cls: 'stage-appt' },
+    { name: 'Converted to customer', count: f.converted, cls: 'stage-conv-customer' },
+  ];
+  const funnelHtml = funnelStages.map((s, i) => {
+    const prev = i === 0 ? s.count : funnelStages[i-1].count;
+    const pct = prev > 0 ? ((s.count / prev) * 100).toFixed(1) : '0';
+    return `<div class="funnel-stage ${s.cls}">
+      <span class="stage-name">${s.name}</span>
+      <span><span class="stage-count">${s.count.toLocaleString()}</span><span class="stage-pct">${i === 0 ? '' : `→ ${pct}% of prior`}</span></span>
+    </div>`;
+  }).join('');
+  document.getElementById('funnel-viz').innerHTML = funnelHtml;
+
+  // Rep leaderboard
+  document.querySelector('#rep-table tbody').innerHTML = d.repLeaderboard.slice(0, 30).map(r => `
+    <tr>
+      <td>${r.repName}</td>
+      <td class="num">${r.count}</td>
+      <td class="num">${r.conversations}</td>
+      <td class="num">${r.appointments}</td>
+      <td class="num">${r.conversionPct}%</td>
+      <td class="num">${r.appointmentPct}%</td>
+      <td>${r.lastCreated ? new Date(r.lastCreated).toLocaleDateString() : '—'}</td>
+    </tr>
+  `).join('');
+
+  // Stuck leads
+  document.querySelector('#stuck-table tbody').innerHTML = d.stuckLeads.leads.length === 0
+    ? '<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">No stuck leads — pipeline is flowing</td></tr>'
+    : d.stuckLeads.leads.map(l => `
+      <tr>
+        <td>${l.name}</td>
+        <td>${l.addressLine1 ?? ''}, ${l.city ?? ''} ${l.state ?? ''} ${l.zipCode ?? ''}</td>
+        <td>${l.repName ?? '—'}</td>
+        <td class="num">${l.ageDays}</td>
+      </tr>
+    `).join('');
+
+  // Top zips
+  document.querySelector('#zip-table tbody').innerHTML = d.topZips.map(z => `
+    <tr><td>${z.key}</td><td class="num">${z.count}</td></tr>
+  `).join('');
+
+  // Referrals
+  document.querySelector('#referral-table tbody').innerHTML = d.byReferralMethod.map(r => `
+    <tr><td>${r.key}</td><td class="num">${r.count}</td><td class="num">${((r.count/d.totalLeads)*100).toFixed(1)}%</td></tr>
+  `).join('');
+
+  // States
+  document.querySelector('#state-table tbody').innerHTML = d.byState.map(s => `
+    <tr><td>${s.key}</td><td class="num">${s.count}</td></tr>
+  `).join('');
+
+  // Roles
+  const roleNames = { 100: 'Admin', 200: 'Sales Manager', 201: 'Ops Manager', 250: 'Ops Assistant', 275: 'Supplementer', 300: 'HR Director', 400: 'Production Manager', 500: 'Field Tech', 550: 'Estimator', 575: 'Project Manager', 600: 'Project Coordinator', 650: 'Field Trainer', 700: 'Sales Rep', 800: 'External Supplementer', 1000: 'Customer', 1100: 'Apple Developer' };
+  document.querySelector('#role-table tbody').innerHTML = d.eligibleByRole.map(r => `
+    <tr>
+      <td>${r.roleId} — ${roleNames[r.roleId] ?? '(unknown)'}</td>
+      <td class="num">${r.total}</td>
+      <td class="num">${r.active}</td>
+      <td class="num">${r.usingPortal}</td>
+    </tr>
+  `).join('');
+})();
+</script>
+</body>
+</html>
