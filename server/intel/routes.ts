@@ -59,12 +59,17 @@ async function fetchFromDb(key: string): Promise<{ data: unknown; mtime: Date; b
   }
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// fileURLToPath fails in Vercel's ESM runtime — guard it.
+// On Vercel all reads go through Postgres (fetchFromDb); DATA_DIR is only
+// used as a file fallback in local dev and Railway where __dirname is valid.
+let DATA_DIR = '/tmp/no-data';
+try {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  DATA_DIR = path.resolve(__dirname, '..', '..', 'data');
+} catch { /* Vercel serverless — DB-backed reads only */ }
 
 const router = Router();
-
-const DATA_DIR = path.resolve(__dirname, '..', '..', 'data');
 
 // Allowlisted intel files (no arbitrary paths through this endpoint).
 const FILES: Record<string, { file: string; description: string }> = {
