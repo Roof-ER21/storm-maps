@@ -4,6 +4,7 @@
  *   1. Their personal cheat-sheet history (approval rate, denial reasons, comp-shingle vs spot-repair tendency)
  *   2. Their carrier's documented AI/automation patents
  *   3. The scope details (hail size, roof age, photo count, area damaged)
+ *   V2: 4. Visual evidence extracted from uploaded roof photos via Gemini multimodal
  *
  * Returns a structured prediction the rep can use to:
  *   - Pre-stage the scope to maximize approval probability
@@ -124,10 +125,125 @@ CARRIER PATENTS (documented decision logic):
 ================
 PROPOSED SCOPE:
 {{SCOPE}}
+
+================
+{{VISUAL_EVIDENCE}}
 `;
+
+// V2: visual evidence extraction prompt (used when photos are uploaded)
+const VISUAL_PROMPT = `You are a roofing damage analyst reviewing photos submitted for an insurance claim.
+Extract observable evidence from these photos and return ONLY valid JSON.
+
+Focus on:
+1. What the carrier's AI will see and classify (based on patent decision rules)
+2. Evidence that supports the claim vs. flags that could trigger denial
+3. Specific visual details that change the scope or counter-argument
+
+Return JSON in this exact shape:
+{
+  "roofMaterial": "asphalt-shingle|metal|tile|wood-shake|flat|unknown",
+  "estimatedRoofAge": "new (<5yr)|mid (5-10yr)|aging (10-15yr)|old (15yr+)|unknown",
+  "slopesVisible": number or null,
+  "hailEvidence": {
+    "present": true|false,
+    "confidence": "low|medium|high",
+    "description": "describe what you see (bruising, dents, granule displacement, soft metal impacts)",
+    "estimatedSize": "quarter|half-dollar|golf-ball|unknown|none",
+    "densityPer10sqft": "sparse (<3)|moderate (3-8)|heavy (8+)|unknown"
+  },
+  "windEvidence": {
+    "present": true|false,
+    "description": "lifted shingles, missing sections, debris pattern, etc."
+  },
+  "preExistingDamage": {
+    "present": true|false,
+    "description": "granule loss without impact pattern, algae/moss, cracked dried caulk, etc."
+  },
+  "softMetalEvidence": {
+    "present": true|false,
+    "description": "gutters, vents, AC fins, flashing — impact marks, dents, paint loss"
+  },
+  "claimSupportingFactors": [
+    "list of visual elements that strengthen the claim"
+  ],
+  "claimRiskFactors": [
+    "list of visual elements the carrier AI may use to reduce or deny (wear-and-tear, pre-existing, manufacturing defect)"
+  ],
+  "patentAlignedObservations": [
+    "specific observations tied to carrier AI decision rules (e.g., 'bruising pattern consistent with US10977490 hail classifier criteria')"
+  ]
+}
+
+NEVER output text outside the JSON.`;
 
 function shapeAdjuster(sheet: AdjusterSheet): string {
   return JSON.stringify(sheet, null, 2).slice(0, 8000);
+}
+
+interface VisualEvidence {
+  roofMaterial?: string;
+  estimatedRoofAge?: string;
+  slopesVisible?: number | null;
+  hailEvidence?: { present: boolean; confidence: string; description: string; estimatedSize?: string; densityPer10sqft?: string };
+  windEvidence?: { present: boolean; description: string };
+  preExistingDamage?: { present: boolean; description: string };
+  softMetalEvidence?: { present: boolean; description: string };
+  claimSupportingFactors?: string[];
+  claimRiskFactors?: string[];
+  patentAlignedObservations?: string[];
+  photoCount?: number;
+  [key: string]: unknown;
+}
+
+async function extractVisualEvidence(photos: Array<{ base64: string; mimeType: string }>): Promise<VisualEvidence | null> {
+  if (!ai || !photos.length) return null;
+  try {
+    const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [];
+    for (const photo of photos.slice(0, 5)) {
+      const cleanBase64 = photo.base64.replace(/^data:[^;]+;base64,/, '');
+      parts.push({ inlineData: { mimeType: photo.mimeType, data: cleanBase64 } });
+    }
+    parts.push({ text: VISUAL_PROMPT });
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: [{ role: 'user', parts }],
+      config: { responseMimeType: 'application/json', temperature: 0.2 },
+    });
+    const text = response.text || '';
+    let parsed: VisualEvidence;
+    try {
+      parsed = JSON.parse(text);
+    } catch {
+      const cleaned = text.replace(/^```json\s*|\s*```$/gm, '').trim();
+      parsed = JSON.parse(cleaned);
+    }
+    parsed.photoCount = photos.length;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function shapeVisualEvidence(ve: VisualEvidence | null): string {
+  if (!ve) return 'VISUAL_EVIDENCE:\n(No photos uploaded — prediction based on text scope only)';
+  const lines: string[] = [`VISUAL_EVIDENCE (extracted from ${ve.photoCount || 1} photo${(ve.photoCount||1)>1?'s':''}):`,
+    `  Roof material: ${ve.roofMaterial || 'unknown'}`,
+    `  Estimated age: ${ve.estimatedRoofAge || 'unknown'}`,
+    `  Slopes visible: ${ve.slopesVisible ?? 'unknown'}`,
+  ];
+  if (ve.hailEvidence) {
+    lines.push(`  Hail evidence: ${ve.hailEvidence.present ? `YES (${ve.hailEvidence.confidence} confidence) — ${ve.hailEvidence.description}` : 'NOT VISIBLE'}`);
+    if (ve.hailEvidence.present) {
+      lines.push(`    Size impression: ${ve.hailEvidence.estimatedSize || 'unknown'} | Density: ${ve.hailEvidence.densityPer10sqft || 'unknown'}`);
+    }
+  }
+  if (ve.windEvidence?.present) lines.push(`  Wind evidence: ${ve.windEvidence.description}`);
+  if (ve.softMetalEvidence?.present) lines.push(`  Soft metal evidence: ${ve.softMetalEvidence.description}`);
+  if (ve.preExistingDamage?.present) lines.push(`  Pre-existing damage FLAGGED: ${ve.preExistingDamage.description}`);
+  if (ve.claimSupportingFactors?.length) lines.push(`  Claim-supporting: ${ve.claimSupportingFactors.join('; ')}`);
+  if (ve.claimRiskFactors?.length) lines.push(`  Risk factors (carrier AI may use against): ${ve.claimRiskFactors.join('; ')}`);
+  if (ve.patentAlignedObservations?.length) lines.push(`  Patent-aligned: ${ve.patentAlignedObservations.join('; ')}`);
+  return lines.join('\n');
 }
 
 function shapePatents(patents: PatentEntry[]): string {
@@ -159,6 +275,10 @@ export async function predictAdjuster(req: Request, res: Response): Promise<void
   const adjusterName: string = (body.adjusterName || '').toString().trim();
   const carrier: string = (body.carrier || '').toString().trim();
   const scope = body.scope || {};
+  // V2: optional photo array for visual evidence extraction
+  const photos: Array<{ base64: string; mimeType: string }> = Array.isArray(body.photos)
+    ? body.photos.filter((p: unknown) => p && typeof (p as Record<string,unknown>).base64 === 'string')
+    : [];
 
   if (!adjusterName) {
     res.status(400).json({ error: 'invalid_input', detail: 'adjusterName required' });
@@ -209,10 +329,14 @@ export async function predictAdjuster(req: Request, res: Response): Promise<void
     }
   }
 
+  // V2: extract visual evidence from uploaded photos (runs before main prediction)
+  const visualEvidence = photos.length > 0 ? await extractVisualEvidence(photos) : null;
+
   const prompt = PROMPT
     .replace('{{ADJUSTER}}', shapeAdjuster(adjusterSheet))
     .replace('{{PATENTS}}', shapePatents(patents))
-    .replace('{{SCOPE}}', JSON.stringify(scope, null, 2));
+    .replace('{{SCOPE}}', JSON.stringify(scope, null, 2))
+    .replace('{{VISUAL_EVIDENCE}}', shapeVisualEvidence(visualEvidence));
 
   try {
     const response = await ai.models.generateContent({
@@ -243,6 +367,8 @@ export async function predictAdjuster(req: Request, res: Response): Promise<void
         medianUplift: adjusterSheet.medianUplift || null,
       },
       patentsConsidered: patents.map((p) => p.id),
+      visualEvidence: visualEvidence || null,
+      photosAnalyzed: photos.length,
       prediction: parsed,
     });
   } catch (err: unknown) {
