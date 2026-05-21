@@ -19,6 +19,7 @@ import { RefreshButton } from './intel/RefreshButton';
 
 type IntelView =
   | 'home'
+  | 'master-guide'
   | 'predictor'
   | 'field-guide'
   | 'exec'
@@ -56,6 +57,7 @@ type IntelView =
   | 'adjuster-twin';
 
 const VIEW_FILES: Record<Exclude<IntelView, 'home' | 'predictor'>, string> = {
+  'master-guide': 'master.html',
   'field-guide': 'field-guide.html',
   'exec': 'exec.html',
   'map': 'roofdocs-map.html',
@@ -183,9 +185,36 @@ export function IntelligenceHub() {
         <div style={{ fontWeight: 800, fontSize: 18, color: 'var(--riq-accent)', marginBottom: 2, letterSpacing: '0.02em' }}>
           RIQ 21
         </div>
-        <div style={{ color: 'var(--riq-text-muted)', fontSize: 11, marginBottom: 14 }}>
+        <div style={{ color: 'var(--riq-text-muted)', fontSize: 11, marginBottom: 12 }}>
           Roofing IQ · 16k jobs + 48k storms
         </div>
+
+        {/* Master Guide — pinned above all nav groups */}
+        <button
+          onClick={() => setView('master-guide')}
+          style={{
+            display: 'block',
+            width: '100%',
+            textAlign: 'left',
+            background: view === 'master-guide' ? 'rgba(244,167,56,0.18)' : 'rgba(244,167,56,0.10)',
+            border: `1px solid ${view === 'master-guide' ? 'var(--riq-accent)' : 'rgba(244,167,56,0.4)'}`,
+            color: 'var(--riq-accent)',
+            borderRadius: 6,
+            padding: '9px 12px',
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: 'pointer',
+            marginBottom: 14,
+            fontFamily: 'inherit',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          📋 Master Guide
+          <div style={{ fontSize: 10, fontWeight: 400, color: 'rgba(244,167,56,0.7)', marginTop: 2 }}>
+            All 47 pages · new user start here
+          </div>
+        </button>
+
         {NAV_GROUPS.map((g) => (
           <div key={g.label} style={{ marginBottom: 14 }}>
             <div
@@ -231,7 +260,7 @@ export function IntelligenceHub() {
         {view !== 'home' && view !== 'predictor' && (
           <iframe
             key={view}
-            src={`/${VIEW_FILES[view]}`}
+            src={`/${VIEW_FILES[view as Exclude<IntelView, 'home' | 'predictor'>]}`}
             style={{ width: '100%', height: '100%', border: 0, background: 'var(--riq-bg)' }}
             title={view}
           />
@@ -247,10 +276,50 @@ function HomePane({ setView }: { setView: (v: IntelView) => void }) {
       <h1 style={{ fontSize: 30, fontWeight: 800, color: 'var(--riq-accent)', margin: 0, letterSpacing: '-0.01em' }}>
         RIQ 21 — Roofing IQ Command Center
       </h1>
-      <p style={{ color: 'var(--riq-text-muted)', fontSize: 13, marginTop: 6, marginBottom: 24 }}>
+      <p style={{ color: 'var(--riq-text-muted)', fontSize: 13, marginTop: 6, marginBottom: 20 }}>
         Internal sales + ops intelligence for The Roof Docs. Refreshes nightly from the portal —
         see live counts in the tile KPIs below.
       </p>
+
+      {/* ── Master Guide banner — first thing on home screen ── */}
+      <button
+        onClick={() => setView('master-guide')}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 16,
+          width: '100%',
+          background: 'rgba(244,167,56,0.10)',
+          border: '2px solid rgba(244,167,56,0.5)',
+          borderRadius: 10,
+          padding: '16px 22px',
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          color: 'inherit',
+          textAlign: 'left',
+          marginBottom: 24,
+          transition: 'background 0.15s, border-color 0.15s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(244,167,56,0.18)';
+          e.currentTarget.style.borderColor = 'var(--riq-accent)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(244,167,56,0.10)';
+          e.currentTarget.style.borderColor = 'rgba(244,167,56,0.5)';
+        }}
+      >
+        <span style={{ fontSize: 32, flexShrink: 0 }}>📋</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--riq-accent)', marginBottom: 3 }}>
+            Master Guide — New User? Start Here
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--riq-text-muted)', lineHeight: 1.4 }}>
+            All 47 pages explained · 8 categories · 6-step quick start · live search across every tool
+          </div>
+        </div>
+        <span style={{ fontSize: 20, color: 'var(--riq-accent)', flexShrink: 0, fontWeight: 800 }}>→</span>
+      </button>
 
       <RefreshButton />
 
