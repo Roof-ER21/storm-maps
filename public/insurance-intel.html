@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Insurance Market Intelligence</title>
+<link rel="icon" href="data:," />
+<style>
+:root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; --blue:#60a5fa; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
+header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 20; }
+header h1 { margin: 0; font-size: 17px; font-weight: 700; }
+header .links a { color: var(--muted); margin-left: 10px; text-decoration: none; font-size: 12px; }
+header .links a.active { color: var(--accent); font-weight: 700; }
+main { padding: 20px 24px; max-width: 1500px; margin: 0 auto; }
+
+/* Alert strip */
+.alert-strip { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.alert-chip { padding: 8px 14px; border-radius: 6px; font-size: 12px; line-height: 1.4; flex: 1; min-width: 200px; }
+.alert-red { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.35); }
+.alert-yellow { background: rgba(245,158,11,0.12); border: 1px solid rgba(245,158,11,0.35); }
+.alert-blue { background: rgba(96,165,250,0.12); border: 1px solid rgba(96,165,250,0.35); }
+.alert-chip .ah { font-weight: 700; color: var(--accent); margin-bottom: 2px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+/* Section cards */
+.card { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-bottom: 16px; }
+.card h2 { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.card .sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; line-height: 1.4; }
+
+/* Two-column layout */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+.three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+@media (max-width: 1100px) { .two-col { grid-template-columns: 1fr; } .three-col { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 700px) { .three-col { grid-template-columns: 1fr; } }
+
+/* Carrier matrix table */
+.matrix-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.matrix-table th { text-align: left; padding: 6px 10px; background: #1e1a16; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+.matrix-table th:hover { color: var(--accent); }
+.matrix-table td { padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.matrix-table tr:last-child td { border-bottom: none; }
+.matrix-table tr:hover td { background: rgba(255,255,255,0.02); }
+.threat-bar { height: 6px; border-radius: 3px; background: var(--border); width: 80px; display: inline-block; vertical-align: middle; overflow: hidden; }
+.threat-fill { height: 100%; border-radius: 3px; }
+.threat-low { background: var(--green); }
+.threat-mid { background: var(--yellow); }
+.threat-high { background: var(--red); }
+.pill { display: inline-block; padding: 2px 7px; border-radius: 3px; font-size: 10px; font-weight: 700; }
+.pill-red { background: rgba(239,68,68,0.18); color: var(--red); }
+.pill-yellow { background: rgba(245,158,11,0.18); color: var(--yellow); }
+.pill-green { background: rgba(16,185,129,0.18); color: var(--green); }
+.pill-blue { background: rgba(96,165,250,0.18); color: var(--blue); }
+.pill-purple { background: rgba(167,139,250,0.18); color: var(--purple); }
+.pill-grey { background: rgba(160,148,134,0.18); color: var(--muted); }
+
+/* County table */
+.county-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.county-table th { text-align: left; padding: 5px 10px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); }
+.county-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+.county-table tr:last-child td { border-bottom: none; }
+.surge-bar { height: 4px; border-radius: 2px; background: rgba(239,68,68,0.2); display: inline-block; vertical-align: middle; overflow: hidden; margin-left: 6px; }
+.surge-fill { height: 100%; border-radius: 2px; background: var(--red); }
+
+/* Customer list */
+.cust-filters { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; align-items: center; }
+.cust-filters select, .cust-filters input { background: #342c23; border: 1px solid var(--border); color: var(--text); padding: 5px 10px; border-radius: 5px; font-size: 12px; }
+.cust-filters input { flex: 1; min-width: 140px; }
+.cust-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cust-table th { text-align: left; padding: 6px 10px; background: #1e1a16; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.cust-table th:hover { color: var(--accent); }
+.cust-table td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cust-table tr:last-child td { border-bottom: none; }
+.cust-table tr:hover td { background: rgba(255,255,255,0.02); }
+.action-btn { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 3px; background: rgba(244,167,56,0.15); color: var(--accent); border: 1px solid rgba(244,167,56,0.3); cursor: pointer; white-space: nowrap; }
+.pagination { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.pagination button { background: #342c23; border: 1px solid var(--border); color: var(--text); padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; }
+.pagination button:disabled { opacity: 0.4; cursor: default; }
+.pagination button:not(:disabled):hover { border-color: var(--accent); }
+
+/* Stat cells */
+.stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px; }
+@media (max-width: 700px) { .stat-grid { grid-template-columns: 1fr 1fr; } }
+.stat-box { background: #342c23; border-radius: 6px; padding: 10px 14px; }
+.stat-box .v { font-size: 22px; font-weight: 700; color: var(--accent); }
+.stat-box .l { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+.stat-box .l2 { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* OH grid */
+.oh-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+@media (max-width: 900px) { .oh-grid { grid-template-columns: repeat(3, 1fr); } }
+.oh-carrier { background: #342c23; border-radius: 6px; padding: 10px 12px; text-align: center; }
+.oh-carrier .pct { font-size: 20px; font-weight: 700; }
+.oh-carrier .nm { font-size: 10px; color: var(--muted); margin-top: 2px; line-height: 1.3; }
+.oh-carrier .dwp { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* Risk callout */
+.callout { border-radius: 7px; padding: 12px 16px; margin-bottom: 10px; font-size: 12px; line-height: 1.6; }
+.callout-red { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.25); }
+.callout-green { background: rgba(16,185,129,0.08); border: 1px solid rgba(16,185,129,0.25); }
+.callout-yellow { background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25); }
+.callout-blue { background: rgba(96,165,250,0.08); border: 1px solid rgba(96,165,250,0.25); }
+.callout strong { font-weight: 700; }
+.sort-arrow { margin-left: 3px; opacity: 0.5; }
+.sort-arrow.active { opacity: 1; color: var(--accent); }
+
+.loading-msg { padding: 40px; text-align: center; color: var(--muted); font-size: 13px; }
+.section-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+.section-head h2 { font-size: 15px; font-weight: 700; }
+.section-head .count { font-size: 11px; color: var(--muted); }
+.tab-bar { display: flex; gap: 6px; margin-bottom: 12px; }
+.tab-btn { background: #342c23; border: 1px solid var(--border); color: var(--muted); padding: 5px 12px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; }
+.tab-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡 RIQ 21 — Insurance Market Intelligence</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="carrier-algorithms.html">🧠 Algorithms</a>
+    <a href="denial-analyzer.html">⚖️ Analyzer</a>
+    <a href="storm-playbook.html">⛈ Storm Playbook</a>
+    <a href="insurance-intel.html" class="active">🛡 Market Intel</a>
+  </div>
+</header>
+<main>
+  <div id="loading-msg" class="loading-msg">Loading insurance intelligence…</div>
+  <div id="page" style="display:none">
+
+    <!-- ALERT STRIP -->
+    <div class="alert-strip" id="alert-strip"></div>
+
+    <!-- TOP STATS -->
+    <div class="stat-grid" id="top-stats"></div>
+
+    <!-- CARRIER THREAT MATRIX + MD NON-RENEWAL HOT ZONES -->
+    <div class="two-col">
+      <div class="card">
+        <div class="section-head">
+          <h2>Carrier Threat Matrix</h2>
+          <span class="count" id="matrix-count"></span>
+        </div>
+        <p class="sub">Threat score = actual denial rate (40%) + NAIC complaint index (40%) + AI patent count (20%). Sorted by threat. Click column headers to re-sort.</p>
+        <div style="overflow-x:auto">
+          <table class="matrix-table" id="matrix-table">
+            <thead>
+              <tr>
+                <th onclick="sortMatrix('carrier')">Carrier <span class="sort-arrow" id="sa-carrier"></span></th>
+                <th onclick="sortMatrix('threatScore')">Threat <span class="sort-arrow" id="sa-threatScore">▼</span></th>
+                <th onclick="sortMatrix('denyRate')">Deny% <span class="sort-arrow" id="sa-denyRate"></span></th>
+                <th onclick="sortMatrix('naicIndex')">NAIC <span class="sort-arrow" id="sa-naicIndex"></span></th>
+                <th onclick="sortMatrix('amBest')">AM Best <span class="sort-arrow" id="sa-amBest"></span></th>
+                <th onclick="sortMatrix('totalClaims')">In Book <span class="sort-arrow" id="sa-totalClaims"></span></th>
+                <th onclick="sortMatrix('denied')">Denied <span class="sort-arrow" id="sa-denied"></span></th>
+                <th onclick="sortMatrix('supplements')">Suppls <span class="sort-arrow" id="sa-supplements"></span></th>
+                <th onclick="sortMatrix('patents')">Patents <span class="sort-arrow" id="sa-patents"></span></th>
+              </tr>
+            </thead>
+            <tbody id="matrix-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="section-head">
+          <h2>MD Non-Renewal Hot Zones</h2>
+          <span class="count">Nov 2024 · MIA Survey</span>
+        </div>
+        <p class="sub">Company-initiated non-renewals by county (2021→2023). Your customers in those counties are losing coverage — they need roof inspections to re-qualify for insurance.</p>
+        <div class="callout callout-red" style="margin-bottom:10px">
+          <strong>Root cause: #1 non-renewal reason = maintenance (roofs).</strong> 11/29 carriers now restrict coverage by roof age. Old roofs → ACV-only payout on wind/hail claims.
+        </div>
+        <table class="county-table" id="county-table"></table>
+      </div>
+    </div>
+
+    <!-- AT-RISK CUSTOMERS -->
+    <div class="card">
+      <div class="section-head">
+        <h2>At-Risk Customer Outreach List</h2>
+        <span class="count" id="risk-count"></span>
+      </div>
+      <p class="sub">Customers in your book with denied or partial insurance claims + still have unmet trade gaps. These are the highest-priority re-engagement targets: their carrier already failed them once.</p>
+      <div class="cust-filters">
+        <input type="text" id="risk-search" placeholder="Search name, address, city…" oninput="filterRisk()" />
+        <select id="risk-carrier" onchange="filterRisk()">
+          <option value="">All carriers</option>
+        </select>
+        <select id="risk-state" onchange="filterRisk()">
+          <option value="">All states</option>
+          <option value="MD">MD</option>
+          <option value="VA">VA</option>
+          <option value="PA">PA</option>
+        </select>
+        <select id="risk-outcome" onchange="filterRisk()">
+          <option value="">All outcomes</option>
+          <option value="denied">Denied</option>
+          <option value="partial-paid">Partial paid</option>
+          <option value="partial-dead">Partial dead</option>
+        </select>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="cust-table">
+          <thead>
+            <tr>
+              <th onclick="sortRisk('customer')">Customer</th>
+              <th onclick="sortRisk('carrier')">Carrier</th>
+              <th onclick="sortRisk('outcome')">Outcome</th>
+              <th onclick="sortRisk('stormCount')">Storms Hit</th>
+              <th onclick="sortRisk('tradeGaps')">Trade Gaps</th>
+              <th onclick="sortRisk('city')">Location</th>
+              <th onclick="sortRisk('nonRenewalRisk')">⚠ NR Risk</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="risk-body"></tbody>
+        </table>
+      </div>
+      <div class="pagination" id="risk-pager"></div>
+    </div>
+
+    <!-- MD COUNTY DETAIL + OH EXPANSION -->
+    <div class="two-col">
+      <div class="card">
+        <h2 style="margin-bottom:6px">MD Market Intelligence</h2>
+        <p class="sub">Your customers mapped to Maryland's hardest-hit non-renewal counties. These homeowners are most likely losing coverage right now.</p>
+        <div id="md-county-detail"></div>
+        <div class="callout callout-yellow" style="margin-top:12px">
+          <strong>The play:</strong> Call homeowners in Montgomery and Prince George's counties whose carrier has a high complaint index. Carrier likely non-renewed or is about to. They need a roof inspection to qualify for new coverage. This is a warm lead, not a cold call.
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 style="margin-bottom:6px">Ohio Expansion Opportunity</h2>
+        <p class="sub">2024 OH homeowners market: <strong>$4.684B</strong>. Very High storm risk counties. Published June 25, 2025 by Ohio DOI.</p>
+        <div class="oh-grid" id="oh-grid" style="margin-bottom:14px"></div>
+        <div class="callout callout-blue">
+          <strong>Allegheny County (Pittsburgh):</strong> Very High risk tier — 130 storm events in 5 years, 3" max hail, $22M property damage. State Farm alone = $962M in OH. Largest untapped market in striking distance.
+        </div>
+        <div class="callout callout-blue" style="margin-top:8px">
+          <strong>Franklin (Columbus) + Montgomery (Dayton):</strong> Very High risk. Columbus: 140 events, $18M. Dayton: 2019 Memorial Day tornadoes. Combined these two metros = $38M property damage in 5 years.
+        </div>
+        <div id="oh-risk-counties" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <!-- ROOF AGE TRAP SECTION -->
+    <div class="card">
+      <h2 style="margin-bottom:6px">The Roof Age Trap — ACV vs Replacement Cost</h2>
+      <p class="sub">11 of 29 carriers surveyed by MD MIA now restrict wind/hail claims based on roof age. These customers think they have replacement cost coverage — but they'll get ACV when they file. Know who's exposed before they find out the hard way.</p>
+      <div class="three-col">
+        <div class="callout callout-red">
+          <strong>What ACV means for a $20,000 roof:</strong> If the roof is 15 years old and has 20-year shingles, the carrier may depreciate 75% → pays $5,000 instead of $20,000. Homeowner owes $15,000 out of pocket.
+        </div>
+        <div class="callout callout-yellow">
+          <strong>Which carriers do this:</strong> Allstate, State Farm, Nationwide are the most aggressive. Erie and USAA are typically more favorable on replacement cost. Check the carrier before filing — the strategy changes.
+        </div>
+        <div class="callout callout-green">
+          <strong>The counter:</strong> Request the full policy declarations page before the adjuster visit. Confirm RCV vs ACV language. If ACV-only, document the roof install date and get the adjuster to confirm age-depreciation math in writing before accepting settlement.
+        </div>
+      </div>
+      <div id="acv-risk-table"></div>
+    </div>
+
+  </div><!-- /#page -->
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmt(n, dec=0) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
+}
+function fmtM(n) { return '$' + (n/1e6).toFixed(1) + 'M'; }
+
+// ── City → MD County rough mapping (for our cities) ──
+const CITY_TO_COUNTY = {
+  'bowie': 'Prince Georges', 'upper marlboro': 'Prince Georges', 'clinton': 'Prince Georges',
+  'oxon hill': 'Prince Georges', 'fort washington': 'Prince Georges', 'hyattsville': 'Prince Georges',
+  'college park': 'Prince Georges', 'greenbelt': 'Prince Georges', 'lanham': 'Prince Georges',
+  'germantown': 'Montgomery', 'gaithersburg': 'Montgomery', 'silver spring': 'Montgomery',
+  'rockville': 'Montgomery', 'bethesda': 'Montgomery', 'poolesville': 'Montgomery',
+  'olney': 'Montgomery', 'damascus': 'Montgomery', 'clarksburg': 'Montgomery',
+  'annapolis': 'Anne Arundel', 'odenton': 'Anne Arundel', 'crofton': 'Anne Arundel',
+  'millersville': 'Anne Arundel', 'severn': 'Anne Arundel', 'glen burnie': 'Anne Arundel',
+  'baltimore': 'Baltimore', 'towson': 'Baltimore', 'catonsville': 'Baltimore',
+  'pikesville': 'Baltimore', 'owings mills': 'Baltimore', 'randallstown': 'Baltimore',
+  'frederick': 'Frederick', 'waldorf': 'Charles', 'white plains': 'Charles',
+  'la plata': 'Charles', 'columbia': 'Howard', 'ellicott city': 'Howard',
+  'laurel': 'Prince Georges', 'beltsville': 'Prince Georges', 'springfield': 'Prince Georges',
+};
+
+function cityToCounty(city) {
+  if (!city) return null;
+  return CITY_TO_COUNTY[city.toLowerCase()] || null;
+}
+
+// State vars
+let NAIC = null, MARKET = null, RANKINGS = null, PATENTS = null, CASES = null, EXPOSURE = null;
+let matrixData = [], matrixSort = { key: 'threatScore', asc: false };
+let riskData = [], riskFiltered = [], riskSort = { key: 'threatScore', asc: false }, riskPage = 0;
+const PER_PAGE = 25;
+
+// ── Compute carrier threat score ──
+function threatScore(denyRate, naicIndex, patentCount) {
+  const denyNorm = Math.min(denyRate / 100, 1);
+  const naicNorm = Math.min((naicIndex || 0.5) / 2.5, 1);
+  const patNorm = Math.min((patentCount || 0) / 10, 1);
+  return Math.round((denyNorm * 0.4 + naicNorm * 0.4 + patNorm * 0.2) * 100);
+}
+
+function threatClass(score) {
+  if (score >= 60) return 'threat-high';
+  if (score >= 35) return 'threat-mid';
+  return 'threat-low';
+}
+
+function naicPill(idx) {
+  if (!idx) return '';
+  if (idx <= 0.5) return `<span class="pill pill-green">${idx}</span>`;
+  if (idx <= 1.0) return `<span class="pill pill-yellow">${idx}</span>`;
+  return `<span class="pill pill-red">${idx}</span>`;
+}
+
+function amBestPill(r) {
+  if (!r) return '<span class="pill pill-grey">—</span>';
+  const cls = r.includes('++') ? 'pill-green' : r.includes('+') ? 'pill-blue' : 'pill-yellow';
+  return `<span class="pill ${cls}">${esc(r)}</span>`;
+}
+
+function outcomePill(o) {
+  if (!o) return '';
+  if (o === 'denied') return '<span class="pill pill-red">denied</span>';
+  if (o === 'partial-paid') return '<span class="pill pill-yellow">partial</span>';
+  if (o === 'partial-dead') return '<span class="pill pill-yellow">partial/dead</span>';
+  if (o === 'full-paid') return '<span class="pill pill-green">full paid</span>';
+  if (o === 'in-progress') return '<span class="pill pill-blue">in progress</span>';
+  return `<span class="pill pill-grey">${esc(o)}</span>`;
+}
+
+// ── Build carrier stats from storm-exposure ──
+function buildCarrierStats() {
+  const map = {};
+  EXPOSURE.forEach(cust => {
+    (cust.claimHistory || []).forEach(c => {
+      if (!c.carrier) return;
+      const k = c.carrier;
+      if (!map[k]) map[k] = { carrier: k, total: 0, denied: 0, partial: 0, fullPaid: 0, inProgress: 0, supplements: 0, totalPaid: 0 };
+      const s = map[k];
+      s.total++;
+      if (c.outcome === 'denied') s.denied++;
+      else if (c.outcome === 'partial-paid' || c.outcome === 'partial-dead') s.partial++;
+      else if (c.outcome === 'full-paid') s.fullPaid++;
+      else if (c.outcome === 'in-progress') s.inProgress++;
+      if (c.hasSupplement) s.supplements++;
+      s.totalPaid += c.paidOut || 0;
+    });
+  });
+
+  // Enrich with NAIC + patent data
+  Object.values(map).forEach(s => {
+    s.denyRate = s.total > 0 ? Math.round((s.denied / s.total) * 100) : 0;
+    const naicEntry = NAIC[s.carrier] || Object.entries(NAIC).find(([k]) => {
+      const kl = k.toLowerCase(); const cl = s.carrier.toLowerCase();
+      return cl.startsWith(kl.split(' ')[0]) || kl.startsWith(cl.split(' ')[0]);
+    })?.[1];
+    s.naicIndex = naicEntry?.index ?? null;
+    s.naicRating = naicEntry?.rating ?? null;
+    s.amBest = naicEntry?.amBest ?? null;
+    s.marketConduct = naicEntry?.marketConduct ?? null;
+
+    const patCarrier = Object.keys(PATENTS.byCarrier).find(k =>
+      k.toLowerCase().includes(s.carrier.toLowerCase().split(' ')[0]) ||
+      s.carrier.toLowerCase().includes(k.toLowerCase().split(' ')[0])
+    );
+    s.patents = patCarrier ? (PATENTS.byCarrier[patCarrier] || []).length : 0;
+    s.caseCount = CASES.filter(c => {
+      const cn = (c.carrier || '').toLowerCase();
+      const sn = s.carrier.toLowerCase();
+      return cn.includes(sn.split(' ')[0]) || sn.includes(cn.split(' ')[0]);
+    }).length;
+    s.threatScore = threatScore(s.denyRate, s.naicIndex, s.patents);
+  });
+
+  return Object.values(map).filter(s => s.total >= 3);
+}
+
+// ── Render carrier matrix ──
+function renderMatrix() {
+  const sorted = [...matrixData].sort((a, b) => {
+    const va = a[matrixSort.key] ?? 0, vb = b[matrixSort.key] ?? 0;
+    const cmp = typeof va === 'string' ? va.localeCompare(vb) : vb - va;
+    return matrixSort.asc ? -cmp : cmp;
+  });
+
+  $('matrix-count').textContent = sorted.length + ' carriers';
+  const tbody = $('matrix-body');
+  tbody.innerHTML = sorted.map(s => {
+    const ts = s.threatScore;
+    const barW = ts + '%';
+    const barClass = threatClass(ts);
+    const conductAlert = s.marketConduct ? `<span title="${esc(s.marketConduct)}" style="color:var(--red);margin-left:4px;cursor:help">⚠</span>` : '';
+    return `<tr>
+      <td style="font-weight:600">${esc(s.carrier)}${conductAlert}</td>
+      <td>
+        <span style="font-size:12px;font-weight:700;margin-right:6px;color:${ts>=60?'var(--red)':ts>=35?'var(--yellow)':'var(--green)'}">${ts}</span>
+        <span class="threat-bar"><span class="threat-fill ${barClass}" style="width:${barW}"></span></span>
+      </td>
+      <td style="color:${s.denyRate>=50?'var(--red)':s.denyRate>=35?'var(--yellow)':'var(--green)';font-weight:700}">${s.denyRate}%</td>
+      <td>${naicPill(s.naicIndex)}</td>
+      <td>${amBestPill(s.amBest)}</td>
+      <td>${fmt(s.total)}</td>
+      <td style="color:${s.denied>50?'var(--red)':'var(--text)'}">${fmt(s.denied)}</td>
+      <td>${fmt(s.supplements)}</td>
+      <td>${s.patents > 0 ? `<span class="pill pill-purple">${s.patents}</span>` : '<span style="color:var(--muted)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  // Sort arrows
+  ['carrier','threatScore','denyRate','naicIndex','amBest','totalClaims','denied','supplements','patents'].forEach(k => {
+    const el = $('sa-' + k);
+    if (el) el.textContent = matrixSort.key === k ? (matrixSort.asc ? '▲' : '▼') : '';
+  });
+}
+
+function sortMatrix(key) {
+  if (matrixSort.key === key) matrixSort.asc = !matrixSort.asc;
+  else { matrixSort.key = key; matrixSort.asc = false; }
+  renderMatrix();
+}
+
+// ── MD county table ──
+function renderCountyTable(countyData) {
+  const table = $('county-table');
+  table.innerHTML = `<thead><tr><th>County</th><th>NR 2021</th><th>NR 2023</th><th>Surge</th><th>Your Customers</th></tr></thead>
+  <tbody>${countyData.slice(0, 15).map(c => {
+    const surge = c.changePct21to23;
+    const barW = Math.min(surge / 2, 100) + 'px';
+    return `<tr>
+      <td style="font-weight:600">${esc(c.county)}</td>
+      <td style="color:var(--muted)">${fmt(c.nr2021)}</td>
+      <td style="color:var(--red);font-weight:700">${fmt(c.nr2023)}</td>
+      <td>
+        <span style="color:${surge>=100?'var(--red)':surge>=60?'var(--yellow)':'var(--muted)'};font-weight:700">+${surge}%</span>
+        <span class="surge-bar" style="width:${barW}"><span class="surge-fill" style="width:100%"></span></span>
+      </td>
+      <td id="county-cust-${esc(c.county.replace(/\s/g,'_'))}">—</td>
+    </tr>`;
+  }).join('')}</tbody>`;
+}
+
+// ── At-risk customers ──
+function buildRiskData() {
+  const risks = [];
+  EXPOSURE.forEach(cust => {
+    if (!cust.hasDenied && !cust.hasPartial) return;
+    if (!cust.tradeGaps || cust.tradeGaps.length === 0) return;
+    const worstClaim = (cust.claimHistory || []).find(c => c.outcome === 'denied') ||
+                       (cust.claimHistory || []).find(c => c.outcome === 'partial-paid' || c.outcome === 'partial-dead');
+    if (!worstClaim) return;
+    const county = cityToCounty(cust.city);
+    let nrRisk = false;
+    if (cust.state === 'MD' && county) {
+      const mdData = MARKET?.mdMarketHardening_2024?.countyNonRenewals?.find(c =>
+        c.county.toLowerCase().replace(/'/g,'').includes(county.toLowerCase().replace(/'/g,''))
+      );
+      nrRisk = mdData && mdData.changePct21to23 >= 60;
+    }
+    // Threat level from carrier
+    const carrierStat = matrixData.find(s => s.carrier === worstClaim.carrier);
+    risks.push({
+      customer: cust.customer,
+      address: cust.addressLine1,
+      city: cust.city,
+      state: cust.state,
+      carrier: worstClaim.carrier,
+      outcome: worstClaim.outcome,
+      paidOut: worstClaim.paidOut || 0,
+      estimated: worstClaim.estimated || 0,
+      hasSupplement: worstClaim.hasSupplement,
+      supplementStatus: worstClaim.supplementStatus,
+      tradeGaps: cust.tradeGaps,
+      stormCount: cust.stormCount || 0,
+      nonRenewalRisk: nrRisk,
+      county,
+      threatScore: carrierStat?.threatScore || 0,
+      email: cust.customerEmail,
+      phone: cust.customerCell,
+    });
+  });
+  // Sort: non-renewal risk first, then highest threat carrier, then most storms
+  risks.sort((a, b) => {
+    if (a.nonRenewalRisk !== b.nonRenewalRisk) return a.nonRenewalRisk ? -1 : 1;
+    if (b.threatScore !== a.threatScore) return b.threatScore - a.threatScore;
+    return b.stormCount - a.stormCount;
+  });
+  return risks;
+}
+
+function renderRisk() {
+  const search = ($('risk-search')?.value || '').toLowerCase();
+  const carrier = $('risk-carrier')?.value || '';
+  const state = $('risk-state')?.value || '';
+  const outcome = $('risk-outcome')?.value || '';
+
+  riskFiltered = riskData.filter(r => {
+    if (search && !`${r.customer}${r.address}${r.city}`.toLowerCase().includes(search)) return false;
+    if (carrier && r.carrier !== carrier) return false;
+    if (state && r.state !== state) return false;
+    if (outcome && r.outcome !== outcome) return false;
+    return true;
+  });
+
+  const pages = Math.ceil(riskFiltered.length / PER_PAGE);
+  if (riskPage >= pages) riskPage = 0;
+  const slice = riskFiltered.slice(riskPage * PER_PAGE, (riskPage + 1) * PER_PAGE);
+
+  $('risk-count').textContent = riskFiltered.length + ' customers';
+  $('risk-body').innerHTML = slice.map(r => {
+    const gapList = r.tradeGaps.slice(0, 3).join(', ') + (r.tradeGaps.length > 3 ? ' +' + (r.tradeGaps.length - 3) : '');
+    const nrBadge = r.nonRenewalRisk ? '<span class="pill pill-red" title="In a high non-renewal county">NR</span> ' : '';
+    const supBadge = r.hasSupplement ? '<span class="pill pill-yellow">supp</span> ' : '';
+    const paidStr = r.paidOut > 0 ? fmtM(r.paidOut) : '$0';
+    const estStr = r.estimated > 0 ? '/' + fmtM(r.estimated) : '';
+    return `<tr>
+      <td title="${esc(r.address)}">${esc(r.customer || '—')}</td>
+      <td>${esc(r.carrier || '—')}</td>
+      <td>${outcomePill(r.outcome)} ${supBadge}<span style="font-size:10px;color:var(--muted)">${paidStr}${estStr}</span></td>
+      <td style="color:${r.stormCount>3?'var(--red)':r.stormCount>1?'var(--yellow)':'var(--muted)'}">${r.stormCount}</td>
+      <td style="color:var(--muted);font-size:11px">${esc(gapList)}</td>
+      <td>${esc(r.city || '')}${r.state ? ', '+r.state : ''}</td>
+      <td>${nrBadge}</td>
+      <td><button class="action-btn" onclick="openAction('${esc(r.customer)}','${esc(r.carrier)}','${esc(r.outcome)}')">Review →</button></td>
+    </tr>`;
+  }).join('');
+
+  // Pager
+  const pager = $('risk-pager');
+  pager.innerHTML = `<button onclick="riskPage=Math.max(0,riskPage-1);renderRisk()" ${riskPage===0?'disabled':''}>← Prev</button>
+    <span>Page ${riskPage+1} of ${Math.max(1,pages)} (${riskFiltered.length} total)</span>
+    <button onclick="riskPage=Math.min(${pages-1},riskPage+1);renderRisk()" ${riskPage>=pages-1?'disabled':''}>Next →</button>`;
+}
+
+function filterRisk() { riskPage = 0; renderRisk(); }
+function sortRisk(key) {
+  if (riskSort.key === key) riskSort.asc = !riskSort.asc;
+  else { riskSort.key = key; riskSort.asc = false; }
+  riskData.sort((a, b) => {
+    const va = a[key] ?? 0, vb = b[key] ?? 0;
+    const cmp = typeof va === 'string' ? String(va).localeCompare(String(vb)) : vb - va;
+    return riskSort.asc ? -cmp : cmp;
+  });
+  riskFiltered = [...riskData];
+  riskPage = 0;
+  renderRisk();
+}
+
+function openAction(name, carrier, outcome) {
+  alert(`Customer: ${name}\nCarrier: ${carrier}\nOutcome: ${outcome}\n\nRecommended action:\n1. Pull full claim file and adjuster name\n2. Check carrier-algorithms.html for ${carrier} denial tactics\n3. Request reinspection if denied — cite adjuster inadequate investigation\n4. Run through denial-analyzer.html with their denial letter`);
+}
+
+// ── OH grid ──
+function renderOH() {
+  if (!MARKET?.ohioTop70_2024) return;
+  const top = MARKET.ohioTop70_2024.carriers.slice(0, 10);
+  const totalDWP = MARKET.ohioTop70_2024.totalMarketDWP;
+  const grid = $('oh-grid');
+  grid.innerHTML = top.map(c => {
+    const name = c.name.replace(/ GRP$/,'').replace(/ INS$/,'').replace(/ MUT$/,'').replace(/ CAS$/,'');
+    const pct = c.marketSharePct;
+    const color = pct >= 10 ? 'var(--red)' : pct >= 7 ? 'var(--yellow)' : 'var(--green)';
+    return `<div class="oh-carrier">
+      <div class="pct" style="color:${color}">${pct}%</div>
+      <div class="nm">${esc(name)}</div>
+      <div class="dwp">$${(c.dwp2024/1e6).toFixed(0)}M</div>
+    </div>`;
+  }).join('');
+
+  // NOAA county risk
+  const ohRisk = RANKINGS?.countyRisk?.filter(r => r.State === 'OH' && r['Risk Tier']?.includes('Very High')) || [];
+  const riskDiv = $('oh-risk-counties');
+  if (ohRisk.length && riskDiv) {
+    riskDiv.innerHTML = `<div class="sub-head" style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--muted);margin-bottom:6px">NOAA Very High Risk Counties (5yr avg)</div>` +
+    ohRisk.map(c => `<div style="display:flex;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+      <span style="flex:1;font-weight:600">${esc(c.County)}</span>
+      <span class="pill pill-red">${c['Approx. Event Count (5yr)']} events</span>
+      <span style="color:var(--muted)">${c['Max Hail Size (in.)']}" hail</span>
+      <span style="color:var(--yellow)">$${(c['Est. Total Property Damage ($)']/1e6).toFixed(0)}M dmg</span>
+    </div>`).join('');
+  }
+}
+
+// ── MD county detail with customer overlap ──
+function renderMDCountyDetail(countyData) {
+  const custByCounty = {};
+  EXPOSURE.filter(c => c.state === 'MD').forEach(c => {
+    const county = cityToCounty(c.city);
+    if (!county) return;
+    if (!custByCounty[county]) custByCounty[county] = { total: 0, atRisk: 0, denied: 0 };
+    custByCounty[county].total++;
+    if (c.hasDenied || c.hasPartial) custByCounty[county].atRisk++;
+    if (c.hasDenied) custByCounty[county].denied++;
+  });
+
+  // Fill in the county table customer cells
+  Object.entries(custByCounty).forEach(([county, stats]) => {
+    const id = 'county-cust-' + county.replace(/\s/g,'_');
+    const el = $(id);
+    if (el) {
+      el.innerHTML = `<span style="font-weight:700">${stats.total}</span>` +
+        (stats.atRisk > 0 ? ` <span class="pill pill-red">${stats.atRisk} at-risk</span>` : '');
+    }
+  });
+
+  // Also build a summary in the detail section
+  const sorted = Object.entries(custByCounty).sort((a,b) => b[1].total - a[1].total);
+  const detail = $('md-county-detail');
+  if (detail) {
+    detail.innerHTML = `<div style="font-size:12px;margin-bottom:8px;color:var(--muted)">Based on your customer addresses — <strong style="color:var(--text)">${EXPOSURE.filter(c=>c.state==='MD').length} MD customers</strong> in storm-exposure data.</div>` +
+    sorted.slice(0, 8).map(([county, stats]) => {
+      const nrData = countyData.find(c => c.county.toLowerCase().replace(/'/g,'').includes(county.toLowerCase().replace(/'/g,'')));
+      const surge = nrData?.changePct21to23;
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+        <span style="flex:1;font-weight:600">${esc(county)} County</span>
+        <span style="color:var(--text)">${stats.total} customers</span>
+        ${stats.atRisk > 0 ? `<span class="pill pill-yellow">${stats.atRisk} at-risk</span>` : ''}
+        ${surge ? `<span class="pill ${surge>=100?'pill-red':surge>=60?'pill-yellow':'pill-grey'}">NR +${surge}%</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── Top stats ──
+function renderStats(carrierStats) {
+  const totalCustomers = EXPOSURE.length;
+  const withClaims = EXPOSURE.filter(c => c.claimHistory && c.claimHistory.length > 0).length;
+  const atRisk = riskData.length;
+  const totalDenied = carrierStats.reduce((s, c) => s + c.denied, 0);
+  const mdAtRisk = riskData.filter(r => r.state === 'MD' && r.nonRenewalRisk).length;
+  const totalSupps = carrierStats.reduce((s, c) => s + c.supplements, 0);
+
+  $('top-stats').innerHTML = `
+    <div class="stat-box"><div class="v">${fmt(totalCustomers)}</div><div class="l">Customers w/ storm exposure</div><div class="l2">${fmt(withClaims)} have filed claims</div></div>
+    <div class="stat-box"><div class="v" style="color:var(--red)">${fmt(atRisk)}</div><div class="l">At-risk (denied or partial)</div><div class="l2">${fmt(totalDenied)} total denials in book</div></div>
+    <div class="stat-box"><div class="v" style="color:var(--yellow)">${fmt(mdAtRisk)}</div><div class="l">MD customers in NR hot zones</div><div class="l2">Montgomery + Prince George's surge</div></div>
+    <div class="stat-box"><div class="v" style="color:var(--accent)">${fmt(totalSupps)}</div><div class="l">Total supplements on record</div><div class="l2">${carrierStats.length} carriers tracked</div></div>`;
+}
+
+// ── Alerts ──
+function renderAlerts() {
+  const alerts = [];
+  // Allstate market conduct
+  const allstate = NAIC['Allstate'];
+  if (allstate?.marketConduct) {
+    alerts.push({ type: 'red', head: '⚠ Allstate — Regulatory Finding', body: allstate.marketConduct });
+  }
+  // MD non-renewal
+  const mdStats = MARKET?.mdMarketHardening_2024?.statewide;
+  if (mdStats) {
+    alerts.push({ type: 'yellow', head: '🏠 MD Market Hardening (Nov 2024)', body: `Non-renewals up ${mdStats.nonRenewalChangePct2021to2023} statewide 2021–2023. #1 reason: maintenance (roofs). 11/29 carriers now restrict coverage by roof age.` });
+  }
+  // Denial rate alert
+  const worst = matrixData.sort((a,b)=>b.denyRate-a.denyRate)[0];
+  if (worst) {
+    alerts.push({ type: 'blue', head: `📊 Highest Denial Rate: ${worst.carrier}`, body: `${worst.denyRate}% of ${worst.total} claims in your book were denied. ${worst.patents} AI patents + ${worst.caseCount} logged cases.` });
+  }
+
+  const strip = $('alert-strip');
+  strip.innerHTML = alerts.map(a =>
+    `<div class="alert-chip alert-${a.type}"><div class="ah">${esc(a.head)}</div>${esc(a.body)}</div>`
+  ).join('');
+}
+
+// ── Carrier filter dropdown ──
+function buildFilters() {
+  const carriers = [...new Set(riskData.map(r => r.carrier).filter(Boolean))].sort();
+  const sel = $('risk-carrier');
+  carriers.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.appendChild(o);
+  });
+}
+
+// ── ACV risk table ──
+function renderACVTable() {
+  // Carriers known to use ACV on old roofs
+  const avcCarriers = ['Allstate','State Farm','Nationwide','Farmers'];
+  const rows = EXPOSURE.filter(cust => {
+    const hasACVCarrier = (cust.carriers || []).some(c => avcCarriers.includes(c));
+    const hasOldRoofRisk = !cust.trades?.includes('Roofing') && cust.stormCount > 0;
+    return hasACVCarrier && hasOldRoofRisk;
+  });
+  const el = $('acv-risk-table');
+  if (!el) return;
+  el.innerHTML = `<div style="margin-top:8px;font-size:12px;color:var(--muted)"><strong style="color:var(--text)">${rows.length} customers</strong> with a high-ACV-risk carrier + no roof completed + storm exposure. These homeowners may not know their wind/hail claim will be capped at ACV.</div>`;
+}
+
+// ── Main load ──
+async function load() {
+  try {
+    $('loading-msg').textContent = 'Loading carrier data…';
+    const [naicR, mktR, rankR, patR, caseR] = await Promise.all([
+      fetch('/api/intel/naic-complaint-index').then(r => r.json()),
+      fetch('/api/intel/live-market-intel').then(r => r.json()).catch(() => null),
+      fetch('/api/intel/insurer-rankings').then(r => r.json()).catch(() => null),
+      fetch('/api/intel/carrier-patents').then(r => r.json()),
+      fetch('/api/intel/denial-sources-full').then(r => r.json()).catch(() => []),
+    ]);
+    NAIC = naicR.carriers || naicR;
+    MARKET = mktR;
+    RANKINGS = rankR;
+    PATENTS = patR;
+    CASES = Array.isArray(caseR) ? caseR : (caseR?.entries || []);
+
+    $('loading-msg').textContent = 'Loading storm exposure data (4MB)…';
+    const expR = await fetch('/api/intel/storm-exposure').then(r => r.json());
+    EXPOSURE = Array.isArray(expR) ? expR : (expR?.data || expR?.all || []);
+
+    // Build carrier matrix
+    matrixData = buildCarrierStats();
+
+    // Build risk list
+    riskData = buildRiskData();
+    riskFiltered = [...riskData];
+
+    // Render all sections
+    const mdCountyData = MARKET?.mdMarketHardening_2024?.countyNonRenewals || [];
+
+    renderAlerts();
+    renderStats(matrixData);
+    renderMatrix();
+    renderCountyTable(mdCountyData);
+    renderRisk();
+    renderMDCountyDetail(mdCountyData);
+    renderOH();
+    buildFilters();
+    renderACVTable();
+
+    $('loading-msg').style.display = 'none';
+    $('page').style.display = 'block';
+  } catch (err) {
+    $('loading-msg').textContent = 'Error: ' + err.message;
+    console.error(err);
+  }
+}
+
+load();
+</script>
+</body>
+</html>
