@@ -8,21 +8,25 @@
 #   • Skips if last successful run was within ~72h — typical cadence is
 #     ~3x/week, not nightly
 #   • NEVER hits portal.theroofdocs.com — only IEM (NOAA) + Railway Postgres
-#     (the heavy /admin/exports pull is manual-only via ./refresh-all.sh)
 #
-# Called by ~/Library/LaunchAgents/com.theroofdocs.intel-refresh.plist which
-# fires weekday mornings; this wrapper does the random delay + skip-window
-# logic so the actual API traffic looks like organic business-hour usage.
+# Called by Windows Task Scheduler (via wsl.exe) which fires weekday mornings;
+# this wrapper does the random delay + skip-window logic so the actual API
+# traffic looks like organic business-hour usage.
 
 set -u
 
-BASE="/Users/a21/storm-maps"
-LOG_DIR="$BASE/.logs"
+# SCRIPTS_BASE: git repo with edited Node scripts (C: drive).
+SCRIPTS_BASE="$(cd "$(dirname "$0")/../.." && pwd)"
+# DATA_BASE: where data + logs live (D: has free space, C: is full).
+DATA_BASE="/d/storm-maps"
+export RIQ_BASE="$DATA_BASE"
+
+LOG_DIR="$DATA_BASE/.logs"
 LOG="$LOG_DIR/cron-refresh.log"
 LAST_OK="$LOG_DIR/last-ok.txt"
 
 mkdir -p "$LOG_DIR"
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 # Weekday check (1=Mon, 7=Sun on macOS date)
 dow=$(date +%u)
@@ -54,7 +58,7 @@ sleep "$jitter"
 echo "" >> "$LOG"
 echo "=== [$(date -Iseconds)] Stealth refresh starting ===" >> "$LOG"
 
-"$BASE/scripts/roofdocs/refresh-stealth.sh" >> "$LOG" 2>&1
+"$SCRIPTS_BASE/scripts/roofdocs/refresh-stealth.sh" >> "$LOG" 2>&1
 rc=$?
 
 if [ "$rc" -eq 0 ]; then
@@ -62,18 +66,18 @@ if [ "$rc" -eq 0 ]; then
 
   # DB URL must come from env (set in .env.local, never committed).
   # Source local env without leaking it to subshells beyond this scope.
-  if [ -f "$BASE/.env.local" ]; then
+  if [ -f "$DATA_BASE/.env.local" ]; then
     set -a
     # shellcheck disable=SC1091
-    . "$BASE/.env.local"
+    . "$DATA_BASE/.env.local"
     set +a
   fi
   if [ -z "${RIQ_DB_PUBLIC_URL:-}" ]; then
-    echo "  ⚠ RIQ_DB_PUBLIC_URL not set — skipping Railway push" >> "$LOG"
+    echo "  ⚠ RIQ_DB_PUBLIC_URL not set in $DATA_BASE/.env.local — skipping Railway push" >> "$LOG"
     echo "$now" > "$LAST_OK"
     exit 0
   fi
-  DATABASE_URL="$RIQ_DB_PUBLIC_URL" node "$BASE/scripts/roofdocs/import-to-postgres.mjs" >> "$LOG" 2>&1
+  DATABASE_URL="$RIQ_DB_PUBLIC_URL" RIQ_BASE="$DATA_BASE" node "$SCRIPTS_BASE/scripts/roofdocs/import-to-postgres.mjs" >> "$LOG" 2>&1
   push_rc=$?
 
   if [ "$push_rc" -eq 0 ]; then
