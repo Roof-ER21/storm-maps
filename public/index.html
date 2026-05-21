@@ -123,8 +123,8 @@
       <a class="tile exec" href="denial-analyzer.html">
         <div class="icon">⚖️</div>
         <div class="title">Denial Analyzer</div>
-        <div class="desc">Paste a carrier denial letter → RIQ matches it against 22+ patents, flags bad-faith signals, drafts a counter-letter you can send.</div>
-        <div class="kpi"><div><div class="v">22</div><div class="l">Patents decoded</div></div></div>
+        <div class="desc">Paste a carrier denial letter → RIQ matches it against 26+ patents, flags bad-faith signals, drafts a counter-letter you can send.</div>
+        <div class="kpi"><div><div class="v">26</div><div class="l">Patents decoded</div></div></div>
       </a>
       <a class="tile exec" href="adjuster-twin.html">
         <div class="icon">🧠</div>
@@ -148,13 +148,19 @@
         <div class="icon">🧠</div>
         <div class="title">Algorithm Decoder</div>
         <div class="desc">Carrier AI decoded — patent decision rules, NAIC complaint index, 29 real cases mapped to specific AI logic. Know exactly which algorithm denied the claim.</div>
-        <div class="kpi"><div><div class="v">22</div><div class="l">Patents indexed</div></div></div>
+        <div class="kpi"><div><div class="v">26</div><div class="l">Patents indexed</div></div></div>
       </a>
       <a class="tile exec" href="insurance-intel.html">
         <div class="icon">🛡</div>
         <div class="title">Market Intelligence</div>
         <div class="desc">All insurance data combined — carrier threat matrix, 1,000 at-risk customers, MD non-renewal hot zones, OH expansion opportunity. One page, all the intel.</div>
         <div class="kpi"><div><div class="v">1,000</div><div class="l">At-risk customers</div></div></div>
+      </a>
+      <a class="tile exec" href="scheduling.html">
+        <div class="icon">📅</div>
+        <div class="title">Scheduling</div>
+        <div class="desc">354 overdue installs, 141 ready with no date, 9 starting this week. Pipeline age distribution, rep workload, stale job list — full scheduling intelligence.</div>
+        <div class="kpi"><div><div class="v">354</div><div class="l">Overdue installs</div></div></div>
       </a>
       <a class="tile exec" href="ops-surveillance.html">
         <div class="icon">📋</div>
@@ -353,7 +359,7 @@
 </main>
 
 <div class="footer">
-  Generated locally from /Users/a21/Desktop/storm-maps · serves at http://127.0.0.1:8765 · all data PII-stripped where possible
+  RIQ 21 · Roofing Intelligence · riq21-production.up.railway.app
 </div>
 
 <script src="/riq-links.js"></script>
@@ -369,7 +375,6 @@ async function load() {
   const h = k.hero || {};
   const t = k.tiles || {};
 
-  // Book composition strip — Insurance vs Retail/No-Carrier slice with close rates.
   const bc = k.bookComposition;
   if (bc) {
     const ins = bc.insurance, ret = bc.retail;
@@ -382,7 +387,6 @@ async function load() {
     $('book-comp').style.display = '';
   }
 
-  // Hero
   $('hero').innerHTML = `
     <div class="stat"><div class="label">Lifetime revenue</div><div class="value">${fmt.money(h.totalRevenue)}</div><div class="sub">all signed jobs</div></div>
     <div class="stat"><div class="label">Completed revenue</div><div class="value">${fmt.money(h.completedRevenue)}</div><div class="sub">${(h.completed || 0).toLocaleString()} jobs</div></div>
@@ -392,12 +396,11 @@ async function load() {
     <div class="stat"><div class="label">Adjusters in book</div><div class="value">${fmt.int(h.adjusters)}</div></div>
   `;
 
-  // Tile KPIs
   $('kpi-exec').textContent = fmt.money(h.completedRevenue);
   $('kpi-anal').textContent = fmt.int(h.total);
   $('kpi-lead').textContent = fmt.int(h.customers);
   $('kpi-map').textContent = fmt.int(h.total);
-  $('kpi-hotzips').textContent = fmt.int(t.hotZips60);  // threshold lowered to 50
+  $('kpi-hotzips').textContent = fmt.int(t.hotZips60);
   $('kpi-zips').textContent = fmt.int(h.zips);
   $('kpi-res').textContent = fmt.int(t.resurrection);
   $('kpi-exp').textContent = fmt.int(t.stormExposure);
@@ -409,7 +412,6 @@ async function load() {
   $('kpi-notes').textContent = fmt.int(t.notes);
   $('kpi-ar').textContent = fmt.money(t.arTotal);
 
-  // Lifetime Touch + Adjuster Twin KPIs (separate fetches — non-blocking)
   fetch('/api/intel/lifetime-touch').then((r) => r.json()).then((d) => {
     const s = (d && d.stats) || {};
     const total = (s.topTierCount || 0) + (s.midTierCount || 0);
@@ -443,7 +445,6 @@ async function load() {
   $('meta-pulled').textContent = new Date(2026, 4, 12).toLocaleDateString();
   $('meta-expires').textContent = 'Fri 2026-05-15';
 
-  // Quick search — now hits server-side endpoint (no more keeping 36MB in window)
   $('qsearch').addEventListener('input', quickSearch);
   $('qsearch').addEventListener('focus', quickSearch);
   document.addEventListener('click', (e) => {
@@ -467,7 +468,7 @@ async function quickSearch() {
     const json = await res.json();
     results = json.results || [];
   } catch { /* fall through */ }
-  if (myToken !== qsearchToken) return;  // stale response — newer keystroke superseded
+  if (myToken !== qsearchToken) return;
   for (const p of results) {
     items.push({
       name: p.customer || '(unknown)',
