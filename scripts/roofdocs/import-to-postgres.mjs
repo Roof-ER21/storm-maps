@@ -64,6 +64,8 @@ const DATASETS = [
   { key: 'live-market-intel',   file: 'live-market-intel.json' },
   // Phase 8d: scheduling intelligence (overdue, this week, unscheduled ready, stale pipeline)
   { key: 'scheduling',          file: 'scheduling.json' },
+  // Pipeline intelligence: bottlenecks, supplement signal, carrier DNA, seasonal patterns, automation triggers
+  { key: 'pipeline-intel',      file: 'pipeline-intel.json' },
 ];
 
 const sql = postgres(DATABASE_URL, {
