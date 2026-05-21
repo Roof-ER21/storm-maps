@@ -13,17 +13,7 @@
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; min-height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); }
-  header { background: linear-gradient(135deg, #342c23 0%, #2a241e 100%); border-bottom: 1px solid var(--border); padding: 16px 32px 24px; }
-  /* Master nav — top-of-header, most visible element */
-  .master-nav { display: flex; align-items: center; gap: 14px; padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .master-btn { background: var(--accent); color: #1a1612; padding: 9px 20px; border-radius: 7px; font-weight: 800; font-size: 14px; text-decoration: none; display: inline-flex; align-items: center; gap: 7px; letter-spacing: -0.01em; flex-shrink: 0; transition: opacity 0.15s; }
-  .master-btn:hover { opacity: 0.88; }
-  .master-desc { color: var(--muted); font-size: 12px; line-height: 1.4; }
-  .master-desc strong { color: var(--text); }
-  .nav-links { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-  .nav-links a { color: var(--muted); font-size: 11px; text-decoration: none; }
-  .nav-links a:hover { color: var(--accent); }
-  /* Existing header styles */
+  header { background: linear-gradient(135deg, #342c23 0%, #2a241e 100%); border-bottom: 1px solid var(--border); padding: 24px 32px; }
   header .top { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
   header h1 { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
   header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
@@ -35,7 +25,18 @@
   .hero .stat .value { font-size: 26px; font-weight: 800; margin-top: 4px; color: var(--accent); line-height: 1.1; }
   .hero .stat .sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
   main { padding: 28px 32px; max-width: 1700px; margin: 0 auto; }
-  .quick { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; margin-bottom: 28px; padding: 14px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
+
+  /* ── Master Guide banner — inside main, always visible ── */
+  .master-banner { display: flex; align-items: center; gap: 20px; background: rgba(244,167,56,0.1); border: 2px solid var(--accent); border-radius: 10px; padding: 18px 24px; margin-bottom: 24px; text-decoration: none; color: inherit; transition: background 0.15s; }
+  .master-banner:hover { background: rgba(244,167,56,0.16); }
+  .master-banner .mb-icon { font-size: 36px; flex-shrink: 0; }
+  .master-banner .mb-body { flex: 1; }
+  .master-banner .mb-title { font-size: 18px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }
+  .master-banner .mb-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .master-banner .mb-arrow { font-size: 22px; color: var(--accent); flex-shrink: 0; font-weight: 800; }
+  @media (max-width: 600px) { .master-banner { flex-direction: column; text-align: center; } .master-banner .mb-arrow { display: none; } }
+
+  .quick { display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; margin-bottom: 28px; padding: 14px 20px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; }
   .quick input { background: #342c23; color: var(--text); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; font-size: 14px; width: 100%; }
   .quick .results { display: none; position: absolute; background: var(--panel); border: 1px solid var(--accent); border-radius: 6px; padding: 6px 0; max-height: 400px; overflow-y: auto; min-width: 400px; margin-top: 4px; z-index: 100; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
   .quick .results.show { display: block; }
@@ -44,7 +45,6 @@
   .quick .results .item .name { color: var(--accent); font-size: 13px; font-weight: 600; }
   .quick .results .item .sub { color: var(--muted); font-size: 11px; }
   .quick .badge { background: rgba(94,200,255,0.15); color: var(--accent); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
-  .quick .badge.master { background: rgba(244,167,56,0.18); color: var(--accent); border: 1px solid rgba(244,167,56,0.35); }
   .category { margin-bottom: 32px; }
   .category h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 0 0 14px; font-weight: 600; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 14px; }
@@ -71,21 +71,6 @@
 </head>
 <body>
 <header>
-
-  <!-- MASTER GUIDE — top nav, always visible first -->
-  <div class="master-nav">
-    <a href="master.html" class="master-btn">📋 Master Guide</a>
-    <span class="master-desc"><strong>New here?</strong> Every page explained with descriptions, a 6-step new-user quick start, and live search across all 47 pages.</span>
-    <div class="nav-links">
-      <a href="exec.html">Exec</a>
-      <a href="analytics.html">Analytics</a>
-      <a href="pipeline-intel.html">🧬 Pipeline DNA</a>
-      <a href="insurance-intel.html">🛡 Market Intel</a>
-      <a href="scheduling.html">📅 Scheduling</a>
-      <a href="ops-surveillance.html">📋 Ops</a>
-    </div>
-  </div>
-
   <div class="top">
     <div>
       <h1>🏠 RIQ 21 · Roofing IQ</h1>
@@ -105,12 +90,22 @@
 </header>
 
 <main>
+
+  <!-- ══ MASTER GUIDE BANNER — first visible content ══ -->
+  <a href="master.html" class="master-banner">
+    <div class="mb-icon">📋</div>
+    <div class="mb-body">
+      <div class="mb-title">Master Guide — New User? Start Here</div>
+      <div class="mb-desc">All 47 pages explained with descriptions · 8 categories · 6-step quick start · live search across every tool</div>
+    </div>
+    <div class="mb-arrow">→</div>
+  </a>
+
   <div class="quick">
     <div style="position:relative; flex:1">
       <input id="qsearch" placeholder="🔎 Search any customer, address, ZIP, rep, carrier…" />
       <div class="results" id="qresults"></div>
     </div>
-    <a href="master.html" class="badge master">📋 Master Guide</a>
     <a href="lead-score.html" class="badge">→ Top Lead Score Pool</a>
   </div>
 
@@ -392,7 +387,7 @@
 </main>
 
 <div class="footer">
-  RIQ 21 · Roofing Intelligence · riq21-production.up.railway.app · <a href="master.html" style="color:var(--accent);text-decoration:none">📋 Master Guide</a>
+  RIQ 21 · Roofing Intelligence · riq21-production.up.railway.app
 </div>
 
 <script src="/riq-links.js"></script>
