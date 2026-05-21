@@ -51,6 +51,9 @@
     <a href="receivables.html">💰 AR</a>
     <a href="carrier-detail.html">🏢 Carriers</a>
     <a href="active-work.html" class="active">Active Work</a>
+    <a href="ops-surveillance.html">📋 Ops</a>
+    <a href="scheduling.html">📅 Scheduling</a>
+    <a href="leads-intel.html">📍 Leads</a>
     <a href="cheat-sheet.html">Cheat Sheets</a>
   </div>
 </header>
@@ -139,7 +142,6 @@ async function load() {
 
     $('active-total').textContent = fmt.int(d.totals.activeJobs);
 
-    // Overview tiles
     $('overview-tiles').innerHTML = [
       { l: 'Active jobs', v: fmt.int(d.totals.activeJobs) },
       { l: 'With open supplement', v: fmt.int(d.totals.withOpenSupplement), cls: 'blue' },
@@ -148,7 +150,6 @@ async function load() {
       { l: 'Overdue installs', v: fmt.int(d.install.overdue), cls: d.install.overdue > 100 ? 'red' : 'yellow' },
     ].map((k) => `<div class="kpi ${k.cls||''}"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
 
-    // Supplement by carrier
     $('supp-table').querySelector('tbody').innerHTML = (d.supplement.byCarrier || []).map((c) => `
       <tr>
         <td><a class="riq-link" href="carrier-detail.html?carrier=${encodeURIComponent(c.carrier)}">${c.carrier}</a></td>
@@ -158,7 +159,6 @@ async function load() {
       </tr>
     `).join('');
 
-    // Cross-sell summary
     $('xsell-summary').querySelector('tbody').innerHTML = (d.crossSell.summary || []).map((x) => `
       <tr>
         <td>${x.type}</td>
@@ -168,7 +168,6 @@ async function load() {
       </tr>
     `).join('');
 
-    // Cross-sell by carrier
     $('xsell-carrier').querySelector('tbody').innerHTML = (d.crossSell.byCarrier || []).map((c) => `
       <tr>
         <td><a class="riq-link" href="carrier-detail.html?carrier=${encodeURIComponent(c.carrier)}">${c.carrier}</a></td>
@@ -178,7 +177,6 @@ async function load() {
       </tr>
     `).join('');
 
-    // Install readiness
     const inst = d.install;
     $('install-tiles').innerHTML = [
       { l: 'Ready for install', v: fmt.int(inst.readyForInstallCount), cls: 'green' },
@@ -188,7 +186,6 @@ async function load() {
       { l: 'Overdue', v: fmt.int(inst.overdue), cls: inst.overdue > 100 ? 'red' : 'yellow' },
     ].map((k) => `<div class="kpi ${k.cls||''}"><div class="label">${k.l}</div><div class="value">${k.v}</div></div>`).join('');
 
-    // PA on active jobs (rare, surface only if > 0)
     if (d.publicAdjustment && d.publicAdjustment.count > 0) {
       $('pa-section').style.display = '';
       const statuses = Object.entries(d.publicAdjustment.byStatus).map(([s, n]) => ({ l: s, v: n }));
