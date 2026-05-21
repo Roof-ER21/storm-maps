@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Scheduling Intelligence</title>
+<link rel="icon" href="data:," />
+<style>
+:root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; --blue:#60a5fa; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); }
+header { background:var(--panel); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:20; }
+header h1 { font-size:17px; font-weight:700; }
+header .links a { color:var(--muted); margin-left:10px; text-decoration:none; font-size:12px; }
+header .links a.active { color:var(--accent); font-weight:700; }
+main { padding:20px 24px; max-width:1400px; margin:0 auto; }
+
+.stat-row { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
+@media(max-width:1100px){.stat-row{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:600px){.stat-row{grid-template-columns:repeat(2,1fr);}}
+.stat { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 16px; }
+.stat.urgent { border-color:rgba(239,68,68,0.5); background:rgba(239,68,68,0.06); }
+.stat.warn { border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.04); }
+.stat.good { border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.04); }
+.stat .v { font-size:28px; font-weight:700; color:var(--accent); line-height:1; }
+.stat .l { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-top:4px; }
+.stat .s { font-size:11px; color:var(--muted); margin-top:3px; }
+
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+@media(max-width:1000px){.two-col{grid-template-columns:1fr;}}
+.card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:18px 20px; }
+.card h2 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.card .sub { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.4; }
+
+.tbl { width:100%; border-collapse:collapse; font-size:12px; }
+.tbl th { text-align:left; padding:5px 10px; background:#1e1a16; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap; }
+.tbl th:hover { color:var(--accent); }
+.tbl td { padding:7px 10px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl tr:hover td { background:rgba(255,255,255,0.02); }
+
+.pill { display:inline-block; padding:2px 7px; border-radius:3px; font-size:10px; font-weight:700; }
+.pr { background:rgba(239,68,68,0.15); color:var(--red); }
+.py { background:rgba(245,158,11,0.15); color:var(--yellow); }
+.pg { background:rgba(16,185,129,0.15); color:var(--green); }
+.pb { background:rgba(96,165,250,0.15); color:var(--blue); }
+.pp { background:rgba(167,139,250,0.15); color:var(--purple); }
+
+.age-bar { display:flex; gap:3px; align-items:flex-end; height:60px; margin:8px 0 4px; }
+.age-col { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; }
+.age-col .bar { width:100%; border-radius:3px 3px 0 0; min-height:2px; background:var(--accent); }
+.age-col .lbl { font-size:9px; color:var(--muted); text-align:center; line-height:1.2; }
+.age-col .cnt { font-size:11px; font-weight:700; }
+
+.filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px; align-items:center; }
+.filters input,.filters select { background:#342c23; border:1px solid var(--border); color:var(--text); padding:5px 10px; border-radius:5px; font-size:12px; }
+.filters input { flex:1; min-width:120px; }
+
+.pager { display:flex; gap:8px; align-items:center; margin-top:8px; font-size:12px; color:var(--muted); }
+.pager button { background:#342c23; border:1px solid var(--border); color:var(--text); padding:4px 10px; border-radius:4px; font-size:11px; cursor:pointer; }
+.pager button:disabled { opacity:0.4; cursor:default; }
+.pager button:not(:disabled):hover { border-color:var(--accent); }
+
+.benchmark-row { display:flex; gap:10px; margin:8px 0; }
+.bm { flex:1; background:#342c23; border-radius:6px; padding:8px 12px; text-align:center; }
+.bm .bv { font-size:18px; font-weight:700; color:var(--accent); }
+.bm .bl { font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:0.4px; margin-top:2px; }
+
+.week-card { background:#342c23; border-radius:6px; padding:10px 12px; margin-bottom:6px; }
+.week-card .wdate { font-size:11px; color:var(--accent); font-weight:700; margin-bottom:4px; }
+.week-card .wname { font-size:13px; font-weight:600; }
+.week-card .wmeta { font-size:11px; color:var(--muted); margin-top:2px; }
+
+.callout { border-radius:6px; padding:10px 14px; font-size:12px; line-height:1.5; margin-bottom:8px; }
+.cr { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); }
+.cy { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); }
+
+.loading { padding:60px; text-align:center; color:var(--muted); }
+.tab-bar { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.tab-btn { background:#342c23; border:1px solid var(--border); color:var(--muted); padding:5px 12px; border-radius:5px; font-size:11px; font-weight:600; cursor:pointer; }
+.tab-btn.active { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+</style>
+</head>
+<body>
+<header>
+  <h1>📅 RIQ 21 — Scheduling Intelligence</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="ops-surveillance.html">📋 Ops</a>
+    <a href="active-work.html">🔨 Active Work</a>
+    <a href="insurance-intel.html">🛡 Market Intel</a>
+    <a href="scheduling.html" class="active">📅 Scheduling</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading scheduling data…</div>
+  <div id="page" style="display:none">
+
+    <div class="stat-row" id="top-stats"></div>
+
+    <div class="two-col">
+      <div class="card">
+        <h2>This Week's Schedule</h2>
+        <p class="sub" id="week-sub"></p>
+        <div id="week-list"></div>
+      </div>
+      <div class="card">
+        <h2>Pipeline Age Distribution</h2>
+        <p class="sub">All active signed jobs by days since signing. P50=<strong id="p50">—</strong>d, P90=<strong id="p90">—</strong>d. Jobs past P90 are outliers.</p>
+        <div class="age-bar" id="age-bar"></div>
+        <div class="benchmark-row" id="benchmarks"></div>
+        <div class="callout cy" style="margin-top:8px">
+          Median job takes <strong id="p50-text">—</strong> days from signed to installed. Any active job past <strong id="p90-text">—</strong> days is statistically overdue.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:flex;align-items:baseline;gap:12px;margin-bottom:4px">
+        <h2>Job Lists</h2>
+        <span style="font-size:11px;color:var(--muted)" id="list-count"></span>
+      </div>
+      <div class="tab-bar" id="list-tabs">
+        <button class="tab-btn active" onclick="switchTab('overdue')">🔴 Overdue (<span id="cnt-overdue">—</span>)</button>
+        <button class="tab-btn" onclick="switchTab('unscheduled')">🟡 Unscheduled Ready (<span id="cnt-unscheduled">—</span>)</button>
+        <button class="tab-btn" onclick="switchTab('stale')">🟠 Stale Pipeline (<span id="cnt-stale">—</span>)</button>
+        <button class="tab-btn" onclick="switchTab('next30')">🟢 Next 30 Days (<span id="cnt-next30">—</span>)</button>
+      </div>
+      <div class="filters">
+        <input type="text" id="search" placeholder="Search customer, rep, carrier…" oninput="renderTable()" />
+        <select id="filter-rep" onchange="renderTable()"><option value="">All reps</option></select>
+        <select id="filter-carrier" onchange="renderTable()"><option value="">All carriers</option></select>
+        <select id="filter-stage" onchange="renderTable()"><option value="">All stages</option></select>
+      </div>
+      <div style="overflow-x:auto"><table class="tbl" id="main-table"><thead id="main-head"></thead><tbody id="main-body"></tbody></table></div>
+      <div class="pager" id="main-pager"></div>
+    </div>
+
+    <div class="two-col">
+      <div class="card">
+        <h2>Rep Workload</h2>
+        <p class="sub">Overdue + unscheduled items per rep. Sort by overdue to find who needs the most help.</p>
+        <div style="overflow-x:auto"><table class="tbl" id="rep-table">
+          <thead><tr><th>Rep</th><th onclick="sortReps('thisWeek')">This Wk</th><th onclick="sortReps('next30')">Next 30</th><th onclick="sortReps('overdue')">Overdue ↓</th><th onclick="sortReps('unscheduledReady')">Unscheduled</th></tr></thead>
+          <tbody id="rep-body"></tbody>
+        </table></div>
+      </div>
+      <div class="card">
+        <h2>Overdue by Stage</h2>
+        <p class="sub">What stage are overdue jobs stuck in? Balance Pending + Legal are the most common blockers.</p>
+        <div id="overdue-stages"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+function esc(s) { return s==null?'':String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n) { return n==null?'—':Number(n).toLocaleString(); }
+function fmtDate(s) { if(!s) return '—'; try { return new Date(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); } catch { return s; } }
+function daysColor(d) {
+  if(!d&&d!==0) return 'var(--muted)';
+  if(d < 30) return 'var(--green)'; if(d < 90) return 'var(--yellow)';
+  if(d < 180) return 'var(--accent)'; return 'var(--red)';
+}
+
+let DATA = null, CURRENT_TAB = 'overdue', PAGE = 0;
+const PER_PAGE = 30;
+let repSort = { key:'overdue', asc:false };
+
+const TABS = {
+  overdue:     { key:'overdue',          head:['Customer','Carrier','Stage','Rep','Days Overdue','Expected Start'] },
+  unscheduled: { key:'unscheduledReady', head:['Customer','Carrier','Stage','Rep','Days Since Signed','Trades'] },
+  stale:       { key:'stale',            head:['Customer','Carrier','Stage','Rep','Days Since Signed',''] },
+  next30:      { key:'next30',           head:['Customer','Carrier','Stage','Rep','Days Until Start','Start Date'] },
+};
+
+function filtered() {
+  const rows = DATA[TABS[CURRENT_TAB].key] || [];
+  const q = ($('search')?.value||'').toLowerCase();
+  const rep = $('filter-rep')?.value||'';
+  const carrier = $('filter-carrier')?.value||'';
+  const stage = $('filter-stage')?.value||'';
+  return rows.filter(r => {
+    if(q && !`${r.customer}${r.salesRep}${r.carrier}${r.address}`.toLowerCase().includes(q)) return false;
+    if(rep && r.salesRep !== rep) return false;
+    if(carrier && r.carrier !== carrier) return false;
+    if(stage && r.stage !== stage) return false;
+    return true;
+  });
+}
+
+function renderTable() {
+  const rows = filtered();
+  const pages = Math.ceil(rows.length / PER_PAGE);
+  if(PAGE >= pages) PAGE = 0;
+  const slice = rows.slice(PAGE*PER_PAGE, (PAGE+1)*PER_PAGE);
+  const heads = TABS[CURRENT_TAB].head;
+  $('main-head').innerHTML = `<tr>${heads.map(h=>`<th>${esc(h)}</th>`).join('')}</tr>`;
+  $('list-count').textContent = rows.length + ' jobs';
+  $('main-body').innerHTML = slice.map(r => {
+    if(CURRENT_TAB==='overdue') return `<tr><td title="${esc(r.address)}">${esc(r.customer||'—')}</td><td>${esc(r.carrier||'—')}</td><td>${esc(r.stage||'—')}</td><td>${esc(r.salesRep||'—')}</td><td><span style="color:var(--red);font-weight:700">${r.daysOverdue}d</span></td><td style="color:var(--muted)">${fmtDate(r.expectedWorkStartDate)}</td></tr>`;
+    if(CURRENT_TAB==='unscheduled') return `<tr><td title="${esc(r.address)}">${esc(r.customer||'—')}</td><td>${esc(r.carrier||'—')}</td><td>${esc(r.stage||'—')}</td><td>${esc(r.salesRep||'—')}</td><td><span style="color:${daysColor(r.daysSinceSigned)};font-weight:700">${r.daysSinceSigned??'—'}d</span></td><td style="color:var(--muted);font-size:11px">${esc((r.trades||[]).slice(0,2).join(', '))}</td></tr>`;
+    if(CURRENT_TAB==='stale') return `<tr><td title="${esc(r.address)}">${esc(r.customer||'—')}</td><td>${esc(r.carrier||'—')}</td><td>${esc(r.stage||'—')}</td><td>${esc(r.salesRep||'—')}</td><td><span style="color:var(--red);font-weight:700">${r.daysSinceSigned??'—'}d</span></td><td style="color:var(--muted);font-size:11px">${esc(r.ageNote||'')}</td></tr>`;
+    if(CURRENT_TAB==='next30') return `<tr><td title="${esc(r.address)}">${esc(r.customer||'—')}</td><td>${esc(r.carrier||'—')}</td><td>${esc(r.stage||'—')}</td><td>${esc(r.salesRep||'—')}</td><td><span style="color:var(--green);font-weight:700">${r.daysUntilStart??'—'}d</span></td><td style="color:var(--muted)">${fmtDate(r.expectedWorkStartDate)}</td></tr>`;
+    return '';
+  }).join('');
+  $('main-pager').innerHTML = `<button onclick="PAGE=Math.max(0,PAGE-1);renderTable()" ${PAGE===0?'disabled':''}>← Prev</button><span>Page ${PAGE+1} of ${Math.max(1,pages)} (${rows.length} total)</span><button onclick="PAGE=Math.min(${pages-1},PAGE+1);renderTable()" ${PAGE>=pages-1?'disabled':''}>Next →</button>`;
+}
+
+function switchTab(tab) {
+  CURRENT_TAB = tab; PAGE = 0;
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', ['overdue','unscheduled','stale','next30'][i]===tab));
+  renderTable();
+}
+
+function buildFilters() {
+  const allRows = [...(DATA.overdue||[]),...(DATA.unscheduledReady||[]),...(DATA.stale||[]),...(DATA.next30||[])];
+  const reps = [...new Set(allRows.map(r=>r.salesRep).filter(Boolean))].sort();
+  const carriers = [...new Set(allRows.map(r=>r.carrier).filter(Boolean))].sort();
+  const stages = [...new Set(allRows.map(r=>r.stage).filter(Boolean))].sort();
+  const addOpts = (sel, arr) => arr.forEach(v => { const o=document.createElement('option'); o.value=o.textContent=v; $(sel).appendChild(o); });
+  addOpts('filter-rep', reps); addOpts('filter-carrier', carriers); addOpts('filter-stage', stages);
+}
+
+function renderReps() {
+  const reps = [...(DATA.byRep||[])].sort((a,b) => { const va=a[repSort.key]??0, vb=b[repSort.key]??0; return repSort.asc?va-vb:vb-va; });
+  $('rep-body').innerHTML = reps.slice(0,20).map(r => `<tr>
+    <td style="font-weight:600">${esc(r.rep)}</td><td>${r.thisWeek||0}</td><td>${r.next30||0}</td>
+    <td><span style="color:${(r.overdue||0)>5?'var(--red)':(r.overdue||0)>2?'var(--yellow)':'var(--muted)'};font-weight:${(r.overdue||0)>0?'700':'400'}">${r.overdue||0}</span></td>
+    <td><span style="color:${(r.unscheduledReady||0)>5?'var(--yellow)':'var(--muted)'}">${r.unscheduledReady||0}</span></td>
+  </tr>`).join('');
+}
+
+function sortReps(key) { if(repSort.key===key) repSort.asc=!repSort.asc; else { repSort.key=key; repSort.asc=false; } renderReps(); }
+
+async function load() {
+  try {
+    DATA = await fetch('/api/intel/scheduling').then(r => r.json());
+    const s = DATA.summary, bm = DATA.benchmarks;
+
+    $('top-stats').innerHTML = [
+      { v:fmt(s.overdueCount), l:'Overdue Installs', s:'Past expected start date', cls:'urgent' },
+      { v:fmt(s.unscheduledReadyCount), l:'Ready — No Date', s:'Need scheduling now', cls:'warn' },
+      { v:fmt(s.thisWeekCount), l:'Starting This Week', s:'Confirmed upcoming', cls:'good' },
+      { v:fmt(s.next30Count), l:'Next 30 Days', s:'Pipeline view', cls:'' },
+      { v:fmt(s.staleCount), l:'Stale (P90+)', s:bm.p90+'d benchmark', cls:'warn' },
+      { v:fmt(s.activeSignedCount), l:'Total Active Signed', s:'All open jobs with sign date', cls:'' },
+    ].map(s => `<div class="stat ${s.cls}"><div class="v">${esc(s.v)}</div><div class="l">${esc(s.l)}</div><div class="s">${esc(s.s)}</div></div>`).join('');
+
+    $('p50').textContent = bm.p50; $('p90').textContent = bm.p90;
+    $('p50-text').textContent = bm.p50; $('p90-text').textContent = bm.p90;
+    $('benchmarks').innerHTML = [{v:bm.p25+'d',l:'P25'},{v:bm.p50+'d',l:'P50 median'},{v:bm.p75+'d',l:'P75'},{v:bm.p90+'d',l:'P90 threshold'}]
+      .map(b => `<div class="bm"><div class="bv">${esc(b.v)}</div><div class="bl">${esc(b.l)}</div></div>`).join('');
+
+    const buckets = DATA.ageBuckets || {};
+    const labels = ['0-30d','31-60d','61-90d','91-180d','181-365d','365d+'];
+    const vals = labels.map(l => buckets[l]||0);
+    const maxVal = Math.max(...vals, 1);
+    const colors = ['var(--green)','var(--green)','var(--yellow)','var(--accent)','var(--red)','var(--red)'];
+    $('age-bar').innerHTML = labels.map((l,i) => `<div class="age-col"><div class="cnt" style="color:${colors[i]}">${vals[i]}</div><div class="bar" style="height:${Math.max(4,Math.round(vals[i]/maxVal*56))}px;background:${colors[i]}"></div><div class="lbl">${l}</div></div>`).join('');
+
+    const weekList = DATA.thisWeek || [];
+    $('week-sub').textContent = weekList.length + ' jobs confirmed for the next 7 days.';
+    $('week-list').innerHTML = weekList.length === 0
+      ? '<div style="color:var(--muted);font-size:13px;padding:20px 0">No jobs scheduled this week.</div>'
+      : weekList.map(j => `<div class="week-card"><div class="wdate">${fmtDate(j.expectedWorkStartDate)} — ${j.daysUntilStart===0?'Today':j.daysUntilStart+'d'}</div><div class="wname">${esc(j.customer||'—')}</div><div class="wmeta">${esc(j.salesRep||'—')} · ${esc(j.carrier||'—')} · ${esc(j.stage||'—')}</div><div class="wmeta" style="color:var(--muted)">${esc(j.address||'')}</div></div>`).join('');
+
+    $('cnt-overdue').textContent = fmt(s.overdueCount);
+    $('cnt-unscheduled').textContent = fmt(s.unscheduledReadyCount);
+    $('cnt-stale').textContent = fmt(s.staleCount);
+    $('cnt-next30').textContent = fmt(s.next30Count);
+
+    renderReps();
+    const os = DATA.overdueStages || {};
+    const osSorted = Object.entries(os).sort((a,b)=>b[1]-a[1]);
+    const osMax = osSorted[0]?.[1]||1;
+    $('overdue-stages').innerHTML = osSorted.map(([stage,cnt]) => `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px"><span style="flex:1">${esc(stage)}</span><div style="flex:2;background:var(--border);border-radius:3px;height:6px;overflow:hidden"><div style="width:${Math.round(cnt/osMax*100)}%;height:100%;background:${cnt>50?'var(--red)':cnt>20?'var(--yellow)':'var(--muted)'};border-radius:3px"></div></div><span class="pill ${cnt>50?'pr':cnt>20?'py':'pb'}">${cnt}</span></div>`).join('');
+
+    buildFilters();
+    renderTable();
+    $('loading').style.display = 'none';
+    $('page').style.display = 'block';
+  } catch(err) { $('loading').textContent = 'Error: ' + err.message; console.error(err); }
+}
+load();
+</script>
+</body>
+</html>
