@@ -55,6 +55,9 @@
     <a href="exec.html" class="active">Exec</a>
     <a href="roofdocs-map.html">Map</a>
     <a href="analytics.html">Analytics</a>
+    <a href="pipeline-intel.html">🧬 Pipeline DNA</a>
+    <a href="insurance-intel.html">🛡 Market Intel</a>
+    <a href="scheduling.html">📅 Scheduling</a>
     <a href="customers.html">Customers</a>
     <a href="upgrade-campaigns.html">Campaigns</a>
     <a href="resurrection.html">Resurrection</a>
@@ -145,8 +148,6 @@ const isCompleted = (r) => /completed|finalized/i.test(r.stage || '');
 const isDead = (r) => /dead|cancel/i.test(r.stage || '');
 
 async function start() {
-  // dashboard-kpis covers hero + most opportunity counts; exec-summary covers
-  // YoY, top reps last 12mo, top zips, top storms, latest storm, risks, solar.
   const [k, e] = await Promise.all([
     fetch('/api/intel/dashboard-kpis').then((r) => r.json()),
     fetch('/api/intel/exec-summary').then((r) => r.json()),
@@ -157,7 +158,6 @@ async function start() {
   const h = k.hero || {};
   const t = k.tiles || {};
 
-  // Hero
   const yoyYears = (e.yoy || []).map((y) => y.year).sort();
   const dataYears = yoyYears.length >= 2
     ? ((Number(yoyYears[yoyYears.length - 1]) - Number(yoyYears[0])) + 1).toFixed(1)
@@ -169,7 +169,6 @@ async function start() {
     <div><div class="big">${fmt.bigMoney(t.arTotal)}</div><div class="label">Open AR</div></div>
   `;
 
-  // Opportunities
   const opps = [
     { title: 'Resurrection candidates', desc: 'Dead insurance jobs hit by new strong storms', count: t.resurrection, link: 'resurrection.html' },
     { title: 'Warm customers w/ new damage', desc: 'Strong storm within 2mi since first contact', count: t.stormExposure, link: 'storm-exposure.html' },
@@ -188,7 +187,6 @@ async function start() {
     </div>
   `).join('');
 
-  // Latest storm
   const latest = e.latestStorm;
   if (latest) {
     const days = Math.floor((Date.now() - new Date(latest.stormDate).getTime()) / 86400000);
@@ -199,37 +197,31 @@ async function start() {
     `;
   }
 
-  // Top reps last 12mo
   $('tbl-reps').innerHTML = `
     <thead><tr><th>Rep</th><th class="num">Signed</th><th class="num">Completed</th><th class="num">Revenue</th></tr></thead>
     <tbody>${(e.topRepsLast12mo || []).map((r) => `<tr><td>${r.name}</td><td class="num">${r.signed}</td><td class="num">${r.completed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Top ZIPs by revenue
   $('tbl-zips').innerHTML = `
     <thead><tr><th>ZIP</th><th>City</th><th class="num">Signed</th><th class="num">Revenue</th></tr></thead>
     <tbody>${(e.topZipsByRev || []).map((r) => `<tr><td>${r.zip}</td><td>${r.city || '—'}</td><td class="num">${r.signed}</td><td class="num money">${fmt.money(r.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // YoY
   $('tbl-year').innerHTML = `
     <thead><tr><th>Year</th><th class="num">Signed</th><th class="num">Completed</th><th class="num">Close Rate</th><th class="num">Revenue</th></tr></thead>
     <tbody>${(e.yoy || []).map((y) => `<tr><td>${y.year}</td><td class="num">${y.signed}</td><td class="num">${y.completed}</td><td class="num">${(y.closeRate * 100).toFixed(1)}%</td><td class="num money">${fmt.money(y.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Top carriers
   $('tbl-carriers').innerHTML = `
     <thead><tr><th>Carrier</th><th class="num">Signed</th><th class="num">Approved</th><th class="num">Revenue</th></tr></thead>
     <tbody>${(e.topCarriersByRev || []).map((c) => `<tr><td>${c.name}</td><td class="num">${c.signed}</td><td class="num">${c.completed}</td><td class="num money">${fmt.money(c.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Top storms
   $('tbl-bigstorms').innerHTML = `
     <thead><tr><th>Date</th><th>Type</th><th>Mag</th><th class="num">Jobs</th><th class="num">Revenue</th></tr></thead>
     <tbody>${(e.topStormsByJobs || []).map((s) => `<tr><td>${(s.date || '').slice(0, 10)}</td><td>${s.type || ''}</td><td>${s.mag || ''} ${s.unit || ''}</td><td class="num">${s.jobs}</td><td class="num money">${fmt.money(s.revenue)}</td></tr>`).join('')}</tbody>
   `;
 
-  // Risks
   const r = e.risks || {};
   $('risks').innerHTML = `
     <div class="opp-card"><div class="left"><div class="title">Paused jobs</div><div class="desc">Active blockers</div></div><div class="right"><div class="count" style="color:var(--yellow)">${fmt.int(r.paused)}</div></div></div>
