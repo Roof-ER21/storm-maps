@@ -95,6 +95,16 @@ const FILES: Record<string, { file: string; description: string }> = {
   'pricing-margins': { file: 'pricing-margins.json', description: 'Subcontractor margin analysis — 718 line matches, avg -0.6%, 119 underwater (sub > us). Per-trade + per-contractor + worst/best lines.' },
   'pricing-templates': { file: 'pricing-templates.json', description: 'Estimate template definitions — 48 templates (34 ProjectMeeting / 9 Supplement / 3 Contractor / 2 Labor) keyed by trade with line-item counts + total values.' },
   'pricing-library':  { file: 'pricing-library.json', description: 'Reference: 14 trades + 72 components + 227 materials + 96 project-meeting items. Combined into one blob so the UI does one fetch.' },
+  // New datasets added 2026-05-20
+  'denial-sources-full': { file: 'denial-sources-merged.json', description: '29 annotated real denial cases with patent mappings, carrier tactics, and proven counter-plays.' },
+  'naic-complaint-index': { file: 'naic-complaint-index.json', description: 'NAIC complaint index per carrier — complaint/premium ratio. 1.0 = average. Source: IN Dept of Insurance 2022.' },
+  'leads-rollup':   { file: 'leads-rollup.json',   description: 'Leads funnel summary — by status, rep, priority, referral method, zip. Snapshot from last pull.' },
+  'leads-employees':{ file: 'leads-employees.json', description: 'Per-employee lead assignments + conversion rates. Snapshot from last pull.' },
+  'portal-kpi-profit': { file: 'portal-kpi-profit.json', description: 'Portal profit KPIs snapshot.' },
+  'portal-kpi-summary': { file: 'portal-kpi-summary.json', description: 'Portal KPI summary snapshot.' },
+  'portal-insurance-names': { file: 'portal-insurance-names.json', description: 'Canonical carrier name mapping from portal.' },
+  'finance-plans':  { file: 'finance-plans.json',  description: 'Finance plan options data.' },
+  'storms-light':   { file: 'storms/iem-hail-wind-2018-2026.json', description: 'Filtered IEM hail/wind/tornado events 2018–2026 (VA MD PA DC DE NJ WV).' },
 };
 
 // Storm light file lives in storms/ subdir

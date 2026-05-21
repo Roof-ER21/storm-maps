@@ -17,7 +17,11 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const DATA_DIR = path.resolve(import.meta.dirname, '..', '..', 'data');
+// Support RIQ_BASE env var so the script can be run from any directory
+// when the data directory lives outside the git repo (e.g. D:\storm-maps\data).
+const DATA_DIR = process.env.RIQ_BASE
+  ? path.join(process.env.RIQ_BASE, 'data')
+  : path.resolve(import.meta.dirname, '..', '..', 'data');
 
 // Datasets to import — key matches the /api/intel/:key route param.
 const DATASETS = [
@@ -44,6 +48,16 @@ const DATASETS = [
   { key: 'pricing-templates', file: 'pricing-templates.json' },
   { key: 'pricing-library',  file: 'pricing-library.json' },
   { key: 'storms-light',     file: 'storms/iem-hail-wind-2018-2026.json' },
+  // Portal KPI + finance
+  { key: 'portal-kpi-profit',   file: 'portal-kpi-profit.json' },
+  { key: 'portal-kpi-summary',  file: 'portal-kpi-summary.json' },
+  { key: 'portal-insurance-names', file: 'portal-insurance-names.json' },
+  { key: 'finance-plans',       file: 'finance-plans.json' },
+  // Leads funnel rollup + employee-lead assignments
+  { key: 'leads-rollup',        file: 'leads-rollup.json' },
+  { key: 'leads-employees',     file: 'leads-employees.json' },
+  // NAIC carrier complaint index
+  { key: 'naic-complaint-index', file: 'naic-complaint-index.json' },
 ];
 
 const sql = postgres(DATABASE_URL, {
@@ -107,6 +121,38 @@ async function importDataset({ key, file }) {
     } catch (err) {
       console.log(`  ✗ ${ds.key.padEnd(18)} — ${err.message}`);
       results.push({ key: ds.key, status: 'error', error: err.message });
+    }
+  }
+
+  // Merge all denial-sources/ individual case files into one blob.
+  // Each file is a single case object {carrier, patentMapping, rooferTactic, lessonForAnalyzer, ...}.
+  // Stored as an array under key 'denial-sources-full' for the algorithm decoder page.
+  const DENIAL_SRC_DIR = path.join(DATA_DIR, 'denial-sources');
+  if (fs.existsSync(DENIAL_SRC_DIR)) {
+    const srcFiles = fs.readdirSync(DENIAL_SRC_DIR).filter((f) => f.endsWith('.json')).sort();
+    const merged = srcFiles.map((f) => {
+      try { return JSON.parse(fs.readFileSync(path.join(DENIAL_SRC_DIR, f), 'utf8')); }
+      catch { return null; }
+    }).filter(Boolean);
+    if (merged.length > 0) {
+      try {
+        const totalBytes = srcFiles.reduce((sum, f) => sum + fs.statSync(path.join(DENIAL_SRC_DIR, f)).size, 0);
+        await sql`
+          INSERT INTO intel_blobs (key, data, source_mtime, bytes, row_count, updated_at)
+          VALUES ('denial-sources-full', ${merged}::jsonb, NOW(), ${totalBytes}, ${merged.length}, NOW())
+          ON CONFLICT (key) DO UPDATE
+            SET data = EXCLUDED.data,
+                source_mtime = EXCLUDED.source_mtime,
+                bytes = EXCLUDED.bytes,
+                row_count = EXCLUDED.row_count,
+                updated_at = NOW()
+        `;
+        console.log(`  ✓ ${'denial-sources-full'.padEnd(18)} — ${(totalBytes/1024).toFixed(0)} KB · ${merged.length} cases`);
+        results.push({ key: 'denial-sources-full', status: 'ok' });
+      } catch (err) {
+        console.log(`  ✗ denial-sources-full     — ${err.message}`);
+        results.push({ key: 'denial-sources-full', status: 'error', error: err.message });
+      }
     }
   }
 

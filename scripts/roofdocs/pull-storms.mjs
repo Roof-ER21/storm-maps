@@ -4,8 +4,10 @@
 
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
+const RIQ_BASE = process.env.RIQ_BASE || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const OUT_DIR = `${RIQ_BASE}/data/storms`;
 const STATES = 'VA,MD,PA,DC,DE,NJ,WV';

@@ -12,7 +12,7 @@ import postgres from 'postgres';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || path.resolve(import.meta.dirname, '..', '..');
 const LEADS_FILE = path.join(RIQ_BASE, 'data', 'leads.json');
 
 const DATABASE_URL = process.env.DATABASE_URL;

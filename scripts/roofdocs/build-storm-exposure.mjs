@@ -7,8 +7,9 @@
 // and which trades they've ALREADY done vs which are still gap (upsell signal).
 
 import fs from 'node:fs';
-
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const RIQ_BASE = process.env.RIQ_BASE || path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 const PROJECTS = `${RIQ_BASE}/data/projects.json`;
 const STORMS = `${RIQ_BASE}/data/storms/iem-hail-wind-2018-2026.json`;
@@ -123,6 +124,43 @@ for (const [k, jobs] of byCust) {
   const allCarriers = [...new Set(jobs.map((j) => j.insurance).filter(Boolean))];
   const allReps = [...new Set(jobs.map((j) => j.salesRep).filter(Boolean))];
 
+  // Claim outcome summary — gives campaign reps context on what this customer actually experienced.
+  const insJobs = jobs.filter((j) => j.insurance && j.jobType === 'Insurance');
+  const claimHistory = insJobs.map((j) => {
+    const isDead = /dead/i.test(j.stage || '');
+    const isComplete = /completed|finalized|wrap.up/i.test(j.stage || '');
+    const paidOut = j.insuranceTotal || 0;
+    const estimated = j.revisedEstimate || j.initialEstimate || 0;
+    const gap = estimated > 0 ? Math.round(((estimated - paidOut) / estimated) * 100) : null;
+    const supStatus = j.supplementTrackerStatus || null;
+    const hasSup = j.hasSupplement === true || /supplement/i.test(supStatus || '');
+    let outcome = 'unknown';
+    if (isDead && paidOut === 0) outcome = 'denied';
+    else if (isDead && paidOut > 0) outcome = 'partial-dead';
+    else if (isComplete && gap !== null && gap > 15) outcome = 'partial-paid';
+    else if (isComplete) outcome = 'full-paid';
+    else if (!isDead) outcome = 'in-progress';
+    return {
+      carrier: j.insurance,
+      stage: j.stage,
+      outcome,
+      paidOut,
+      estimated,
+      gapPct: gap,
+      hasSupplement: hasSup,
+      supplementStatus: supStatus,
+      acv: j.acv || 0,
+      depreciation: j.depreciation || 0,
+      claimNumber: j.claimNumber || null,
+      adjuster: j.adjusterName || null,
+      dateOfLoss: j.dateOfLoss || null,
+    };
+  });
+  const hasDenied = claimHistory.some((c) => c.outcome === 'denied');
+  const hasPartial = claimHistory.some((c) => c.outcome === 'partial-paid' || c.outcome === 'partial-dead');
+  const bestPayout = Math.max(0, ...claimHistory.map((c) => c.paidOut));
+  const activeSupplements = claimHistory.filter((c) => /in.progress|pending/i.test(c.supplementStatus || '')).length;
+
   customersHit++;
   totalHits += stormsHit.length;
   out.push({
@@ -142,6 +180,11 @@ for (const [k, jobs] of byCust) {
     tradeGaps,
     carriers: allCarriers,
     reps: allReps,
+    claimHistory,
+    hasDenied,
+    hasPartial,
+    bestPayout,
+    activeSupplements,
     stormCount: stormsHit.length,
     strongestStorm: stormsHit.reduce((best, s) => {
       const sc = (s.type === 'HAIL' ? 10 : 1) * (s.mag || 0);
