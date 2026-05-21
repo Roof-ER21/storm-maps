@@ -107,6 +107,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'storms-light':   { file: 'storms/iem-hail-wind-2018-2026.json', description: 'Filtered IEM hail/wind/tornado events 2018–2026 (VA MD PA DC DE NJ WV).' },
   'insurer-rankings': { file: 'insurer-rankings.json', description: 'Carrier rankings VA/MD/PA/OH: composite scores, AM Best, market share, NOAA county risk tiers. May 2026.' },
   'live-market-intel': { file: 'live-market-intel.json', description: 'Live fetched: OH Top 70 HO carriers 2024 (ODI Jun 2025) + MD Market Hardening Survey Nov 2024 (non-renewals +62%, roof restrictions, county breakdown).' },
+  'scheduling':       { file: 'scheduling.json',         description: 'Phase 8d scheduling intel: overdue installs, this week schedule, unscheduled ready jobs, stale pipeline, rep workload, age distribution.' },
 };
 
 // Storm light file lives in storms/ subdir
