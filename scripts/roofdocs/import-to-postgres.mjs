@@ -62,6 +62,8 @@ const DATASETS = [
   { key: 'insurer-rankings',    file: 'insurer-rankings.json' },
   // Live market intel: OH Top 70 (2024) + MD Market Hardening Survey (Nov 2024)
   { key: 'live-market-intel',   file: 'live-market-intel.json' },
+  // Phase 8d: scheduling intelligence (overdue, this week, unscheduled ready, stale pipeline)
+  { key: 'scheduling',          file: 'scheduling.json' },
 ];
 
 const sql = postgres(DATABASE_URL, {
@@ -129,8 +131,6 @@ async function importDataset({ key, file }) {
   }
 
   // Merge all denial-sources/ individual case files into one blob.
-  // Each file is a single case object {carrier, patentMapping, rooferTactic, lessonForAnalyzer, ...}.
-  // Stored as an array under key 'denial-sources-full' for the algorithm decoder page.
   const DENIAL_SRC_DIR = path.join(DATA_DIR, 'denial-sources');
   if (fs.existsSync(DENIAL_SRC_DIR)) {
     const srcFiles = fs.readdirSync(DENIAL_SRC_DIR).filter((f) => f.endsWith('.json')).sort();
@@ -167,8 +167,6 @@ async function importDataset({ key, file }) {
 
   await sql.end();
 
-  // Phase 4b: if projects was imported, also backfill the decomposed indexed
-  // table so the per-row query endpoints don't fall behind the blob.
   const { spawn } = await import('node:child_process');
   const here = import.meta.dirname;
   async function runBackfill(script, label) {
@@ -189,8 +187,6 @@ async function importDataset({ key, file }) {
   if (ok.some((r) => r.key === 'lifetime-touch')) {
     await runBackfill('backfill-intel-lifetime-touch.mjs', 'Backfilling intel_lifetime_touch (Phase 4d)');
   }
-  // Phase 8a: leads backfill is file-driven, not blob-driven. Runs whenever
-  // data/leads.json exists (refresh-all.sh writes it from admin/leads pull).
   if (fs.existsSync(path.join(DATA_DIR, 'leads.json'))) {
     await runBackfill('backfill-intel-leads.mjs', 'Backfilling intel_leads (Phase 8a)');
   }
