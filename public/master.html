@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Master Guide</title>
+<link rel="icon" href="data:," />
+<style>
+:root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; --blue:#60a5fa; }
+* { box-sizing:border-box; margin:0; padding:0; }
+html,body { min-height:100%; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif; background:var(--bg); color:var(--text); }
+header { background:linear-gradient(135deg,#342c23 0%,#2a241e 100%); border-bottom:1px solid var(--border); padding:24px 32px; }
+header h1 { font-size:26px; font-weight:800; letter-spacing:-0.02em; margin-bottom:4px; }
+header .sub { color:var(--muted); font-size:13px; }
+header .links a { color:var(--muted); margin-left:12px; text-decoration:none; font-size:12px; }
+header .links a.active { color:var(--accent); font-weight:700; }
+.header-row { display:flex; justify-content:space-between; align-items:flex-start; }
+.search-bar { padding:20px 32px 0; max-width:1600px; margin:0 auto; }
+.search-input { width:100%; background:#342c23; border:1px solid var(--border); color:var(--text); padding:11px 16px; border-radius:8px; font-size:14px; }
+.search-input:focus { outline:none; border-color:var(--accent); }
+main { padding:20px 32px 40px; max-width:1600px; margin:0 auto; }
+.quickstart { background:linear-gradient(135deg,rgba(244,167,56,0.12) 0%,rgba(244,167,56,0.04) 100%); border:1px solid rgba(244,167,56,0.3); border-radius:10px; padding:20px 24px; margin-bottom:28px; }
+.quickstart h2 { font-size:15px; font-weight:700; color:var(--accent); margin-bottom:10px; }
+.qs-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; }
+.qs-item { background:rgba(244,167,56,0.08); border:1px solid rgba(244,167,56,0.2); border-radius:7px; padding:12px 14px; }
+.qs-item .step { font-size:10px; text-transform:uppercase; letter-spacing:0.7px; color:var(--accent); margin-bottom:4px; font-weight:700; }
+.qs-item .task { font-size:13px; font-weight:600; margin-bottom:4px; }
+.qs-item .why { font-size:11px; color:var(--muted); line-height:1.4; }
+.qs-item a { color:var(--accent); text-decoration:none; font-size:11px; font-weight:600; display:inline-block; margin-top:6px; }
+.category { margin-bottom:28px; }
+.cat-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.cat-header .cat-label { font-size:10px; text-transform:uppercase; letter-spacing:0.9px; color:var(--muted); font-weight:700; padding:3px 10px; background:#342c23; border-radius:3px; }
+.cat-header .cat-count { font-size:11px; color:var(--muted); }
+.pages-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:10px; }
+.page-card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:14px 16px; display:flex; gap:12px; align-items:flex-start; transition:all 0.15s; text-decoration:none; color:inherit; }
+.page-card:hover { border-color:var(--accent); transform:translateY(-1px); }
+.page-card.hidden { display:none; }
+.page-card .pg-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+.page-card .pg-body { flex:1; min-width:0; }
+.page-card .pg-name { font-size:13px; font-weight:700; margin-bottom:3px; }
+.page-card .pg-desc { font-size:11px; color:var(--muted); line-height:1.5; }
+.page-card .pg-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+.tag { display:inline-block; padding:1px 6px; border-radius:3px; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+.tag-new { background:rgba(16,185,129,0.2); color:var(--green); }
+.tag-ai { background:rgba(167,139,250,0.2); color:var(--purple); }
+.tag-data { background:rgba(96,165,250,0.2); color:var(--blue); }
+.tag-ops { background:rgba(251,146,60,0.2); color:#fb923c; }
+.cat-exec .page-card { border-left:3px solid var(--accent); }
+.cat-brain .page-card { border-left:3px solid var(--purple); }
+.cat-combat .page-card { border-left:3px solid var(--red); }
+.cat-maps .page-card { border-left:3px solid #fb923c; }
+.cat-outreach .page-card { border-left:3px solid var(--yellow); }
+.cat-intel .page-card { border-left:3px solid var(--purple); }
+.cat-ops .page-card { border-left:3px solid var(--green); }
+.no-results { padding:40px; text-align:center; color:var(--muted); display:none; }
+.no-results.show { display:block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div>
+      <h1>🏠 RIQ 21 — Master Guide</h1>
+      <div class="sub">Every page, every tool, every shortcut — 47 pages across 8 categories · 16k jobs + 48k storms</div>
+    </div>
+    <div class="links">
+      <a href="index.html">Dashboard Tiles</a>
+      <a href="master.html" class="active">Master Guide</a>
+      <a href="exec.html">Exec</a>
+    </div>
+  </div>
+</header>
+
+<div class="search-bar">
+  <input type="text" class="search-input" id="search" placeholder="🔎 Search any page, feature, or keyword… (e.g. 'supplement', 'storm', 'carrier', 'adjuster')" oninput="filterPages()" />
+</div>
+
+<main>
+  <div class="quickstart" id="quickstart">
+    <h2>👋 New User Quick Start — Where to begin</h2>
+    <div class="qs-grid">
+      <div class="qs-item">
+        <div class="step">Step 1 · Get your bearings</div>
+        <div class="task">Start with the Exec Snapshot</div>
+        <div class="why">One page shows lifetime revenue, top storms, top reps, and open AR. Gives you the bird's-eye view in 60 seconds.</div>
+        <a href="exec.html">Open Exec Snapshot →</a>
+      </div>
+      <div class="qs-item">
+        <div class="step">Step 2 · Understand the book</div>
+        <div class="task">Read the Pipeline DNA</div>
+        <div class="why">83.4% of jobs with a supplement close. 11.7% without. This page explains where jobs get stuck and what moves them.</div>
+        <a href="pipeline-intel.html">Open Pipeline DNA →</a>
+      </div>
+      <div class="qs-item">
+        <div class="step">Step 3 · Find opportunities</div>
+        <div class="task">Check Storm Playbook + Lifetime Touch</div>
+        <div class="why">Storm Playbook shows who to call after a storm. Touch Engine ranks who to call based on roof age + storm + trade gap.</div>
+        <a href="storm-playbook.html">Open Storm Playbook →</a>
+      </div>
+      <div class="qs-item">
+        <div class="step">Step 4 · Before an adjuster meeting</div>
+        <div class="task">Run the Adjuster Twin</div>
+        <div class="why">Pick the adjuster + your scope → predicts approval probability, flags pre-emptive adjustments. Upload roof photos for V2 visual analysis.</div>
+        <a href="adjuster-twin.html">Open Adjuster Twin →</a>
+      </div>
+      <div class="qs-item">
+        <div class="step">Step 5 · If you get a denial</div>
+        <div class="task">Run the Denial Analyzer</div>
+        <div class="why">Paste the denial letter → matched against 26 carrier AI patents → flags bad-faith signals → drafts a counter-letter in seconds.</div>
+        <a href="denial-analyzer.html">Open Denial Analyzer →</a>
+      </div>
+      <div class="qs-item">
+        <div class="step">Step 6 · Daily ops check</div>
+        <div class="task">Open Ops Surveillance + Scheduling</div>
+        <div class="why">344 overdue installs. 589 open supplements. 141 ready-for-install with no date. Everything ops in one view.</div>
+        <a href="ops-surveillance.html">Open Ops Surveillance →</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="no-results" class="no-results">No pages found. Try a different search term.</div>
+
+  <div class="category cat-exec">
+    <div class="cat-header"><span class="cat-label">📊 Executive</span><span class="cat-count">Bird's-eye views for leadership and strategy</span></div>
+    <div class="pages-grid">
+      <a href="index.html" class="page-card" data-search="dashboard tiles home command center overview navigation">
+        <span class="pg-icon">🏠</span><div class="pg-body"><div class="pg-name">Dashboard (Home)</div><div class="pg-desc">All 47 pages as tiles, organized by category. The main navigation hub — start here when you don't know which page to open.</div></div>
+      </a>
+      <a href="exec.html" class="page-card" data-search="exec snapshot revenue yoy top reps carriers storms risks leadership overview">
+        <span class="pg-icon">📈</span><div class="pg-body"><div class="pg-name">Exec Snapshot</div><div class="pg-desc">One-page leadership brief: lifetime revenue, year-over-year, top 5 reps, top ZIPs, top storms, open AR, risk flags. Best 60-second orientation.</div></div>
+      </a>
+      <a href="weekly-recap.html" class="page-card" data-search="weekly recap monday morning storms AR aging top reps print email">
+        <span class="pg-icon">📰</span><div class="pg-body"><div class="pg-name">Weekly Recap</div><div class="pg-desc">Auto-generated Monday morning briefing. Top storms, resurrection candidates, AR aging, top reps. Print or share as HTML. Choose 7d / 14d / 30d window.</div></div>
+      </a>
+      <a href="analytics.html" class="page-card" data-search="analytics deep dive carrier rep city zip trade speed deductible supplement uplift storm correlation 20 sections">
+        <span class="pg-icon">📊</span><div class="pg-body"><div class="pg-name">Analytics Dashboard</div><div class="pg-desc">20+ sortable sections: job types, reps, carriers, cities, ZIPs, trades, adjusters, deductibles, speed metrics, storm correlation, supplement uplift. The full data dump.</div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category cat-brain">
+    <div class="cat-header"><span class="cat-label">🧠 Smart Brain</span><span class="cat-count">Scoring, prediction, and field intelligence</span></div>
+    <div class="pages-grid">
+      <a href="predictor.html" class="page-card" data-search="predictor claim outcome probability carrier zip adjuster hail approval score">
+        <span class="pg-icon">🔮</span><div class="pg-body"><div class="pg-name">Claim Outcome Predictor</div><div class="pg-desc">Input carrier + ZIP + hail size + adjuster + days since loss → approval probability + research-backed playbook moves. Score any deal before knocking.</div><div class="pg-tags"><span class="tag tag-ai">AI</span></div></div>
+      </a>
+      <a href="cheat-sheet.html" class="page-card" data-search="cheat sheet adjuster rep carrier zip state math backed stats performance numbers">
+        <span class="pg-icon">📋</span><div class="pg-body"><div class="pg-name">Cheat Sheets</div><div class="pg-desc">Per-entity (rep / carrier / adjuster / ZIP / state) math-backed performance cards. Every number you need before a meeting, in one place.</div></div>
+      </a>
+      <a href="field-guide.html" class="page-card" data-search="field guide hail size approval threshold speed carrier state adjuster patterns rep best match timing plays">
+        <span class="pg-icon">📖</span><div class="pg-body"><div class="pg-name">Field Guide</div><div class="pg-desc">9 tabs: hail-size → approval rates, speed-to-sign, carrier × state, carrier × ZIP, adjuster patterns, rep best-match, timing, battle-tested plays. 336 combos tracked.</div></div>
+      </a>
+      <a href="lead-score.html" class="page-card" data-search="lead score priority ranking customer 0-100 storm trade gap zip value recency composite">
+        <span class="pg-icon">🎯</span><div class="pg-body"><div class="pg-name">Lead Score</div><div class="pg-desc">Every customer ranked 0–100 by composite priority: storm exposure × close rate × trade gap × ZIP performance × value × recency. Sorted for you.</div><div class="pg-tags"><span class="tag tag-data">Data</span></div></div>
+      </a>
+      <a href="pipeline-intel.html" class="page-card" data-search="pipeline dna supplement bottleneck stage carrier seasonal patterns automation triggers rep risk portal">
+        <span class="pg-icon">🧬</span><div class="pg-body"><div class="pg-name">Pipeline DNA</div><div class="pg-desc">83.4% completion WITH supplement vs 11.7% without. Stage bottlenecks (Appointment Pending avg 314d), carrier matrix, seasonal patterns, 7 automation triggers for a new portal.</div><div class="pg-tags"><span class="tag tag-new">New</span><span class="tag tag-data">Data</span></div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category cat-combat">
+    <div class="cat-header"><span class="cat-label">⚔️ AI Combat Suite</span><span class="cat-count">Patent-decoded denial fighting — 26 patents, 29 real cases</span></div>
+    <div class="pages-grid">
+      <a href="denial-analyzer.html" class="page-card" data-search="denial analyzer letter paste patent bad faith counter letter gemini AI analysis transcribe PDF">
+        <span class="pg-icon">⚖️</span><div class="pg-body"><div class="pg-name">Denial Analyzer</div><div class="pg-desc">Paste a denial letter → matched against 26 carrier AI patents → flags bad-faith signals → drafts a full counter-letter. Or upload a PDF/photo to transcribe first.</div><div class="pg-tags"><span class="tag tag-ai">AI</span></div></div>
+      </a>
+      <a href="denial-archive.html" class="page-card" data-search="denial archive browse filter carrier outcome appeal strength mark outcome learning loop">
+        <span class="pg-icon">📂</span><div class="pg-body"><div class="pg-name">Denial Archive</div><div class="pg-desc">Every analyzed denial logged. Filter by carrier, outcome, appeal strength. Mark outcomes to close the learning loop and improve future predictions.</div></div>
+      </a>
+      <a href="denial-stats.html" class="page-card" data-search="denial stats outcome statistics trends by carrier appeal rate">
+        <span class="pg-icon">📊</span><div class="pg-body"><div class="pg-name">Denial Stats</div><div class="pg-desc">Aggregated denial outcomes. Which carriers deny most, which appeal strategies win. Submit denials through Analyzer first, then mark outcomes here.</div></div>
+      </a>
+      <a href="carrier-playbook.html" class="page-card" data-search="carrier playbook boilerplate phrases template language reuse pre-meeting reference 2+ denials">
+        <span class="pg-icon">📖</span><div class="pg-body"><div class="pg-name">Carrier Playbook</div><div class="pg-desc">Phrases carriers reuse across 2+ denials — boilerplate template detector. Pre-meeting reference. Self-growing as new denials are analyzed.</div></div>
+      </a>
+      <a href="carrier-algorithms.html" class="page-card" data-search="algorithm decoder patent decision rules NAIC complaint AM Best real cases counter plays bad faith regulatory">
+        <span class="pg-icon">🧠</span><div class="pg-body"><div class="pg-name">Algorithm Decoder</div><div class="pg-desc">Every carrier's AI decoded: 26 patents with decision rules, NAIC complaint ratios, 29 real denial cases, counter-plays, bad-faith signals. Allstate MD under regulatory monitoring.</div><div class="pg-tags"><span class="tag tag-new">New</span><span class="tag tag-ai">AI</span></div></div>
+      </a>
+      <a href="adjuster-twin.html" class="page-card" data-search="adjuster twin simulate predict approve deny scope playbook photos visual evidence gemini V2 upload roof">
+        <span class="pg-icon">🧠</span><div class="pg-body"><div class="pg-name">Adjuster Twin V2</div><div class="pg-desc">Pick adjuster + drop scope + upload roof photos → Gemini extracts visual evidence (hail density, soft metal, pre-existing), predicts approval, gives tailored playbook.</div><div class="pg-tags"><span class="tag tag-ai">AI</span><span class="tag tag-new">V2</span></div></div>
+      </a>
+      <a href="lifetime-touch.html" class="page-card" data-search="lifetime touch engine re-engagement call list roof age storm trade gap contact priority rep monthly">
+        <span class="pg-icon">📞</span><div class="pg-body"><div class="pg-name">Lifetime Touch Engine</div><div class="pg-desc">Per-rep monthly call list. Old roofs + new storm hits + trade gaps + contact quality = math-prioritized re-engagement queue. Never wonder who to call.</div></div>
+      </a>
+      <a href="insurance-intel.html" class="page-card" data-search="insurance market intelligence carrier threat matrix at risk customers denial rate AM Best NAIC MD non-renewal OH expansion">
+        <span class="pg-icon">🛡</span><div class="pg-body"><div class="pg-name">Market Intelligence</div><div class="pg-desc">Carrier threat matrix (actual denial rate + NAIC + patents), 1,000 at-risk customers, MD non-renewal hot zones (+62% surge), OH expansion opportunity ($4.7B market).</div><div class="pg-tags"><span class="tag tag-new">New</span><span class="tag tag-data">Data</span></div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category cat-maps">
+    <div class="cat-header"><span class="cat-label">🗺 Maps &amp; Geo</span><span class="cat-count">Geographic intelligence and property lookup</span></div>
+    <div class="pages-grid">
+      <a href="roofdocs-map.html" class="page-card" data-search="project map pins jobs stage type storm filter year insurance rep lead source">
+        <span class="pg-icon">📍</span><div class="pg-body"><div class="pg-name">Project Map</div><div class="pg-desc">Every signed job pinned on a map. Color by stage or job type. Storm-of-record shown on each pin. Filter by year, insurance, rep, lead source, state.</div></div>
+      </a>
+      <a href="hot-zips.html" class="page-card" data-search="hot zips knock storm activity close rate job size density ranked where to knock">
+        <span class="pg-icon">🔥</span><div class="pg-body"><div class="pg-name">Hot ZIPs</div><div class="pg-desc">Where to knock right now. Ranked by storm activity × close rate × job size × density. Updated with every storm refresh. Most actionable geo view.</div></div>
+      </a>
+      <a href="zip-intel.html" class="page-card" data-search="zip intel knock script dominant carrier trades reps storms opening line">
+        <span class="pg-icon">📋</span><div class="pg-body"><div class="pg-name">ZIP Intel</div><div class="pg-desc">Knock script per ZIP — dominant carrier, top trades, top reps, recent storms. Auto-generates an opening line tailored to that specific neighborhood.</div></div>
+      </a>
+      <a href="property-lookup.html" class="page-card" data-search="property lookup any address outside book history storms neighbor density recommendation">
+        <span class="pg-icon">🔍</span><div class="pg-body"><div class="pg-name">Property Lookup</div><div class="pg-desc">Type ANY address — in or out of the book. See all jobs at that property, storms in last 5 years, neighbor density, and a recommendation for that address.</div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category cat-outreach">
+    <div class="cat-header"><span class="cat-label">📞 Outreach &amp; Campaigns</span><span class="cat-count">Pre-built call lists and targeted outreach</span></div>
+    <div class="pages-grid">
+      <a href="storm-playbook.html" class="page-card" data-search="storm playbook pick storm trade gap call list email phone carrier affected customers outreach">
+        <span class="pg-icon">🎯</span><div class="pg-body"><div class="pg-name">Storm Playbook</div><div class="pg-desc">Pick a storm → pick a trade gap → instant call list with email/phone/carrier for every affected customer within radius. The best storm-triggered outreach tool.</div></div>
+      </a>
+      <a href="storm-intel.html" class="page-card" data-search="storm intel panel any storm filter date type magnitude CSV pitch list signed dead open radius">
+        <span class="pg-icon">🌪</span><div class="pg-body"><div class="pg-name">Storm Intel Panel</div><div class="pg-desc">Pick ANY storm → customers bucketed by status (signed/dead/open) with one-click CSV pitch list. More flexible than Playbook — browse the full storm history.</div></div>
+      </a>
+      <a href="storm-exposure.html" class="page-card" data-search="storm exposure customers hail wind since first contact warm follow up claim history denied partial">
+        <span class="pg-icon">⚡</span><div class="pg-body"><div class="pg-name">Storm Exposure</div><div class="pg-desc">Every customer hit by ≥0.75" hail or ≥55mph wind since first contact. Now includes claim history: denied/partial/active supplements per customer.</div></div>
+      </a>
+      <a href="resurrection.html" class="page-card" data-search="resurrection dead insurance jobs new storms after died re-engagement storm-anchored warm leads">
+        <span class="pg-icon">🪦</span><div class="pg-body"><div class="pg-name">Resurrection</div><div class="pg-desc">Dead insurance jobs hit by NEW strong storms after dying. These are warm — they failed before but a new storm gives you a legitimate new reason to call.</div></div>
+      </a>
+      <a href="upgrade-campaigns.html" class="page-card" data-search="upgrade campaigns siding upsell solar gutters high deductible premium multi-job repeat full stack 9 segments">
+        <span class="pg-icon">📨</span><div class="pg-body"><div class="pg-name">Upgrade Campaigns</div><div class="pg-desc">9 pre-built segments: siding upsell, solar candidates, gutter upsell, high-deductible, premium follow-up, multi-job repeat customers, full-stack opportunity.</div></div>
+      </a>
+      <a href="leads.html" class="page-card" data-search="leads list door knock canvass pre-conversion appointments inspection pipeline">
+        <span class="pg-icon">🚪</span><div class="pg-body"><div class="pg-name">Leads List</div><div class="pg-desc">Pre-conversion lead pipeline from door knocking. 540 active leads across VA/MD. Filter by status, rep, priority. Individual lead detail + nearby projects.</div></div>
+      </a>
+      <a href="leads-intel.html" class="page-card" data-search="leads intelligence funnel conversion rep leaderboard zips cities re-knock referral door knock stats">
+        <span class="pg-icon">📍</span><div class="pg-body"><div class="pg-name">Leads Intelligence</div><div class="pg-desc">540-lead funnel analytics. Rep leaderboard by conversation rate (not just volume). Top canvassing ZIPs. 446 no-answer re-knock queue. Referral vs door-knock breakdown.</div><div class="pg-tags"><span class="tag tag-new">New</span></div></div>
+      </a>
+      <a href="customers.html" class="page-card" data-search="customers rollup lifetime deduped name address multi-job revenue trades portfolio contact time buckets">
+        <span class="pg-icon">👥</span><div class="pg-body"><div class="pg-name">Customer Rollup</div><div class="pg-desc">Lifetime view deduped by name+address. Multi-job detection, total revenue, trades portfolio, time-since-last-contact buckets. Full book of business overview.</div></div>
+      </a>
+      <a href="solar.html" class="page-card" data-search="solar funnel completed roofs 1-7 years ideal candidates 2517">
+        <span class="pg-icon">☀️</span><div class="pg-body"><div class="pg-name">Solar Funnel</div><div class="pg-desc">2,517 customers with completed roofs aged 1–7 years — ideal for solar mount partnerships. Full contact info, sortable by roof age and location.</div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category cat-intel">
+    <div class="cat-header"><span class="cat-label">🔬 Deep Intelligence</span><span class="cat-count">Per-entity analysis and relationship intel</span></div>
+    <div class="pages-grid">
+      <a href="customer-detail.html" class="page-card" data-search="customer detail single deep dive job timeline storms contact lead score next pitch recommendation">
+        <span class="pg-icon">👤</span><div class="pg-body"><div class="pg-name">Customer Detail</div><div class="pg-desc">Single-customer deep dive: full job timeline, storms hitting their property, contact info, lead score, claim history, recommended next pitch. Search any name.</div></div>
+      </a>
+      <a href="adjusters.html" class="page-card" data-search="adjuster directory name email phone carrier approval rate avg approved relationship intel">
+        <span class="pg-icon">📋</span><div class="pg-body"><div class="pg-name">Adjuster Directory</div><div class="pg-desc">Every adjuster in the book — name, email, phone, carrier, approval rate, avg approved amount. The pre-negotiation relationship intel page.</div></div>
+      </a>
+      <a href="adjuster-detail.html" class="page-card" data-search="adjuster detail per adjuster zip rep year over year recent jobs contact methods deep dive">
+        <span class="pg-icon">🔍</span><div class="pg-body"><div class="pg-name">Adjuster Detail</div><div class="pg-desc">Per-adjuster deep dive: top ZIPs they handle, top reps working them, year-over-year approval trends, recent jobs. Click any adjuster name to open.</div></div>
+      </a>
+      <a href="carrier-detail.html" class="page-card" data-search="carrier detail deep dive zip trades adjusters reps deductibles supplement uplift YoY trend">
+        <span class="pg-icon">🏢</span><div class="pg-body"><div class="pg-name">Carrier Deep Dive</div><div class="pg-desc">Per-carrier: top ZIPs, top trades, top adjusters, top reps, deductibles, supplement uplift, year-over-year. Click any carrier name in any page to open.</div></div>
+      </a>
+      <a href="reps.html" class="page-card" data-search="rep deep dive scorecard trade mix zips carriers biggest wins speed metrics performance">
+        <span class="pg-icon">🎯</span><div class="pg-body"><div class="pg-name">Rep Deep Dive</div><div class="pg-desc">Per-rep scorecard: trade mix, top ZIPs, top carriers, biggest wins, speed to sign and complete. Identify top performers and coaching targets.</div></div>
+      </a>
+      <a href="ops-team.html" class="page-card" data-search="ops team project coordinators estimators field techs 34 4 5 workload trade mix biggest jobs">
+        <span class="pg-icon">👥</span><div class="pg-body"><div class="pg-name">Ops Team</div><div class="pg-desc">Project Coordinators (34), Estimators (4), Field Techs (5). Per-person workload, trade mix, biggest jobs. Who's handling what.</div></div>
+      </a>
+      <a href="rep-response.html" class="page-card" data-search="rep storm response time days signed median fast slow responders ranked timing">
+        <span class="pg-icon">⏱</span><div class="pg-body"><div class="pg-name">Rep Storm Response Time</div><div class="pg-desc">Median days from storm-of-record to signed agreement, per rep. Fast vs slow responders ranked — timing consistently beats volume as a success predictor.</div></div>
+      </a>
+      <a href="carrier-trades.html" class="page-card" data-search="carrier trade heatmap which pays most for which 18 carriers 10 trades 180 cells scoping strategy">
+        <span class="pg-icon">🧾</span><div class="pg-body"><div class="pg-name">Carrier × Trade Profile</div><div class="pg-desc">Heatmap: which carriers pay the most for which trades. 18 carriers × 10 trades. Critical for scoping — know before you write the estimate.</div></div>
+      </a>
+      <a href="notes.html" class="page-card" data-search="notes search full text 9795 jobs install gotchas upsell hints customer red flags status updates">
+        <span class="pg-icon">📝</span><div class="pg-body"><div class="pg-name">Notes Search</div><div class="pg-desc">Full-text search across 9,795 job notes — install gotchas, upsell hints, customer red flags, status updates. Institutional knowledge that would otherwise be lost.</div></div>
+      </a>
+      <a href="carrier-orphans.html" class="page-card" data-search="carrier orphans insurance jobs missing carrier 165 data quality backfill">
+        <span class="pg-icon">🔍</span><div class="pg-body"><div class="pg-name">Carrier Orphans</div><div class="pg-desc">165 insurance-typed jobs missing a carrier name. Affects close rate calculations. Use this to find and backfill missing carrier data.</div></div>
+      </a>
+    </div>
+  </div>
+
+  <div class="category cat-ops">
+    <div class="cat-header"><span class="cat-label">💰 Operations</span><span class="cat-count">Money, workflow, and install pipeline management</span></div>
+    <div class="pages-grid">
+      <a href="ops-surveillance.html" class="page-card" data-search="ops surveillance overdue installs supplements partial approvals cross-sell bids everything ops 344 589">
+        <span class="pg-icon">📋</span><div class="pg-body"><div class="pg-name">Ops Surveillance</div><div class="pg-desc">344 overdue installs. 589 open supplements. 269 partial approvals. 104 cross-sell bids ($3.2M). Supplement funnel by carrier. Everything ops in one view.</div><div class="pg-tags"><span class="tag tag-new">New</span><span class="tag tag-ops">Ops</span></div></div>
+      </a>
+      <a href="scheduling.html" class="page-card" data-search="scheduling overdue ready no date this week rep workload pipeline age stale 354 141">
+        <span class="pg-icon">📅</span><div class="pg-body"><div class="pg-name">Scheduling Intelligence</div><div class="pg-desc">354 overdue installs, 141 ready-for-install with no date, 9 starting this week. Pipeline age (P50=119d, P90=246d), rep workload, stale job list with stage detail.</div><div class="pg-tags"><span class="tag tag-new">New</span><span class="tag tag-ops">Ops</span></div></div>
+      </a>
+      <a href="active-work.html" class="page-card" data-search="active work supplements cross-sell install readiness overdue starts portal jobs in flight">
+        <span class="pg-icon">🔧</span><div class="pg-body"><div class="pg-name">Active Work</div><div class="pg-desc">Supplements in flight by carrier with status mix, cross-sell pipeline ($3.2M base), install readiness, overdue starts. From the portal's active-jobs dashboard.</div></div>
+      </a>
+      <a href="receivables.html" class="page-card" data-search="receivables AR money open balance pending downpayments collections aging outstanding">
+        <span class="pg-icon">💸</span><div class="pg-body"><div class="pg-name">Money on the Table</div><div class="pg-desc">Open AR + pending downpayments. Every account with a balance owed. Total $ live. Sorted by oldest outstanding. Direct path to collection.</div><div class="pg-tags"><span class="tag tag-ops">Ops</span></div></div>
+      </a>
+      <a href="sms-reminders.html" class="page-card" data-search="SMS reminders text downpayment balance AR resurrection click to send 3 templates">
+        <span class="pg-icon">📱</span><div class="pg-body"><div class="pg-name">SMS Reminders</div><div class="pg-desc">3 auto-generated SMS scripts: downpayments pending, AR balance pending, resurrection candidates. Copy-paste ready. Never forget to follow up on money.</div></div>
+      </a>
+      <a href="pricing-margins.html" class="page-card" data-search="pricing margins subcontractor underwater 119 lines trade contractor worst leaks avg -0.6">
+        <span class="pg-icon">💰</span><div class="pg-body"><div class="pg-name">Pricing Margins</div><div class="pg-desc">718 line items × 21 subcontractors. 119 lines are underwater. Avg margin -0.6%. Worst leaks by trade and contractor — fix these before writing new estimates.</div><div class="pg-tags"><span class="tag tag-ops">Ops</span></div></div>
+      </a>
+      <a href="pricing-library.html" class="page-card" data-search="pricing library reference trades components materials project meeting items catalog">
+        <span class="pg-icon">📚</span><div class="pg-body"><div class="pg-name">Pricing Library</div><div class="pg-desc">Reference: 14 trades + 72 components + 227 materials + 96 project-meeting items. Full pricing catalog for estimate consistency.</div></div>
+      </a>
+    </div>
+  </div>
+
+</main>
+
+<script>
+let debounceTimer;
+function filterPages() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    const q = document.getElementById('search').value.toLowerCase().trim();
+    const cards = document.querySelectorAll('.page-card');
+    let visible = 0;
+    cards.forEach(c => {
+      const text = (c.dataset.search || '') + ' ' + (c.querySelector('.pg-name')?.textContent || '') + ' ' + (c.querySelector('.pg-desc')?.textContent || '');
+      const match = !q || text.toLowerCase().includes(q);
+      c.classList.toggle('hidden', !match);
+      if (match) visible++;
+    });
+    document.querySelectorAll('.category').forEach(cat => {
+      const vis = cat.querySelectorAll('.page-card:not(.hidden)').length;
+      cat.style.display = vis === 0 ? 'none' : '';
+    });
+    document.getElementById('quickstart').style.display = q ? 'none' : '';
+    document.getElementById('no-results').classList.toggle('show', visible === 0);
+  }, 150);
+}
+</script>
+</body>
+</html>
