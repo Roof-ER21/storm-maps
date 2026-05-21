@@ -1,0 +1,6 @@
+# All data files — served from Postgres on Vercel, not filesystem
+data/
+# Build artifacts not needed at deploy time
+dist/
+.logs/
+*.log
