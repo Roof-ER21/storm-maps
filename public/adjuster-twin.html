@@ -108,6 +108,14 @@
         <textarea id="scope-notes" placeholder="e.g. Full roof replacement, 28sq comp shingle. Hail bruising visible on all 4 slopes, ~12-15 hits per test square. Soft metals (gutter screens, downpouts) all show impact. 1.25&quot; MRMS swath confirmed. Before-storm baseline photos available."></textarea>
       </div>
     </div>
+    <!-- V2: Photo upload zone -->
+    <div id="photo-zone" style="margin-bottom:14px;border:2px dashed var(--border);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:border-color 0.2s" onclick="$('photo-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--accent)'" ondragleave="this.style.borderColor='var(--border)'" ondrop="handlePhotoDrop(event)">
+      <div style="font-size:20px;margin-bottom:4px">📸</div>
+      <div style="font-size:13px;font-weight:600">Upload roof damage photos <span style="color:var(--muted);font-weight:400">(optional)</span></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">Gemini analyzes photos to extract visual evidence — hail density, roof material, soft metal impacts, pre-existing damage flags. Drag-drop or click. Up to 5 photos.</div>
+      <input type="file" id="photo-input" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" multiple style="display:none" onchange="handlePhotoSelect(this)" />
+    </div>
+    <div id="photo-previews" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
     <div id="lenient-banner" style="display:none; background: rgba(16,185,129,0.1); border: 1px solid var(--green); border-radius: 6px; padding: 12px 16px; margin-bottom: 14px;">
       <div style="color: var(--green); font-weight: 700; font-size: 13px; margin-bottom: 4px;">✅ LENIENT ADJUSTER — lean in on full scope</div>
       <div id="lenient-detail" style="color: var(--text); font-size: 13px; line-height: 1.5;"></div>
@@ -158,7 +166,6 @@ async function loadAdjusters() {
       sel.innerHTML = '<option value="">No adjuster cheat sheets available — refresh data first</option>';
       return;
     }
-    // Sort: lenient first, then baseline, then strict
     const stanceOrder = { lenient: 0, baseline: 1, strict: 2 };
     const sorted = [...data.adjusters].sort((a, b) => (stanceOrder[a.stance] ?? 1) - (stanceOrder[b.stance] ?? 1));
     sorted.forEach((a) => { adjusterMap[a.name] = a; });
@@ -173,7 +180,6 @@ async function loadAdjusters() {
       if (opt) $('carrier-input').value = opt.dataset.carrier || '';
       updateLenientBanner();
     });
-    // Pre-select from URL param ?adjuster=Name
     const paramAdj = new URLSearchParams(location.search).get('adjuster');
     if (paramAdj && adjusterMap[paramAdj]) {
       sel.value = paramAdj;
@@ -183,6 +189,49 @@ async function loadAdjusters() {
   } catch (e) {
     $('adj-select').innerHTML = '<option value="">Failed to load adjusters: ' + escape(e.message) + '</option>';
   }
+}
+
+// ── V2 Photo handling ──────────────────────────────────────────────────
+const uploadedPhotos = [];
+
+function handlePhotoSelect(input) {
+  Array.from(input.files).forEach(f => addPhoto(f));
+  input.value = '';
+}
+
+function handlePhotoDrop(event) {
+  event.preventDefault();
+  $('photo-zone').style.borderColor = 'var(--border)';
+  Array.from(event.dataTransfer.files)
+    .filter(f => f.type.startsWith('image/'))
+    .forEach(f => addPhoto(f));
+}
+
+function addPhoto(file) {
+  if (uploadedPhotos.length >= 5) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    uploadedPhotos.push({ base64: e.target.result, mimeType: file.type, name: file.name });
+    renderPhotoPreviews();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removePhoto(idx) {
+  uploadedPhotos.splice(idx, 1);
+  renderPhotoPreviews();
+}
+
+function renderPhotoPreviews() {
+  const container = $('photo-previews');
+  if (!uploadedPhotos.length) { container.style.display = 'none'; return; }
+  container.style.display = 'flex';
+  container.innerHTML = uploadedPhotos.map((p, i) => `
+    <div style="position:relative;width:64px;height:64px">
+      <img src="${p.base64}" style="width:64px;height:64px;object-fit:cover;border-radius:4px;border:1px solid var(--border)" />
+      <button onclick="removePhoto(${i})" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;background:var(--red);border:none;color:white;font-size:10px;cursor:pointer;line-height:16px;text-align:center">×</button>
+    </div>`).join('') +
+    `<div style="font-size:11px;color:var(--muted);align-self:center;margin-left:4px">${uploadedPhotos.length}/5 photos — Gemini will extract visual evidence</div>`;
 }
 
 async function predict() {
@@ -202,14 +251,17 @@ async function predict() {
   const btn = $('predict-btn');
   const out = $('output');
   btn.disabled = true;
-  btn.textContent = 'Running simulation…';
-  out.innerHTML = '<section class="loading"><span class="spinner"></span> Simulating adjuster response…</section>';
+  const hasPhotos = uploadedPhotos.length > 0;
+  btn.textContent = hasPhotos ? 'Analyzing photos + running simulation…' : 'Running simulation…';
+  out.innerHTML = `<section class="loading"><span class="spinner"></span> ${hasPhotos ? 'Extracting visual evidence from ' + uploadedPhotos.length + ' photo' + (uploadedPhotos.length>1?'s':'') + ', then simulating adjuster response…' : 'Simulating adjuster response…'}</section>`;
+
+  const photos = uploadedPhotos.map(p => ({ base64: p.base64, mimeType: p.mimeType }));
 
   try {
     const r = await fetch('/api/intel/adjuster-twin/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adjusterName, carrier, scope }),
+      body: JSON.stringify({ adjusterName, carrier, scope, ...(photos.length ? { photos } : {}) }),
     });
     if (!r.ok) {
       const err = await r.json().catch(() => ({}));
@@ -249,10 +301,8 @@ function renderPrediction(result) {
   const p = result.prediction || {};
   const dp = result.adjusterDataPoints || {};
   const out = $('output');
-
   const html = [];
 
-  // Top meta — who + how confident
   html.push('<section>');
   html.push('<h2>Simulation — ' + escape(result.adjuster) + ' · ' + escape(result.carrier || '?') + '</h2>');
   html.push('<div class="meta-grid">');
@@ -261,19 +311,16 @@ function renderPrediction(result) {
   html.push('<div class="cell"><div class="lbl">Predicted Total</div><div class="val">' + (p.predictedTotal ? '$' + Number(p.predictedTotal).toLocaleString() : '—') + '</div></div>');
   html.push('<div class="cell"><div class="lbl">Adjuster Sample</div><div class="val">' + (dp.totalJobs || 0) + ' jobs · ' + ((dp.approvalRate != null ? (dp.approvalRate * 100).toFixed(0) + '%' : '—')) + '</div></div>');
   html.push('</div>');
-
   html.push('<div style="margin-top: 14px;">');
   html.push('<div style="color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Confidence in Prediction</div>');
   html.push('<div class="meter"><div class="bar"><div class="fill" style="width:' + confidenceFill(p.decisionConfidence) + '%; background: var(--accent);"></div></div><div class="label">' + escape(p.decisionConfidence || 'medium').toUpperCase() + '</div></div>');
   html.push('<p class="desc" style="margin-top: 6px;">' + escape(p.confidenceRationale || '') + '</p>');
   html.push('</div>');
-
   if (p.likelyApprovalScope) {
     html.push('<div class="decision-card"><div class="head">Likely Approval Scope</div>' + escape(p.likelyApprovalScope) + '</div>');
   }
   html.push('</section>');
 
-  // Playbook summary first (most important)
   if (p.playbookSummary) {
     html.push('<section>');
     html.push('<h2>📖 Tailored Playbook</h2>');
@@ -282,7 +329,6 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Pre-emptive adjustments
   if ((p.preEmptiveAdjustments || []).length > 0) {
     html.push('<section>');
     html.push('<h2 style="color: var(--green);">🎯 Pre-Emptive Adjustments (do these BEFORE submission)</h2>');
@@ -297,7 +343,6 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Predicted denial reasons
   if ((p.predictedDenialReasons || []).length > 0) {
     html.push('<section>');
     html.push('<h2 style="color: var(--red);">🚩 Likely Denial Reasons (rebut these in advance)</h2>');
@@ -311,7 +356,6 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Leverage points
   if ((p.leveragePoints || []).length > 0) {
     html.push('<section>');
     html.push('<h2 style="color: var(--green);">⚖️ Leverage Points</h2>');
@@ -322,7 +366,6 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Red flags
   if ((p.redFlags || []).length > 0) {
     html.push('<section>');
     html.push('<h2 style="color: var(--red);">⚠️ Red Flags in Current Scope</h2>');
@@ -333,7 +376,6 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Escalation
   if (p.escalationRecommendation && p.escalationRecommendation.shouldEscalate) {
     html.push('<section>');
     html.push('<div class="escalate">');
@@ -344,7 +386,6 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Comparable historical jobs
   if ((p.comparableHistoricalJobs || []).length > 0) {
     html.push('<section>');
     html.push('<h2>📚 Comparable Past Jobs</h2>');
@@ -355,9 +396,42 @@ function renderPrediction(result) {
     html.push('</section>');
   }
 
-  // Footer
+  // V2: Visual evidence card
+  if (result.visualEvidence && result.photosAnalyzed > 0) {
+    const ve = result.visualEvidence;
+    html.push('<section>');
+    html.push('<h2>📸 Visual Evidence (' + result.photosAnalyzed + ' photo' + (result.photosAnalyzed > 1 ? 's' : '') + ' analyzed)</h2>');
+    html.push('<p class="desc">Gemini extracted these observations from your photos. This was injected into the prediction — factors below directly influenced the playbook.</p>');
+    const rows = [];
+    if (ve.roofMaterial) rows.push(['Roof material', ve.roofMaterial]);
+    if (ve.estimatedRoofAge) rows.push(['Estimated age', ve.estimatedRoofAge]);
+    if (ve.slopesVisible) rows.push(['Slopes visible', ve.slopesVisible]);
+    if (ve.hailEvidence) rows.push(['Hail evidence', ve.hailEvidence.present
+      ? '✅ ' + ve.hailEvidence.confidence + ' confidence — ' + (ve.hailEvidence.description || '') + (ve.hailEvidence.estimatedSize ? ' | size: ' + ve.hailEvidence.estimatedSize : '') + (ve.hailEvidence.densityPer10sqft ? ' | density: ' + ve.hailEvidence.densityPer10sqft : '')
+      : '❌ Not visible in photos']);
+    if (ve.windEvidence?.present) rows.push(['Wind evidence', '✅ ' + ve.windEvidence.description]);
+    if (ve.softMetalEvidence?.present) rows.push(['Soft metal', '✅ ' + ve.softMetalEvidence.description]);
+    if (ve.preExistingDamage?.present) rows.push(['⚠ Pre-existing', ve.preExistingDamage.description]);
+    if (rows.length) {
+      html.push('<table style="width:100%;font-size:12px;border-collapse:collapse">');
+      rows.forEach(([k, v]) => html.push('<tr><td style="padding:5px 10px;color:var(--muted);width:140px;vertical-align:top;border-bottom:1px solid rgba(255,255,255,0.04)">' + escape(k) + '</td><td style="padding:5px 10px;border-bottom:1px solid rgba(255,255,255,0.04)">' + escape(String(v)) + '</td></tr>'));
+      html.push('</table>');
+    }
+    if (ve.claimSupportingFactors?.length) {
+      html.push('<div style="margin-top:8px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--green);margin-bottom:4px">Supporting factors</div>');
+      ve.claimSupportingFactors.forEach(f => html.push('<div style="font-size:12px;padding:3px 0;color:var(--text)">▶ ' + escape(f) + '</div>'));
+      html.push('</div>');
+    }
+    if (ve.claimRiskFactors?.length) {
+      html.push('<div style="margin-top:8px"><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--red);margin-bottom:4px">Risk factors (carrier AI may cite)</div>');
+      ve.claimRiskFactors.forEach(f => html.push('<div style="font-size:12px;padding:3px 0;color:var(--text)">⚠ ' + escape(f) + '</div>'));
+      html.push('</div>');
+    }
+    html.push('</section>');
+  }
+
   html.push('<section style="text-align: center; color: var(--muted); font-size: 11px;">');
-  html.push('Powered by Gemini 2.0 Flash · ' + (result.patentsConsidered || []).length + ' carrier patents · adjuster N=' + (dp.totalJobs || 0) + ' jobs · ' + new Date(result.generated).toLocaleString());
+  html.push('Powered by Gemini 2.0 Flash · ' + (result.patentsConsidered || []).length + ' carrier patents · adjuster N=' + (dp.totalJobs || 0) + ' jobs' + (result.photosAnalyzed > 0 ? ' · ' + result.photosAnalyzed + ' photos analyzed' : '') + ' · ' + new Date(result.generated).toLocaleString());
   html.push('</section>');
 
   out.innerHTML = html.join('');
