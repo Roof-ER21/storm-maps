@@ -60,6 +60,8 @@ const DATASETS = [
   { key: 'naic-complaint-index', file: 'naic-complaint-index.json' },
   // Full insurer rankings: composite scores + AM Best + market share + county storm risk
   { key: 'insurer-rankings',    file: 'insurer-rankings.json' },
+  // Live market intel: OH Top 70 (2024) + MD Market Hardening Survey (Nov 2024)
+  { key: 'live-market-intel',   file: 'live-market-intel.json' },
 ];
 
 const sql = postgres(DATABASE_URL, {

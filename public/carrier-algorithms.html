@@ -102,6 +102,7 @@
   <div id="loading" class="loading">Loading algorithm intelligence…</div>
   <div id="content" style="display:none">
     <p class="desc" style="margin-bottom:20px">Every carrier's AI denial engine — decoded. Patent-documented decision rules, real denial cases mapped to those rules, and proven counter-plays. Use this before any supplement negotiation or re-inspection request.</p>
+    <div id="market-alerts"></div>
     <div class="layout">
       <div class="sidebar">
         <div class="sidebar-label">Select Carrier</div>
@@ -130,6 +131,7 @@ let PATENTS = null;
 let CASES = null;
 let NAIC = null;
 let RANKINGS = null;
+let MARKET = null;
 let CURRENT = null;
 
 const NAIC_CLASS = { excellent: 'naic-excellent', good: 'naic-good', average: 'naic-average' };
@@ -181,18 +183,21 @@ function caseCarrierMatch(caseName, carrier) {
 
 async function load() {
   try {
-    const [patRes, caseRes, naicRes, rankRes] = await Promise.all([
+    const [patRes, caseRes, naicRes, rankRes, mktRes] = await Promise.all([
       fetch('/api/intel/carrier-patents').then(r => r.json()),
       fetch('/api/intel/denial-sources-full').then(r => r.json()),
       fetch('/api/intel/naic-complaint-index').then(r => r.json()),
       fetch('/api/intel/insurer-rankings').then(r => r.json()).catch(() => null),
+      fetch('/api/intel/live-market-intel').then(r => r.json()).catch(() => null),
     ]);
     PATENTS = patRes;
     CASES = Array.isArray(caseRes) ? caseRes : (caseRes.entries || []);
     NAIC = naicRes.carriers || naicRes;
     RANKINGS = rankRes;
+    MARKET = mktRes;
 
     buildSidebar();
+    renderMarketAlerts();
     $('loading').style.display = 'none';
     $('content').style.display = 'block';
 
@@ -202,6 +207,70 @@ async function load() {
   } catch (err) {
     $('loading').textContent = 'Error loading data: ' + err.message;
   }
+}
+
+function renderMarketAlerts() {
+  const el = $('market-alerts');
+  if (!el || !MARKET) return;
+  const md = MARKET.mdMarketHardening_2024;
+  const oh = MARKET.ohioTop70_2024;
+  if (!md && !oh) return;
+
+  let html = `<div class="section" style="margin-bottom:16px">
+    <h2 style="color:var(--red)">🚨 Live Market Intelligence — MD + OH</h2>
+    <p class="desc">Fetched directly from MD Insurance Administration (Nov 2024) and Ohio DOI (June 2025). This is the operational context carriers are working inside right now.</p>`;
+
+  if (md) {
+    const s = md.statewide;
+    const topCounties = md.countyNonRenewals.slice(0,6);
+    html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+      <div>
+        <div class="sub-head">Maryland — Non-Renewal Crisis (2021→2023)</div>
+        <div class="brief-grid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat"><div class="v" style="color:var(--red)">+62%</div><div class="l">Non-renewals statewide</div></div>
+          <div class="stat"><div class="v" style="color:var(--red)">+125%</div><div class="l">Early cancellations (60-90d)</div></div>
+          <div class="stat"><div class="v" style="color:var(--yellow)">11/29</div><div class="l">Carriers restricting by roof age</div></div>
+        </div>
+        <div style="margin-top:8px">
+          ${topCounties.map(c =>
+            `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+              <span style="flex:1;color:var(--text)">${escape(c.county)}</span>
+              <span style="color:var(--red);font-weight:700">+${c.changePct21to23}%</span>
+              <span style="color:var(--muted);font-size:10px">(${c.nr2021}→${c.nr2023})</span>
+            </div>`
+          ).join('')}
+        </div>
+      </div>
+      <div>
+        <div class="sub-head">MD Roof Intel for Roofers</div>
+        ${md.keyAlerts.map(a =>
+          `<div style="font-size:12px;line-height:1.5;padding:5px 10px 5px 22px;position:relative;border-bottom:1px solid rgba(255,255,255,0.04)">
+            <span style="position:absolute;left:6px;color:var(--accent)">▸</span>${escape(a)}
+          </div>`
+        ).join('')}
+      </div>
+    </div>`;
+  }
+
+  if (oh && oh.carriers) {
+    const top8 = oh.carriers.slice(0,8);
+    html += `<div class="sub-head">Ohio HO Market — Top 8 by DWP (2024, $${(oh.totalMarketDWP/1e9).toFixed(2)}B total)</div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px">`;
+    top8.forEach(c => {
+      const name = c.name.replace(' GRP','').replace(' INS','').replace(' MUT','');
+      const pct = c.marketSharePct;
+      const color = pct >= 10 ? 'var(--red)' : pct >= 5 ? 'var(--yellow)' : 'var(--muted)';
+      html += `<div class="stat" style="min-width:110px">
+        <div class="v" style="color:${color};font-size:16px">${pct}%</div>
+        <div class="l">${escape(name)}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:2px">$${(c.dwp2024/1e6).toFixed(0)}M</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
 }
 
 function buildSidebar() {
