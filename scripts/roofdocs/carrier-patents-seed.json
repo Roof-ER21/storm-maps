@@ -220,6 +220,46 @@
     "url": "https://patents.google.com/patent/US20180373931A1/en"
   },
   {
+    "id": "US10977490",
+    "assignee": "The Travelers Indemnity Company",
+    "carrier": "Travelers",
+    "title": "Technologies for using image data analysis to assess and classify hail damage",
+    "filed": "2019",
+    "category": "roof",
+    "why": "Travelers' CNN hail damage classifier. Convolutional neural network segments roof images, extracts features, outputs confidence score on whether damage is hail-caused. This is the primary algorithm behind Travelers' hail denial decisions.",
+    "url": "https://patents.google.com/patent/US10977490B1/en"
+  },
+  {
+    "id": "US10726558",
+    "assignee": "The Travelers Indemnity Company",
+    "carrier": "Travelers",
+    "title": "Machine learning-based image recognition of weather damage",
+    "filed": "2018",
+    "category": "roof",
+    "why": "Travelers' own ML weather damage recognition patent — US national filing. Defines the training data, feature extraction, and damage-type classification pipeline for weather events including hail and wind.",
+    "url": "https://patents.google.com/patent/US10726558/en"
+  },
+  {
+    "id": "US11893538",
+    "assignee": "The Travelers Indemnity Company",
+    "carrier": "Travelers",
+    "title": "Intelligent system and method for assessing structural damage using aerial imagery",
+    "filed": "2022",
+    "category": "roof",
+    "why": "Travelers' most recent aerial damage assessment patent (2024). Uses vertical aerial imagery for straight-down property views — their drone program's core AI. Defines the decision pipeline that produces the scope adjuster confronts the homeowner with.",
+    "url": "https://patents.google.com/patent/US11893538/en"
+  },
+  {
+    "id": "US11634214",
+    "assignee": "Liberty Mutual Insurance Company",
+    "carrier": "Liberty Mutual",
+    "title": "Drones with sensors used in insurance applications",
+    "filed": "2019",
+    "category": "roof",
+    "why": "Liberty Mutual's own drone inspection patent — sensors collect feedback data, drone autonomously repositions based on detected damage signals. This defines how LM conducts physical inspections to deny or reduce claims.",
+    "url": "https://patents.google.com/patent/US11634214/en"
+  },
+  {
     "id": "US20150228031",
     "assignee": "BuildFax",
     "carrier": "VENDOR_MULTI",
