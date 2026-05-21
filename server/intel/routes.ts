@@ -108,6 +108,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'insurer-rankings': { file: 'insurer-rankings.json', description: 'Carrier rankings VA/MD/PA/OH: composite scores, AM Best, market share, NOAA county risk tiers. May 2026.' },
   'live-market-intel': { file: 'live-market-intel.json', description: 'Live fetched: OH Top 70 HO carriers 2024 (ODI Jun 2025) + MD Market Hardening Survey Nov 2024 (non-renewals +62%, roof restrictions, county breakdown).' },
   'scheduling':       { file: 'scheduling.json',         description: 'Phase 8d scheduling intel: overdue installs, this week schedule, unscheduled ready jobs, stale pipeline, rep workload, age distribution.' },
+  'pipeline-intel':   { file: 'pipeline-intel.json',     description: 'Pipeline DNA: supplement signal (83% vs 12%), stage bottlenecks, carrier matrix, seasonal patterns, rep risk flags, 7 automation triggers.' },
 };
 
 // Storm light file lives in storms/ subdir
@@ -207,7 +208,7 @@ router.get('/api/intel/_meta', (_req, res) => {
     datasets: Object.fromEntries(
       Object.entries(FILES).map(([k, v]) => [k, v.description]),
     ),
-    refreshCadence: 'Nightly at 3:33 AM ET (launchd cron). Manual: ./scripts/roofdocs/refresh-all.sh',
+    refreshCadence: 'Nightly via Windows Task Scheduler (Mon-Fri 9am). Manual: RIQ_BASE=D:/storm-maps node scripts/roofdocs/import-to-postgres.mjs',
   });
 });
 
@@ -420,9 +421,9 @@ router.get('/api/intel/denial-intake/:id', getIntake);
 router.post('/api/intel/denial-intake/:id/outcome', postOutcome);
 
 /**
- * Adjuster Twin — simulator for adjuster responses.
+ * Adjuster Twin V2 — simulator for adjuster responses with optional photo analysis.
  *   GET  /api/intel/adjuster-twin/list      List adjusters with cheat-sheet data (N>=5)
- *   POST /api/intel/adjuster-twin/predict   { adjusterName, carrier, scope } → prediction
+ *   POST /api/intel/adjuster-twin/predict   { adjusterName, carrier, scope, photos? } → prediction
  */
 router.get('/api/intel/adjuster-twin/list', listAdjusters);
 router.post('/api/intel/adjuster-twin/predict', predictAdjuster);
