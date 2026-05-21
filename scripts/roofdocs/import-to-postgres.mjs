@@ -166,9 +166,7 @@ async function importDataset({ key, file }) {
   // Phase 4b: if projects was imported, also backfill the decomposed indexed
   // table so the per-row query endpoints don't fall behind the blob.
   const { spawn } = await import('node:child_process');
-  const { fileURLToPath } = await import('node:url');
-  const path = await import('node:path');
-  const here = path.dirname(fileURLToPath(import.meta.url));
+  const here = import.meta.dirname;
   async function runBackfill(script, label) {
     console.log('');
     console.log(`→ ${label}…`);
