@@ -129,6 +129,7 @@ function escape(s) {
 let PATENTS = null;
 let CASES = null;
 let NAIC = null;
+let RANKINGS = null;
 let CURRENT = null;
 
 const NAIC_CLASS = { excellent: 'naic-excellent', good: 'naic-good', average: 'naic-average' };
@@ -180,14 +181,16 @@ function caseCarrierMatch(caseName, carrier) {
 
 async function load() {
   try {
-    const [patRes, caseRes, naicRes] = await Promise.all([
+    const [patRes, caseRes, naicRes, rankRes] = await Promise.all([
       fetch('/api/intel/carrier-patents').then(r => r.json()),
       fetch('/api/intel/denial-sources-full').then(r => r.json()),
       fetch('/api/intel/naic-complaint-index').then(r => r.json()),
+      fetch('/api/intel/insurer-rankings').then(r => r.json()).catch(() => null),
     ]);
     PATENTS = patRes;
     CASES = Array.isArray(caseRes) ? caseRes : (caseRes.entries || []);
     NAIC = naicRes.carriers || naicRes;
+    RANKINGS = rankRes;
 
     buildSidebar();
     $('loading').style.display = 'none';
@@ -258,14 +261,52 @@ function renderCarrier(carrier) {
     const idx = naicEntry.index;
     const fillColor = idx <= 0.8 ? 'var(--green)' : idx <= 1.2 ? 'var(--yellow)' : 'var(--red)';
     const fillPct = Math.min(100, (idx / 3) * 100);
+    const amBest = naicEntry.amBest || '—';
+    const amBestColor = amBest.includes('++') ? 'var(--green)' : amBest.includes('+') ? 'var(--blue)' : 'var(--yellow)';
     html += `<div class="brief-grid">
       <div class="stat"><div class="v">${idx.toFixed(2)}</div><div class="l">NAIC Complaint Index</div></div>
       <div class="stat"><div class="v" style="color:var(${naicEntry.rating?.includes('excellent') ? '--green' : naicEntry.rating?.includes('good') ? '--blue' : naicEntry.rating?.includes('above') || naicEntry.rating?.includes('high') ? '--red' : '--yellow'})">${naicEntry.rating || '?'}</div><div class="l">Complaint Rating</div></div>
+      <div class="stat"><div class="v" style="color:${amBestColor}">${escape(amBest)}</div><div class="l">AM Best (Financial)</div></div>
       <div class="stat"><div class="v">${patentIds.length}</div><div class="l">AI Patents (own)</div></div>
-      <div class="stat"><div class="v">${cases.length}</div><div class="l">Real Cases Logged</div></div>
     </div>
     <div class="naic-bar"><div class="naic-fill" style="width:${fillPct}%;background:${fillColor}"></div></div>
     <p style="font-size:11px;color:var(--muted);margin:4px 0 0">${escape(naicEntry.note || '')}</p>`;
+
+    // Per-state composite scores
+    if (naicEntry.byState && Object.keys(naicEntry.byState).length) {
+      const states = Object.entries(naicEntry.byState);
+      html += `<div class="sub-head" style="margin-top:14px">Per-State Composite Score (1–10 = best)</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">`;
+      for (const [state, sd] of states) {
+        const sc = sd.compositeScore;
+        const scColor = sc >= 8 ? 'var(--green)' : sc >= 6.5 ? 'var(--yellow)' : 'var(--red)';
+        html += `<div class="stat" style="min-width:90px">
+          <div class="v" style="color:${scColor}">${sc ?? '—'}</div>
+          <div class="l">${escape(state)} · #${sd.rank || '?'} ranked</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${sd.marketSharePct || '?'}% mkt share</div>
+        </div>`;
+      }
+      html += `</div>`;
+
+      // Premium by state
+      html += `<div style="font-size:11px;color:var(--muted)">Avg annual premium: `
+        + states.map(([s, sd]) => `${s}: $${(sd.avgPremium || 0).toLocaleString()}`).join(' · ')
+        + `</div>`;
+    }
+
+    // Market conduct / enforcement alerts
+    if (naicEntry.marketConduct) {
+      html += `<div style="margin-top:10px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:6px;padding:10px 14px">
+        <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:4px">⚠ REGULATORY FINDINGS</div>
+        <div style="font-size:12px;line-height:1.5">${escape(naicEntry.marketConduct)}</div>
+      </div>`;
+    }
+    if (naicEntry.enforcement && naicEntry.enforcement !== naicEntry.marketConduct) {
+      html += `<div style="margin-top:6px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:6px;padding:10px 14px">
+        <div style="font-size:11px;font-weight:700;color:var(--yellow);margin-bottom:4px">⚡ ENFORCEMENT ACTIONS</div>
+        <div style="font-size:12px;line-height:1.5">${escape(naicEntry.enforcement)}</div>
+      </div>`;
+    }
   } else {
     html += `<div class="brief-grid">
       <div class="stat"><div class="v">${patentIds.length}</div><div class="l">AI Patents</div></div>

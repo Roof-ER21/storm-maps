@@ -56,8 +56,10 @@ const DATASETS = [
   // Leads funnel rollup + employee-lead assignments
   { key: 'leads-rollup',        file: 'leads-rollup.json' },
   { key: 'leads-employees',     file: 'leads-employees.json' },
-  // NAIC carrier complaint index
+  // NAIC carrier complaint index (enriched with AM Best, per-state data, enforcement)
   { key: 'naic-complaint-index', file: 'naic-complaint-index.json' },
+  // Full insurer rankings: composite scores + AM Best + market share + county storm risk
+  { key: 'insurer-rankings',    file: 'insurer-rankings.json' },
 ];
 
 const sql = postgres(DATABASE_URL, {

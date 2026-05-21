@@ -105,6 +105,7 @@ const FILES: Record<string, { file: string; description: string }> = {
   'portal-insurance-names': { file: 'portal-insurance-names.json', description: 'Canonical carrier name mapping from portal.' },
   'finance-plans':  { file: 'finance-plans.json',  description: 'Finance plan options data.' },
   'storms-light':   { file: 'storms/iem-hail-wind-2018-2026.json', description: 'Filtered IEM hail/wind/tornado events 2018–2026 (VA MD PA DC DE NJ WV).' },
+  'insurer-rankings': { file: 'insurer-rankings.json', description: 'Carrier rankings VA/MD/PA/OH: composite scores, AM Best, market share, NOAA county risk tiers. May 2026.' },
 };
 
 // Storm light file lives in storms/ subdir
