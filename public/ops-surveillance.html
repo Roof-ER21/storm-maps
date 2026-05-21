@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>RIQ 21 — Ops Surveillance</title>
+<link rel="icon" href="data:," />
+<style>
+:root { --bg:#1a1612; --panel:#2a241e; --border:#3d3528; --text:#f0ebe2; --muted:#a09486; --accent:#f4a738; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --purple:#a78bfa; --blue:#60a5fa; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { min-height:100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; background:var(--bg); color:var(--text); }
+header { background:var(--panel); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; justify-content:space-between; align-items:center; position:sticky; top:0; z-index:20; }
+header h1 { font-size:17px; font-weight:700; }
+header .links a { color:var(--muted); margin-left:10px; text-decoration:none; font-size:12px; }
+header .links a.active { color:var(--accent); font-weight:700; }
+main { padding:20px 24px; max-width:1400px; margin:0 auto; }
+
+.stat-row { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
+@media(max-width:1100px){ .stat-row{grid-template-columns:repeat(3,1fr);} }
+@media(max-width:600px){ .stat-row{grid-template-columns:repeat(2,1fr);} }
+.stat { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:12px 16px; }
+.stat.alert { border-color:rgba(239,68,68,0.4); background:rgba(239,68,68,0.06); }
+.stat.warn { border-color:rgba(245,158,11,0.4); background:rgba(245,158,11,0.06); }
+.stat.good { border-color:rgba(16,185,129,0.3); background:rgba(16,185,129,0.04); }
+.stat .v { font-size:28px; font-weight:700; color:var(--accent); line-height:1; }
+.stat .l { font-size:10px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-top:4px; }
+.stat .s { font-size:11px; color:var(--muted); margin-top:3px; }
+
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px; }
+@media(max-width:900px){ .two-col,.three-col{grid-template-columns:1fr;} }
+.card { background:var(--panel); border:1px solid var(--border); border-radius:8px; padding:18px 20px; }
+.card h2 { font-size:14px; font-weight:700; margin-bottom:4px; }
+.card .sub { font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.4; }
+
+.tbl { width:100%; border-collapse:collapse; font-size:12px; }
+.tbl th { text-align:left; padding:5px 10px; background:#1e1a16; color:var(--muted); font-size:10px; text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border); }
+.tbl td { padding:7px 10px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+.tbl tr:last-child td { border-bottom:none; }
+.tbl tr:hover td { background:rgba(255,255,255,0.02); }
+
+.pill { display:inline-block; padding:2px 7px; border-radius:3px; font-size:10px; font-weight:700; }
+.pr { background:rgba(239,68,68,0.15); color:var(--red); }
+.py { background:rgba(245,158,11,0.15); color:var(--yellow); }
+.pg { background:rgba(16,185,129,0.15); color:var(--green); }
+.pb { background:rgba(96,165,250,0.15); color:var(--blue); }
+.pp { background:rgba(167,139,250,0.15); color:var(--purple); }
+
+.funnel { display:flex; flex-direction:column; gap:6px; }
+.funnel-row { display:flex; align-items:center; gap:10px; font-size:12px; }
+.funnel-label { width:140px; color:var(--muted); flex-shrink:0; }
+.funnel-bar-wrap { flex:1; background:var(--border); border-radius:3px; height:16px; overflow:hidden; }
+.funnel-fill { height:100%; border-radius:3px; background:var(--accent); transition:width 0.4s; }
+.funnel-count { width:60px; text-align:right; font-weight:700; flex-shrink:0; }
+.funnel-pct { width:50px; text-align:right; color:var(--muted); font-size:11px; flex-shrink:0; }
+
+.stage-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+@media(max-width:700px){ .stage-grid{grid-template-columns:repeat(2,1fr);} }
+.stage-chip { background:#342c23; border-radius:5px; padding:8px 10px; font-size:11px; }
+.stage-chip .sc { font-size:18px; font-weight:700; color:var(--text); }
+.stage-chip .sl { color:var(--muted); margin-top:2px; font-size:10px; }
+
+.progress-bar { background:var(--border); border-radius:4px; height:8px; overflow:hidden; margin:4px 0; }
+.progress-fill { height:100%; border-radius:4px; }
+
+.callout { border-radius:6px; padding:10px 14px; font-size:12px; line-height:1.5; margin-bottom:8px; }
+.cr { background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.25); }
+.cy { background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.25); }
+.cg { background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.25); }
+.cb { background:rgba(96,165,250,0.08); border:1px solid rgba(96,165,250,0.25); }
+
+.loading { padding:60px; text-align:center; color:var(--muted); }
+.section-label { font-size:11px; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:6px; font-weight:700; }
+</style>
+</head>
+<body>
+<header>
+  <h1>📋 RIQ 21 — Ops Surveillance</h1>
+  <div class="links">
+    <a href="index.html">🏠 Dashboard</a>
+    <a href="active-work.html">🔨 Active Work</a>
+    <a href="insurance-intel.html">🛡 Market Intel</a>
+    <a href="receivables.html">💰 Receivables</a>
+    <a href="ops-surveillance.html" class="active">📋 Ops</a>
+  </div>
+</header>
+<main>
+  <div id="loading" class="loading">Loading ops data…</div>
+  <div id="page" style="display:none">
+
+    <!-- TOP STATS -->
+    <div class="stat-row" id="top-stats"></div>
+
+    <!-- INSTALL PIPELINE + SUPPLEMENT PIPELINE -->
+    <div class="two-col">
+
+      <div class="card">
+        <h2>Install Pipeline</h2>
+        <p class="sub">Jobs that are signed and moving toward installation.</p>
+        <div id="install-content"></div>
+      </div>
+
+      <div class="card">
+        <h2>Supplement Pipeline</h2>
+        <p class="sub">Active supplements by status — 589 open. Finalized = resolved, everything else needs action.</p>
+        <div id="supplement-content"></div>
+      </div>
+
+    </div>
+
+    <!-- ACTIVE STAGE BREAKDOWN + APPROVAL QUEUE -->
+    <div class="two-col">
+
+      <div class="card">
+        <h2>Active Job Stage Breakdown</h2>
+        <p class="sub">Where your 4,414 active jobs currently sit. Jobs stuck in Decision Pending or Partial Approval need attention.</p>
+        <div class="stage-grid" id="stage-grid"></div>
+      </div>
+
+      <div class="card">
+        <h2>Approval Queue — Needs Push</h2>
+        <p class="sub">Jobs stuck in approval/decision stages. These need adjuster follow-up or re-inspection requests.</p>
+        <div id="approval-queue"></div>
+        <div class="callout cy" style="margin-top:12px">
+          <strong>Partial Approval (269 jobs)</strong> means carrier approved some but not all trades. Each one needs a supplement request or a re-inspection. Run these through the Denial Analyzer first.
+        </div>
+      </div>
+
+    </div>
+
+    <!-- CROSS-SELL + SUPPLEMENT BY CARRIER -->
+    <div class="two-col">
+
+      <div class="card">
+        <h2>Cross-Sell Bids Open</h2>
+        <p class="sub">104 jobs with open additional-trade bids. <span id="crosssell-value"></span></p>
+        <div id="crosssell-content"></div>
+      </div>
+
+      <div class="card">
+        <h2>Supplement by Carrier (Top 8)</h2>
+        <p class="sub">Value of open supplements per carrier. Sorted by total supplement value.</p>
+        <div id="carrier-supp-content"></div>
+      </div>
+
+    </div>
+
+    <!-- SUPPLEMENT STATUS FUNNEL -->
+    <div class="card" style="margin-bottom:14px">
+      <h2>Supplement Status Funnel</h2>
+      <p class="sub">589 active supplements across 8 statuses. Assigned + Revised Pending + Sent = active negotiation. Post-install service = waiting on payment after job done.</p>
+      <div class="funnel" id="supp-funnel" style="margin-top:8px"></div>
+    </div>
+
+    <!-- PUBLIC ADJUSTMENT + QUICK ACTIONS -->
+    <div class="three-col">
+      <div class="card">
+        <h2>Public Adjustment</h2>
+        <p class="sub">Jobs where a PA has been engaged.</p>
+        <div id="pa-content"></div>
+      </div>
+      <div class="card">
+        <h2>Overdue Installs — Action Required</h2>
+        <p class="sub" id="overdue-sub"></p>
+        <div class="callout cr">
+          <strong>344 jobs are past expected start date.</strong> Ops team needs to contact homeowners and reschedule. Each day delayed risks losing the job.
+        </div>
+        <div class="callout cy" style="margin-top:8px">
+          19 starting this week, 3 starting in next 30 days. Those are correctly pipeline-d — focus overdue effort on the 344.
+        </div>
+      </div>
+      <div class="card">
+        <h2>Quick Numbers</h2>
+        <p class="sub">Snapshot from active-work data.</p>
+        <div id="quick-numbers"></div>
+      </div>
+    </div>
+
+  </div>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+function esc(s) { return s==null?'':String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmt(n) { return n==null?'—':Number(n).toLocaleString(); }
+function fmtM(n) { return n==null?'—':'$'+(n/1e6).toFixed(2)+'M'; }
+function fmtK(n) { return n==null?'—':n>=1000?'$'+(n/1000).toFixed(0)+'K':'$'+n; }
+
+function pillClass(label) {
+  const l = label.toLowerCase();
+  if(l.includes('finalized')||l.includes('confirmed')) return 'pg';
+  if(l.includes('post-install')||l.includes('sent')) return 'pb';
+  if(l.includes('pending')||l.includes('revised')||l.includes('assigned')) return 'py';
+  if(l.includes('overdue')||l.includes('partial')) return 'pr';
+  return 'pp';
+}
+
+const STAGE_URGENCY = {
+  'Partial Approval':'pr','Decision Pending':'py','Legal/Pending':'pr',
+  'Adjuster Meeting':'py','Reinspection Pending':'py','Appraisal':'py',
+  'Quality Check':'py','Post-Install Service':'pb','Wrap-up':'pb',
+  'Schedule Pending':'py','Project Meeting':'pb','Downpayment':'pg',
+  'Scheduled':'pg','Balance Pending':'pg','Warranty/Review':'pb',
+  'Pending PA':'py','PA Result Pending':'pr',
+};
+
+async function load() {
+  try {
+    const [awRes, adjRes] = await Promise.all([
+      fetch('/api/intel/active-work').then(r => r.json()),
+      fetch('/api/intel/adjustments-open').then(r => r.json()),
+    ]);
+
+    // active-work may be wrapped
+    const aw = awRes.data || awRes;
+    const totals = aw.totals || {};
+    const supp = aw.supplement || {};
+    const cs = aw.crossSell || {};
+    const inst = aw.install || {};
+    const pa = aw.publicAdjustment || {};
+
+    // ── TOP STATS ──
+    $('top-stats').innerHTML = [
+      { v: fmt(totals.activeJobs), l:'Active Jobs', s:'Total open pipeline', cls:'' },
+      { v: fmt(inst.overdue), l:'Overdue Installs', s:'Past expected start — act now', cls:'alert' },
+      { v: fmt(inst.readyForInstallCount), l:'Ready for Install', s:fmt(inst.scheduledCount)+' scheduled', cls:'warn' },
+      { v: fmt(totals.withOpenSupplement), l:'Open Supplements', s:'589 across 8 statuses', cls:'warn' },
+      { v: fmt(totals.withCrossSellBid), l:'Cross-Sell Bids', s:fmtM(totals.crossSellBaseValue)+' base value', cls:'good' },
+      { v: fmt(pa.count||0), l:'PA Cases', s:'Public adjustment active', cls:'' },
+    ].map(s => `<div class="stat ${s.cls}"><div class="v">${esc(s.v)}</div><div class="l">${esc(s.l)}</div><div class="s">${esc(s.s)}</div></div>`).join('');
+
+    // ── INSTALL PIPELINE ──
+    const instTotal = (inst.readyForInstallCount||0) + (inst.scheduledCount||0) + (inst.overdue||0);
+    $('install-content').innerHTML = `
+      <div class="funnel">
+        ${[
+          { label:'Ready for Install', val:inst.readyForInstallCount||0, total:instTotal, cls:'var(--yellow)' },
+          { label:'Scheduled', val:inst.scheduledCount||0, total:instTotal, cls:'var(--green)' },
+          { label:'Overdue', val:inst.overdue||0, total:instTotal, cls:'var(--red)' },
+          { label:'Starting This Week', val:inst.startingThisWeek||0, total:inst.startingThisWeek+inst.startingNext30Days||1, cls:'var(--blue)' },
+        ].map(r => `<div class="funnel-row">
+          <span class="funnel-label">${esc(r.label)}</span>
+          <span class="funnel-bar-wrap"><span class="funnel-fill" style="width:${Math.round(r.val/r.total*100)}%;background:${r.cls}"></span></span>
+          <span class="funnel-count" style="color:${r.cls}">${fmt(r.val)}</span>
+        </div>`).join('')}
+      </div>
+      <div class="callout cr" style="margin-top:12px">
+        <strong>${fmt(inst.overdue)} overdue jobs</strong> — homeowners waiting. Each one is a cancellation risk. Ops team should work the list daily until cleared.
+      </div>`;
+
+    // ── SUPPLEMENT STATUS FUNNEL ──
+    const suppByStatus = supp.byStatus || {};
+    const suppTotal = Object.values(suppByStatus).reduce((a,b)=>a+b,0);
+    const suppOrder = ['Finalized','Post-install service','Sent','Confirmed Receipt','Assigned','Revised Pending','Pending Bid Approval','Pending Bids'];
+    const suppColors = { 'Finalized':'var(--green)','Post-install service':'var(--blue)','Sent':'var(--accent)','Confirmed Receipt':'var(--blue)','Assigned':'var(--yellow)','Revised Pending':'var(--red)','Pending Bid Approval':'var(--yellow)','Pending Bids':'var(--muted)' };
+    $('supp-funnel').innerHTML = suppOrder.map(s => {
+      const v = suppByStatus[s] || 0;
+      if(!v) return '';
+      const pct = Math.round(v/suppTotal*100);
+      return `<div class="funnel-row">
+        <span class="funnel-label">${esc(s)}</span>
+        <span class="funnel-bar-wrap"><span class="funnel-fill" style="width:${pct}%;background:${suppColors[s]||'var(--muted)'}"></span></span>
+        <span class="funnel-count" style="color:${suppColors[s]||'var(--muted)'}">${fmt(v)}</span>
+        <span class="funnel-pct">${pct}%</span>
+      </div>`;
+    }).join('');
+
+    // ── SUPPLEMENT BY STATUS (card) ──
+    $('supplement-content').innerHTML = `<table class="tbl">
+      <thead><tr><th>Status</th><th>Count</th><th>% of Total</th></tr></thead>
+      <tbody>${suppOrder.map(s => {
+        const v = suppByStatus[s];
+        if(!v) return '';
+        const pct = Math.round(v/suppTotal*100);
+        const needsAction = ['Assigned','Revised Pending','Sent','Pending Bid Approval','Pending Bids'].includes(s);
+        return `<tr><td>${needsAction?`<strong>${esc(s)}</strong>`:esc(s)}</td>
+          <td><span class="pill ${pillClass(s)}">${v}</span></td>
+          <td style="color:var(--muted)">${pct}%</td></tr>`;
+      }).join('')}</tbody></table>
+    <div class="callout cy" style="margin-top:10px">
+      <strong>Needs action:</strong> Assigned (32) + Revised Pending (24) + Sent (47) + Pending Bids (6) = <strong>109 supplements</strong> require active follow-up with the carrier.
+    </div>`;
+
+    // ── STAGE GRID ──
+    const ACTIVE_STAGES = [
+      ['Partial Approval',269],['Decision Pending',233],['Adjuster Meeting',367],
+      ['Reinspection Pending',20],['Legal/Pending',97],['Appraisal',30],
+      ['Schedule Pending',126],['Quality Check',34],['Wrap-up',57],
+      ['Post-Install Service',10],['Downpayment',61],['Scheduled',58],
+      ['Balance Pending',155],['Warranty/Review',21],['Pending Approval',245],
+    ];
+    $('stage-grid').innerHTML = ACTIVE_STAGES.map(([s,c]) => {
+      const cls = STAGE_URGENCY[s] || '';
+      return `<div class="stage-chip">
+        <div class="sc" style="color:${cls==='pr'?'var(--red)':cls==='py'?'var(--yellow)':cls==='pg'?'var(--green)':cls==='pb'?'var(--blue)':'var(--text)'}">${fmt(c)}</div>
+        <div class="sl">${esc(s)}</div>
+      </div>`;
+    }).join('');
+
+    // ── APPROVAL QUEUE ──
+    const QUEUE = [
+      { stage:'Partial Approval', count:269, pill:'pr', note:'Supplement or re-inspect each one' },
+      { stage:'Pending Approval', count:245, pill:'py', note:'Carrier decision pending' },
+      { stage:'Decision Pending', count:233, pill:'py', note:'Homeowner deciding' },
+      { stage:'Legal/Pending', count:97, pill:'pr', note:'Legal hold — review weekly' },
+      { stage:'Adjuster Meeting', count:367, pill:'py', note:'Adjuster visit scheduled/pending' },
+      { stage:'Balance Pending', count:155, pill:'pb', note:'Awaiting final payment' },
+    ];
+    const queueTotal = QUEUE.reduce((s,q)=>s+q.count,0);
+    $('approval-queue').innerHTML = `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${fmt(queueTotal)} total jobs in queue stages</div>
+    <table class="tbl"><thead><tr><th>Stage</th><th>Count</th><th>Notes</th></tr></thead>
+    <tbody>${QUEUE.map(q => `<tr>
+      <td style="font-weight:600">${esc(q.stage)}</td>
+      <td><span class="pill ${q.pill}">${fmt(q.count)}</span></td>
+      <td style="color:var(--muted)">${esc(q.note)}</td>
+    </tr>`).join('')}</tbody></table>`;
+
+    // ── CROSS-SELL ──
+    const csSummary = cs.summary || [];
+    const csTotal = csSummary.reduce((s,c)=>s+(c.baseJobValue||0),0);
+    $('crosssell-value').textContent = fmtM(csTotal) + ' total base value';
+    $('crosssell-content').innerHTML = `<table class="tbl">
+      <thead><tr><th>Type</th><th>Open Bids</th><th>Post-Recheck</th><th>Base Value</th></tr></thead>
+      <tbody>${csSummary.map(c => `<tr>
+        <td style="font-weight:600">${esc(c.type)}</td>
+        <td><span class="pill pp">${c.openBids||0}</span></td>
+        <td style="color:var(--muted)">${c.postRecheck||0}</td>
+        <td style="color:var(--accent)">${fmtM(c.baseJobValue)}</td>
+      </tr>`).join('')}</tbody>
+    </table>
+    <div class="callout cg" style="margin-top:10px">
+      <strong>75 Drywall/Painting + 23 Metal Roofing bids</strong> still open. Closing these adds ${fmtM(csTotal)} to revenue without new acquisition cost.
+    </div>`;
+
+    // ── SUPPLEMENT BY CARRIER ──
+    const carrierSupp = (supp.byCarrier || []).sort((a,b) => (b.totalValue||0)-(a.totalValue||0)).slice(0,8);
+    $('carrier-supp-content').innerHTML = `<table class="tbl">
+      <thead><tr><th>Carrier</th><th>Total</th><th>Value</th><th>Finalized</th><th>Pending</th></tr></thead>
+      <tbody>${carrierSupp.map(c => {
+        const pending = (c.byStatus?.Sent||0) + (c.byStatus?.Assigned||0) + (c.byStatus?.['Revised Pending']||0) + (c.byStatus?.['Confirmed Receipt']||0);
+        return `<tr>
+          <td style="font-weight:600">${esc(c.carrier)}</td>
+          <td>${fmt(c.total)}</td>
+          <td style="color:var(--accent)">${fmtM(c.totalValue)}</td>
+          <td><span class="pill pg">${c.byStatus?.Finalized||0}</span></td>
+          <td><span class="pill ${pending>10?'pr':'py'}">${pending}</span></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>`;
+
+    // ── PA ──
+    $('pa-content').innerHTML = pa.count > 0 ? `
+      <div style="font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px">${pa.count}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Public adjustment cases active</div>
+      <table class="tbl"><thead><tr><th>Status</th><th>Count</th></tr></thead>
+      <tbody>${Object.entries(pa.byStatus||{}).map(([s,c]) => `<tr><td>${esc(s)}</td><td>${c}</td></tr>`).join('')}</tbody></table>
+      <div class="callout cb" style="margin-top:10px">PA cases require close coordination with the assigned adjuster and legal. Review weekly.</div>
+    ` : `<div style="color:var(--muted);font-size:13px;padding:20px 0">No active PA cases.</div>`;
+
+    // ── OVERDUE ──
+    $('overdue-sub').textContent = fmt(inst.overdue) + ' jobs past expected install date.';
+
+    // ── QUICK NUMBERS ──
+    $('quick-numbers').innerHTML = [
+      ['Active Jobs', totals.activeJobs, ''],
+      ['Open Supplements', totals.withOpenSupplement, 'pr'],
+      ['Ready for Install', inst.readyForInstallCount, 'pg'],
+      ['Scheduled', inst.scheduledCount, 'pb'],
+      ['Overdue Installs', inst.overdue, 'pr'],
+      ['Starting This Week', inst.startingThisWeek, 'py'],
+      ['Cross-Sell Bids', totals.withCrossSellBid, 'pp'],
+      ['PA Cases', pa.count||0, ''],
+    ].map(([l,v,c]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+      <span style="color:var(--muted)">${esc(l)}</span>
+      <span class="pill ${c}">${fmt(v)}</span>
+    </div>`).join('');
+
+    $('loading').style.display = 'none';
+    $('page').style.display = 'block';
+  } catch(err) {
+    $('loading').textContent = 'Error: ' + err.message;
+    console.error(err);
+  }
+}
+load();
+</script>
+</body>
+</html>
