@@ -84,3 +84,44 @@ async function generateOllama(input: { system: string; messages: GenMessage[]; t
   });
   return { text: msg.content ?? '', toolCalls, model: 'ollama-qwen25' };
 }
+
+/**
+ * Streaming variant — calls onToken(delta) as text arrives; returns the full
+ * result (text + any toolCalls) when the turn ends. Ollama (the fallback) emits
+ * one-shot rather than token-granular; Gemini streams real deltas.
+ */
+export async function generateStream(
+  model: ModelId,
+  input: { system: string; messages: GenMessage[]; tools: GenTool[] },
+  onToken: (delta: string) => void,
+): Promise<GenResult> {
+  if (model === 'ollama-qwen25') {
+    const r = await generateOllama(input);
+    if (r.text) onToken(r.text);
+    return r;
+  }
+  if (!gemini) throw new Error('gemini_unavailable: GEMINI_API_KEY not configured');
+  const contents = input.messages.map((m) => ({
+    role: m.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: m.content }],
+  }));
+  const stream = await gemini.models.generateContentStream({
+    model: 'gemini-2.0-flash',
+    contents,
+    config: {
+      systemInstruction: input.system,
+      temperature: 0.3,
+      tools: input.tools.length ? [{ functionDeclarations: input.tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters as never })) }] : undefined,
+    },
+  });
+  let text = '';
+  const toolCalls: Array<{ name: string; args: Record<string, unknown> }> = [];
+  for await (const chunk of stream) {
+    const delta = chunk.text ?? '';
+    if (delta) { text += delta; onToken(delta); }
+    for (const fc of chunk.functionCalls ?? []) {
+      toolCalls.push({ name: String(fc.name), args: (fc.args ?? {}) as Record<string, unknown> });
+    }
+  }
+  return { text, toolCalls, model: 'gemini-2.0-flash' };
+}

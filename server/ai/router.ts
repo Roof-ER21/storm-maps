@@ -1,7 +1,7 @@
 /** Phase 6 — AI assistant router, mounted at /api/ai/*. */
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { sql as pgSql } from '../db.js';
-import { chatHandler } from './chat.js';
+import { chatHandler, chatStreamHandler } from './chat.js';
 import { confirmHandler } from './confirm.js';
 
 const router = Router();
@@ -12,6 +12,7 @@ function requireAuth(req: Request, res: Response, next: NextFunction): void {
 }
 
 router.post('/api/ai/chat', requireAuth, chatHandler);
+router.post('/api/ai/chat/stream', requireAuth, chatStreamHandler); // SSE; non-stream /chat unchanged
 router.post('/api/ai/confirm', requireAuth, confirmHandler);
 
 // List the user's threads (most-recent first).
