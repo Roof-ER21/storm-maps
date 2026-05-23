@@ -302,7 +302,7 @@ Example: `/?view=carrier-hub&tab=algorithms` lands on the Carrier Algorithms tab
 | `GET /api/intel/projects-query` | Filtered + paginated job query |
 | `GET /api/intel/projects-aggregate` | Job counts grouped by dimension |
 | `GET /api/intel/zip-stats` | ZIP performance stats |
-| `GET /api/intel/zip-deep` | Single-ZIP detail + knock script |
+| `GET /api/intel/zip-deep` | Single-ZIP detail (carriers, trades, reps, adjusters, recent storms) |
 | `GET /api/intel/carriers-summary` | Carrier list + approval rates |
 | `GET /api/intel/carrier-deep` | One-carrier deep dive |
 | `GET /api/intel/carrier-trade-matrix` | Carrier × trade heatmap |

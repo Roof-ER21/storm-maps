@@ -21,11 +21,11 @@ Endpoints:
 ### detail — Customer Detail
 File: `src/components/hubs/native/customer/CustomerDetail.tsx`
 
-Typeahead search to find a customer; selecting one shows full job history, storm exposure, and linked leads.
+Typeahead search to find a customer; selecting one shows full job history and storm exposure.
 
 Endpoints:
 - `GET /api/intel/quick-search?q=<query>` — typeahead (min 2 chars); returns matches across customers, reps, carriers, adjusters
-- `GET /api/intel/customer-deep?key=<key>` — on customer select; key is the customer identifier from search results; response includes all jobs, open AR, storm hits, linked leads, and trade gaps
+- `GET /api/intel/customer-deep?key=<key>` — on customer select; key is the lowercased 3-part dedup key `customer|address|city`; response `{ jobs: [{ id, customer, addressLine1, city, state, zip, lat, lng, insurance, adjusterName, salesRep, stage, jobType, signedDate, completedDate, jobTotal, customerEmail, customerCell, customerHome, trades }], exposure, took_ms }`; `exposure` is the storm-exposure entry for this customer (or `null` if none)
 
 ### lookup — Property Lookup
 File: `src/components/hubs/native/customer/PropertyLookup.tsx`

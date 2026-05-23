@@ -17,7 +17,7 @@ Two-panel view: rep list on the left, deep-dive panel on the right. Shows signed
 
 Endpoints:
 - `GET /api/intel/reps-summary` — left-pane list on mount; includes all reps with signed, completed, dead, revenue, and close rate
-- `GET /api/intel/rep-deep?name=<rep>` — on rep select; full detail including top ZIPs, top carriers, monthly trend, adjuster co-occurrences
+- `GET /api/intel/rep-deep?name=<rep>` — on rep select; response `{ trades, carriers, cities, zips, medianSpeedDays, medianCompleteDays, bigJobs, took_ms }`; each dimension list is `[{ name, count }]`; `bigJobs` is `[{ customer, addressLine1, city, state, insurance, stage, signedDate, jobTotal }]`
 
 ### response — Rep Response Time
 File: `src/components/hubs/native/rep/RepResponse.tsx`

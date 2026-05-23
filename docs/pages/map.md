@@ -8,7 +8,7 @@ Leaflet map of all geolocated jobs. Shows job distribution across the service ar
 
 ## Endpoints
 
-- `GET /api/intel/map-pins` — slim location layer on mount; each pin includes job id, lat/lng, stage (signed/completed/dead), carrier, rep, and city/state; optional `?state=<s>` filter; no per-job revenue or customer data (kept slim for map performance)
+- `GET /api/intel/map-pins` — slim location layer on mount; response `{ pins: [{ id, customer, addressLine1, city, state, zip, lat, lng, insurance, adjusterName, claimNumber, jobType, stage, salesRep, signedDate, jobTotal, stormMatch }], total, took_ms }`; supports filter params `carrier`, `zip`, `city`, `state`, `sales_rep`, `stage`, `job_type`, `since_date`, `until_date`
 
 ## Key Flows
 

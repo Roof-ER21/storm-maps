@@ -9,9 +9,9 @@ Per-role employee performance dashboard. Ops managers use this to see individual
 ## Endpoints
 
 - `GET /api/intel/employee-roster` — on mount; UUID-to-display-name map for all employees
-- `GET /api/intel/ops-team-summary?role=<role>` — on role selection; list of employees in that role with summary stats (open items, completed, throughput)
-- `GET /api/intel/ops-team-deep?role=<role>&key=<name>` — on employee selection; full detail for that employee including job-level breakdown, open supplement list, AR list, or install queue depending on role
+- `GET /api/intel/ops-team-summary?role=<role>` — on role selection; response `{ role, people: [{ name, signed, completed, dead, revenue, closeRate, avgJob }], total, took_ms }` sorted by signed count descending
+- `GET /api/intel/ops-team-deep?role=<role>&key=<name>` — on employee selection; response `{ summary: { signed, completed, dead, open, revenue }, cities, carriers, reps, trades, zips, medianCompleteDays, bigJobs: [{ customer, addressLine1, city, state, stage, signedDate, jobTotal }], took_ms }`; all sub-lists are `{ name, count }` arrays
 
 ## Key Flows
 
-Role picker (field tech / supplement writer / AR / project manager). Selecting a role loads the team summary for that role. Selecting an individual employee loads their deep-dive. The employee roster provides the name mapping since portal data uses UUIDs.
+Role picker (`projectCoordinator` / `estimator` / `fieldTechId`). Selecting a role loads the team summary for that role. Selecting an individual employee loads their deep-dive. The employee roster provides the name mapping since portal data uses UUIDs.
