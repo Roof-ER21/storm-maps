@@ -106,6 +106,48 @@ app.get('/api/auth/bootstrap-config', (_req, res) => {
   res.json({ bootstrapPinRequired: !!process.env.BOOTSTRAP_PIN?.trim() });
 });
 
+// ── 301 redirects: retired Phase 2c hub HTML pages → SPA hub deep-links ──
+// Phase 2c consolidated these standalone pages into native React hubs. Old
+// bookmarks/links 301 to the SPA with ?view=<hub>&tab=<tab> so they land on the
+// exact hub sub-view (IntelligenceHub reads ?view, HubWrapper reads ?tab).
+// All 24 hub source pages retired (the 2 AI tabs verified via real-Gemini smoke).
+const HUB_REDIRECTS: Record<string, string> = {
+  '/carrier-detail.html':     '/?view=carrier-hub&tab=overview',
+  '/carrier-trades.html':     '/?view=carrier-hub&tab=trades',
+  '/carrier-playbook.html':   '/?view=carrier-hub&tab=playbook',
+  '/carrier-algorithms.html': '/?view=carrier-hub&tab=algorithms',
+  '/storm-playbook.html':     '/?view=storm-hub&tab=playbook',
+  '/storm-intel.html':        '/?view=storm-hub&tab=intel',
+  '/storm-exposure.html':     '/?view=storm-hub&tab=exposure',
+  '/denial-analyzer.html':    '/?view=denial-hub&tab=analyze',
+  '/denial-archive.html':     '/?view=denial-hub&tab=archive',
+  '/denial-stats.html':       '/?view=denial-hub&tab=stats',
+  '/adjusters.html':          '/?view=adjuster-hub&tab=directory',
+  '/adjuster-detail.html':    '/?view=adjuster-hub&tab=detail',
+  '/adjuster-twin.html':      '/?view=adjuster-hub&tab=twin',
+  '/reps.html':               '/?view=rep-hub&tab=overview',
+  '/rep-response.html':       '/?view=rep-hub&tab=response',
+  '/customers.html':          '/?view=customer-hub&tab=list',
+  '/customer-detail.html':    '/?view=customer-hub&tab=detail',
+  '/property-lookup.html':    '/?view=customer-hub&tab=lookup',
+  '/leads-intel.html':        '/?view=leads-hub&tab=intel',
+  '/leads.html':              '/?view=leads-hub&tab=funnel',
+  '/pricing-margins.html':    '/?view=pricing-hub&tab=margins',
+  '/pricing-library.html':    '/?view=pricing-hub&tab=library',
+  '/hot-zips.html':           '/?view=zip-hub&tab=hot',
+  '/zip-intel.html':          '/?view=zip-hub&tab=intel',
+};
+app.use((req, res, next) => {
+  if (req.method === 'GET') {
+    const target = HUB_REDIRECTS[req.path];
+    if (target) {
+      res.redirect(301, target);
+      return;
+    }
+  }
+  next();
+});
+
 // ── Static SPA + intel HTML pages ───────────────────────
 // /public/*.html (the 30 static intel pages + carrier-orphans) are served
 // directly at the URL root by Vite in dev. In prod they're copied into dist/

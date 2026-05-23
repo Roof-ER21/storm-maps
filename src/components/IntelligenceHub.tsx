@@ -306,9 +306,19 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: st
   },
 ];
 
+/** Deep-link entry: honor `?view=<hub>` on first load (e.g. from a 301 of a
+ *  retired `/x.html` URL). Only hub views are accepted; HubWrapper reads `?tab=`
+ *  for the sub-tab. A URL-set view is non-'home', so the role-home landing
+ *  effect below skips it automatically. */
+function readViewFromUrl(): IntelView | null {
+  if (typeof window === 'undefined') return null;
+  const v = new URLSearchParams(window.location.search).get('view');
+  return v && getHub(v) ? (v as IntelView) : null;
+}
+
 export function IntelligenceHub() {
   const { user } = useUser();
-  const [view, setViewState] = useState<IntelView>('home');
+  const [view, setViewState] = useState<IntelView>(() => readViewFromUrl() ?? 'home');
   const [history, setHistory] = useState<IntelView[]>([]);
 
   // Once the user loads, land on their role's default home (unless they've
