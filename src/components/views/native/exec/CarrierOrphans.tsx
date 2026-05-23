@@ -118,8 +118,8 @@ export const CarrierOrphans: NativeViewComponent = function CarrierOrphans({ nav
     return [...filtered]
       .sort((a, b) => {
         if (sortKey === "priority") {
-          const ao = priorityOrder[(a.priority ?? "").toLowerCase()] ?? 99;
-          const bo = priorityOrder[(b.priority ?? "").toLowerCase()] ?? 99;
+          const ao = priorityOrder[String(a.priority ?? "").toLowerCase()] ?? 99;
+          const bo = priorityOrder[String(b.priority ?? "").toLowerCase()] ?? 99;
           return sortDir === "asc" ? ao - bo : bo - ao;
         }
         const av = a[sortKey];
