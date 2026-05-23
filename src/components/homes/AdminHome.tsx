@@ -7,9 +7,18 @@
 import { useUser } from "../../auth/UserContext";
 import { HomeShell, KpiCard, CardRow, Panel, useFetch, fmtAgo } from "./HomeCommon";
 
+interface IntelHealthFile {
+  available?: boolean;
+  bytes?: number;
+  ageHours?: number;
+  source?: string;
+}
+
 interface IntelHealth {
-  ok?: boolean;
-  blobs?: Array<{ key: string; updated_at: string; bytes: number; row_count?: number | null }>;
+  status?: string;
+  generated?: string;
+  oldestFileHours?: number;
+  files?: Record<string, IntelHealthFile>;
 }
 
 interface RefreshStatus {
@@ -24,13 +33,16 @@ export function AdminHome({ navigate }: { navigate: (view: string) => void }) {
   const health = useFetch<IntelHealth>("/api/intel/health");
   const refresh = useFetch<RefreshStatus>("/api/intel/refresh/status");
 
-  const blobs = health.data?.blobs ?? [];
-  const newest = blobs.length
-    ? blobs.reduce((a, b) => (new Date(a.updated_at) > new Date(b.updated_at) ? a : b))
+  const files = Object.entries(health.data?.files ?? {});
+  const blobCount = files.length;
+  const freshest = files.length
+    ? files.reduce((a, b) => ((a[1].ageHours ?? Infinity) <= (b[1].ageHours ?? Infinity) ? a : b))
     : null;
-  const oldest = blobs.length
-    ? blobs.reduce((a, b) => (new Date(a.updated_at) < new Date(b.updated_at) ? a : b))
+  const oldest = files.length
+    ? files.reduce((a, b) => ((a[1].ageHours ?? -1) >= (b[1].ageHours ?? -1) ? a : b))
     : null;
+  const fmtHrs = (h?: number) =>
+    h == null ? "—" : h < 1 ? "just now" : h < 24 ? `${Math.round(h)}h ago` : `${Math.round(h / 24)}d ago`;
 
   return (
     <HomeShell
@@ -40,19 +52,19 @@ export function AdminHome({ navigate }: { navigate: (view: string) => void }) {
       <CardRow>
         <KpiCard
           label="Intel blobs"
-          value={blobs.length || (health.loading ? "…" : "—")}
-          hint={blobs.length ? `out of 33 expected` : "endpoint unavailable"}
+          value={blobCount || (health.loading ? "…" : "—")}
+          hint={blobCount ? `out of 33 expected` : "endpoint unavailable"}
         />
         <KpiCard
           label="Freshest blob"
-          value={newest ? fmtAgo(newest.updated_at) : "—"}
-          hint={newest?.key}
+          value={freshest ? fmtHrs(freshest[1].ageHours) : "—"}
+          hint={freshest?.[0]}
         />
         <KpiCard
           label="Oldest blob"
-          value={oldest ? fmtAgo(oldest.updated_at) : "—"}
-          hint={oldest?.key}
-          emphasis={oldest ? (Date.now() - new Date(oldest.updated_at).getTime()) > 7 * 24 * 3600 * 1000 : false}
+          value={oldest ? fmtHrs(oldest[1].ageHours) : "—"}
+          hint={oldest?.[0]}
+          emphasis={oldest ? (oldest[1].ageHours ?? 0) > 168 : false}
         />
         <KpiCard
           label="Refresh state"

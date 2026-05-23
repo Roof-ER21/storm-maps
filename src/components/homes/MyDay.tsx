@@ -9,8 +9,11 @@ import { useUser } from "../../auth/UserContext";
 import { HomeShell, KpiCard, CardRow, Panel, useFetch, fmtMoney } from "./HomeCommon";
 
 interface DashboardKpis {
-  total_jobs?: number;
-  close_rate?: number;
+  hero?: {
+    total?: number;
+    completed?: number;
+    dead?: number;
+  };
 }
 
 interface ZipRow {
@@ -23,9 +26,13 @@ interface ZipRow {
 export function MyDay({ navigate }: { navigate: (view: string) => void }) {
   const { user } = useUser();
   const kpis = useFetch<DashboardKpis>("/api/intel/dashboard-kpis");
-  const zips = useFetch<{ rows: ZipRow[] }>("/api/intel/zip-stats?window=30");
+  const zips = useFetch<{ zips: ZipRow[] }>("/api/intel/zip-stats?window=30");
 
-  const topZips = (zips.data?.rows ?? [])
+  const hero = kpis.data?.hero;
+  const decided = hero ? (hero.completed ?? 0) + (hero.dead ?? 0) : 0;
+  const closeRate = hero && decided > 0 ? (hero.completed ?? 0) / decided : null;
+
+  const topZips = (zips.data?.zips ?? [])
     .sort((a, b) => (b.signed ?? 0) - (a.signed ?? 0))
     .slice(0, 8);
 
@@ -37,11 +44,11 @@ export function MyDay({ navigate }: { navigate: (view: string) => void }) {
       <CardRow>
         <KpiCard
           label="Jobs (all-time)"
-          value={kpis.data?.total_jobs ?? (kpis.loading ? "…" : "—")}
+          value={hero?.total ?? (kpis.loading ? "…" : "—")}
         />
         <KpiCard
           label="Avg close rate"
-          value={kpis.data?.close_rate != null ? `${(kpis.data.close_rate * 100).toFixed(1)}%` : "—"}
+          value={closeRate != null ? `${(closeRate * 100).toFixed(1)}%` : "—"}
           hint="organization-wide"
         />
       </CardRow>

@@ -8,10 +8,13 @@ import { useUser } from "../../auth/UserContext";
 import { HomeShell, KpiCard, CardRow, Panel, useFetch, fmtMoney, fmtPct } from "./HomeCommon";
 
 interface DashboardKpis {
-  total_jobs?: number;
-  total_revenue?: number;
-  close_rate?: number;
-  pipeline_value?: number;
+  hero?: {
+    total?: number;
+    completed?: number;
+    dead?: number;
+    totalRevenue?: number;
+    completedRevenue?: number;
+  };
 }
 
 interface RepsSummaryRep {
@@ -34,14 +37,22 @@ export function ExecHome({ navigate }: { navigate: (view: string) => void }) {
   const { user } = useUser();
   const kpis = useFetch<DashboardKpis>("/api/intel/dashboard-kpis");
   const reps = useFetch<{ reps: RepsSummaryRep[] }>("/api/intel/reps-summary");
-  const zips = useFetch<{ rows: ZipStats[] }>("/api/intel/zip-stats?window=180");
+  const zips = useFetch<{ zips: ZipStats[] }>("/api/intel/zip-stats?window=180");
+
+  const hero = kpis.data?.hero;
+  const decided = hero ? (hero.completed ?? 0) + (hero.dead ?? 0) : 0;
+  const closeRate = hero && decided > 0 ? (hero.completed ?? 0) / decided : null;
+  const pipelineValue =
+    hero?.totalRevenue != null && hero?.completedRevenue != null
+      ? hero.totalRevenue - hero.completedRevenue
+      : null;
 
   const topReps = (reps.data?.reps ?? [])
     .filter((r) => r.completedRevenue != null)
     .sort((a, b) => (b.completedRevenue ?? 0) - (a.completedRevenue ?? 0))
     .slice(0, 5);
 
-  const topZips = (zips.data?.rows ?? [])
+  const topZips = (zips.data?.zips ?? [])
     .filter((z) => z.revenue != null)
     .sort((a, b) => (b.revenue ?? 0) - (a.revenue ?? 0))
     .slice(0, 5);
@@ -54,21 +65,22 @@ export function ExecHome({ navigate }: { navigate: (view: string) => void }) {
       <CardRow>
         <KpiCard
           label="Total revenue"
-          value={fmtMoney(kpis.data?.total_revenue)}
+          value={fmtMoney(hero?.completedRevenue)}
           hint="all-time closed"
         />
         <KpiCard
           label="Close rate"
-          value={fmtPct(kpis.data?.close_rate, 1)}
-          hint="formula B (b6930c9)"
+          value={fmtPct(closeRate, 1)}
+          hint="completed ÷ (completed + dead)"
         />
         <KpiCard
           label="Total jobs"
-          value={kpis.data?.total_jobs ?? (kpis.loading ? "…" : "—")}
+          value={hero?.total ?? (kpis.loading ? "…" : "—")}
         />
         <KpiCard
           label="Pipeline value"
-          value={fmtMoney(kpis.data?.pipeline_value)}
+          value={fmtMoney(pipelineValue)}
+          hint="booked − completed"
           emphasis
         />
       </CardRow>
