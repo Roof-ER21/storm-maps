@@ -55,9 +55,51 @@ export async function invokeTool(tool: ToolDef, args: Record<string, unknown>): 
   }
 }
 
-/** Compact a tool result for the model + the audit log (avoid dumping megabytes). */
-export function summarize(data: unknown, max = 6000): string {
-  let s: string;
-  try { s = typeof data === 'string' ? data : JSON.stringify(data); } catch { s = String(data); }
-  return s.length > max ? s.slice(0, max) + `…[truncated ${s.length - max} chars]` : s;
+/**
+ * Compact a tool result for the model. Array-aware: when a result is too large
+ * it is truncated by WHOLE elements (never sliced mid-JSON) and tagged with the
+ * true total + an instruction not to guess past it — so the model sees the data
+ * is partial instead of silently inventing the missing rows. The budget is
+ * generous on purpose: feeding the full set (e.g. all reps) is what lets
+ * "top N under X" filters answer correctly. A blind 6 KB cap is what made the
+ * assistant fabricate reps it never received.
+ */
+export function summarize(data: unknown, maxChars = 200_000): string {
+  const stringify = (v: unknown): string => {
+    try { return typeof v === 'string' ? v : JSON.stringify(v); } catch { return String(v); }
+  };
+
+  // Locate a primary array to truncate by element: the value itself, or the
+  // first array-valued property of a top-level object (e.g. {reps:[…]}).
+  let arr: unknown[] | null = null;
+  let rebuild: (slice: unknown[]) => unknown = (s) => s;
+  if (Array.isArray(data)) {
+    arr = data;
+  } else if (data && typeof data === 'object') {
+    const entry = Object.entries(data as Record<string, unknown>).find(([, v]) => Array.isArray(v));
+    if (entry) {
+      const [key] = entry;
+      arr = (data as Record<string, unknown>)[key] as unknown[];
+      rebuild = (s) => ({ ...(data as Record<string, unknown>), [key]: s });
+    }
+  }
+
+  const full = stringify(arr ? rebuild(arr) : data);
+  if (full.length <= maxChars) return full;
+
+  if (arr) {
+    // Largest whole-element prefix that fits the budget (binary search).
+    let lo = 0, hi = arr.length;
+    while (lo < hi) {
+      const mid = Math.ceil((lo + hi) / 2);
+      if (stringify(rebuild(arr.slice(0, mid))).length <= maxChars) lo = mid; else hi = mid - 1;
+    }
+    const kept = lo;
+    return stringify(rebuild(arr.slice(0, kept))) +
+      `\n[DATA TRUNCATED: ${arr.length} items total, only the first ${kept} shown — result too large to include in full. The other ${arr.length - kept} items are NOT shown. Do not infer, filter over, or invent the omitted items. If the question needs the complete set (totals, "top N under/over X", anything spanning all rows), tell the user the data was truncated and ask them to narrow it or use a more specific tool.]`;
+  }
+
+  // Non-array payload: hard cap with an honest marker.
+  return full.slice(0, maxChars) +
+    `\n[TRUNCATED ${full.length - maxChars} chars — result incomplete; do not invent the omitted content.]`;
 }
