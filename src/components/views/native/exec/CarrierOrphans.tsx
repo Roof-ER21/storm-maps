@@ -73,7 +73,7 @@ function fmtDate(s: string | null | undefined): string {
 }
 
 function priorityColor(p: string): string {
-  switch ((p ?? "").toLowerCase()) {
+  switch (String(p ?? "").toLowerCase()) {
     case "high": return "#ef4444";
     case "medium": return "#f59e0b";
     case "low": return "#22c55e";

@@ -218,7 +218,7 @@ function buildCarrierStats(
       const patents = patCarrier ? (patentsData.byCarrier[patCarrier] ?? []).length : 0;
 
       const caseCount = cases.filter((c) => {
-        const cn = (c.carrier ?? "").toLowerCase();
+        const cn = String(c.carrier ?? "").toLowerCase();
         const sn = s.carrier.toLowerCase();
         return cn.includes(sn.split(" ")[0]) || sn.includes(cn.split(" ")[0]);
       }).length;

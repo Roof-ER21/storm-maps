@@ -176,7 +176,7 @@ function jobAddr(j: JobInfo | null): string {
 }
 
 function slugClass(s: string | null): string {
-  return (s ?? "").toLowerCase().replace(/[^a-z]+/g, "-");
+  return String(s ?? "").toLowerCase().replace(/[^a-z]+/g, "-");
 }
 
 function pillStyle(slug: string): React.CSSProperties {
@@ -401,7 +401,7 @@ export function Receivables({ navigate: _navigate }: { navigate: (v: string) => 
   let arFiltered = [...accounts];
   const q = arSearch.trim().toLowerCase();
   if (q) arFiltered = arFiltered.filter((a) =>
-    [custName(a.customer), a.job?.addressLine1, a.insurance?.company, a.proj?.salesRep].some((f) => (f ?? "").toLowerCase().includes(q))
+    [custName(a.customer), a.job?.addressLine1, a.insurance?.company, a.proj?.salesRep].some((f) => String(f ?? "").toLowerCase().includes(q))
   );
   if (arStatus) arFiltered = arFiltered.filter((a) => a.status === arStatus);
   if (arState) arFiltered = arFiltered.filter((a) => a.job?.state === arState);
@@ -429,7 +429,7 @@ export function Receivables({ navigate: _navigate }: { navigate: (v: string) => 
   let dpFiltered = [...downpayments];
   const dq = dpSearch.trim().toLowerCase();
   if (dq) dpFiltered = dpFiltered.filter((d) =>
-    [custName(d.customer), d.job?.addressLine1, d.insurance?.company].some((f) => (f ?? "").toLowerCase().includes(dq))
+    [custName(d.customer), d.job?.addressLine1, d.insurance?.company].some((f) => String(f ?? "").toLowerCase().includes(dq))
   );
   if (dpStatus) dpFiltered = dpFiltered.filter((d) => d.status === dpStatus);
   dpFiltered.sort((a, b) => {
