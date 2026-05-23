@@ -1113,15 +1113,15 @@ export async function repsSummary(_req: Request, res: Response) {
         COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND job_type IN ('Insurance','Insurance Conversion','Public Adjuster') AND stage ~* 'dead|cancel')::int AS ins_dead_count,
         -- Varun #3: 30d trailing — jobs SIGNED in last 30 days + current close state.
         -- Most 30d-signed jobs are still open; "rate" here is "fast closers" not full conversion.
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days')::int AS signed_30d,
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days' AND stage ~* 'completed|finalized')::int AS completed_30d,
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days' AND stage ~* 'dead|cancel')::int AS dead_30d,
-        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '30 days' AND stage ~* 'completed|finalized'), 0)::numeric AS revenue_30d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '30 days')::date)::int AS signed_30d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '30 days')::date AND stage ~* 'completed|finalized')::int AS completed_30d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '30 days')::date AND stage ~* 'dead|cancel')::int AS dead_30d,
+        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '30 days')::date AND stage ~* 'completed|finalized'), 0)::numeric AS revenue_30d,
         -- 200d trailing: long enough that most jobs have closed → stable approval rate.
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days')::int AS signed_200d,
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days' AND stage ~* 'completed|finalized')::int AS completed_200d,
-        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days' AND stage ~* 'dead|cancel')::int AS dead_200d,
-        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND signed_date >= NOW() - INTERVAL '200 days' AND stage ~* 'completed|finalized'), 0)::numeric AS revenue_200d
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '200 days')::date)::int AS signed_200d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '200 days')::date AND stage ~* 'completed|finalized')::int AS completed_200d,
+        COUNT(*) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '200 days')::date AND stage ~* 'dead|cancel')::int AS dead_200d,
+        COALESCE(SUM(job_total) FILTER (WHERE signed_date IS NOT NULL AND signed_date::date >= (NOW() - INTERVAL '200 days')::date AND stage ~* 'completed|finalized'), 0)::numeric AS revenue_200d
         FROM intel_projects
        WHERE sales_rep IS NOT NULL AND TRIM(sales_rep) <> ''
        GROUP BY TRIM(sales_rep)
