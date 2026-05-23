@@ -330,6 +330,29 @@ router.get('/api/intel/leads-query', leadsQuery);
 router.get('/api/intel/lead-deep', leadDeep);
 router.get('/api/intel/lead-pipeline', leadPipeline);
 
+// Server-side geocode proxy. The US Census geocoder sends no CORS headers, so a
+// direct browser fetch is blocked. Proxy it server-side and return the Census
+// JSON verbatim so the client parser is unchanged. MUST be declared before the
+// '/api/intel/:key' blob catch-all below, or "geocode" matches :key → 404.
+router.get('/api/intel/geocode', async (req: Request, res: Response) => {
+  const address = String(req.query.address ?? '').trim();
+  if (!address) {
+    res.status(400).json({ error: 'address required' });
+    return;
+  }
+  const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
+  try {
+    const upstream = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!upstream.ok) {
+      res.status(502).json({ error: `census geocoder ${upstream.status}` });
+      return;
+    }
+    res.json(await upstream.json());
+  } catch {
+    res.status(502).json({ error: 'geocode upstream failed' });
+  }
+});
+
 router.get('/api/intel/:key', async (req: Request, res: Response) => {
   const key = String(req.params.key);
   if (['health', '_meta', 'manifest', 'refresh'].includes(key)) {
@@ -503,27 +526,5 @@ export async function runRefresh(consumerLabelStr: string = 'internal'): Promise
     refreshState.finishedAt = new Date().toISOString();
   });
 }
-
-// Server-side geocode proxy. The US Census geocoder sends no CORS headers, so
-// a direct browser fetch is blocked. Proxy it through the server and return the
-// Census JSON verbatim so the client parser is unchanged.
-router.get('/api/intel/geocode', async (req, res) => {
-  const address = String(req.query.address ?? '').trim();
-  if (!address) {
-    res.status(400).json({ error: 'address required' });
-    return;
-  }
-  const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
-  try {
-    const upstream = await fetch(url, { signal: AbortSignal.timeout(8000) });
-    if (!upstream.ok) {
-      res.status(502).json({ error: `census geocoder ${upstream.status}` });
-      return;
-    }
-    res.json(await upstream.json());
-  } catch {
-    res.status(502).json({ error: 'geocode upstream failed' });
-  }
-});
 
 export { router as intelRouter };
