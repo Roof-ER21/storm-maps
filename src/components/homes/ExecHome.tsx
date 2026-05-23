@@ -12,8 +12,10 @@ interface DashboardKpis {
     total?: number;
     completed?: number;
     dead?: number;
-    totalRevenue?: number;
     completedRevenue?: number;
+  };
+  tiles?: {
+    arTotal?: number;
   };
 }
 
@@ -42,10 +44,6 @@ export function ExecHome({ navigate }: { navigate: (view: string) => void }) {
   const hero = kpis.data?.hero;
   const decided = hero ? (hero.completed ?? 0) + (hero.dead ?? 0) : 0;
   const closeRate = hero && decided > 0 ? (hero.completed ?? 0) / decided : null;
-  const pipelineValue =
-    hero?.totalRevenue != null && hero?.completedRevenue != null
-      ? hero.totalRevenue - hero.completedRevenue
-      : null;
 
   const topReps = (reps.data?.reps ?? [])
     .filter((r) => r.completedRevenue != null)
@@ -64,7 +62,7 @@ export function ExecHome({ navigate }: { navigate: (view: string) => void }) {
     >
       <CardRow>
         <KpiCard
-          label="Total revenue"
+          label="Completed revenue"
           value={fmtMoney(hero?.completedRevenue)}
           hint="all-time closed"
         />
@@ -74,13 +72,13 @@ export function ExecHome({ navigate }: { navigate: (view: string) => void }) {
           hint="completed ÷ (completed + dead)"
         />
         <KpiCard
-          label="Total jobs"
+          label="Lifetime signed jobs"
           value={hero?.total ?? (kpis.loading ? "…" : "—")}
         />
         <KpiCard
-          label="Pipeline value"
-          value={fmtMoney(pipelineValue)}
-          hint="booked − completed"
+          label="Open AR"
+          value={fmtMoney(kpis.data?.tiles?.arTotal)}
+          hint="awaiting collection"
           emphasis
         />
       </CardRow>
