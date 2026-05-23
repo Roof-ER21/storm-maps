@@ -1,9 +1,8 @@
+import { lazy } from "react";
 import type { ComponentType } from "react";
-import { DenialAnalyze } from "./DenialAnalyze";
-import { DenialArchive } from "./DenialArchive";
-import { DenialStats } from "./DenialStats";
+
 export const denialTabs: Record<string, ComponentType> = {
-  analyze: DenialAnalyze,
-  archive: DenialArchive,
-  stats: DenialStats,
+  analyze: lazy(() => import("./DenialAnalyze").then(m => ({ default: m.DenialAnalyze }))),
+  archive: lazy(() => import("./DenialArchive").then(m => ({ default: m.DenialArchive }))),
+  stats:   lazy(() => import("./DenialStats").then(m => ({ default: m.DenialStats }))),
 };

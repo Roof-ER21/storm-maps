@@ -94,7 +94,7 @@ export function ChatDrawer({ pageContext }: Props) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="RIQ AI Assistant"
+        aria-label="RIQ 21"
         style={{
           position: 'fixed',
           top: 0,
@@ -126,13 +126,13 @@ export function ChatDrawer({ pageContext }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <span style={{ fontSize: 14, fontWeight: 800, color: 'var(--riq-accent)', letterSpacing: '-0.01em' }}>
-                ✦ RIQ AI
+                ✦ RIQ 21
               </span>
               {pageContext && <ContextPill pageContext={pageContext} />}
             </div>
             <button
               onClick={close}
-              aria-label="Close AI assistant"
+              aria-label="Close RIQ 21"
               style={{
                 background: 'transparent',
                 border: '1px solid var(--riq-border)',

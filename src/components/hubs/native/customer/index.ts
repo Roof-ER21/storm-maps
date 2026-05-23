@@ -1,9 +1,8 @@
+import { lazy } from "react";
 import type { ComponentType } from "react";
-import { CustomerList } from "./CustomerList";
-import { CustomerDetail } from "./CustomerDetail";
-import { PropertyLookup } from "./PropertyLookup";
+
 export const customerTabs: Record<string, ComponentType> = {
-  list: CustomerList,
-  detail: CustomerDetail,
-  lookup: PropertyLookup,
+  list:   lazy(() => import("./CustomerList").then(m => ({ default: m.CustomerList }))),
+  detail: lazy(() => import("./CustomerDetail").then(m => ({ default: m.CustomerDetail }))),
+  lookup: lazy(() => import("./PropertyLookup").then(m => ({ default: m.PropertyLookup }))),
 };

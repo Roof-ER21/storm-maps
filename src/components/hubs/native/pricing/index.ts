@@ -1,7 +1,7 @@
+import { lazy } from "react";
 import type { ComponentType } from "react";
-import { PricingMargins } from "./PricingMargins";
-import { PricingLibrary } from "./PricingLibrary";
+
 export const pricingTabs: Record<string, ComponentType> = {
-  margins: PricingMargins,
-  library: PricingLibrary,
+  margins: lazy(() => import("./PricingMargins").then(m => ({ default: m.PricingMargins }))),
+  library: lazy(() => import("./PricingLibrary").then(m => ({ default: m.PricingLibrary }))),
 };

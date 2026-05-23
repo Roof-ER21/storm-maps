@@ -1,7 +1,7 @@
+import { lazy } from "react";
 import type { ComponentType } from "react";
-import { RepOverview } from "./RepOverview";
-import { RepResponse } from "./RepResponse";
+
 export const repTabs: Record<string, ComponentType> = {
-  overview: RepOverview,
-  response: RepResponse,
+  overview: lazy(() => import("./RepOverview").then(m => ({ default: m.RepOverview }))),
+  response: lazy(() => import("./RepResponse").then(m => ({ default: m.RepResponse }))),
 };

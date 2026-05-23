@@ -8,7 +8,7 @@
  * Phase 2b: iframes the underlying HTML page so behavior is identical to
  * pre-restructure. Phase 2c+ will swap iframe `src` for native React.
  */
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
 import type { HubConfig } from "./hubs";
 import { NATIVE_HUB_TABS } from "./native/registry";
 
@@ -106,7 +106,13 @@ export function HubWrapper({ hub }: Props) {
           key={`${hub.view}:${tab.id}`}
           style={{ flex: 1, overflow: "auto", background: "var(--riq-bg)" }}
         >
-          <Native />
+          <Suspense fallback={
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--riq-text-muted)", fontSize: 13 }}>
+              Loading…
+            </div>
+          }>
+            <Native />
+          </Suspense>
         </div>
       ) : (
         <iframe

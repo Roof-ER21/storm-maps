@@ -1,18 +1,12 @@
+import { lazy } from "react";
 import type { NativeViewComponent } from "../types";
-import { OpsSurveillance } from "./OpsSurveillance";
-import { Scheduling } from "./Scheduling";
-import { ActiveWork } from "./ActiveWork";
-import { Receivables } from "./Receivables";
-import { OpsTeam } from "./OpsTeam";
-import { Notes } from "./Notes";
-import { RoofdocsMap } from "./RoofdocsMap";
 
 export const opsViews: Record<string, NativeViewComponent> = {
-  "ops-surveillance": OpsSurveillance,
-  "scheduling": Scheduling,
-  "active-work": ActiveWork,
-  "receivables": Receivables,
-  "ops-team": OpsTeam,
-  "notes": Notes,
-  "map": RoofdocsMap,
+  "ops-surveillance": lazy(() => import("./OpsSurveillance").then(m => ({ default: m.OpsSurveillance }))),
+  "scheduling":       lazy(() => import("./Scheduling").then(m => ({ default: m.Scheduling }))),
+  "active-work":      lazy(() => import("./ActiveWork").then(m => ({ default: m.ActiveWork }))),
+  "receivables":      lazy(() => import("./Receivables").then(m => ({ default: m.Receivables }))),
+  "ops-team":         lazy(() => import("./OpsTeam").then(m => ({ default: m.OpsTeam }))),
+  "notes":            lazy(() => import("./Notes").then(m => ({ default: m.Notes }))),
+  "map":              lazy(() => import("./RoofdocsMap").then(m => ({ default: m.RoofdocsMap }))),
 };

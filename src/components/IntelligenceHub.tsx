@@ -3,8 +3,7 @@
  * Lazy-loads static HTML pages via iframe. Phase 2b adds role-aware nav,
  * 4 role homes, 9 consolidated hubs, and a one-time onboarding interstitial.
  */
-import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Predictor } from './intel/Predictor';
+import { useState, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { StormFeed } from './intel/StormFeed';
 import { RefreshButton } from './intel/RefreshButton';
 import { useUser } from '../auth/UserContext';
@@ -12,12 +11,18 @@ import { canAccess, ROLE_HOME } from '../auth/roles';
 import { getHub } from './hubs/hubs';
 import { HubWrapper } from './hubs/HubWrapper';
 import { NATIVE_VIEWS } from './views/native/registry';
-import { AdminHome } from './homes/AdminHome';
-import { ExecHome } from './homes/ExecHome';
-import { MyDay } from './homes/MyDay';
-import { DataRoom } from './homes/DataRoom';
 import { OnboardingInterstitial } from './OnboardingInterstitial';
-import { ChatDrawer, dispatchDrawerToggle } from '../ai/ChatDrawer';
+const Predictor  = lazy(() => import('./intel/Predictor').then(m => ({ default: m.Predictor })));
+const AdminHome  = lazy(() => import('./homes/AdminHome').then(m => ({ default: m.AdminHome })));
+const ExecHome   = lazy(() => import('./homes/ExecHome').then(m => ({ default: m.ExecHome })));
+const MyDay      = lazy(() => import('./homes/MyDay').then(m => ({ default: m.MyDay })));
+const DataRoom   = lazy(() => import('./homes/DataRoom').then(m => ({ default: m.DataRoom })));
+const ChatDrawer = lazy(() => import('../ai/ChatDrawer').then(m => ({ default: m.ChatDrawer })));
+
+/** Inline helper — mirrors dispatchDrawerToggle from ChatDrawer without a static import. */
+function dispatchDrawerToggle() {
+  window.dispatchEvent(new Event('riq:ai-drawer-toggle'));
+}
 
 type IntelView =
   | 'home'
@@ -329,7 +334,12 @@ export function IntelligenceHub() {
   useEffect(() => {
     if (!user || didLandOnRoleHome) return;
     const home = (ROLE_HOME[user.role] as IntelView) ?? 'home';
-    if (view === 'home') setViewState(home);
+    if (view === 'home') {
+      setViewState(home);
+    } else if (!canAccess(view, { role: user.role, is_root_admin: user.is_root_admin })) {
+      // Deep-linked (?view=) to a view this role can't reach → land on role home
+      setViewState(home);
+    }
     setDidLandOnRoleHome(true);
   }, [user, didLandOnRoleHome, view]);
 
@@ -476,16 +486,24 @@ export function IntelligenceHub() {
         )}
 
         <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          {renderView(view, navigate)}
+          <Suspense fallback={
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--riq-text-muted)', fontSize: 13 }}>
+              Loading…
+            </div>
+          }>
+            {renderView(view, navigate)}
+          </Suspense>
         </main>
       </div>
       <OnboardingInterstitial onTakeTour={() => navigate('master-guide')} />
 
       {/* Phase 6 AI Assistant — drawer + floating FAB */}
-      <ChatDrawer pageContext={view} />
+      <Suspense fallback={null}>
+        <ChatDrawer pageContext={view} />
+      </Suspense>
       <button
         onClick={() => dispatchDrawerToggle()}
-        aria-label="Open AI assistant"
+        aria-label="Open RIQ 21"
         style={{
           position: 'fixed',
           bottom: 24,
@@ -516,7 +534,7 @@ export function IntelligenceHub() {
           e.currentTarget.style.boxShadow = '0 4px 20px rgba(244,167,56,0.40)';
         }}
       >
-        ✦ Ask AI
+        ✦ Ask RIQ 21
       </button>
     </div>
   );

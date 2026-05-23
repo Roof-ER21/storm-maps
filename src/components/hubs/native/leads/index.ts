@@ -1,7 +1,7 @@
+import { lazy } from "react";
 import type { ComponentType } from "react";
-import { LeadsIntel } from "./LeadsIntel";
-import { LeadsFunnel } from "./LeadsFunnel";
+
 export const leadsTabs: Record<string, ComponentType> = {
-  intel: LeadsIntel,
-  funnel: LeadsFunnel,
+  intel:  lazy(() => import("./LeadsIntel").then(m => ({ default: m.LeadsIntel }))),
+  funnel: lazy(() => import("./LeadsFunnel").then(m => ({ default: m.LeadsFunnel }))),
 };
