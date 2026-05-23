@@ -9,6 +9,7 @@ import { useEffect } from 'react';
 import './index.css';
 import ErrorBoundary from './components/ErrorBoundary';
 import { IntelligenceHub } from './components/IntelligenceHub';
+import { UserProvider } from './auth/UserContext';
 
 const TOKEN_KEY = 'hailyes_token'; // kept for backcompat with server sessions
 const USER_KEY = 'hailyes_user';
@@ -50,7 +51,9 @@ export default function App() {
   useAdminBootstrap();
   return (
     <ErrorBoundary>
-      <IntelligenceHub />
+      <UserProvider>
+        <IntelligenceHub />
+      </UserProvider>
     </ErrorBoundary>
   );
 }

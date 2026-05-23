@@ -1,16 +1,41 @@
 /**
  * Intelligence Hub — root container for the Roof Docs intel layer.
- * Lazy-loads static HTML pages via iframe.
+ * Lazy-loads static HTML pages via iframe. Phase 2b adds role-aware nav,
+ * 4 role homes, 9 consolidated hubs, and a one-time onboarding interstitial.
  */
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { Predictor } from './intel/Predictor';
 import { StormFeed } from './intel/StormFeed';
 import { RefreshButton } from './intel/RefreshButton';
+import { useUser } from '../auth/UserContext';
+import { canAccess, ROLE_HOME } from '../auth/roles';
+import { getHub } from './hubs/hubs';
+import { HubWrapper } from './hubs/HubWrapper';
+import { AdminHome } from './homes/AdminHome';
+import { ExecHome } from './homes/ExecHome';
+import { MyDay } from './homes/MyDay';
+import { DataRoom } from './homes/DataRoom';
+import { OnboardingInterstitial } from './OnboardingInterstitial';
 
 type IntelView =
   | 'home'
   | 'master-guide'
   | 'predictor'
+  // Phase 2b role homes
+  | 'admin-home'
+  | 'exec-home'
+  | 'my-day'
+  | 'data-room'
+  // Phase 2b consolidated hubs (tabbed)
+  | 'carrier-hub'
+  | 'storm-hub'
+  | 'denial-hub'
+  | 'adjuster-hub'
+  | 'rep-hub'
+  | 'customer-hub'
+  | 'leads-hub'
+  | 'pricing-hub'
+  | 'zip-hub'
   // Executive
   | 'exec'
   | 'weekly-recap'
@@ -64,7 +89,9 @@ type IntelView =
   | 'sms-reminders'
   | 'carrier-orphans';
 
-const VIEW_FILES: Record<Exclude<IntelView, 'home' | 'predictor'>, string> = {
+// VIEW_FILES is a partial map — new role-home + hub views are rendered as
+// native React components in `renderView`, not as iframes, so they're absent.
+const VIEW_FILES: Partial<Record<IntelView, string>> = {
   'master-guide':      'master.html',
   // Executive
   'exec':              'exec.html',
@@ -173,9 +200,32 @@ const VIEW_LABELS: Partial<Record<IntelView, string>> = {
 
 const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: string }> }> = [
   {
+    label: 'My View',
+    items: [
+      { id: 'admin-home',   label: '⚙️ Admin Console' },
+      { id: 'exec-home',    label: '📊 Exec Home' },
+      { id: 'my-day',       label: '☀️ My Day' },
+      { id: 'data-room',    label: '🔬 Data Room' },
+      { id: 'home',         label: '🏠 Legacy Home' },
+    ],
+  },
+  {
+    label: 'Hubs',
+    items: [
+      { id: 'carrier-hub',  label: '🏢 Carrier Hub' },
+      { id: 'storm-hub',    label: '🌪 Storm Hub' },
+      { id: 'denial-hub',   label: '⚖️ Denial Hub' },
+      { id: 'adjuster-hub', label: '🪞 Adjuster Hub' },
+      { id: 'rep-hub',      label: '🎯 Rep Hub' },
+      { id: 'customer-hub', label: '👥 Customer Hub' },
+      { id: 'leads-hub',    label: '🚪 Leads Hub' },
+      { id: 'pricing-hub',  label: '💰 Pricing Hub' },
+      { id: 'zip-hub',      label: '📍 ZIP Hub' },
+    ],
+  },
+  {
     label: 'Executive',
     items: [
-      { id: 'home',         label: '🏠 Home' },
       { id: 'exec',         label: '📊 Exec Snapshot' },
       { id: 'weekly-recap', label: '📰 Weekly Recap' },
       { id: 'analytics',    label: '📈 Analytics' },
@@ -257,14 +307,38 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: st
 ];
 
 export function IntelligenceHub() {
+  const { user } = useUser();
   const [view, setViewState] = useState<IntelView>('home');
   const [history, setHistory] = useState<IntelView[]>([]);
 
-  // Navigate with history tracking
+  // Once the user loads, land on their role's default home (unless they've
+  // already navigated somewhere). Skip if not authenticated yet.
+  const [didLandOnRoleHome, setDidLandOnRoleHome] = useState(false);
+  useEffect(() => {
+    if (!user || didLandOnRoleHome) return;
+    const home = (ROLE_HOME[user.role] as IntelView) ?? 'home';
+    if (view === 'home') setViewState(home);
+    setDidLandOnRoleHome(true);
+  }, [user, didLandOnRoleHome, view]);
+
+  // Filter NAV_GROUPS by role. Anonymous = show everything (legacy admin
+  // bootstrap may make this case rare in practice).
+  const visibleNav = useMemo(() => {
+    if (!user) return NAV_GROUPS;
+    return NAV_GROUPS
+      .map((g) => ({
+        label: g.label,
+        items: g.items.filter((it) => canAccess(it.id, { role: user.role, is_root_admin: user.is_root_admin })),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [user]);
+
+  // Navigate with history tracking. Defensive: if user can't access target, ignore.
   const navigate = useCallback((next: IntelView) => {
+    if (user && !canAccess(next, { role: user.role, is_root_admin: user.is_root_admin })) return;
     setHistory(h => [...h, view]);
     setViewState(next);
-  }, [view]);
+  }, [view, user]);
 
   // Go back one step
   const goBack = useCallback(() => {
@@ -316,7 +390,7 @@ export function IntelligenceHub() {
           </div>
         </button>
 
-        {NAV_GROUPS.map((g) => (
+        {visibleNav.map((g) => (
           <div key={g.label} style={{ marginBottom: 14 }}>
             <div style={{
               fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.08em',
@@ -390,19 +464,35 @@ export function IntelligenceHub() {
         )}
 
         <main style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-          {view === 'home' && <HomePane navigate={navigate} />}
-          {view === 'predictor' && <Predictor />}
-          {view !== 'home' && view !== 'predictor' && (
-            <iframe
-              key={view}
-              src={`/${VIEW_FILES[view as Exclude<IntelView, 'home' | 'predictor'>]}`}
-              style={{ width: '100%', height: '100%', border: 0, background: 'var(--riq-bg)' }}
-              title={view}
-            />
-          )}
+          {renderView(view, navigate)}
         </main>
       </div>
+      <OnboardingInterstitial onTakeTour={() => navigate('master-guide')} />
     </div>
+  );
+}
+
+// View renderer. Native components first, then hub wrappers, then legacy iframe fallback.
+function renderView(view: IntelView, navigate: (v: IntelView) => void) {
+  if (view === 'home')        return <HomePane navigate={navigate} />;
+  if (view === 'predictor')   return <Predictor />;
+  if (view === 'admin-home')  return <AdminHome navigate={navigate as (v: string) => void} />;
+  if (view === 'exec-home')   return <ExecHome navigate={navigate as (v: string) => void} />;
+  if (view === 'my-day')      return <MyDay navigate={navigate as (v: string) => void} />;
+  if (view === 'data-room')   return <DataRoom navigate={navigate as (v: string) => void} />;
+
+  const hub = getHub(view);
+  if (hub) return <HubWrapper hub={hub} />;
+
+  const file = VIEW_FILES[view as Exclude<IntelView, 'home' | 'predictor' | 'admin-home' | 'exec-home' | 'my-day' | 'data-room' | 'carrier-hub' | 'storm-hub' | 'denial-hub' | 'adjuster-hub' | 'rep-hub' | 'customer-hub' | 'leads-hub' | 'pricing-hub' | 'zip-hub'>];
+  if (!file) return <div style={{ padding: 20, color: 'var(--riq-text-muted)' }}>view {view} not yet wired</div>;
+  return (
+    <iframe
+      key={view}
+      src={`/${file}`}
+      style={{ width: '100%', height: '100%', border: 0, background: 'var(--riq-bg)' }}
+      title={view}
+    />
   );
 }
 
