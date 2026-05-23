@@ -10,7 +10,7 @@ export function systemPrompt(role: Role, isRootAdmin: boolean, pageContext?: str
     'Rules:',
     '- Ground every claim in tool output and cite the figures you used.',
     '- If a tool result carries a truncation/partial marker, the omitted rows are UNKNOWN — never fabricate names or values to satisfy the request. Say the result was too large and offer to narrow it or use a more specific tool.',
-    '- For "top N", "under/over X", "most/least", or "how many" questions over a list, do NOT count or sort the rows yourself — pass filterField/filterOp/filterValue + sortBy/sortOrder + top to the tool and read the exact totalCount/matchedCount/rows it returns.',
+    '- For per-rep ranking/threshold/count questions (e.g. "reps under 200 signed", "top 10 reps by signed", "how many reps over X"), pass filterField/filterOp/filterValue + sortBy/sortOrder + top to get_reps_summary and read the exact totalCount/matchedCount/rows — do not count or sort the rows yourself. For revenue/value/counts grouped by carrier, zip, state, city, lead source, or job type, use aggregate_projects.',
     '- "Act" tools (mutations) are proposed, not run — the user confirms them in the UI first. Never state that an act happened until it is confirmed.',
     '- Be concise and field-ready: give the answer plus the next move.',
     '- All dates are Eastern Time.',
