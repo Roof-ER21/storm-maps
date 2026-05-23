@@ -1,7 +1,18 @@
 import type { NativeViewComponent } from "../types";
+import { OpsSurveillance } from "./OpsSurveillance";
+import { Scheduling } from "./Scheduling";
+import { ActiveWork } from "./ActiveWork";
+import { Receivables } from "./Receivables";
+import { OpsTeam } from "./OpsTeam";
+import { Notes } from "./Notes";
+import { RoofdocsMap } from "./RoofdocsMap";
 
-/** Phase 2d batch3 — ops native views (owner: mac).
- *  Add your components + entries here (ops-surveillance, scheduling,
- *  active-work, receivables, ops-team, notes, map). registry.ts already
- *  spreads opsViews — you never need to edit registry.ts or IntelligenceHub. */
-export const opsViews: Record<string, NativeViewComponent> = {};
+export const opsViews: Record<string, NativeViewComponent> = {
+  "ops-surveillance": OpsSurveillance,
+  "scheduling": Scheduling,
+  "active-work": ActiveWork,
+  "receivables": Receivables,
+  "ops-team": OpsTeam,
+  "notes": Notes,
+  "map": RoofdocsMap,
+};
