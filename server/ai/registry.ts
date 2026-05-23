@@ -38,6 +38,20 @@ function obj(props: Record<string, unknown>, required: string[] = []) {
 const str = { type: 'string' };
 const num = { type: 'number' };
 
+// Shared, server-side query directives for list-returning read tools. The
+// invoker applies these AFTER fetching (filter → sort → top) and returns
+// { totalCount, matchedCount, returnedCount, rows } — so ranking/threshold/
+// count questions are computed exactly instead of the model eyeballing the
+// list (which Gemini Flash does unreliably past a few dozen rows).
+const queryParams = {
+  filterField: { type: 'string', description: 'Row field to filter on (e.g. "signed", "completedRevenue", "name").' },
+  filterOp: { type: 'string', enum: ['eq', 'ne', 'lt', 'lte', 'gt', 'gte', 'contains'], description: 'Filter comparison. lt/gt for "under/over N", contains for name search.' },
+  filterValue: { description: 'Value to compare against (number or string).' },
+  sortBy: { type: 'string', description: 'Field to sort by (e.g. "signed", "revenue").' },
+  sortOrder: { type: 'string', enum: ['asc', 'desc'], description: 'Sort direction; defaults to desc.' },
+  top: { type: 'number', description: 'Return only the first N rows after filter+sort (e.g. 10 for "top 10").' },
+} as const;
+
 // ─── Read tools (no confirmation) ──────────────────────────────────────────
 export const READ_TOOLS: ToolDef[] = [
   { name: 'search_quick', description: 'Typeahead across customers, reps, carriers, adjusters.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/quick-search', params: obj({ q: str }, ['q']) },
@@ -46,18 +60,18 @@ export const READ_TOOLS: ToolDef[] = [
   { name: 'get_weekly_recap', description: 'Last 7 days closures + pipeline movement.', kind: 'read', roles: ['exec', 'admin'], method: 'GET', path: '/api/intel/weekly-recap', params: noParams },
   { name: 'query_projects', description: 'Filtered job list (carrier, zip, rep, stage, type, source).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/projects-query', params: obj({ carrier: str, zip: str, rep: str, stage: str, type: str, source: str, state: str, limit: num }) },
   { name: 'aggregate_projects', description: "Job counts + total value grouped by a dimension. NOTE: the carrier dimension is 'insurance'.", kind: 'read', roles: ['analytics', 'admin', 'exec'], method: 'GET', path: '/api/intel/projects-aggregate', params: obj({ group_by: { type: 'string', enum: ['insurance', 'zip', 'state', 'city', 'stage', 'sales_rep', 'lead_source', 'job_type'], description: "Dimension to group by — 'insurance' is the carrier." } }, ['group_by']) },
-  { name: 'get_zip_stats', description: 'ZIP signed/completed/dead, revenue, recent storms.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/zip-stats', params: obj({ window: num, state: str, min_jobs: num }) },
+  { name: 'get_zip_stats', description: 'ZIP signed/completed/dead, revenue, recent storms. Supports filterField/filterOp/filterValue + sortBy/sortOrder + top for exact ranking/count (returns {totalCount, matchedCount, rows}).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/zip-stats', params: obj({ window: num, state: str, min_jobs: num, ...queryParams }) },
   { name: 'get_zip_deep', description: 'One-ZIP detail with knock script.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/zip-deep', params: obj({ zip: str }, ['zip']) },
-  { name: 'get_carriers_summary', description: 'Carrier list + approval rates.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/carriers-summary', params: noParams },
+  { name: 'get_carriers_summary', description: 'Carrier list + approval rates. Supports filterField/filterOp/filterValue + sortBy/sortOrder + top for exact ranking/count (returns {totalCount, matchedCount, rows}).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/carriers-summary', params: obj({ ...queryParams }) },
   { name: 'get_carrier_deep', description: 'One-carrier deep dive.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/carrier-deep', params: obj({ name: { type: 'string', description: 'Carrier name, e.g. "State Farm".' } }, ['name']) },
   { name: 'get_carrier_complaints', description: 'NAIC complaint index per carrier.', kind: 'read', roles: ['analytics', 'exec', 'admin'], method: 'GET', path: '/api/intel/carrier-complaints', params: obj({ carrier: str }) },
   { name: 'get_carrier_trade_matrix', description: 'Carrier × trade heatmap.', kind: 'read', roles: ['analytics', 'admin'], method: 'GET', path: '/api/intel/carrier-trade-matrix', params: noParams },
-  { name: 'get_adjusters_summary', description: 'Adjuster directory + approval rates.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/adjusters-summary', params: noParams },
+  { name: 'get_adjusters_summary', description: 'Adjuster directory + approval rates. Supports filterField/filterOp/filterValue + sortBy/sortOrder + top for exact ranking/count (returns {totalCount, matchedCount, rows}).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/adjusters-summary', params: obj({ ...queryParams }) },
   { name: 'get_adjuster_deep', description: 'Adjuster detail (carriers, reps, history).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/adjuster-deep', params: obj({ name: { type: 'string', description: 'Adjuster full name.' } }, ['name']) },
-  { name: 'get_reps_summary', description: 'Sales rep list with signed/completed/revenue.', kind: 'read', roles: ['analytics', 'exec', 'admin'], method: 'GET', path: '/api/intel/reps-summary', params: noParams },
+  { name: 'get_reps_summary', description: 'Sales rep list (signed/completed/revenue per rep). For "top N", "under/over X", or "how many" questions, pass filterField/filterOp/filterValue + sortBy/sortOrder + top — the server filters, sorts, and counts exactly and returns {totalCount, matchedCount, rows}. Do not eyeball the full list.', kind: 'read', roles: ['analytics', 'exec', 'admin'], method: 'GET', path: '/api/intel/reps-summary', params: obj({ ...queryParams }) },
   { name: 'get_rep_deep', description: 'Rep detail. Employees: self only.', kind: 'read', roles: ['analytics', 'exec', 'admin', 'employee'], method: 'GET', path: '/api/intel/rep-deep', params: obj({ name: { type: 'string', description: 'Sales rep full name.' } }, ['name']) },
   { name: 'get_rep_response', description: 'Rep storm-to-signed response time.', kind: 'read', roles: ['analytics', 'exec', 'admin'], method: 'GET', path: '/api/intel/rep-response', params: obj({ rep: str }) },
-  { name: 'get_customers_list', description: 'All customers with summary.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/customers-list', params: noParams },
+  { name: 'get_customers_list', description: 'All customers with summary. Supports filterField/filterOp/filterValue + sortBy/sortOrder + top for exact ranking/count (returns {totalCount, matchedCount, rows}).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/customers-list', params: obj({ ...queryParams }) },
   { name: 'get_customer_deep', description: 'Single customer + full job history. Needs the customer key from search_quick or get_customers_list.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/customer-deep', params: obj({ key: { type: 'string', description: 'Customer key from search_quick / get_customers_list.' } }, ['key']) },
   { name: 'get_customer_leads', description: 'Leads tied to a customer.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/customer-leads', params: obj({ customer: str }, ['customer']) },
   { name: 'get_leads_summary', description: 'Lead funnel KPIs.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/leads-summary', params: noParams },
