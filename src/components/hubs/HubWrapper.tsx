@@ -10,6 +10,7 @@
  */
 import { useEffect, useState, useCallback } from "react";
 import type { HubConfig } from "./hubs";
+import { NATIVE_HUB_TABS } from "./native/registry";
 
 interface Props {
   hub: HubConfig;
@@ -51,6 +52,7 @@ export function HubWrapper({ hub }: Props) {
   }, []);
 
   const tab = hub.tabs.find((t) => t.id === activeTab) ?? hub.tabs[0];
+  const Native = NATIVE_HUB_TABS[hub.view]?.[tab.id];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -99,12 +101,21 @@ export function HubWrapper({ hub }: Props) {
           );
         })}
       </div>
-      <iframe
-        key={`${hub.view}:${tab.id}`}
-        src={`/${tab.src}`}
-        style={{ width: "100%", flex: 1, border: 0, background: "var(--riq-bg)" }}
-        title={`${hub.title} — ${tab.label}`}
-      />
+      {Native ? (
+        <div
+          key={`${hub.view}:${tab.id}`}
+          style={{ flex: 1, overflow: "auto", background: "var(--riq-bg)" }}
+        >
+          <Native />
+        </div>
+      ) : (
+        <iframe
+          key={`${hub.view}:${tab.id}`}
+          src={`/${tab.src}`}
+          style={{ width: "100%", flex: 1, border: 0, background: "var(--riq-bg)" }}
+          title={`${hub.title} — ${tab.label}`}
+        />
+      )}
     </div>
   );
 }
