@@ -139,9 +139,37 @@ const HUB_REDIRECTS: Record<string, string> = {
   '/hot-zips.html':           '/?view=zip-hub&tab=hot',
   '/zip-intel.html':          '/?view=zip-hub&tab=intel',
 };
+// ── 301 redirects: retired Phase 2d standalone HTML pages → SPA deep-links ──
+// Each retired /x.html 301s to /?view=<IntelView id>. IntelligenceHub's
+// readViewFromUrl now accepts NATIVE_VIEWS ids, so these deep-link to the
+// native page. Includes the market/pipeline rename aliases.
+const VIEW_REDIRECTS: Record<string, string> = {
+  '/exec.html':              '/?view=exec',
+  '/weekly-recap.html':      '/?view=weekly-recap',
+  '/analytics.html':         '/?view=analytics',
+  '/insurance-intel.html':   '/?view=insurance-intel',
+  '/market.html':            '/?view=insurance-intel',
+  '/pipeline-intel.html':    '/?view=pipeline-intel',
+  '/pipeline.html':          '/?view=pipeline-intel',
+  '/carrier-orphans.html':   '/?view=carrier-orphans',
+  '/lead-score.html':        '/?view=lead-score',
+  '/field-guide.html':       '/?view=field-guide',
+  '/cheat-sheet.html':       '/?view=cheat-sheet',
+  '/lifetime-touch.html':    '/?view=lifetime-touch',
+  '/upgrade-campaigns.html': '/?view=campaigns',
+  '/solar.html':             '/?view=solar',
+  '/sms-reminders.html':     '/?view=sms-reminders',
+  '/ops-surveillance.html':  '/?view=ops-surveillance',
+  '/scheduling.html':        '/?view=scheduling',
+  '/active-work.html':       '/?view=active-work',
+  '/receivables.html':       '/?view=receivables',
+  '/ops-team.html':          '/?view=ops-team',
+  '/notes.html':             '/?view=notes',
+  '/roofdocs-map.html':      '/?view=map',
+};
 app.use((req, res, next) => {
   if (req.method === 'GET') {
-    const target = HUB_REDIRECTS[req.path];
+    const target = HUB_REDIRECTS[req.path] ?? VIEW_REDIRECTS[req.path];
     if (target) {
       res.redirect(301, target);
       return;

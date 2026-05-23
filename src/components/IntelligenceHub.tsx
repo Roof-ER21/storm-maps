@@ -315,7 +315,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: st
 function readViewFromUrl(): IntelView | null {
   if (typeof window === 'undefined') return null;
   const v = new URLSearchParams(window.location.search).get('view');
-  return v && getHub(v) ? (v as IntelView) : null;
+  return v && (getHub(v) || NATIVE_VIEWS[v]) ? (v as IntelView) : null;
 }
 
 export function IntelligenceHub() {
