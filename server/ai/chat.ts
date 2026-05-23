@@ -118,7 +118,9 @@ export async function chatHandler(req: Request, res: Response): Promise<void> {
     return;
   }
 
-  await pgSql`INSERT INTO ai_messages (thread_id, role, content, tool_calls) VALUES (${threadId}, 'assistant', ${reply}, ${pgSql.json((proposals.length ? proposals : null) as never)})`;
+  // jsonb via ${JSON.stringify(x)}::jsonb — sql.json() throws in postgres.js v3.4.5+.
+  const toolCallsJson = proposals.length ? JSON.stringify(proposals) : null;
+  await pgSql`INSERT INTO ai_messages (thread_id, role, content, tool_calls) VALUES (${threadId}, 'assistant', ${reply}, ${toolCallsJson}::jsonb)`;
   await pgSql`UPDATE ai_threads SET updated_at = NOW() WHERE id = ${threadId}`;
 
   res.json({ threadId, reply, proposals, toolsUsed, model });

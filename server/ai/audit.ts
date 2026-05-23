@@ -16,12 +16,14 @@ export interface AuditEntry {
 
 export async function logToolCall(e: AuditEntry): Promise<void> {
   try {
+    // jsonb via ${JSON.stringify(x)}::jsonb — sql.json() throws in postgres.js v3.4.5+.
+    const paramsJson = e.params == null ? null : JSON.stringify(e.params);
     await pgSql`
       INSERT INTO ai_tool_log
         (user_id, session_id, thread_id, tool, kind, params_json, result_summary, confirmed_at, error, model)
       VALUES
         (${e.userId ?? null}, ${e.sessionId ?? null}, ${e.threadId ?? null}, ${e.tool}, ${e.kind},
-         ${pgSql.json((e.params ?? null) as never)}, ${e.resultSummary ?? null}, ${e.confirmedAt ?? null},
+         ${paramsJson}::jsonb, ${e.resultSummary ?? null}, ${e.confirmedAt ?? null},
          ${e.error ?? null}, ${e.model ?? null})`;
   } catch (err) {
     // Audit failures must never break the chat path.
