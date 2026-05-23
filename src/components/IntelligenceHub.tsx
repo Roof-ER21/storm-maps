@@ -17,6 +17,7 @@ import { ExecHome } from './homes/ExecHome';
 import { MyDay } from './homes/MyDay';
 import { DataRoom } from './homes/DataRoom';
 import { OnboardingInterstitial } from './OnboardingInterstitial';
+import { ChatDrawer, dispatchDrawerToggle } from '../ai/ChatDrawer';
 
 type IntelView =
   | 'home'
@@ -479,6 +480,44 @@ export function IntelligenceHub() {
         </main>
       </div>
       <OnboardingInterstitial onTakeTour={() => navigate('master-guide')} />
+
+      {/* Phase 6 AI Assistant — drawer + floating FAB */}
+      <ChatDrawer pageContext={view} />
+      <button
+        onClick={() => dispatchDrawerToggle()}
+        aria-label="Open AI assistant"
+        style={{
+          position: 'fixed',
+          bottom: 24,
+          right: 24,
+          zIndex: 1098,
+          background: 'var(--riq-accent)',
+          color: '#0c0c0e',
+          border: 'none',
+          borderRadius: 100,
+          padding: '11px 20px',
+          fontSize: 14,
+          fontWeight: 800,
+          cursor: 'pointer',
+          fontFamily: 'inherit',
+          boxShadow: '0 4px 20px rgba(244,167,56,0.40)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 7,
+          letterSpacing: '-0.01em',
+          transition: 'transform 0.15s, box-shadow 0.15s',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 6px 28px rgba(244,167,56,0.55)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 20px rgba(244,167,56,0.40)';
+        }}
+      >
+        ✦ Ask AI
+      </button>
     </div>
   );
 }
