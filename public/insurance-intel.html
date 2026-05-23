@@ -411,7 +411,7 @@ function renderMatrix() {
         <span style="font-size:12px;font-weight:700;margin-right:6px;color:${ts>=60?'var(--red)':ts>=35?'var(--yellow)':'var(--green)'}">${ts}</span>
         <span class="threat-bar"><span class="threat-fill ${barClass}" style="width:${barW}"></span></span>
       </td>
-      <td style="color:${s.denyRate>=50?'var(--red)':s.denyRate>=35?'var(--yellow)':'var(--green)';font-weight:700}">${s.denyRate}%</td>
+      <td style="color:${s.denyRate>=50?'var(--red)':s.denyRate>=35?'var(--yellow)':'var(--green)'};font-weight:700">${s.denyRate}%</td>
       <td>${naicPill(s.naicIndex)}</td>
       <td>${amBestPill(s.amBest)}</td>
       <td>${fmt(s.total)}</td>
