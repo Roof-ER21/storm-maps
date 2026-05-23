@@ -25,6 +25,7 @@ import { sql as pgSql } from './db.js';
 import { authMiddleware } from './auth/middleware.js';
 import { authRouter } from './auth/routes.js';
 import { intelRouter } from './intel/routes.js';
+import { aiRouter } from './ai/router.js';
 import { startRefreshScheduler } from './intel/scheduler.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'riq21-dev-secret-change-in-production';
@@ -51,6 +52,7 @@ app.use(cookieParser());
 app.use(authMiddleware);
 app.use(authRouter);
 app.use(intelRouter);
+app.use(aiRouter); // Phase 6 — /api/ai/*
 
 // Rate limiting — 2000/15min sustained is enough for any real RIQ workload
 // (the heaviest endpoint is /api/intel/projects @ ~38 MB and that's cached).

@@ -544,6 +544,49 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_shared_lists_creator ON intel_shared_lists(creator_email)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_shared_lists_expires ON intel_shared_lists(expires_at) WHERE expires_at IS NOT NULL`;
 
+  // Phase 6: AI assistant — audit log + chat history. Additive, idempotent.
+  // (Audit retained forever per product decision; archival is a separate cron.)
+  await sql`
+    CREATE TABLE IF NOT EXISTS ai_tool_log (
+      id             SERIAL PRIMARY KEY,
+      user_id        INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      session_id     TEXT,
+      thread_id      INTEGER,
+      tool           TEXT NOT NULL,
+      kind           TEXT NOT NULL DEFAULT 'read',
+      params_json    JSONB,
+      result_summary TEXT,
+      confirmed_at   TIMESTAMPTZ,
+      error          TEXT,
+      model          TEXT,
+      created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS ai_tool_log_user_created_idx ON ai_tool_log (user_id, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS ai_tool_log_tool_idx ON ai_tool_log (tool)`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS ai_threads (
+      id         SERIAL PRIMARY KEY,
+      user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title      TEXT NOT NULL DEFAULT 'New chat',
+      model      TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS ai_threads_user_idx ON ai_threads (user_id, updated_at DESC)`;
+  await sql`
+    CREATE TABLE IF NOT EXISTS ai_messages (
+      id         SERIAL PRIMARY KEY,
+      thread_id  INTEGER NOT NULL REFERENCES ai_threads(id) ON DELETE CASCADE,
+      role       TEXT NOT NULL,
+      content    TEXT,
+      tool_calls JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS ai_messages_thread_idx ON ai_messages (thread_id, created_at)`;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)
