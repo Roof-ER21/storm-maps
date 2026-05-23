@@ -125,8 +125,8 @@ function haversine(lat1: number, lng1: number, lat2: number, lng2: number): numb
 }
 
 async function geocode(address: string): Promise<GeocodeResult> {
-  const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
-  const res = await fetch(url);
+  const url = `/api/intel/geocode?address=${encodeURIComponent(address)}`;
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error(`Geocoding failed: ${res.status}`);
   const body = await res.json() as {
     result?: { addressMatches?: Array<{ coordinates: { x: number; y: number }; matchedAddress: string }> };

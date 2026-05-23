@@ -504,4 +504,26 @@ export async function runRefresh(consumerLabelStr: string = 'internal'): Promise
   });
 }
 
+// Server-side geocode proxy. The US Census geocoder sends no CORS headers, so
+// a direct browser fetch is blocked. Proxy it through the server and return the
+// Census JSON verbatim so the client parser is unchanged.
+router.get('/api/intel/geocode', async (req, res) => {
+  const address = String(req.query.address ?? '').trim();
+  if (!address) {
+    res.status(400).json({ error: 'address required' });
+    return;
+  }
+  const url = `https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=${encodeURIComponent(address)}&benchmark=Public_AR_Current&format=json`;
+  try {
+    const upstream = await fetch(url, { signal: AbortSignal.timeout(8000) });
+    if (!upstream.ok) {
+      res.status(502).json({ error: `census geocoder ${upstream.status}` });
+      return;
+    }
+    res.json(await upstream.json());
+  } catch {
+    res.status(502).json({ error: 'geocode upstream failed' });
+  }
+});
+
 export { router as intelRouter };
