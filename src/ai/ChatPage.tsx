@@ -4,7 +4,7 @@
  * Manages local message list + current threadId.
  */
 import { useState, useRef, useEffect } from 'react';
-import type { UiMessage, ChatResponse, BypassMode, AiModel } from './types';
+import type { UiMessage, Proposal, BypassMode, AiModel } from './types';
 import { ToolBadge } from './ToolBadge';
 import { ProposalCard } from './ProposalCard';
 import { useUser } from '../auth/UserContext';
@@ -23,6 +23,20 @@ const MODEL_LABELS: Record<AiModel, string> = {
   'ollama-qwen25': 'Qwen 2.5 (local)',
 };
 
+/** Union of fields across the SSE event payloads from POST /api/ai/chat/stream. */
+interface StreamEvent {
+  threadId?: number;
+  model?: AiModel;
+  tool?: string;
+  delta?: string;
+  reply?: string;
+  toolsUsed?: string[];
+  proposals?: Proposal[];
+  args?: Record<string, unknown>;
+  danger?: 'safe' | 'destructive';
+  description?: string;
+}
+
 function MessageBubble({ msg, threadId }: { msg: UiMessage; threadId: number | null }) {
   const isUser = msg.role === 'user';
 
@@ -37,7 +51,7 @@ function MessageBubble({ msg, threadId }: { msg: UiMessage; threadId: number | n
     >
       {/* Role label */}
       <div style={{ fontSize: 10, color: 'var(--riq-text-muted)', marginBottom: 4, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-        {isUser ? 'You' : 'RIQ AI'}
+        {isUser ? 'You' : 'RIQ 21'}
       </div>
 
       {/* Bubble */}
@@ -119,12 +133,24 @@ export function ChatPage({ pageContext, messages, threadId, onMessagesChange, on
       content: text,
       created_at: new Date().toISOString(),
     };
-    const nextMsgs = [...messages, userMsg];
-    onMessagesChange(nextMsgs);
+    const baseMsgs = [...messages, userMsg];
+    onMessagesChange(baseMsgs);
     setLoading(true);
 
+    // Streaming assistant message — mutated as SSE events arrive, re-pushed live.
+    const assistant: UiMessage = {
+      id: `a-${Date.now()}`,
+      role: 'assistant',
+      content: '',
+      toolsUsed: [],
+      proposals: [],
+      created_at: new Date().toISOString(),
+    };
+    const pushAssistant = () => onMessagesChange([...baseMsgs, { ...assistant }]);
+    let streaming = false;
+
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await fetch('/api/ai/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -136,32 +162,73 @@ export function ChatPage({ pageContext, messages, threadId, onMessagesChange, on
         }),
       });
 
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`HTTP ${res.status}: ${body}`);
+      if (!res.ok || !res.body) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`HTTP ${res.status}${body ? `: ${body}` : ''}`);
       }
 
-      const data: ChatResponse = await res.json();
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = '';
 
-      // Update threadId if new
-      if (data.threadId && data.threadId !== threadId) {
-        onThreadIdChange(data.threadId);
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+
+        let sep: number;
+        while ((sep = buf.indexOf('\n\n')) >= 0) {
+          const block = buf.slice(0, sep);
+          buf = buf.slice(sep + 2);
+
+          let event = '';
+          let dataStr = '';
+          for (const ln of block.split('\n')) {
+            if (ln.startsWith('event:')) event = ln.slice(6).trim();
+            else if (ln.startsWith('data:')) dataStr += ln.slice(5).trim();
+          }
+          if (!event || !dataStr) continue;
+
+          let data: StreamEvent;
+          try {
+            data = JSON.parse(dataStr) as StreamEvent;
+          } catch {
+            continue;
+          }
+
+          if (event === 'meta') {
+            if (data.threadId && data.threadId !== threadId) onThreadIdChange(data.threadId);
+            if (data.model) assistant.model = data.model;
+          } else if (event === 'tool') {
+            if (data.tool) assistant.toolsUsed = [...(assistant.toolsUsed ?? []), data.tool];
+          } else if (event === 'proposal') {
+            if (data.tool) {
+              assistant.proposals = [
+                ...(assistant.proposals ?? []),
+                { tool: data.tool, args: data.args ?? {}, danger: data.danger ?? 'safe', description: data.description ?? '' },
+              ];
+            }
+          } else if (event === 'token') {
+            assistant.content += data.delta ?? '';
+          } else if (event === 'done') {
+            if (typeof data.reply === 'string') assistant.content = data.reply;
+            if (Array.isArray(data.proposals)) assistant.proposals = data.proposals;
+            if (Array.isArray(data.toolsUsed)) assistant.toolsUsed = data.toolsUsed;
+            if (data.model) assistant.model = data.model;
+          }
+
+          if (!streaming) {
+            streaming = true;
+            setLoading(false); // first event in — hide "Thinking…", the streaming bubble takes over
+          }
+          pushAssistant();
+        }
       }
 
-      const assistantMsg: UiMessage = {
-        id: `a-${Date.now()}`,
-        role: 'assistant',
-        content: data.reply,
-        toolsUsed: data.toolsUsed,
-        proposals: data.proposals,
-        model: data.model,
-        created_at: new Date().toISOString(),
-      };
-
-      onMessagesChange([...nextMsgs, assistantMsg]);
+      // Commit final state (covers a terminal event without a trailing blank line).
+      pushAssistant();
     } catch (err) {
       setError((err as Error).message);
-      // Put the user message back so they can retry
     } finally {
       setLoading(false);
     }
