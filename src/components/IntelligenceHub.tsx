@@ -11,6 +11,7 @@ import { useUser } from '../auth/UserContext';
 import { canAccess, ROLE_HOME } from '../auth/roles';
 import { getHub } from './hubs/hubs';
 import { HubWrapper } from './hubs/HubWrapper';
+import { NATIVE_VIEWS } from './views/native/registry';
 import { AdminHome } from './homes/AdminHome';
 import { ExecHome } from './homes/ExecHome';
 import { MyDay } from './homes/MyDay';
@@ -493,6 +494,9 @@ function renderView(view: IntelView, navigate: (v: IntelView) => void) {
 
   const hub = getHub(view);
   if (hub) return <HubWrapper hub={hub} />;
+
+  const NativeView = NATIVE_VIEWS[view];
+  if (NativeView) return <NativeView navigate={navigate as (v: string) => void} />;
 
   const file = VIEW_FILES[view as Exclude<IntelView, 'home' | 'predictor' | 'admin-home' | 'exec-home' | 'my-day' | 'data-room' | 'carrier-hub' | 'storm-hub' | 'denial-hub' | 'adjuster-hub' | 'rep-hub' | 'customer-hub' | 'leads-hub' | 'pricing-hub' | 'zip-hub'>];
   if (!file) return <div style={{ padding: 20, color: 'var(--riq-text-muted)' }}>view {view} not yet wired</div>;
