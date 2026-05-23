@@ -4,8 +4,9 @@ import { sql } from "../db.js";
 import {
   attemptLogin, createSession, findUserByEnrollToken, setPinForUser,
   revokeSession, revokeAllUserSessions, findUserById,
-  SESSION_COOKIE,
+  SESSION_COOKIE, ALL_ROLES, type Role,
 } from "./services.js";
+import { requireAdmin } from "./middleware.js";
 
 export const authRouter = Router();
 
@@ -181,4 +182,34 @@ authRouter.post("/api/auth/welcome-seen", async (req, res) => {
   if (!req.user) { res.status(401).json({ error: "unauthorized" }); return; }
   await sql`UPDATE users SET welcome_seen_at = NOW() WHERE id = ${req.user.id}`;
   res.json({ ok: true });
+});
+
+// ─── PATCH /api/admin/users/:id/role — admin reassigns a user's role ─────────
+// Admin-only. Cannot demote root_admin (protected by the same root-admin
+// invariant used elsewhere in this file).
+const RoleSchema = z.enum(ALL_ROLES as readonly [Role, ...Role[]]);
+const RolePatchSchema = z.object({ role: RoleSchema });
+
+authRouter.patch("/api/admin/users/:id/role", requireAdmin, async (req, res) => {
+  const userId = Number(req.params.id);
+  if (!Number.isFinite(userId) || userId <= 0) {
+    res.status(400).json({ error: "invalid user id" }); return;
+  }
+  const parse = RolePatchSchema.safeParse(req.body);
+  if (!parse.success) { res.status(400).json({ error: parse.error.issues }); return; }
+
+  const target = await findUserById(sql, userId);
+  if (!target) { res.status(404).json({ error: "user not found" }); return; }
+  if (target.is_root_admin && parse.data.role !== "admin") {
+    res.status(409).json({ error: "cannot demote root admin" }); return;
+  }
+
+  await sql`UPDATE users SET role = ${parse.data.role} WHERE id = ${userId}`;
+  const updated = await findUserById(sql, userId);
+  res.json({
+    user: updated && {
+      id: updated.id, email: updated.email, display_name: updated.display_name,
+      role: updated.role, is_root_admin: updated.is_root_admin,
+    },
+  });
 });

@@ -13,7 +13,7 @@
  */
 import type { Request, Response, NextFunction } from "express";
 import { sql } from "../db.js";
-import { findSessionById, type UserRecord, type SessionRecord, SESSION_COOKIE } from "./services.js";
+import { findSessionById, type UserRecord, type SessionRecord, type Role, SESSION_COOKIE } from "./services.js";
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -91,11 +91,16 @@ export function hasAdminToken(req: Request): boolean {
  * without owning a session, while normal admin dashboard usage flows
  * through req.user.role === "admin" via the cookie.
  */
-export function requireRole(...roles: Array<"rep" | "admin" | "manager">) {
+export function requireRole(...roles: Role[]) {
   return (req: Request, res: Response, next: NextFunction): void => {
     if (roles.includes("admin") && hasAdminToken(req)) { next(); return; }
     if (!req.user) { res.status(401).json({ error: "authentication required" }); return; }
+    // Root admin override: bypasses role check.
+    if (req.user.is_root_admin) { next(); return; }
     if (!roles.includes(req.user.role)) { res.status(403).json({ error: "forbidden" }); return; }
     next();
   };
 }
+
+/** Shorthand for the common `requireRole("admin")` case. */
+export const requireAdmin = requireRole("admin");

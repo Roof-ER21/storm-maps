@@ -21,7 +21,9 @@ const SESSION_HARD_CAP_DAYS = 90;
 const LOCKOUT_FAILS = 5;
 const LOCKOUT_MINUTES = 15;
 
-export type Role = "rep" | "admin" | "manager";
+export type Role = "admin" | "exec" | "employee" | "analytics";
+
+export const ALL_ROLES: readonly Role[] = ["admin", "exec", "employee", "analytics"] as const;
 
 export interface UserRecord {
   id: number;
