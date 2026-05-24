@@ -237,6 +237,36 @@ async function migrate() {
       ON verified_hail_events (event_date)
   `;
 
+  // Extend verified_hail_events with the full source-flag set + event metadata
+  // for backfill ingestion. Idempotent — ADD COLUMN IF NOT EXISTS lets the
+  // base CREATE TABLE above stay minimal while later adds extend cleanly.
+  //
+  // ORDER MATTERS: this ALTER must run BEFORE the dedup-key migration below,
+  // which references source_ncei_storm_events + event_type. On a fresh / DR
+  // bootstrap those columns don't exist yet, so doing the ALTER first stops the
+  // migration from aborting with "column does not exist". (Prod already has the
+  // columns, so this is a no-op there.)
+  await sql`ALTER TABLE verified_hail_events
+    ADD COLUMN IF NOT EXISTS source_ncei_storm_events BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_ncei_swdi BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_mping BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_hailtrace BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS source_nws_warnings BOOLEAN DEFAULT FALSE,
+    ADD COLUMN IF NOT EXISTS event_type TEXT,
+    ADD COLUMN IF NOT EXISTS magnitude REAL,
+    ADD COLUMN IF NOT EXISTS magnitude_type TEXT,
+    ADD COLUMN IF NOT EXISTS state_code TEXT,
+    ADD COLUMN IF NOT EXISTS county TEXT,
+    ADD COLUMN IF NOT EXISTS wfo TEXT,
+    ADD COLUMN IF NOT EXISTS episode_id BIGINT,
+    ADD COLUMN IF NOT EXISTS ncei_event_id BIGINT,
+    ADD COLUMN IF NOT EXISTS narrative TEXT,
+    ADD COLUMN IF NOT EXISTS begin_time_utc TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS end_time_utc TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS consilience_generated_at TIMESTAMP,
+    ADD COLUMN IF NOT EXISTS tor_f_scale TEXT
+  `;
+
   // ── Migration to event-type-aware dedup ─────────────────────────────
   // Original dedup (event_date, lat_bucket, lng_bucket) merged Hail+Wind
   // at the same cell, corrupting the magnitude column. Migrate to include
@@ -268,30 +298,6 @@ async function migrate() {
     `;
     console.log('[migrate] New 4-column dedup key created.');
   }
-
-  // Extend verified_hail_events with the full source-flag set + event metadata
-  // for backfill ingestion. Idempotent — ADD COLUMN IF NOT EXISTS lets the
-  // base CREATE TABLE above stay minimal while later adds extend cleanly.
-  await sql`ALTER TABLE verified_hail_events
-    ADD COLUMN IF NOT EXISTS source_ncei_storm_events BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS source_ncei_swdi BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS source_mping BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS source_hailtrace BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS source_nws_warnings BOOLEAN DEFAULT FALSE,
-    ADD COLUMN IF NOT EXISTS event_type TEXT,
-    ADD COLUMN IF NOT EXISTS magnitude REAL,
-    ADD COLUMN IF NOT EXISTS magnitude_type TEXT,
-    ADD COLUMN IF NOT EXISTS state_code TEXT,
-    ADD COLUMN IF NOT EXISTS county TEXT,
-    ADD COLUMN IF NOT EXISTS wfo TEXT,
-    ADD COLUMN IF NOT EXISTS episode_id BIGINT,
-    ADD COLUMN IF NOT EXISTS ncei_event_id BIGINT,
-    ADD COLUMN IF NOT EXISTS narrative TEXT,
-    ADD COLUMN IF NOT EXISTS begin_time_utc TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS end_time_utc TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS consilience_generated_at TIMESTAMP,
-    ADD COLUMN IF NOT EXISTS tor_f_scale TEXT
-  `;
   // Consilience cache table — keyed on (date, property point) at 0.01°
   // resolution (~0.7 mi). Stores the full 10-source result so dashboard
   // reads are sub-50ms DB lookups instead of 10 concurrent network fetches.
