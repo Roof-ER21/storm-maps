@@ -16,6 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { intelCors, requireIntelAuth, consumerLabel } from './auth.js';
+import { requireAuth } from '../auth/middleware.js';
+import { appendEntityNote, listEntityNotes } from './notes-store.js';
 import { sql as pgSql } from '../db.js';
 import { analyzeDenial } from './denial-analyzer.js';
 import { predictAdjuster, listAdjusters } from './adjuster-twin.js';
@@ -350,6 +352,47 @@ router.get('/api/intel/geocode', async (req: Request, res: Response) => {
     res.json(await upstream.json());
   } catch {
     res.status(502).json({ error: 'geocode upstream failed' });
+  }
+});
+
+/**
+ * Writable entity notes (server/intel/notes-store.ts).
+ *   GET  /api/intel/notes/entity?entity_type=&entity_id=  — a record's notes (open read)
+ *   POST /api/intel/notes/append                          — add a note (requireAuth)
+ * The AI's append_note act writes IN-PROCESS under the confirming user (see
+ * server/ai/local-handlers.ts); this POST backs manual/UI writes. Both are
+ * multi-segment so the '/api/intel/:key' catch-all below can't swallow them,
+ * but they're declared above it to match the geocode convention.
+ */
+router.get('/api/intel/notes/entity', async (req: Request, res: Response) => {
+  try {
+    const notes = await listEntityNotes(
+      String(req.query.entity_type ?? ''),
+      String(req.query.entity_id ?? ''),
+      Number(req.query.limit ?? 50),
+    );
+    res.json({ notes });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
+  }
+});
+
+router.post('/api/intel/notes/append', requireAuth, async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) { res.status(401).json({ error: 'authentication required' }); return; }
+  const { entity_type, entity_id, content } = (req.body ?? {}) as { entity_type?: string; entity_id?: string; content?: string };
+  try {
+    const note = await appendEntityNote({
+      entityType: String(entity_type ?? ''),
+      entityId: String(entity_id ?? ''),
+      content: String(content ?? ''),
+      authorId: user.id,
+      authorEmail: user.email,
+      source: 'manual',
+    });
+    res.json({ ok: true, note });
+  } catch (err) {
+    res.status(400).json({ error: (err as Error).message });
   }
 });
 

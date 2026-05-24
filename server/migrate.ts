@@ -587,6 +587,24 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS ai_messages_thread_idx ON ai_messages (thread_id, created_at)`;
 
+  // Writable entity notes — user/AI-authored annotations attached to any intel
+  // entity (job/customer/carrier/rep/adjuster/lead/zip). Distinct from imported
+  // read-only job notes (notes.json). Written via append_note (AI) or the
+  // requireAuth manual route; see server/intel/notes-store.ts.
+  await sql`
+    CREATE TABLE IF NOT EXISTS entity_notes (
+      id           SERIAL PRIMARY KEY,
+      entity_type  TEXT NOT NULL,
+      entity_id    TEXT NOT NULL,
+      content      TEXT NOT NULL,
+      author_id    INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      author_email TEXT,
+      source       TEXT NOT NULL DEFAULT 'ai',
+      created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS entity_notes_lookup_idx ON entity_notes (entity_type, entity_id, created_at DESC)`;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)

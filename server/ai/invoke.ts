@@ -5,7 +5,8 @@
  *
  * Role gating happens upstream (registry.canUseTool) before this is called.
  */
-import type { ToolDef } from './registry.js';
+import type { ToolDef, Actor } from './registry.js';
+import { LOCAL_HANDLERS } from './local-handlers.js';
 
 const PORT = process.env.PORT || '3100';
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -14,6 +15,18 @@ export interface InvokeResult {
   ok: boolean;
   data?: unknown;
   error?: string;
+}
+
+/**
+ * Execute a tool on behalf of `actor`. Acts registered in LOCAL_HANDLERS run
+ * in-process (authenticated, attributed); everything else self-fetches its
+ * backing /api/intel/* endpoint via the loopback (invokeTool). This is the
+ * single entry point the chat + confirm handlers should call.
+ */
+export async function executeTool(tool: ToolDef, args: Record<string, unknown>, actor: Actor): Promise<InvokeResult> {
+  const local = LOCAL_HANDLERS[tool.name];
+  if (local) return local(args, actor);
+  return invokeTool(tool, args);
 }
 
 /** Find the array to operate on: the value itself, or the first array-valued

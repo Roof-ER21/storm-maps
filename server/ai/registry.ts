@@ -31,6 +31,16 @@ export interface ToolDef {
   path: string;
 }
 
+/** The authenticated user on whose behalf a tool runs. Threaded into act tools
+ *  that run in-process (see server/ai/local-handlers.ts) so writes are
+ *  attributed to a real user instead of the anonymous loopback. */
+export interface Actor {
+  id: number;
+  email: string;
+  role: Role;
+  isRootAdmin: boolean;
+}
+
 const noParams = { type: 'object', properties: {}, additionalProperties: false } as const;
 function obj(props: Record<string, unknown>, required: string[] = []) {
   return { type: 'object', properties: props, required, additionalProperties: false };
@@ -81,7 +91,8 @@ export const READ_TOOLS: ToolDef[] = [
   { name: 'get_lifetime_touch_queue', description: 'Re-engagement queue per rep. Employees: own.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/lifetime-touch-query', params: obj({ rep: str }, ['rep']) },
   { name: 'get_solar_candidates', description: 'Roofs ready for solar upsell.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/solar-candidates', params: noParams },
   { name: 'get_carrier_orphans', description: 'Insurance jobs missing a carrier.', kind: 'read', roles: ['analytics', 'admin'], method: 'GET', path: '/api/intel/carrier-orphans', params: noParams },
-  { name: 'get_notes', description: 'Full-text search of job notes.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/notes', params: obj({ q: str }) },
+  { name: 'get_notes', description: 'Full-text search of imported job notes (read-only intel from the data pull).', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/notes', params: obj({ q: str }) },
+  { name: 'get_entity_notes', description: 'List the user/AI-authored notes previously attached to a specific entity via append_note. entity_type + entity_id identify the record.', kind: 'read', roles: 'any', method: 'GET', path: '/api/intel/notes/entity', params: obj({ entity_type: { type: 'string', enum: ['job', 'customer', 'carrier', 'rep', 'adjuster', 'lead', 'zip'] }, entity_id: str }, ['entity_type', 'entity_id']) },
   { name: 'get_active_work', description: 'Open supplements, cross-sell, install readiness.', kind: 'read', roles: ['exec', 'analytics', 'admin', 'employee'], method: 'GET', path: '/api/intel/active-work', params: noParams },
   { name: 'get_adjustments_open', description: 'Pending adjustments.', kind: 'read', roles: ['exec', 'analytics', 'admin', 'employee'], method: 'GET', path: '/api/intel/adjustments-open', params: noParams },
   { name: 'get_receivables', description: 'Open AR + downpayments.', kind: 'read', roles: ['exec', 'analytics', 'admin', 'employee'], method: 'GET', path: '/api/intel/receivables', params: noParams },
@@ -118,7 +129,10 @@ export const ACT_TOOLS: ToolDef[] = [
   { name: 'transcribe_denial', description: 'OCR a PDF/image denial letter.', kind: 'act', danger: 'safe', roles: 'any', method: 'POST', path: '/api/intel/transcribe-denial', params: obj({ base64: str, format: str, mimeType: str }, ['base64', 'mimeType']) },
   { name: 'predict_adjuster', description: 'Run the Adjuster Twin prediction.', kind: 'act', danger: 'safe', roles: 'any', method: 'POST', path: '/api/intel/adjuster-twin/predict', params: obj({ adjuster: str, scope: str }, ['adjuster']) },
   { name: 'mark_denial_outcome', description: 'Log a denial appeal outcome.', kind: 'act', danger: 'destructive', roles: 'any', method: 'POST', path: '/api/intel/denial-intake/:id/outcome', params: obj({ id: str, outcome: str, outcome_date: str, counter_sent: { type: 'boolean' }, notes: str }, ['id', 'outcome']) },
-  // NOTE: append_note (POST /api/intel/notes/append) deferred — needs a notes-write store (notes are read-only intel blobs today).
+  // append_note runs IN-PROCESS (server/ai/local-handlers.ts), not via the
+  // loopback — so the note is attributed to the confirming user, not anonymous.
+  // The path backs the requireAuth-gated manual route; the AI never hits it.
+  { name: 'append_note', description: 'Attach a note/annotation to a specific record (job, customer, carrier, rep, adjuster, lead, or zip). Use when the user asks to note/log/remember something about a record. First resolve the record with a lookup/search tool to get its id/key; never invent one.', kind: 'act', danger: 'safe', roles: 'any', method: 'POST', path: '/api/intel/notes/append', params: obj({ entity_type: { type: 'string', enum: ['job', 'customer', 'carrier', 'rep', 'adjuster', 'lead', 'zip'], description: 'Kind of record the note attaches to.' }, entity_id: { type: 'string', description: 'Record id/key: job id, customer key, carrier name, rep name, adjuster name, lead id, or zip.' }, content: { type: 'string', description: 'The note text (max 5000 chars).' } }, ['entity_type', 'entity_id', 'content']) },
   { name: 'set_user_role', description: "Change a user's role.", kind: 'act', danger: 'destructive', roles: ['admin'], method: 'PATCH', path: '/api/admin/users/:id/role', params: obj({ id: str, role: str }, ['id', 'role']) },
   { name: 'webhook_score_lead', description: 'CC21 lead-scoring integration call.', kind: 'act', danger: 'safe', roles: ['admin'], method: 'POST', path: '/api/intel/predictor/webhook', params: obj({ features: { type: 'object' } }, ['features']) },
 ];

@@ -13,7 +13,7 @@ import type { Role } from '../auth/services.js';
 import { getTool, canUseTool, toolsForRole, type ToolDef } from './registry.js';
 import { generate, generateStream, selectModel, type GenMessage } from './model.js';
 import { systemPrompt } from './prompts.js';
-import { invokeTool, summarize } from './invoke.js';
+import { executeTool, summarize } from './invoke.js';
 import { logToolCall } from './audit.js';
 
 const MAX_TURNS = 5;
@@ -44,6 +44,7 @@ export async function chatHandler(req: Request, res: Response): Promise<void> {
   if (!user) { res.status(401).json({ error: 'authentication required' }); return; }
   const role = user.role as Role;
   const isRootAdmin = !!user.is_root_admin;
+  const actor = { id: user.id, email: user.email, role, isRootAdmin };
 
   const { message, threadId: inThreadId, pageContext, localOnly } = (req.body ?? {}) as {
     message?: string; threadId?: number; pageContext?: string; localOnly?: boolean;
@@ -101,7 +102,7 @@ export async function chatHandler(req: Request, res: Response): Promise<void> {
           continue;
         }
         // read tool, or auto-executed act under bypass
-        const result = await invokeTool(tool, call.args);
+        const result = await executeTool(tool, call.args, actor);
         const sum = result.ok ? summarize(result.data) : `ERROR: ${result.error}`;
         toolsUsed.push(tool.name);
         await logToolCall({
@@ -137,6 +138,7 @@ export async function chatStreamHandler(req: Request, res: Response): Promise<vo
   if (!user) { res.status(401).json({ error: 'authentication required' }); return; }
   const role = user.role as Role;
   const isRootAdmin = !!user.is_root_admin;
+  const actor = { id: user.id, email: user.email, role, isRootAdmin };
 
   const { message, threadId: inThreadId, pageContext, localOnly } = (req.body ?? {}) as {
     message?: string; threadId?: number; pageContext?: string; localOnly?: boolean;
@@ -199,7 +201,7 @@ export async function chatStreamHandler(req: Request, res: Response): Promise<vo
           proposed = true;
           continue;
         }
-        const result = await invokeTool(tool, call.args);
+        const result = await executeTool(tool, call.args, actor);
         const sum = result.ok ? summarize(result.data) : `ERROR: ${result.error}`;
         toolsUsed.push(tool.name);
         send('tool', { tool: tool.name, ok: result.ok });

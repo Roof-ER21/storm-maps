@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { sql as pgSql } from '../db.js';
 import type { Role } from '../auth/services.js';
 import { getTool, canUseTool } from './registry.js';
-import { invokeTool, summarize } from './invoke.js';
+import { executeTool, summarize } from './invoke.js';
 import { logToolCall } from './audit.js';
 
 export async function confirmHandler(req: Request, res: Response): Promise<void> {
@@ -11,6 +11,7 @@ export async function confirmHandler(req: Request, res: Response): Promise<void>
   if (!user) { res.status(401).json({ error: 'authentication required' }); return; }
   const role = user.role as Role;
   const isRootAdmin = !!user.is_root_admin;
+  const actor = { id: user.id, email: user.email, role, isRootAdmin };
 
   const { tool: toolName, args, threadId } = (req.body ?? {}) as { tool?: string; args?: Record<string, unknown>; threadId?: number };
   const tool = toolName ? getTool(toolName) : undefined;
@@ -18,7 +19,7 @@ export async function confirmHandler(req: Request, res: Response): Promise<void>
   if (tool.kind !== 'act') { res.status(400).json({ error: 'not an act tool' }); return; }
   if (!canUseTool(tool, role, isRootAdmin)) { res.status(403).json({ error: 'forbidden' }); return; }
 
-  const result = await invokeTool(tool, args ?? {});
+  const result = await executeTool(tool, args ?? {}, actor);
   const summary = result.ok ? summarize(result.data, 1000) : `ERROR: ${result.error}`;
 
   await logToolCall({

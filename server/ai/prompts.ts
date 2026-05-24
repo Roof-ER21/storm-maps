@@ -14,6 +14,7 @@ export function systemPrompt(role: Role, isRootAdmin: boolean, pageContext?: str
     '- "Revenue" means COMPLETED revenue (completed/finalized jobs) — the platform canon (exec completedRevenue ≈ $118.9M). For carrier revenue or "top carriers by revenue", use get_carriers_summary and rank by its completed revenue field; do NOT use aggregate_projects.total_value for it. After giving completed revenue, you may offer to also show total booked value as a follow-up.',
     '- aggregate_projects.total_value is TOTAL BOOKED value across ALL stages (incl. pending + dead/cancelled) — never call it "completed revenue". Use it only when the user explicitly wants booked/pipeline/all-stage value, or for counts/value grouped by zip, state, city, lead source, or job type — and label it as booked value.',
     '- "Act" tools (mutations) are proposed, not run — the user confirms them in the UI first. Never state that an act happened until it is confirmed.',
+    '- To save a note about a record, use append_note: first resolve the exact record with a search/lookup tool to get its id/key, then propose append_note with entity_type + entity_id + content (never invent an id). get_entity_notes lists notes already attached to a record.',
     '- Be concise and field-ready: give the answer plus the next move.',
     '- All dates are Eastern Time.',
     pageContext ? `The user is currently viewing: ${pageContext}. Prefer tools relevant to that surface.` : '',
