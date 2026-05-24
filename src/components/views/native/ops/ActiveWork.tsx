@@ -104,8 +104,9 @@ interface TasksOverdue {
     description: string | null;
     priority: string | null;
     due_date: string | null;
+    rep: string | null;          // server-computed name (data->'user'->>firstName/lastName)
     employee_id: number | null;
-    customer_id: number | null;
+    customer_id: string | null;  // portal customer id arrives as a string
   }[];
 }
 
@@ -645,8 +646,7 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
                   <th style={thStyle}>Description</th>
                   <th style={thStyle}>Priority</th>
                   <th style={thStyle}>Due</th>
-                  <th style={thNumStyle}>Employee</th>
-                  <th style={thNumStyle}>Customer</th>
+                  <th style={thStyle}>Rep</th>
                 </tr>
               </thead>
               <tbody>
@@ -655,12 +655,11 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
                     <td style={tdStyle}>{t.description ?? "—"}</td>
                     <td style={tdStyle}>{t.priority ?? "—"}</td>
                     <td style={{ ...tdStyle, color: "#ef4444" }}>{(t.due_date ?? "").slice(0, 10) || "—"}</td>
-                    <td style={tdNumStyle}>{t.employee_id ?? "—"}</td>
-                    <td style={tdNumStyle}>{t.customer_id ?? "—"}</td>
+                    <td style={tdStyle}>{t.rep ?? (t.employee_id != null ? `emp ${t.employee_id}` : "—")}</td>
                   </tr>
                 ))}
                 {(data.items ?? []).length === 0 && (
-                  <tr><td style={tdStyle} colSpan={5}>No overdue items 🎉</td></tr>
+                  <tr><td style={tdStyle} colSpan={4}>No overdue items 🎉</td></tr>
                 )}
               </tbody>
             </table>
