@@ -65,14 +65,18 @@ export async function fixesSummary(_req: Request, res: Response) {
     let open = 0;
     let completed = 0;
     const byTrade = new Map<string, number>();
-    const byRep = new Map<string, { rep: string; open: number; completed: number }>();
+    const byRep = new Map<string, { employee_id: number | null; rep: string; open: number; completed: number }>();
     const byAge = new Map<string, number>();
     for (const r of rows) {
       const isOpen = !r.completed;
       if (isOpen) open++;
       else completed++;
-      const repKey = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
-      const rep = byRep.get(repKey) ?? { rep: repKey, open: 0, completed: 0 };
+      // Key by employee_id (deterministic — survives duplicate names); fall back to
+      // the name label when the row has none. Output carries BOTH so the UI shows the
+      // name but drills down by id (fixes-by-rep?rep=<employee_id>).
+      const repKey = r.employee_id != null ? `id:${r.employee_id}` : (r.rep || '(unassigned)');
+      const repLabel = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
+      const rep = byRep.get(repKey) ?? { employee_id: r.employee_id ?? null, rep: repLabel, open: 0, completed: 0 };
       if (isOpen) rep.open++;
       else rep.completed++;
       byRep.set(repKey, rep);
@@ -146,14 +150,17 @@ export async function tasksOverdue(_req: Request, res: Response) {
     `;
     const overdue = rows.filter((r) => isPast(r.due_date));
     overdue.sort((a, b) => (Date.parse(a.due_date!) || 0) - (Date.parse(b.due_date!) || 0));
-    const byRep = new Map<string, number>();
+    const byRep = new Map<string, { employee_id: number | null; rep: string; count: number }>();
     for (const r of overdue) {
-      const k = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
-      byRep.set(k, (byRep.get(k) ?? 0) + 1);
+      const key = r.employee_id != null ? `id:${r.employee_id}` : (r.rep || '(unassigned)');
+      const label = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
+      const e = byRep.get(key) ?? { employee_id: r.employee_id ?? null, rep: label, count: 0 };
+      e.count++;
+      byRep.set(key, e);
     }
     res.json({
       total_overdue: overdue.length,
-      by_rep: [...byRep].map(([rep, count]) => ({ rep, count })).sort(byCountDesc),
+      by_rep: [...byRep.values()].sort(byCountDesc),
       items: overdue,
       took_ms: Date.now() - t0,
       computed_at: new Date().toISOString(),
