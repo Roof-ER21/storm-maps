@@ -605,6 +605,76 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS entity_notes_lookup_idx ON entity_notes (entity_type, entity_id, created_at DESC)`;
 
+  // ── Phase 8c: Operational Surveillance ──────────────────────────────────
+  // Mirrors the portal's open fixes / tasks / punch list (admin/fixes/open,
+  // admin/tasks/all, dashboard/punchList/all). One indexed row per record +
+  // a `data` JSONB fallback, same shape as intel_projects. Backfilled by
+  // scripts/roofdocs/backfill-intel-{fixes,tasks,punchlist}.mjs. Portal date
+  // fields are kept as TEXT (they arrive as strings), like intel_projects.
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_fixes (
+      id INTEGER PRIMARY KEY,
+      job_id INTEGER,
+      employee_id INTEGER,
+      trade TEXT,
+      description TEXT,
+      completed BOOLEAN DEFAULT FALSE,
+      created_date TEXT,
+      completed_date TEXT,
+      photo_count INTEGER DEFAULT 0,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_fixes_emp_completed ON intel_fixes (employee_id, completed)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_fixes_job ON intel_fixes (job_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_fixes_open ON intel_fixes (created_date) WHERE completed = FALSE`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_tasks (
+      id INTEGER PRIMARY KEY,
+      description TEXT,
+      priority TEXT,
+      employee_id INTEGER,
+      customer_id TEXT,
+      assignor_id INTEGER,
+      contractor_id INTEGER,
+      due_date TEXT,
+      created_date TEXT,
+      completed_date TEXT,
+      pending BOOLEAN DEFAULT TRUE,
+      archived BOOLEAN DEFAULT FALSE,
+      notes TEXT,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_tasks_emp_completed ON intel_tasks (employee_id, completed_date)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_tasks_cust_due ON intel_tasks (customer_id, due_date)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_tasks_overdue ON intel_tasks (due_date) WHERE pending = TRUE AND archived = FALSE`;
+
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_punchlist (
+      id INTEGER PRIMARY KEY,
+      name TEXT,
+      address_line1 TEXT,
+      city TEXT,
+      state TEXT,
+      zip TEXT,
+      user_id INTEGER,
+      project_manager_id INTEGER,
+      status_id INTEGER,
+      substatus_id INTEGER,
+      notes TEXT,
+      using_enhanced_photos BOOLEAN DEFAULT FALSE,
+      work_completed BOOLEAN DEFAULT FALSE,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_punchlist_status ON intel_punchlist (status_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_punchlist_pm ON intel_punchlist (project_manager_id)`;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)

@@ -30,6 +30,7 @@ import { carrierComplaints } from './naic-complaints.js';
 import { arRollup } from './ar-rollup.js';
 import { portalKpis } from './portal-kpis.js';
 import { leadsSummary, leadsQuery, leadDeep, leadPipeline } from './leads.js';
+import { fixesSummary, fixesByRep, tasksOverdue, tasksByRep, punchlistActive } from './ops.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -276,6 +277,17 @@ router.get('/api/intel/jobs-nearby', jobsNearby);
 router.get('/api/intel/weekly-recap', weeklyRecap);
 router.get('/api/intel/exec-summary', execSummary);
 router.get('/api/intel/lifetime-touch-query', lifetimeTouchQuery);
+
+/**
+ * Phase 8c: Operational Surveillance — open fixes / tasks / punch list over
+ * intel_fixes / intel_tasks / intel_punchlist. Read-only aggregates; same
+ * registration rule as above (BEFORE the /:key catch-all).
+ */
+router.get('/api/intel/fixes-summary', fixesSummary);
+router.get('/api/intel/fixes-by-rep', fixesByRep);
+router.get('/api/intel/tasks-overdue', tasksOverdue);
+router.get('/api/intel/tasks-by-rep', tasksByRep);
+router.get('/api/intel/punchlist-active', punchlistActive);
 
 /**
  * Phase 5: shareable-list management (auth-required).
