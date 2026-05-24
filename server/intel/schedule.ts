@@ -34,7 +34,7 @@ interface EventRow {
 }
 
 /** Render a timestamp as its ET calendar day (YYYY-MM-DD). */
-function etDay(ts: string | null): string {
+export function etDay(ts: string | null): string {
   if (!ts) return 'unknown';
   const d = new Date(ts);
   return Number.isNaN(d.getTime()) ? 'unknown' : d.toLocaleDateString('en-CA', { timeZone: ET });

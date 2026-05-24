@@ -95,6 +95,36 @@ All responses are JSON. Cache-Control: `private, max-age=600` (10 min).
 Returns instructions for triggering a manual refresh. Requires a real session
 (API key alone won't do it — refresh is a privileged op).
 
+### Operations surveillance (Phase 8c) — over `intel_fixes` / `intel_tasks` / `intel_punchlist`
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/intel/fixes-summary` | `{ total, open, completed, by_trade:[{key,count}], by_rep:[{employee_id,rep,open,completed}], by_age:[{bucket,count}] }` |
+| `GET /api/intel/fixes-by-rep?rep=<employee_id>` | `{ rep, open:[{id,job_id,trade,description,created_date,photo_count}], count }` |
+| `GET /api/intel/tasks-overdue` | `{ total_overdue, by_rep:[{employee_id,rep,count}], items:[{id,description,priority,due_date,employee_id,customer_id}] }` |
+| `GET /api/intel/tasks-by-rep?rep=<employee_id>` | `{ rep, pending:[…], overdue_count, count }` |
+| `GET /api/intel/punchlist-active` | `{ total, items:[{id,name,city,state,status_id,substatus_id,work_completed}] }` |
+
+`?rep=` accepts a numeric `employee_id` (exact) or a name (ILIKE fallback). Empty until the ops data pull lands.
+
+### Calendar / scheduling (Phase 8d) — over `intel_events` (sales + production event feeds)
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/intel/schedule-today` | `{ date_et, total, by_type:[{key,count}], events:[…] }` (events whose ET calendar day = today) |
+| `GET /api/intel/schedule-week?days=N` | `{ days, total, by_day:[{day,count,events:[…]}] }` (default 7) |
+| `GET /api/intel/schedule-upcoming?type=&customer=&limit=` | `{ total, events:[…] }` |
+
+Event shape: `{ id, event_type, audience, start_time, end_time, customer_id, lead_id, supplier_id, notes, source }`. Sources the sales + production event feeds only (not the customer/employee directories). Empty until the events pull lands.
+
+### Denial intelligence (Combat suite)
+
+| Endpoint | Returns |
+|---|---|
+| `GET /api/intel/denial-intake/stats` | `{ total, byCarrier, byOutcome, winRates:[{carrier,total,approved,partial,denied,flipRate}], stanceRollup, carrierStanceMatrix }` |
+| `GET /api/intel/denial-intake/list?carrier=&limit=` | recent analyzed denials + latest outcome |
+| `GET /api/intel/denial-intake/:id` | full record + outcome history |
+
 ---
 
 ## Example: pull carrier orphans into CC21

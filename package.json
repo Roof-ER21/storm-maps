@@ -22,7 +22,9 @@
     "intel:orphans": "node scripts/roofdocs/build-carrier-orphans.mjs",
     "intel:patterns": "node scripts/roofdocs/build-patterns.mjs",
     "lint": "eslint .",
-    "test": "node --import tsx scripts/test/ai-aggregation.test.mts",
+    "typecheck:server": "tsc -p tsconfig.server.json",
+    "test": "node --import tsx scripts/test/ai-aggregation.test.mts && node --import tsx scripts/test/ops-schedule.test.mts",
+    "check": "tsc -b && tsc -p tsconfig.server.json && eslint . && npm test",
     "preview": "vite preview"
   },
   "dependencies": {

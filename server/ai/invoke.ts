@@ -126,7 +126,7 @@ export async function invokeTool(tool: ToolDef, args: Record<string, unknown>): 
     };
     if (tool.method === 'GET' || tool.method === 'DELETE') {
       const qs = new URLSearchParams(
-        Object.entries(rest).map(([k, v]) => [k, typeof v === 'object' ? JSON.stringify(v) : String(v)]),
+        Object.entries(rest).map(([k, v]): [string, string] => [k, typeof v === 'object' ? JSON.stringify(v) : String(v)]),
       ).toString();
       if (qs) url += (url.includes('?') ? '&' : '?') + qs;
     } else {

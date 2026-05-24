@@ -20,14 +20,14 @@ import { type Request, type Response } from 'express';
 import { sql as pgSql } from '../db.js';
 
 /** Portal date string (ISO or other) → whole days elapsed, or null if unparseable. */
-function ageDays(dateStr: string | null): number | null {
+export function ageDays(dateStr: string | null): number | null {
   if (!dateStr) return null;
   const t = Date.parse(dateStr);
   if (Number.isNaN(t)) return null;
   return Math.floor((Date.now() - t) / 86_400_000);
 }
 
-function ageBucket(days: number | null): string {
+export function ageBucket(days: number | null): string {
   if (days === null) return 'unknown';
   if (days <= 7) return '0-7d';
   if (days <= 30) return '8-30d';
@@ -44,13 +44,61 @@ const isPast = (dateStr: string | null): boolean => {
 };
 
 /* ── /api/intel/fixes-summary ─────────────────────────────────────────────── */
-interface FixRow {
+export interface FixRow {
   id: number;
   trade: string | null;
   completed: boolean;
   created_date: string | null;
   employee_id: number | null;
   rep: string | null;
+}
+
+export interface FixSummary {
+  total: number;
+  open: number;
+  completed: number;
+  by_trade: { key: string; count: number }[];
+  by_rep: { employee_id: number | null; rep: string; open: number; completed: number }[];
+  by_age: { bucket: string; count: number }[];
+}
+
+/**
+ * Pure aggregation over fix rows — exported so it can be unit-tested without a DB.
+ * Keys reps by employee_id (deterministic — survives duplicate names) but carries
+ * the display name too, so the UI shows the name and drills down by id. by_trade /
+ * by_age count OPEN fixes only.
+ */
+export function summarizeFixes(rows: FixRow[]): FixSummary {
+  let open = 0;
+  let completed = 0;
+  const byTrade = new Map<string, number>();
+  const byRep = new Map<string, { employee_id: number | null; rep: string; open: number; completed: number }>();
+  const byAge = new Map<string, number>();
+  for (const r of rows) {
+    const isOpen = !r.completed;
+    if (isOpen) open++;
+    else completed++;
+    const repKey = r.employee_id != null ? `id:${r.employee_id}` : (r.rep || '(unassigned)');
+    const repLabel = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
+    const rep = byRep.get(repKey) ?? { employee_id: r.employee_id ?? null, rep: repLabel, open: 0, completed: 0 };
+    if (isOpen) rep.open++;
+    else rep.completed++;
+    byRep.set(repKey, rep);
+    if (isOpen) {
+      const trade = r.trade || '(none)';
+      byTrade.set(trade, (byTrade.get(trade) ?? 0) + 1);
+      const bucket = ageBucket(ageDays(r.created_date));
+      byAge.set(bucket, (byAge.get(bucket) ?? 0) + 1);
+    }
+  }
+  return {
+    total: rows.length,
+    open,
+    completed,
+    by_trade: [...byTrade].map(([key, count]) => ({ key, count })).sort(byCountDesc),
+    by_rep: [...byRep.values()].sort((a, b) => b.open - a.open),
+    by_age: AGE_ORDER.filter((b) => byAge.has(b)).map((b) => ({ bucket: b, count: byAge.get(b)! })),
+  };
 }
 
 export async function fixesSummary(_req: Request, res: Response) {
@@ -62,41 +110,7 @@ export async function fixesSummary(_req: Request, res: Response) {
                          COALESCE(data->'employee'->>'lastName', '')), '') AS rep
         FROM intel_fixes
     `;
-    let open = 0;
-    let completed = 0;
-    const byTrade = new Map<string, number>();
-    const byRep = new Map<string, { employee_id: number | null; rep: string; open: number; completed: number }>();
-    const byAge = new Map<string, number>();
-    for (const r of rows) {
-      const isOpen = !r.completed;
-      if (isOpen) open++;
-      else completed++;
-      // Key by employee_id (deterministic — survives duplicate names); fall back to
-      // the name label when the row has none. Output carries BOTH so the UI shows the
-      // name but drills down by id (fixes-by-rep?rep=<employee_id>).
-      const repKey = r.employee_id != null ? `id:${r.employee_id}` : (r.rep || '(unassigned)');
-      const repLabel = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
-      const rep = byRep.get(repKey) ?? { employee_id: r.employee_id ?? null, rep: repLabel, open: 0, completed: 0 };
-      if (isOpen) rep.open++;
-      else rep.completed++;
-      byRep.set(repKey, rep);
-      if (isOpen) {
-        const trade = r.trade || '(none)';
-        byTrade.set(trade, (byTrade.get(trade) ?? 0) + 1);
-        const bucket = ageBucket(ageDays(r.created_date));
-        byAge.set(bucket, (byAge.get(bucket) ?? 0) + 1);
-      }
-    }
-    res.json({
-      total: rows.length,
-      open,
-      completed,
-      by_trade: [...byTrade].map(([key, count]) => ({ key, count })).sort(byCountDesc),
-      by_rep: [...byRep.values()].sort((a, b) => b.open - a.open),
-      by_age: AGE_ORDER.filter((b) => byAge.has(b)).map((b) => ({ bucket: b, count: byAge.get(b)! })),
-      took_ms: Date.now() - t0,
-      computed_at: new Date().toISOString(),
-    });
+    res.json({ ...summarizeFixes(rows), took_ms: Date.now() - t0, computed_at: new Date().toISOString() });
   } catch (err) {
     res.status(500).json({ error: 'fixes_summary_failed', message: err instanceof Error ? err.message : String(err) });
   }
