@@ -31,6 +31,7 @@ import { arRollup } from './ar-rollup.js';
 import { portalKpis } from './portal-kpis.js';
 import { leadsSummary, leadsQuery, leadDeep, leadPipeline } from './leads.js';
 import { fixesSummary, fixesByRep, tasksOverdue, tasksByRep, punchlistActive } from './ops.js';
+import { scheduleToday, scheduleWeek, scheduleUpcoming } from './schedule.js';
 import {
   zipStats, carriersSummary, carrierDeep, mapPins, customerLeads,
   adjustersSummary, adjusterDeep, repsSummary, repDeep,
@@ -288,6 +289,14 @@ router.get('/api/intel/fixes-by-rep', fixesByRep);
 router.get('/api/intel/tasks-overdue', tasksOverdue);
 router.get('/api/intel/tasks-by-rep', tasksByRep);
 router.get('/api/intel/punchlist-active', punchlistActive);
+
+/**
+ * Phase 8d: Calendar / Scheduling — over intel_events (real event feed: sales +
+ * production). Read-only; same registration rule (BEFORE the /:key catch-all).
+ */
+router.get('/api/intel/schedule-today', scheduleToday);
+router.get('/api/intel/schedule-week', scheduleWeek);
+router.get('/api/intel/schedule-upcoming', scheduleUpcoming);
 
 /**
  * Phase 5: shareable-list management (auth-required).

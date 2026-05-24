@@ -681,6 +681,34 @@ async function migrate() {
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_punchlist_status ON intel_punchlist (status_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_punchlist_pm ON intel_punchlist (project_manager_id)`;
 
+  // ── Phase 8d: Calendar / Scheduling ─────────────────────────────────────
+  // Mirrors the portal's real event feed (events/sales/all + events/production/all
+  // — NOT events/customers|employees, which are just entity directories RIQ21
+  // already has). One row per calendar event. start_time/end_time are TIMESTAMPTZ
+  // (the feed sends clean ISO), so today/week filtering is correct + indexed in SQL
+  // via AT TIME ZONE (no text-date cast footgun). Backfilled by backfill-intel-events.mjs.
+  await sql`
+    CREATE TABLE IF NOT EXISTS intel_events (
+      id TEXT PRIMARY KEY,
+      event_type TEXT,
+      audience TEXT,
+      start_time TIMESTAMPTZ,
+      end_time TIMESTAMPTZ,
+      customer_id TEXT,
+      lead_id TEXT,
+      supplier_id TEXT,
+      notes TEXT,
+      source TEXT,
+      last_updated TIMESTAMPTZ,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMP DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_events_start ON intel_events (start_time)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_events_customer ON intel_events (customer_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_events_lead ON intel_events (lead_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_intel_events_type ON intel_events (event_type)`;
+
   console.log('[migrate] All core tables created successfully.');
 
   // Seed admin user (idempotent)
