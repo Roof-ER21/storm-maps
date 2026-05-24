@@ -30,8 +30,9 @@ export async function executeTool(tool: ToolDef, args: Record<string, unknown>, 
 }
 
 /** Find the array to operate on: the value itself, or the first array-valued
- *  property of a top-level object (e.g. {reps:[…]}, {zips:[…]}). */
-function primaryArray(data: unknown): { arr: unknown[]; rebuild: (s: unknown[]) => unknown } | null {
+ *  property of a top-level object (e.g. {reps:[…]}, {zips:[…]}).
+ *  Exported for the aggregation regression harness (scripts/test). */
+export function primaryArray(data: unknown): { arr: unknown[]; rebuild: (s: unknown[]) => unknown } | null {
   if (Array.isArray(data)) return { arr: data, rebuild: (s) => s };
   if (data && typeof data === 'object') {
     const entry = Object.entries(data as Record<string, unknown>).find(([, v]) => Array.isArray(v));
@@ -53,7 +54,7 @@ interface QuerySpec {
   sortBy?: string; sortOrder?: string; top?: number;
 }
 
-function applyQuery(data: unknown, q: QuerySpec): unknown {
+export function applyQuery(data: unknown, q: QuerySpec): unknown {
   const pa = primaryArray(data);
   if (!pa) return data; // nothing list-shaped to query over
   let rows = pa.arr.slice();
