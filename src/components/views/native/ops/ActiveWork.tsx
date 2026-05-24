@@ -123,6 +123,21 @@ interface PunchlistActive {
   }[];
 }
 
+interface FixesByRep {
+  rep: string;
+  open: { id: number; job_id: number | null; trade: string | null; description: string | null; created_date: string | null; photo_count: number | null }[];
+  count: number;
+  took_ms?: number;
+}
+
+interface TasksByRep {
+  rep: string;
+  pending: { id: number; description: string | null; priority: string | null; due_date: string | null; customer_id: string | null }[];
+  overdue_count: number;
+  count: number;
+  took_ms?: number;
+}
+
 type LoadState = "idle" | "loading" | "error" | "ok";
 
 // ---------------------------------------------------------------------------
@@ -496,6 +511,23 @@ function SupplementsTab({ aw }: { aw: { data: ActiveWorkResponse | null; error: 
 // ---------------------------------------------------------------------------
 
 function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null }) {
+  const [selRep, setSelRep] = useState<string | null>(null);
+  const [repData, setRepData] = useState<FixesByRep | null>(null);
+  const [repLoading, setRepLoading] = useState(false);
+
+  // Fetch in the click handler (not an effect) so we never set state synchronously in an effect.
+  function selectRep(rep: string) {
+    setSelRep(rep);
+    setRepLoading(true);
+    setRepData(null);
+    const m = /^emp (\d+)$/.exec(rep); // no-name employees aggregate as "emp <id>" → drill by numeric id
+    fetch(`/api/intel/fixes-by-rep?rep=${encodeURIComponent(m ? m[1] : rep)}`, { credentials: "include" })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FixesByRep>; })
+      .then(setRepData)
+      .catch(() => setRepData(null))
+      .finally(() => setRepLoading(false));
+  }
+
   if (state !== "ok" || !data) return <TabPlaceholder state={state} label="Fixes" />;
 
   return (
@@ -559,9 +591,9 @@ function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null
         </Panel>
       </div>
 
-      {/* By rep */}
+      {/* By rep — click a row to drill into that rep's open fixes */}
       <div style={{ marginTop: 16 }}>
-        <Panel title="By rep">
+        <Panel title="By rep" action={<span style={{ fontSize: 11, color: "var(--riq-text-muted)" }}>click a rep to drill in</span>}>
           <div style={{ maxHeight: 400, overflowY: "auto" }}>
             <table style={tblStyle}>
               <thead>
@@ -573,8 +605,8 @@ function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null
               </thead>
               <tbody>
                 {(data.by_rep ?? []).map((r) => (
-                  <tr key={r.rep}>
-                    <td style={tdStyle}>{r.rep}</td>
+                  <tr key={r.rep} onClick={() => selectRep(r.rep)} style={{ cursor: "pointer", background: selRep === r.rep ? "#3d342a" : undefined }}>
+                    <td style={tdStyle}>{selRep === r.rep ? "▸ " : ""}{r.rep}</td>
                     <td style={{ ...tdNumStyle, color: r.open > 0 ? "#f59e0b" : "var(--riq-text-muted)" }}>{fmt(r.open)}</td>
                     <td style={{ ...tdNumStyle, color: "#10b981" }}>{fmt(r.completed)}</td>
                   </tr>
@@ -587,6 +619,47 @@ function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null
           </div>
         </Panel>
       </div>
+
+      {/* Rep drill-down — fixes-by-rep */}
+      {selRep && (
+        <div style={{ marginTop: 16 }}>
+          <Panel
+            title={`Open fixes — ${selRep}${repData ? ` (${repData.count})` : ""}`}
+            action={<span onClick={() => { setSelRep(null); setRepData(null); }} style={{ cursor: "pointer", fontSize: 12, color: "var(--riq-text-muted)" }}>✕ close</span>}
+          >
+            {repLoading ? (
+              <div style={{ padding: 16, color: "var(--riq-accent)" }}>Loading…</div>
+            ) : !repData || repData.open.length === 0 ? (
+              <div style={{ padding: 16, color: "var(--riq-text-muted)" }}>No open fixes for this rep.</div>
+            ) : (
+              <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                <table style={tblStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thNumStyle}>Job</th>
+                      <th style={thStyle}>Trade</th>
+                      <th style={thStyle}>Description</th>
+                      <th style={thStyle}>Created</th>
+                      <th style={thNumStyle}>Photos</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repData.open.map((f) => (
+                      <tr key={f.id}>
+                        <td style={tdNumStyle}>{f.job_id ?? "—"}</td>
+                        <td style={tdStyle}>{f.trade ?? "—"}</td>
+                        <td style={tdStyle}>{f.description ?? "—"}</td>
+                        <td style={tdStyle}>{(f.created_date ?? "").slice(0, 10) || "—"}</td>
+                        <td style={tdNumStyle}>{f.photo_count ?? 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
     </>
   );
 }
@@ -596,6 +669,22 @@ function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null
 // ---------------------------------------------------------------------------
 
 function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null }) {
+  const [selRep, setSelRep] = useState<string | null>(null);
+  const [repData, setRepData] = useState<TasksByRep | null>(null);
+  const [repLoading, setRepLoading] = useState(false);
+
+  function selectRep(rep: string) {
+    setSelRep(rep);
+    setRepLoading(true);
+    setRepData(null);
+    const m = /^emp (\d+)$/.exec(rep);
+    fetch(`/api/intel/tasks-by-rep?rep=${encodeURIComponent(m ? m[1] : rep)}`, { credentials: "include" })
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<TasksByRep>; })
+      .then(setRepData)
+      .catch(() => setRepData(null))
+      .finally(() => setRepLoading(false));
+  }
+
   if (state !== "ok" || !data) return <TabPlaceholder state={state} label="Tasks" />;
 
   return (
@@ -609,9 +698,9 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
         </div>
       </Panel>
 
-      {/* By rep */}
+      {/* By rep — click a row to drill into that rep's pending tasks */}
       <div style={{ marginTop: 16 }}>
-        <Panel title="Overdue by rep">
+        <Panel title="Overdue by rep" action={<span style={{ fontSize: 11, color: "var(--riq-text-muted)" }}>click a rep to drill in</span>}>
           <div style={{ maxHeight: 300, overflowY: "auto" }}>
             <table style={tblStyle}>
               <thead>
@@ -622,8 +711,8 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
               </thead>
               <tbody>
                 {(data.by_rep ?? []).map((r) => (
-                  <tr key={r.rep}>
-                    <td style={tdStyle}>{r.rep}</td>
+                  <tr key={r.rep} onClick={() => selectRep(r.rep)} style={{ cursor: "pointer", background: selRep === r.rep ? "#3d342a" : undefined }}>
+                    <td style={tdStyle}>{selRep === r.rep ? "▸ " : ""}{r.rep}</td>
                     <td style={{ ...tdNumStyle, color: r.count > 0 ? "#ef4444" : "var(--riq-text-muted)" }}>{fmt(r.count)}</td>
                   </tr>
                 ))}
@@ -635,6 +724,43 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
           </div>
         </Panel>
       </div>
+
+      {/* Rep drill-down — tasks-by-rep (all pending for the rep; overdue is the subset) */}
+      {selRep && (
+        <div style={{ marginTop: 16 }}>
+          <Panel
+            title={`Pending tasks — ${selRep}${repData ? ` (${repData.overdue_count} overdue / ${repData.count})` : ""}`}
+            action={<span onClick={() => { setSelRep(null); setRepData(null); }} style={{ cursor: "pointer", fontSize: 12, color: "var(--riq-text-muted)" }}>✕ close</span>}
+          >
+            {repLoading ? (
+              <div style={{ padding: 16, color: "var(--riq-accent)" }}>Loading…</div>
+            ) : !repData || repData.pending.length === 0 ? (
+              <div style={{ padding: 16, color: "var(--riq-text-muted)" }}>No pending tasks for this rep.</div>
+            ) : (
+              <div style={{ maxHeight: 400, overflowY: "auto" }}>
+                <table style={tblStyle}>
+                  <thead>
+                    <tr>
+                      <th style={thStyle}>Description</th>
+                      <th style={thStyle}>Priority</th>
+                      <th style={thStyle}>Due</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {repData.pending.map((t) => (
+                      <tr key={t.id}>
+                        <td style={tdStyle}>{t.description ?? "—"}</td>
+                        <td style={tdStyle}>{t.priority ?? "—"}</td>
+                        <td style={tdStyle}>{(t.due_date ?? "").slice(0, 10) || "—"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Panel>
+        </div>
+      )}
 
       {/* Items */}
       <div style={{ marginTop: 16 }}>
