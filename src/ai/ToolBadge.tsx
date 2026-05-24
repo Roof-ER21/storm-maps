@@ -1,7 +1,9 @@
 /**
- * ToolBadge — small pill displaying a single tool name.
+ * ToolBadge — small pill displaying a single tool name, humanized.
  * Used in ChatPage (per toolsUsed) and ProposalCard (for the proposal tool).
+ * Hover shows the raw tool id.
  */
+import { humanizeTool } from './format';
 
 interface Props {
   tool: string;
@@ -10,6 +12,7 @@ interface Props {
 export function ToolBadge({ tool }: Props) {
   return (
     <span
+      title={tool}
       style={{
         display: 'inline-block',
         background: 'rgba(244,167,56,0.12)',
@@ -23,7 +26,7 @@ export function ToolBadge({ tool }: Props) {
         fontFamily: 'inherit',
       }}
     >
-      {tool}
+      {humanizeTool(tool)}
     </span>
   );
 }

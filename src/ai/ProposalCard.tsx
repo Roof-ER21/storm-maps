@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import type { Proposal, ConfirmResponse } from './types';
 import { ToolBadge } from './ToolBadge';
+import { humanizeKey, formatArgValue, isStructured } from './format';
 
 interface Props {
   proposal: Proposal;
@@ -86,24 +87,39 @@ export function ProposalCard({ proposal, threadId, onConfirmed }: Props) {
         {proposal.description}
       </div>
 
-      {/* Args preview */}
-      <pre
-        style={{
-          background: 'rgba(0,0,0,0.25)',
-          border: '1px solid var(--riq-border)',
-          borderRadius: 5,
-          padding: '8px 10px',
-          fontSize: 11,
-          color: 'var(--riq-text-muted)',
-          overflowX: 'auto',
-          margin: '0 0 10px 0',
-          fontFamily: 'monospace',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-all',
-        }}
-      >
-        {JSON.stringify(proposal.args, null, 2)}
-      </pre>
+      {/* Args — human-readable key/value rows */}
+      {Object.keys(proposal.args).length > 0 && (
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.22)',
+            border: '1px solid var(--riq-border)',
+            borderRadius: 5,
+            padding: '6px 10px',
+            margin: '0 0 10px 0',
+          }}
+        >
+          {Object.entries(proposal.args).map(([k, v]) => (
+            <div
+              key={k}
+              style={{ display: 'flex', gap: 10, padding: '2px 0', fontSize: 12, lineHeight: 1.45 }}
+            >
+              <span style={{ color: 'var(--riq-text-muted)', minWidth: 96, fontWeight: 600, flexShrink: 0 }}>
+                {humanizeKey(k)}
+              </span>
+              <span
+                style={{
+                  color: 'var(--riq-text)',
+                  flex: 1,
+                  wordBreak: 'break-word',
+                  fontFamily: isStructured(v) ? 'monospace' : 'inherit',
+                }}
+              >
+                {formatArgValue(v)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Action buttons — only shown while pending */}
       {state === 'pending' && (
