@@ -14,6 +14,7 @@
  * No props — owns all state.
  */
 import { useState, useEffect } from "react";
+import { getUrlParam, matchByName } from "../../../urlParams";
 import {
   useFetch,
   KpiCard,
@@ -774,11 +775,11 @@ export function CarrierOverview() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<CarrierSummaryItem | null>(null);
 
-  // Auto-select first carrier once data loads
+  // Auto-select once data loads: honor ?name= deep-link, else first carrier.
   useEffect(() => {
-    if (summary.data?.carriers?.length && !selected) {
-      setSelected(summary.data.carriers[0]);
-    }
+    if (selected || !summary.data?.carriers?.length) return;
+    const carriers = summary.data.carriers;
+    setSelected(matchByName(carriers, getUrlParam("name")) ?? carriers[0]);
   }, [summary.data, selected]);
 
   const filtered = (summary.data?.carriers ?? []).filter((c) =>
