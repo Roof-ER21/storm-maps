@@ -86,12 +86,22 @@ export interface AuditResponse {
   log: AuditRow[];
 }
 
+/** One tool invocation from the enriched SSE `tool` event (read-tool trace). */
+export interface ToolCall {
+  tool: string;
+  kind?: string;
+  ok?: boolean;
+  args?: Record<string, unknown>;
+  result?: string;
+}
+
 /** A chat message as stored in local UI state (superset of MessageRecord). */
 export interface UiMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   toolsUsed?: string[];
+  toolCalls?: ToolCall[];
   proposals?: Proposal[];
   model?: AiModel;
   /** Confirmed/dismissed proposals by index */

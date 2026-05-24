@@ -7,6 +7,7 @@ import { useState, useRef, useEffect } from 'react';
 import type { UiMessage, Proposal, BypassMode, AiModel } from './types';
 import { ToolBadge } from './ToolBadge';
 import { ProposalCard } from './ProposalCard';
+import { ToolTrace } from './ToolTrace';
 import { useUser } from '../auth/UserContext';
 
 interface Props {
@@ -35,6 +36,9 @@ interface StreamEvent {
   args?: Record<string, unknown>;
   danger?: 'safe' | 'destructive';
   description?: string;
+  kind?: string;
+  ok?: boolean;
+  result?: string;
 }
 
 function MessageBubble({ msg, threadId }: { msg: UiMessage; threadId: number | null }) {
@@ -72,14 +76,16 @@ function MessageBubble({ msg, threadId }: { msg: UiMessage; threadId: number | n
         {msg.content}
       </div>
 
-      {/* Tool badges */}
-      {!isUser && msg.toolsUsed && msg.toolsUsed.length > 0 && (
+      {/* Tool trace (rich if streamed, else name badges) */}
+      {!isUser && msg.toolCalls && msg.toolCalls.length > 0 ? (
+        <ToolTrace calls={msg.toolCalls} />
+      ) : !isUser && msg.toolsUsed && msg.toolsUsed.length > 0 ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5, maxWidth: '88%' }}>
           {msg.toolsUsed.map((t) => (
             <ToolBadge key={t} tool={t} />
           ))}
         </div>
-      )}
+      ) : null}
 
       {/* Model badge */}
       {!isUser && msg.model && (
@@ -143,6 +149,7 @@ export function ChatPage({ pageContext, messages, threadId, onMessagesChange, on
       role: 'assistant',
       content: '',
       toolsUsed: [],
+      toolCalls: [],
       proposals: [],
       created_at: new Date().toISOString(),
     };
@@ -200,7 +207,13 @@ export function ChatPage({ pageContext, messages, threadId, onMessagesChange, on
             if (data.threadId && data.threadId !== threadId) onThreadIdChange(data.threadId);
             if (data.model) assistant.model = data.model;
           } else if (event === 'tool') {
-            if (data.tool) assistant.toolsUsed = [...(assistant.toolsUsed ?? []), data.tool];
+            if (data.tool) {
+              assistant.toolsUsed = [...(assistant.toolsUsed ?? []), data.tool];
+              assistant.toolCalls = [
+                ...(assistant.toolCalls ?? []),
+                { tool: data.tool, kind: data.kind, ok: data.ok, args: data.args, result: data.result },
+              ];
+            }
           } else if (event === 'proposal') {
             if (data.tool) {
               assistant.proposals = [
