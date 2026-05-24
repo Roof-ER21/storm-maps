@@ -65,6 +65,27 @@ export interface ThreadDetail {
   messages: MessageRecord[];
 }
 
+/** A row from GET /api/ai/audit (admin-only view over ai_tool_log). */
+export interface AuditRow {
+  id: number;
+  user_id: number;
+  user_email: string | null;
+  session_id: number | null;
+  thread_id: number | null;
+  tool: string;
+  kind: string;
+  params_json: unknown;
+  result_summary: string | null;
+  confirmed_at: string | null;
+  error: string | null;
+  model: string | null;
+  created_at: string;
+}
+
+export interface AuditResponse {
+  log: AuditRow[];
+}
+
 /** A chat message as stored in local UI state (superset of MessageRecord). */
 export interface UiMessage {
   id: string;

@@ -9,6 +9,8 @@ import type { UiMessage } from './types';
 import { ChatPage } from './ChatPage';
 import { ContextPill } from './ContextPill';
 import { ThreadList } from './ThreadList';
+import { AuditPanel } from './AuditPanel';
+import { useUser } from '../auth/UserContext';
 
 interface Props {
   pageContext?: string;
@@ -32,6 +34,8 @@ export function ChatDrawer({ pageContext }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [threadId, setThreadId] = useState<number | null>(null);
+  const { user } = useUser();
+  const isAdmin = user?.role === 'admin' || user?.is_root_admin === true;
 
   const open = useCallback(() => setIsOpen(true), []);
   const close = useCallback(() => setIsOpen(false), []);
@@ -159,6 +163,8 @@ export function ChatDrawer({ pageContext }: Props) {
             onSelectThread={handleSelectThread}
             onNewChat={handleNewChat}
           />
+
+          {isAdmin && <AuditPanel />}
         </div>
 
         {/* Chat body — fills remaining space */}
