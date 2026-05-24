@@ -64,6 +64,7 @@ export const VIEW_ROLES: Record<string, readonly Role[]> = {
   "receivables":       ["admin", "exec", "employee"],
   "active-work":       ["admin", "exec", "employee"],
   "scheduling":        ["admin", "employee"],
+  "calendar":          ["admin", "exec", "employee"],
   "ops-surveillance":  ["admin", "exec", "employee"],
   "sms-reminders":     ["admin", "employee"],
   "carrier-orphans":   ["admin", "analytics"],

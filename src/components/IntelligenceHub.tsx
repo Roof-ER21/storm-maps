@@ -90,6 +90,7 @@ type IntelView =
   | 'receivables'
   | 'active-work'
   | 'scheduling'
+  | 'calendar'
   | 'ops-surveillance'
   | 'pricing-margins'
   | 'pricing-library'
@@ -198,6 +199,7 @@ const VIEW_LABELS: Partial<Record<IntelView, string>> = {
   'receivables': '💰 AR / Money',
   'active-work': '🔧 Active Work',
   'scheduling': '📅 Scheduling',
+  'calendar': '🗓️ Calendar',
   'ops-surveillance': '📋 Ops Surveillance',
   'pricing-margins': '💰 Pricing Margins',
   'pricing-library': '📚 Pricing Library',
@@ -304,6 +306,7 @@ const NAV_GROUPS: Array<{ label: string; items: Array<{ id: IntelView; label: st
       { id: 'receivables',      label: '💰 AR / Money' },
       { id: 'active-work',      label: '🔧 Active Work' },
       { id: 'scheduling',       label: '📅 Scheduling' },
+      { id: 'calendar',         label: '🗓️ Calendar' },
       { id: 'ops-surveillance', label: '📋 Ops Surveillance' },
       { id: 'pricing-margins',  label: '💰 Pricing Margins' },
       { id: 'pricing-library',  label: '📚 Pricing Library' },

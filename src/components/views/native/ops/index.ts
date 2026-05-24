@@ -4,6 +4,7 @@ import type { NativeViewComponent } from "../types";
 export const opsViews: Record<string, NativeViewComponent> = {
   "ops-surveillance": lazy(() => import("./OpsSurveillance").then(m => ({ default: m.OpsSurveillance }))),
   "scheduling":       lazy(() => import("./Scheduling").then(m => ({ default: m.Scheduling }))),
+  "calendar":         lazy(() => import("./Calendar").then(m => ({ default: m.Calendar }))),
   "active-work":      lazy(() => import("./ActiveWork").then(m => ({ default: m.ActiveWork }))),
   "receivables":      lazy(() => import("./Receivables").then(m => ({ default: m.Receivables }))),
   "ops-team":         lazy(() => import("./OpsTeam").then(m => ({ default: m.OpsTeam }))),
