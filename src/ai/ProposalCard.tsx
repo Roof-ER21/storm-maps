@@ -12,12 +12,16 @@ interface Props {
   threadId?: number;
   /** Called after a successful confirm so parent can update state. */
   onConfirmed?: (result: unknown) => void;
+  /** Rehydrated state when reloading a saved thread (prevents re-confirming). */
+  initialState?: 'pending' | 'confirmed' | 'dismissed' | 'error';
+  initialResult?: unknown;
+  initialError?: string;
 }
 
-export function ProposalCard({ proposal, threadId, onConfirmed }: Props) {
-  const [state, setState] = useState<'pending' | 'loading' | 'confirmed' | 'dismissed' | 'error'>('pending');
-  const [result, setResult] = useState<unknown>(null);
-  const [error, setError] = useState<string | null>(null);
+export function ProposalCard({ proposal, threadId, onConfirmed, initialState, initialResult, initialError }: Props) {
+  const [state, setState] = useState<'pending' | 'loading' | 'confirmed' | 'dismissed' | 'error'>(initialState ?? 'pending');
+  const [result, setResult] = useState<unknown>(initialResult ?? null);
+  const [error, setError] = useState<string | null>(initialError ?? null);
 
   const isDestructive = proposal.danger === 'destructive';
 

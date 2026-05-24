@@ -54,7 +54,7 @@ export interface ThreadsResponse {
 }
 
 export interface MessageRecord {
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   tool_calls?: unknown;
   created_at: string;

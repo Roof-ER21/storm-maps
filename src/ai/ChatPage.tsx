@@ -102,6 +102,9 @@ function MessageBubble({ msg, threadId }: { msg: UiMessage; threadId: number | n
               key={i}
               proposal={p}
               threadId={threadId ?? undefined}
+              initialState={msg.proposalStates?.[i]}
+              initialResult={msg.proposalResults?.[i]}
+              initialError={msg.proposalErrors?.[i]}
             />
           ))}
         </div>

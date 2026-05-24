@@ -4,7 +4,7 @@
  * delete via DELETE /api/ai/thread/:id; "New chat" clears current thread.
  */
 import { useState, useEffect, useCallback } from 'react';
-import type { ThreadSummary, ThreadDetail, UiMessage } from './types';
+import type { ThreadSummary, ThreadDetail, UiMessage, Proposal } from './types';
 
 interface Props {
   activeThreadId: number | null;
@@ -20,6 +20,27 @@ function fmtAgo(iso: string): string {
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}h ago`;
   return `${Math.floor(hours / 24)}d ago`;
+}
+
+/** Parse assistant tool_calls (proposals) from saved thread detail. */
+function parseProposals(tc: unknown): Proposal[] {
+  if (!Array.isArray(tc)) return [];
+  return tc
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && 'tool' in x && 'danger' in x)
+    .map((x) => ({
+      tool: String(x.tool),
+      args: (x.args as Record<string, unknown>) ?? {},
+      danger: x.danger === 'destructive' ? 'destructive' : 'safe',
+      description: String(x.description ?? ''),
+    }));
+}
+
+/** Parse a 'tool' (confirm) message's tool_calls into {tool, ok} outcomes. */
+function parseConfirms(tc: unknown): { tool: string; ok: boolean }[] {
+  if (!Array.isArray(tc)) return [];
+  return tc
+    .filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && 'confirmed' in x)
+    .map((x) => ({ tool: String(x.tool), ok: x.ok !== false }));
 }
 
 export function ThreadList({ activeThreadId, onSelectThread, onNewChat }: Props) {
@@ -52,14 +73,38 @@ export function ThreadList({ activeThreadId, onSelectThread, onNewChat }: Props)
       const res = await fetch(`/api/ai/thread/${id}`, { credentials: 'include' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as ThreadDetail;
-      const uiMessages: UiMessage[] = data.messages
-        .filter((m) => m.role === 'user' || m.role === 'assistant')
-        .map((m, i) => ({
-          id: `thread-${id}-${i}`,
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-          created_at: m.created_at,
-        }));
+      // Rebuild UI messages, rehydrating proposals (assistant tool_calls) and
+      // confirm state (following 'tool' messages) so reloaded threads keep
+      // their proposal cards and don't re-offer an already-confirmed act.
+      const uiMessages: UiMessage[] = [];
+      let lastAssistant: UiMessage | null = null;
+      data.messages.forEach((m, i) => {
+        if (m.role === 'user') {
+          uiMessages.push({ id: `thread-${id}-${i}`, role: 'user', content: m.content, created_at: m.created_at });
+          lastAssistant = null;
+        } else if (m.role === 'assistant') {
+          const proposals = parseProposals(m.tool_calls);
+          const msg: UiMessage = {
+            id: `thread-${id}-${i}`,
+            role: 'assistant',
+            content: m.content,
+            created_at: m.created_at,
+            ...(proposals.length ? { proposals, proposalStates: {} } : {}),
+          };
+          uiMessages.push(msg);
+          lastAssistant = msg;
+        } else if (m.role === 'tool') {
+          const la = lastAssistant;
+          if (la?.proposals) {
+            for (const c of parseConfirms(m.tool_calls)) {
+              const idx = la.proposals.findIndex((p) => p.tool === c.tool);
+              if (idx >= 0) {
+                la.proposalStates = { ...(la.proposalStates ?? {}), [idx]: c.ok ? 'confirmed' : 'error' };
+              }
+            }
+          }
+        }
+      });
       onSelectThread(uiMessages, id);
     } catch (err) {
       setError((err as Error).message);
