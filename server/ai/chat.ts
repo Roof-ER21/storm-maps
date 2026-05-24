@@ -204,7 +204,9 @@ export async function chatStreamHandler(req: Request, res: Response): Promise<vo
         const result = await executeTool(tool, call.args, actor);
         const sum = result.ok ? summarize(result.data) : `ERROR: ${result.error}`;
         toolsUsed.push(tool.name);
-        send('tool', { tool: tool.name, ok: result.ok });
+        // Rich trace: name + args + a short result so the drawer can render an
+        // expandable per-call card (not just the tool name).
+        send('tool', { tool: tool.name, kind: tool.kind, ok: result.ok, args: call.args, result: result.ok ? sum.slice(0, 600) : result.error });
         await logToolCall({
           userId: user.id, threadId, tool: tool.name, kind: tool.kind, params: call.args,
           resultSummary: result.ok ? sum.slice(0, 500) : null, error: result.ok ? null : result.error,

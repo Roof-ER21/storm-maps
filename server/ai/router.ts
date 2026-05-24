@@ -28,8 +28,8 @@ router.get('/api/ai/thread/:id', requireAuth, async (req, res) => {
   if (!Number.isFinite(id)) { res.status(400).json({ error: 'invalid id' }); return; }
   const own = await pgSql<Array<{ id: number; title: string }>>`SELECT id, title FROM ai_threads WHERE id = ${id} AND user_id = ${req.user!.id}`;
   if (!own.length) { res.status(404).json({ error: 'thread not found' }); return; }
-  const msgs = await pgSql<Array<{ role: string; content: string; tool_calls: unknown; created_at: Date }>>`
-    SELECT role, content, tool_calls, created_at FROM ai_messages WHERE thread_id = ${id} ORDER BY created_at ASC`;
+  const msgs = await pgSql<Array<{ id: number; role: string; content: string; tool_calls: unknown; created_at: Date }>>`
+    SELECT id, role, content, tool_calls, created_at FROM ai_messages WHERE thread_id = ${id} ORDER BY created_at ASC`;
   res.json({ thread: own[0], messages: msgs });
 });
 
@@ -48,8 +48,11 @@ router.get('/api/ai/audit', requireAuth, async (req, res) => {
   if (!u.is_root_admin && u.role !== 'admin') { res.status(403).json({ error: 'forbidden' }); return; }
   const limit = Math.min(Number(req.query.limit) || 100, 500);
   const rows = await pgSql<Array<Record<string, unknown>>>`
-    SELECT id, user_id, tool, kind, result_summary, confirmed_at, error, model, created_at
-    FROM ai_tool_log ORDER BY created_at DESC LIMIT ${limit}`;
+    SELECT l.id, l.user_id, u.email AS user_email, l.session_id, l.thread_id,
+           l.tool, l.kind, l.params_json, l.result_summary, l.confirmed_at, l.error, l.model, l.created_at
+    FROM ai_tool_log l
+    LEFT JOIN users u ON u.id = l.user_id
+    ORDER BY l.created_at DESC LIMIT ${limit}`;
   res.json({ log: rows });
 });
 

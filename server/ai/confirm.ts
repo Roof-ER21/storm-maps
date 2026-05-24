@@ -29,7 +29,10 @@ export async function confirmHandler(req: Request, res: Response): Promise<void>
   });
 
   if (threadId) {
-    await pgSql`INSERT INTO ai_messages (thread_id, role, content) VALUES (${threadId}, 'tool', ${`Confirmed ${tool.name} → ${summary.slice(0, 2000)}`})`;
+    // Structured confirm state so a reloaded thread can show which proposal was
+    // run + its outcome (jsonb via ${JSON.stringify}::jsonb — sql.json throws).
+    const confirmRecord = JSON.stringify([{ tool: tool.name, args: args ?? {}, confirmed: true, ok: result.ok }]);
+    await pgSql`INSERT INTO ai_messages (thread_id, role, content, tool_calls) VALUES (${threadId}, 'tool', ${`Confirmed ${tool.name} → ${summary.slice(0, 2000)}`}, ${confirmRecord}::jsonb)`;
   }
 
   if (!result.ok) { res.status(502).json({ ok: false, error: result.error, tool: tool.name }); return; }
