@@ -11,6 +11,7 @@
  * No props — owns all state.
  */
 import { useState, useEffect } from "react";
+import { getUrlParam, matchByName } from "../../../urlParams";
 import { useFetch, KpiCard, CardRow, fmtMoney, fmtPct } from "../../../homes/HomeCommon";
 
 // ---------------------------------------------------------------------------
@@ -371,11 +372,10 @@ export function AdjusterDetail() {
     .slice()
     .sort((a, b) => b.completed - a.completed);
 
-  // Auto-select first item once data loads
+  // Auto-select once data loads: honor ?name= deep-link, else first adjuster.
   useEffect(() => {
-    if (adjusters.length > 0 && !selected) {
-      setSelected(adjusters[0]);
-    }
+    if (selected || adjusters.length === 0) return;
+    setSelected(matchByName(adjusters, getUrlParam("name")) ?? adjusters[0]);
   }, [adjusters.length, selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const filtered = adjusters.filter((a) => {

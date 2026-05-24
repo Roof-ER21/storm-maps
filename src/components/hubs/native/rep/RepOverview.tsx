@@ -12,6 +12,7 @@
  * No props — owns all state.
  */
 import { useState, useEffect } from "react";
+import { getUrlParam, matchByName } from "../../../urlParams";
 import {
   useFetch,
   KpiCard,
@@ -410,11 +411,11 @@ export function RepOverview() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<RepSummaryItem | null>(null);
 
-  // Auto-select first rep once data loads
+  // Auto-select once data loads: honor ?name= deep-link, else first rep.
   useEffect(() => {
-    if (summary.data?.reps?.length && !selected) {
-      setSelected(summary.data.reps[0]);
-    }
+    if (selected || !summary.data?.reps?.length) return;
+    const reps = summary.data.reps;
+    setSelected(matchByName(reps, getUrlParam("name")) ?? reps[0]);
   }, [summary.data, selected]);
 
   const filtered = (summary.data?.reps ?? []).filter((r) =>
