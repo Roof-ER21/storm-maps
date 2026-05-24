@@ -14,7 +14,8 @@
  * Left pane = searchable list; right pane = detail card.
  * No `any` types.
  */
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { getUrlParam } from "../../../urlParams";
 import { fmtMoney, fmtPct } from "../../../homes/HomeCommon";
 
 // ---------------------------------------------------------------------------
@@ -631,6 +632,20 @@ function ZipDetail({ z }: { z: ZipSheet }) {
 
 type TabType = "rep" | "carrier" | "adjuster" | "state" | "zip";
 
+/** Map a ?type= tab + ?name= entity to the list key that tab selects on. */
+function findKeyByName(d: CheatSheetsResponse, t: TabType, name: string): string | null {
+  const n = name.trim().toLowerCase();
+  if (t === "rep") return d.reps.find((r) => r.name.toLowerCase() === n)?.name ?? null;
+  if (t === "carrier") return d.carriers.find((c) => c.name.toLowerCase() === n)?.name ?? null;
+  if (t === "adjuster") {
+    const a = d.adjusters.find((x) => x.name.toLowerCase() === n);
+    return a ? `${a.name}|${a.carrier}` : null;
+  }
+  if (t === "state") return d.states.find((s) => s.state.toLowerCase() === n)?.state ?? null;
+  if (t === "zip") return d.zips.find((z) => z.zip === name.trim())?.zip ?? null;
+  return null;
+}
+
 export function CheatSheet({ navigate: _navigate }: { navigate: (v: string) => void }) {
   const [data, setData] = useState<CheatSheetsResponse | null>(null);
   const [patents, setPatents] = useState<PatentsResponse | null>(null);
@@ -654,6 +669,22 @@ export function CheatSheet({ navigate: _navigate }: { navigate: (v: string) => v
       .then(([d, p]) => { setData(d); setPatents(p); setLoading(false); })
       .catch((e: unknown) => { setError((e as Error).message); setLoading(false); });
   }, []);
+
+  // Deep-link: ?type=<tab>&name=<entity> picks that tab + entry on first load.
+  const didDeepLink = useRef(false);
+  useEffect(() => {
+    if (didDeepLink.current || !data) return;
+    didDeepLink.current = true;
+    const type = getUrlParam("type");
+    const name = getUrlParam("name");
+    const validTabs: TabType[] = ["rep", "carrier", "adjuster", "state", "zip"];
+    const t = type && (validTabs as string[]).includes(type) ? (type as TabType) : tab;
+    if (type && t !== tab) setTab(t);
+    if (name) {
+      const key = findKeyByName(data, t, name);
+      if (key) setActiveKey(key);
+    }
+  }, [data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build list items per tab
   type ListItem = { key: string; label: string; sub: string };

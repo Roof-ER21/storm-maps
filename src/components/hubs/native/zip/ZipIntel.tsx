@@ -16,6 +16,7 @@
  * No props — owns all state.
  */
 import { useState, useEffect, useCallback } from "react";
+import { getUrlParam } from "../../../urlParams";
 import { fmtMoney, fmtPct } from "../../../homes/HomeCommon";
 
 // ---------------------------------------------------------------------------
@@ -541,11 +542,12 @@ export function ZipIntel() {
     void fetchList();
   }, [fetchList]);
 
-  // Auto-select first ZIP once data loads (matches HTML's setTimeout click)
+  // Auto-select once data loads: honor ?name= (zip) deep-link, else first ZIP.
   useEffect(() => {
-    if (!loadingList && allZips.length > 0 && selectedZip === null) {
-      setSelectedZip(allZips[0].zip);
-    }
+    if (loadingList || allZips.length === 0 || selectedZip !== null) return;
+    const wanted = getUrlParam("name");
+    const match = wanted ? allZips.find((z) => z.zip === wanted.trim()) : undefined;
+    setSelectedZip((match ?? allZips[0]).zip);
   }, [loadingList, allZips, selectedZip]);
 
   // ---------------------------------------------------------------------------

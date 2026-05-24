@@ -558,13 +558,13 @@ export function Predictor() {
           <section style={{ ...sectionStyle, marginBottom: 16 }}>
             <h2 style={h2Style}>🎓 Drill-downs (full math on each entity)</h2>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              {inputs.carrier && <DrillButton href={`cheat-sheet.html?type=carrier&name=${encodeURIComponent(inputs.carrier)}`} label={`${inputs.carrier} cheat sheet`} />}
-              {inputs.zip && <DrillButton href={`cheat-sheet.html?type=zip&name=${encodeURIComponent(inputs.zip.slice(0, 5))}`} label={`ZIP ${inputs.zip.slice(0, 5)} cheat sheet`} />}
-              {inputs.state && <DrillButton href={`cheat-sheet.html?type=state&name=${encodeURIComponent(inputs.state)}`} label={`${inputs.state} cheat sheet`} />}
-              {inputs.rep && <DrillButton href={`cheat-sheet.html?type=rep&name=${encodeURIComponent(inputs.rep)}`} label={`${inputs.rep} cheat sheet`} />}
-              {inputs.adjuster && <DrillButton href={`cheat-sheet.html?type=adjuster&name=${encodeURIComponent(inputs.adjuster)}`} label={`${inputs.adjuster} cheat sheet`} />}
-              {result.likelyAdjuster && !inputs.adjuster && <DrillButton href={`cheat-sheet.html?type=adjuster&name=${encodeURIComponent(result.likelyAdjuster.name)}`} label={`Likely adjuster: ${result.likelyAdjuster.name}`} />}
-              <DrillButton href={`field-guide.html`} label="Field guide (industry rules)" />
+              {inputs.carrier && <DrillButton href={`/?view=cheat-sheet&type=carrier&name=${encodeURIComponent(inputs.carrier)}`} label={`${inputs.carrier} cheat sheet`} />}
+              {inputs.zip && <DrillButton href={`/?view=cheat-sheet&type=zip&name=${encodeURIComponent(inputs.zip.slice(0, 5))}`} label={`ZIP ${inputs.zip.slice(0, 5)} cheat sheet`} />}
+              {inputs.state && <DrillButton href={`/?view=cheat-sheet&type=state&name=${encodeURIComponent(inputs.state)}`} label={`${inputs.state} cheat sheet`} />}
+              {inputs.rep && <DrillButton href={`/?view=cheat-sheet&type=rep&name=${encodeURIComponent(inputs.rep)}`} label={`${inputs.rep} cheat sheet`} />}
+              {inputs.adjuster && <DrillButton href={`/?view=cheat-sheet&type=adjuster&name=${encodeURIComponent(inputs.adjuster)}`} label={`${inputs.adjuster} cheat sheet`} />}
+              {result.likelyAdjuster && !inputs.adjuster && <DrillButton href={`/?view=cheat-sheet&type=adjuster&name=${encodeURIComponent(result.likelyAdjuster.name)}`} label={`Likely adjuster: ${result.likelyAdjuster.name}`} />}
+              <DrillButton href={`/?view=field-guide`} label="Field guide (industry rules)" />
             </div>
           </section>
         </>
