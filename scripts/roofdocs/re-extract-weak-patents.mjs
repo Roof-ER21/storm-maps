@@ -11,7 +11,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { GoogleGenAI } from '@google/genai';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const RAW_DIR = `${RIQ_BASE}/data/carrier-patents-raw`;
 const OUT = `${RIQ_BASE}/data/carrier-patents.json`;
 const WEAK_IDS = ['US10089396', 'US10497289', 'US11216889', 'US11410230', 'US11720971', 'US11348134'];

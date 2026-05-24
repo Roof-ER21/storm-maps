@@ -69,14 +69,14 @@ self.addEventListener('push', (event) => {
   try {
     payload = event.data.json();
   } catch {
-    payload = { title: 'Storm Maps', body: event.data.text() };
+    payload = { title: 'RIQ 21', body: event.data.text() };
   }
   const title = payload.title || 'Storm Alert';
   const options = {
     body: payload.body || '',
     icon: payload.icon || '/favicon.svg',
     badge: payload.badge || '/favicon.svg',
-    tag: payload.tag || 'storm-maps-alert',
+    tag: payload.tag || 'riq21-alert',
     renotify: Boolean(payload.renotify),
     requireInteraction: Boolean(payload.requireInteraction),
     data: { url: payload.url || self.location.origin, ...payload.data },
@@ -93,7 +93,7 @@ self.addEventListener('message', (event) => {
       body: data.body || '',
       icon: data.icon || '/favicon.svg',
       badge: data.badge || '/favicon.svg',
-      tag: data.tag || 'storm-maps-alert',
+      tag: data.tag || 'riq21-alert',
       renotify: Boolean(data.renotify),
       requireInteraction: Boolean(data.requireInteraction),
       data: { url: data.url || self.location.origin, ...data.data },

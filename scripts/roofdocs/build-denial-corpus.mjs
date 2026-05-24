@@ -28,7 +28,7 @@ import os from 'node:os';
 import { normalizeCarrier } from '../../server/intel/carrier-normalize.mjs';
 
 const HOME = os.homedir();
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const OUT = path.join(RIQ_BASE, 'data/denial-corpus.json');
 const SOURCES_DIR = path.join(RIQ_BASE, 'data/denial-sources');
 

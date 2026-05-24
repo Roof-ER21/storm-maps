@@ -12,7 +12,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const LEADS_FILE = path.join(RIQ_BASE, 'data', 'leads.json');
 const EMPLOYEES_FILE = path.join(RIQ_BASE, 'data', 'leads-employees.json');
 const OUT_FILE = path.join(RIQ_BASE, 'data', 'leads-rollup.json');

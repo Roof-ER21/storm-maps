@@ -8,7 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const SEED = `${RIQ_BASE}/scripts/roofdocs/carrier-patents-seed.json`;
 const OUT_DIR = `${RIQ_BASE}/data/carrier-patents-raw`;
 

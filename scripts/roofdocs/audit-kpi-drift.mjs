@@ -22,7 +22,7 @@
 import postgres from 'postgres';
 import fs from 'node:fs';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const PORTAL_KPI_FILE = `${RIQ_BASE}/data/portal-kpi-summary.json`;
 const PORTAL_PROFIT_FILE = `${RIQ_BASE}/data/portal-kpi-profit.json`;
 

@@ -9,7 +9,7 @@ import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 
-const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/storm-maps";
+const RIQ_BASE = process.env.RIQ_BASE || "/Users/a21/RIQ21";
 
 const IN_DIR = `${RIQ_BASE}/data/roofdocs-pull`;
 const EXPORT_FILE = '/tmp/jobs-export.json';

@@ -17,7 +17,7 @@
 
 import fs from 'node:fs';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const ITEMS = `${RIQ_BASE}/data/roofdocs-reference/pricing-items.json`;
 const CONTRACTOR = `${RIQ_BASE}/data/roofdocs-reference/pricing-contractor.json`;
 const OUT = `${RIQ_BASE}/data/pricing-margins.json`;

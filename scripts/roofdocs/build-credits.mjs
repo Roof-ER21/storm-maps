@@ -4,7 +4,7 @@
 
 import fs from 'node:fs';
 
-const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/storm-maps';
+const RIQ_BASE = process.env.RIQ_BASE || '/Users/a21/RIQ21';
 const IN = `${RIQ_BASE}/data/roofdocs-reference/credits.json`;
 const OUT = `${RIQ_BASE}/data/credits.json`;
 
