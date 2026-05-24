@@ -15,7 +15,7 @@ SCRIPTS_BASE="$(cd "$(dirname "$0")/../.." && pwd)"
 
 # DATA_BASE: where projects.json + all derived data files live.
 # On this Windows machine the data directory is on D: (C: has no free space).
-DATA_BASE="/d/storm-maps"
+DATA_BASE="/d/RIQ21"
 export RIQ_BASE="$DATA_BASE"
 
 echo "=== RIQ 21 stealth refresh — $(date -Iseconds) ==="

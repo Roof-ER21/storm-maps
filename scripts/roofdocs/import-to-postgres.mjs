@@ -18,7 +18,7 @@ if (!DATABASE_URL) {
 }
 
 // Support RIQ_BASE env var so the script can be run from any directory
-// when the data directory lives outside the git repo (e.g. D:\storm-maps\data).
+// when the data directory lives outside the git repo (e.g. D:\RIQ21\data).
 const DATA_DIR = process.env.RIQ_BASE
   ? path.join(process.env.RIQ_BASE, 'data')
   : path.resolve(import.meta.dirname, '..', '..', 'data');

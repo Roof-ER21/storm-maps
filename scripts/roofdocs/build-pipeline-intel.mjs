@@ -2,7 +2,7 @@
 // Build pipeline intelligence from projects.json.
 // Outputs data/pipeline-intel.json — pre-computed patterns for pipeline-intel.html.
 //
-//   RIQ_BASE=D:/storm-maps node scripts/roofdocs/build-pipeline-intel.mjs
+//   RIQ_BASE=D:/RIQ21 node scripts/roofdocs/build-pipeline-intel.mjs
 
 import fs from 'node:fs';
 import path from 'node:path';

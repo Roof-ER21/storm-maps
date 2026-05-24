@@ -208,7 +208,7 @@ router.get('/api/intel/_meta', (_req, res) => {
     datasets: Object.fromEntries(
       Object.entries(FILES).map(([k, v]) => [k, v.description]),
     ),
-    refreshCadence: 'Nightly via Windows Task Scheduler (Mon-Fri 9am). Manual: RIQ_BASE=D:/storm-maps node scripts/roofdocs/import-to-postgres.mjs',
+    refreshCadence: 'Nightly via Windows Task Scheduler (Mon-Fri 9am). Manual: RIQ_BASE=D:/RIQ21 node scripts/roofdocs/import-to-postgres.mjs',
   });
 });
 

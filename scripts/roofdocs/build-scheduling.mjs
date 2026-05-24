@@ -3,7 +3,7 @@
 // Outputs data/scheduling.json — job-level scheduling data for the
 // scheduling.html page. Pre-computed so the page loads fast.
 //
-//   RIQ_BASE=D:/storm-maps node scripts/roofdocs/build-scheduling.mjs
+//   RIQ_BASE=D:/RIQ21 node scripts/roofdocs/build-scheduling.mjs
 
 import fs from 'node:fs';
 import path from 'node:path';

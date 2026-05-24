@@ -18,7 +18,7 @@ set -u
 # SCRIPTS_BASE: git repo with edited Node scripts (C: drive).
 SCRIPTS_BASE="$(cd "$(dirname "$0")/../.." && pwd)"
 # DATA_BASE: where data + logs live (D: has free space, C: is full).
-DATA_BASE="/d/storm-maps"
+DATA_BASE="/d/RIQ21"
 export RIQ_BASE="$DATA_BASE"
 
 LOG_DIR="$DATA_BASE/.logs"
