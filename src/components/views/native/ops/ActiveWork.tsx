@@ -91,14 +91,14 @@ interface FixesSummary {
   open: number;
   completed: number;
   by_trade: { key: string; count: number }[];
-  by_rep: { rep: string; open: number; completed: number }[];
+  by_rep: { rep: string; employee_id: number | null; open: number; completed: number }[];
   by_age: { bucket: string; count: number }[];
   took_ms?: number;
 }
 
 interface TasksOverdue {
   total_overdue: number;
-  by_rep: { rep: string; count: number }[];
+  by_rep: { rep: string; employee_id: number | null; count: number }[];
   items: {
     id: number;
     description: string | null;
@@ -516,12 +516,12 @@ function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null
   const [repLoading, setRepLoading] = useState(false);
 
   // Fetch in the click handler (not an effect) so we never set state synchronously in an effect.
-  function selectRep(rep: string) {
+  function selectRep(rep: string, employeeId: number | null) {
     setSelRep(rep);
     setRepLoading(true);
     setRepData(null);
-    const m = /^emp (\d+)$/.exec(rep); // no-name employees aggregate as "emp <id>" → drill by numeric id
-    fetch(`/api/intel/fixes-by-rep?rep=${encodeURIComponent(m ? m[1] : rep)}`, { credentials: "include" })
+    const param = employeeId != null ? String(employeeId) : rep; // employee_id = exact match; name = ILIKE fallback
+    fetch(`/api/intel/fixes-by-rep?rep=${encodeURIComponent(param)}`, { credentials: "include" })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<FixesByRep>; })
       .then(setRepData)
       .catch(() => setRepData(null))
@@ -605,7 +605,7 @@ function FixesTab({ state, data }: { state: LoadState; data: FixesSummary | null
               </thead>
               <tbody>
                 {(data.by_rep ?? []).map((r) => (
-                  <tr key={r.rep} onClick={() => selectRep(r.rep)} style={{ cursor: "pointer", background: selRep === r.rep ? "#3d342a" : undefined }}>
+                  <tr key={r.rep} onClick={() => selectRep(r.rep, r.employee_id)} style={{ cursor: "pointer", background: selRep === r.rep ? "#3d342a" : undefined }}>
                     <td style={tdStyle}>{selRep === r.rep ? "▸ " : ""}{r.rep}</td>
                     <td style={{ ...tdNumStyle, color: r.open > 0 ? "#f59e0b" : "var(--riq-text-muted)" }}>{fmt(r.open)}</td>
                     <td style={{ ...tdNumStyle, color: "#10b981" }}>{fmt(r.completed)}</td>
@@ -673,12 +673,12 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
   const [repData, setRepData] = useState<TasksByRep | null>(null);
   const [repLoading, setRepLoading] = useState(false);
 
-  function selectRep(rep: string) {
+  function selectRep(rep: string, employeeId: number | null) {
     setSelRep(rep);
     setRepLoading(true);
     setRepData(null);
-    const m = /^emp (\d+)$/.exec(rep);
-    fetch(`/api/intel/tasks-by-rep?rep=${encodeURIComponent(m ? m[1] : rep)}`, { credentials: "include" })
+    const param = employeeId != null ? String(employeeId) : rep; // employee_id = exact match; name = ILIKE fallback
+    fetch(`/api/intel/tasks-by-rep?rep=${encodeURIComponent(param)}`, { credentials: "include" })
       .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() as Promise<TasksByRep>; })
       .then(setRepData)
       .catch(() => setRepData(null))
@@ -711,7 +711,7 @@ function TasksTab({ state, data }: { state: LoadState; data: TasksOverdue | null
               </thead>
               <tbody>
                 {(data.by_rep ?? []).map((r) => (
-                  <tr key={r.rep} onClick={() => selectRep(r.rep)} style={{ cursor: "pointer", background: selRep === r.rep ? "#3d342a" : undefined }}>
+                  <tr key={r.rep} onClick={() => selectRep(r.rep, r.employee_id)} style={{ cursor: "pointer", background: selRep === r.rep ? "#3d342a" : undefined }}>
                     <td style={tdStyle}>{selRep === r.rep ? "▸ " : ""}{r.rep}</td>
                     <td style={{ ...tdNumStyle, color: r.count > 0 ? "#ef4444" : "var(--riq-text-muted)" }}>{fmt(r.count)}</td>
                   </tr>
