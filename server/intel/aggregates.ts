@@ -692,7 +692,7 @@ export async function customerLeads(req: Request, res: Response) {
     const zipStatsMap = new Map<string, { closeRate: number; avgApprovedJob: number }>();
     let maxAvgJob = 1;
     for (const z of zipRows) {
-      const s = num(z.signed), c = num(z.completed), d = num(z.dead), rev = num(z.revenue);
+      const c = num(z.completed), d = num(z.dead), rev = num(z.revenue);
       const closeRate = c + d > 0 ? c / (c + d) : 0;
       const avgApprovedJob = c > 0 ? rev / c : 0;
       if (avgApprovedJob > maxAvgJob) maxAvgJob = avgApprovedJob;

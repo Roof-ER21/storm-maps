@@ -4,7 +4,7 @@ import * as schema from './schema.js';
 // AI schema removed with the legacy storm-maps strip (2026-05-12).
 
 // Strip BOM (U+FEFF) that PowerShell/Windows tools sometimes prepend to env vars.
-const connectionString = (process.env.DATABASE_URL || 'postgresql://localhost:5432/hailyes').replace(/^﻿/, '');
+const connectionString = (process.env.DATABASE_URL || 'postgresql://localhost:5432/hailyes').replace(/^\uFEFF/, '');
 
 function positiveIntEnv(name: string, fallback: number): number {
   const raw = process.env[name]?.trim();

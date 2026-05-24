@@ -24,7 +24,6 @@ const EmailSchema = z.string().email().max(254);
 
 const LoginSchema = z.object({ email: EmailSchema, pin: PinSchema });
 const EnrollSchema = z.object({ token: z.string().min(8).max(128), pin: PinSchema });
-const ChangePinSchema = z.object({ current_pin: PinSchema, new_pin: PinSchema });
 
 function clientIp(req: Request): string | null {
   return (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() ?? req.ip ?? null;
