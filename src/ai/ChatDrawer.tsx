@@ -11,6 +11,7 @@ import { ContextPill } from './ContextPill';
 import { ThreadList } from './ThreadList';
 import { AuditPanel } from './AuditPanel';
 import { useUser } from '../auth/UserContext';
+import { DRAWER_OPEN_EVENT, DRAWER_CLOSE_EVENT, DRAWER_TOGGLE_EVENT } from './drawer-events';
 
 interface Props {
   pageContext?: string;
@@ -24,11 +25,9 @@ export interface ChatDrawerHandle {
   isOpen: boolean;
 }
 
-// We expose toggle state via a custom DOM event on window so the FAB (which
-// lives outside this component) can open/close without prop-drilling.
-const DRAWER_OPEN_EVENT = 'riq:ai-drawer-open';
-const DRAWER_CLOSE_EVENT = 'riq:ai-drawer-close';
-const DRAWER_TOGGLE_EVENT = 'riq:ai-drawer-toggle';
+// Toggle state is exposed via custom window events (names + dispatchers live in
+// ./drawer-events, imported above) so the FAB outside this component can
+// open/close without prop-drilling — and this file exports only components.
 
 export function ChatDrawer({ pageContext }: Props) {
   const [isOpen, setIsOpen] = useState(false);
@@ -180,16 +179,4 @@ export function ChatDrawer({ pageContext }: Props) {
       </div>
     </>
   );
-}
-
-/** Dispatch window events so the FAB (rendered outside ChatDrawer) can
- *  open/close without prop drilling through IntelligenceHub. */
-export function dispatchDrawerToggle() {
-  window.dispatchEvent(new Event(DRAWER_TOGGLE_EVENT));
-}
-export function dispatchDrawerOpen() {
-  window.dispatchEvent(new Event(DRAWER_OPEN_EVENT));
-}
-export function dispatchDrawerClose() {
-  window.dispatchEvent(new Event(DRAWER_CLOSE_EVENT));
 }

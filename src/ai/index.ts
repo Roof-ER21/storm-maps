@@ -1,4 +1,5 @@
-export { ChatDrawer, dispatchDrawerToggle } from './ChatDrawer';
+export { ChatDrawer } from './ChatDrawer';
+export { dispatchDrawerToggle, dispatchDrawerOpen, dispatchDrawerClose } from './drawer-events';
 export { ChatPage } from './ChatPage';
 export { ProposalCard } from './ProposalCard';
 export { ThreadList } from './ThreadList';
