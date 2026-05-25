@@ -239,7 +239,7 @@ export function Predictor() {
       recs.push({ tone: '', html: '<strong>VA: long 5-year SOL</strong> but weak bad-faith leverage (§38.2-209). Lean on procedural escalation + supplement battles, not bad-faith threats.' });
     }
 
-    let finalRate = Math.max(0.05, Math.min(0.95, carrierRate + hailMod + speedMod));
+    const finalRate = Math.max(0.05, Math.min(0.95, carrierRate + hailMod + speedMod));
     const finalScore = Math.round(finalRate * 100);
 
     let predValue = carrierData?.avgApprovedJob || 25000;
