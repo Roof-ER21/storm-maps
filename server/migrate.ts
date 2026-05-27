@@ -621,7 +621,7 @@ async function migrate() {
     CREATE TABLE IF NOT EXISTS intel_fixes (
       id INTEGER PRIMARY KEY,
       job_id INTEGER,
-      employee_id INTEGER,
+      employee_id TEXT,
       trade TEXT,
       description TEXT,
       completed BOOLEAN DEFAULT FALSE,
@@ -641,10 +641,10 @@ async function migrate() {
       id INTEGER PRIMARY KEY,
       description TEXT,
       priority TEXT,
-      employee_id INTEGER,
+      employee_id TEXT,
       customer_id TEXT,
-      assignor_id INTEGER,
-      contractor_id INTEGER,
+      assignor_id TEXT,
+      contractor_id TEXT,
       due_date TEXT,
       created_date TEXT,
       completed_date TEXT,
@@ -667,8 +667,8 @@ async function migrate() {
       city TEXT,
       state TEXT,
       zip TEXT,
-      user_id INTEGER,
-      project_manager_id INTEGER,
+      user_id TEXT,
+      project_manager_id TEXT,
       status_id INTEGER,
       substatus_id INTEGER,
       notes TEXT,
@@ -680,6 +680,34 @@ async function migrate() {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_punchlist_status ON intel_punchlist (status_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_intel_punchlist_pm ON intel_punchlist (project_manager_id)`;
+
+  // Self-heal: the portal's person IDs (employee/assignor/contractor/user/PM) are
+  // UUIDs, not ints. Earlier schema typed them INTEGER, which made backfill-intel-*
+  // throw "invalid input syntax for type integer". Re-type to TEXT in place — only
+  // fires when a column is still integer, so it's a no-op once migrated.
+  await sql`
+    DO $$
+    BEGIN
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='intel_fixes' AND column_name='employee_id') = 'integer' THEN
+        ALTER TABLE intel_fixes ALTER COLUMN employee_id TYPE TEXT USING employee_id::text;
+      END IF;
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='intel_tasks' AND column_name='employee_id') = 'integer' THEN
+        ALTER TABLE intel_tasks ALTER COLUMN employee_id TYPE TEXT USING employee_id::text;
+      END IF;
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='intel_tasks' AND column_name='assignor_id') = 'integer' THEN
+        ALTER TABLE intel_tasks ALTER COLUMN assignor_id TYPE TEXT USING assignor_id::text;
+      END IF;
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='intel_tasks' AND column_name='contractor_id') = 'integer' THEN
+        ALTER TABLE intel_tasks ALTER COLUMN contractor_id TYPE TEXT USING contractor_id::text;
+      END IF;
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='intel_punchlist' AND column_name='user_id') = 'integer' THEN
+        ALTER TABLE intel_punchlist ALTER COLUMN user_id TYPE TEXT USING user_id::text;
+      END IF;
+      IF (SELECT data_type FROM information_schema.columns WHERE table_name='intel_punchlist' AND column_name='project_manager_id') = 'integer' THEN
+        ALTER TABLE intel_punchlist ALTER COLUMN project_manager_id TYPE TEXT USING project_manager_id::text;
+      END IF;
+    END $$;
+  `;
 
   // ── Phase 8d: Calendar / Scheduling ─────────────────────────────────────
   // Mirrors the portal's real event feed (events/sales/all + events/production/all

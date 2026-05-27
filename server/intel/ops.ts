@@ -49,7 +49,7 @@ export interface FixRow {
   trade: string | null;
   completed: boolean;
   created_date: string | null;
-  employee_id: number | null;
+  employee_id: string | null;
   rep: string | null;
 }
 
@@ -58,7 +58,7 @@ export interface FixSummary {
   open: number;
   completed: number;
   by_trade: { key: string; count: number }[];
-  by_rep: { employee_id: number | null; rep: string; open: number; completed: number }[];
+  by_rep: { employee_id: string | null; rep: string; open: number; completed: number }[];
   by_age: { bucket: string; count: number }[];
 }
 
@@ -72,7 +72,7 @@ export function summarizeFixes(rows: FixRow[]): FixSummary {
   let open = 0;
   let completed = 0;
   const byTrade = new Map<string, number>();
-  const byRep = new Map<string, { employee_id: number | null; rep: string; open: number; completed: number }>();
+  const byRep = new Map<string, { employee_id: string | null; rep: string; open: number; completed: number }>();
   const byAge = new Map<string, number>();
   for (const r of rows) {
     const isOpen = !r.completed;
@@ -125,7 +125,9 @@ export async function fixesByRep(req: Request, res: Response) {
     return;
   }
   try {
-    const repId = /^\d+$/.test(rep) ? Number(rep) : null;
+    // employee_id is the portal's UUID. Drill-down passes that UUID as `rep`;
+    // anything else is a name search. (Was Number(rep) when the col was integer.)
+    const repId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rep) ? rep : null;
     const rows = await pgSql<Array<{ id: number; job_id: number | null; trade: string | null; description: string | null; created_date: string | null; photo_count: number | null }>>`
       SELECT id, job_id, trade, description, created_date, photo_count
         FROM intel_fixes
@@ -147,7 +149,7 @@ interface TaskRow {
   description: string | null;
   priority: string | null;
   due_date: string | null;
-  employee_id: number | null;
+  employee_id: string | null;
   customer_id: string | null;
   rep: string | null;
 }
@@ -164,7 +166,7 @@ export async function tasksOverdue(_req: Request, res: Response) {
     `;
     const overdue = rows.filter((r) => isPast(r.due_date));
     overdue.sort((a, b) => (Date.parse(a.due_date!) || 0) - (Date.parse(b.due_date!) || 0));
-    const byRep = new Map<string, { employee_id: number | null; rep: string; count: number }>();
+    const byRep = new Map<string, { employee_id: string | null; rep: string; count: number }>();
     for (const r of overdue) {
       const key = r.employee_id != null ? `id:${r.employee_id}` : (r.rep || '(unassigned)');
       const label = r.rep || (r.employee_id != null ? `emp ${r.employee_id}` : '(unassigned)');
@@ -193,7 +195,9 @@ export async function tasksByRep(req: Request, res: Response) {
     return;
   }
   try {
-    const repId = /^\d+$/.test(rep) ? Number(rep) : null;
+    // employee_id is the portal's UUID. Drill-down passes that UUID as `rep`;
+    // anything else is a name search. (Was Number(rep) when the col was integer.)
+    const repId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rep) ? rep : null;
     const rows = await pgSql<Array<{ id: number; description: string | null; priority: string | null; due_date: string | null; customer_id: string | null }>>`
       SELECT id, description, priority, due_date, customer_id
         FROM intel_tasks

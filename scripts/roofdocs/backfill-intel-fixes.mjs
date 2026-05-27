@@ -25,7 +25,7 @@ async function ensureTable() {
     CREATE TABLE IF NOT EXISTS intel_fixes (
       id INTEGER PRIMARY KEY,
       job_id INTEGER,
-      employee_id INTEGER,
+      employee_id TEXT,
       trade TEXT,
       description TEXT,
       completed BOOLEAN DEFAULT FALSE,
