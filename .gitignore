@@ -79,3 +79,6 @@ public/carrier-patents.json
 data/carrier-patents-raw/
 .vercel
 .code-graph/
+
+# session data backups (not source)
+data/_backup-*/
