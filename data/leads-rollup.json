@@ -1,80 +1,84 @@
 {
-  "generated": "2026-05-26T21:04:42.929Z",
+  "generated": "2026-06-02T01:21:43.727Z",
   "source": "admin/leads",
-  "totalLeads": 320,
-  "totalEmployees": 200,
+  "totalLeads": 582,
+  "totalEmployees": 197,
   "funnel": {
-    "total": 320,
-    "doorKnocks": 237,
-    "conversations": 58,
-    "inspections": 4,
-    "appointments": 1,
+    "total": 582,
+    "doorKnocks": 433,
+    "conversations": 132,
+    "inspections": 12,
+    "appointments": 6,
     "converted": 0,
-    "doNotKnock": 25,
-    "doorKnockToConversationPct": 18.13,
-    "conversationToAppointmentPct": 1.72,
-    "totalToAppointmentPct": 0.31
+    "doNotKnock": 17,
+    "doorKnockToConversationPct": 22.68,
+    "conversationToAppointmentPct": 4.55,
+    "totalToAppointmentPct": 1.03
   },
   "byStatus": [
     {
-      "key": "No answer - material drop",
-      "count": 126
+      "key": "No answer",
+      "count": 289
     },
     {
-      "key": "No answer",
-      "count": 111
+      "key": "No answer - material drop",
+      "count": 144
     },
     {
       "key": "Conversation",
-      "count": 54
+      "count": 120
     },
     {
       "key": "Do Not Knock",
-      "count": 25
+      "count": 17
     },
     {
       "key": "Inspection",
-      "count": 3
+      "count": 6
     },
     {
       "key": "Appointment",
-      "count": 1
+      "count": 6
     }
   ],
   "byPriority": [
     {
       "key": "Low",
-      "count": 318
+      "count": 577
     },
     {
       "key": "High",
-      "count": 2
+      "count": 5
     }
   ],
   "byState": [
     {
       "key": "VA",
-      "count": 259
+      "count": 467
     },
     {
       "key": "MD",
-      "count": 61
+      "count": 111
+    },
+    {
+      "key": "PA",
+      "count": 4
     }
   ],
   "byReferralMethod": [
     {
       "key": "Door Knocking",
-      "count": 316
+      "count": 468
     },
     {
       "key": "Referral/recommendation",
-      "count": 4
+      "count": 114
     }
   ],
   "byHouseType": [
     {
       "key": "Single-family",
-      "count": 319
+      "count": 581
     },
     {
       "key": "Commercial",
@@ -83,129 +87,153 @@
   ],
   "topZips": [
     {
+      "key": "22310",
+      "count": 157
+    },
+    {
       "key": "22315",
-      "count": 89
+      "count": 118
     },
     {
-      "key": "20110",
-      "count": 67
+      "key": "20815",
+      "count": 93
     },
     {
-      "key": "22031",
-      "count": 53
+      "key": "22309",
+      "count": 35
     },
     {
-      "key": "21701",
+      "key": "22306",
       "count": 29
     },
     {
-      "key": "22039",
+      "key": "22312",
+      "count": 19
+    },
+    {
+      "key": "20744",
       "count": 18
     },
     {
-      "key": "20874",
-      "count": 13
+      "key": "22602",
+      "count": 18
     },
     {
-      "key": "21244",
-      "count": 10
+      "key": "20171",
+      "count": 16
     },
     {
-      "key": "21207",
-      "count": 8
+      "key": "20155",
+      "count": 15
     },
     {
-      "key": "22032",
+      "key": "22204",
+      "count": 12
+    },
+    {
+      "key": "23111",
+      "count": 9
+    },
+    {
+      "key": "20136",
+      "count": 7
+    },
+    {
+      "key": "22601",
+      "count": 7
+    },
+    {
+      "key": "22407",
       "count": 6
     },
     {
-      "key": "22182",
-      "count": 5
-    },
-    {
-      "key": "22153",
+      "key": "19301",
       "count": 4
     },
     {
-      "key": "23227",
+      "key": "22180",
       "count": 4
-    },
-    {
-      "key": "20109",
-      "count": 3
     },
     {
       "key": "22003",
       "count": 3
     },
     {
-      "key": "23111",
+      "key": "22041",
+      "count": 3
+    },
+    {
+      "key": "20175",
       "count": 2
     },
     {
-      "key": "23223",
+      "key": "22151",
       "count": 2
     },
     {
-      "key": "20111",
+      "key": "20110",
       "count": 1
     },
     {
-      "key": "20754",
+      "key": "22060",
       "count": 1
     },
     {
-      "key": "22624",
+      "key": "22182",
       "count": 1
     },
     {
-      "key": "23832",
+      "key": "22401",
       "count": 1
     }
   ],
   "topCities": [
     {
       "key": "Alexandria, VA",
-      "count": 89
+      "count": 358
     },
     {
-      "key": "Manassas, VA",
-      "count": 71
+      "key": "Chevy Chase Village, MD",
+      "count": 93
     },
     {
-      "key": "Fairfax, VA",
-      "count": 59
+      "key": "Winchester, VA",
+      "count": 25
     },
     {
-      "key": "Frederick, MD",
-      "count": 29
-    },
-    {
-      "key": "Fairfax Station, VA",
+      "key": "Fort Washington, MD",
       "count": 18
     },
     {
-      "key": "Germantown, MD",
-      "count": 13
+      "key": "Herndon, VA",
+      "count": 16
     },
     {
-      "key": "Windsor Mill, MD",
-      "count": 10
+      "key": "Gainesville, VA",
+      "count": 15
     },
     {
-      "key": "Gwynn Oak, MD",
-      "count": 8
+      "key": "Arlington, VA",
+      "count": 12
     },
     {
-      "key": "Richmond, VA",
-      "count": 6
+      "key": "Mechanicsville, VA",
+      "count": 9
+    },
+    {
+      "key": "Bristow, VA",
+      "count": 7
+    },
+    {
+      "key": "Fredericksburg, VA",
+      "count": 7
     },
     {
       "key": "Vienna, VA",
       "count": 5
     },
     {
-      "key": "Springfield, VA",
+      "key": "Paoli, PA",
       "count": 4
     },
     {
@@ -213,203 +241,331 @@
       "count": 3
     },
     {
-      "key": "Mechanicsville, VA",
+      "key": "Falls Church, VA",
+      "count": 3
+    },
+    {
+      "key": "Springfield, VA",
       "count": 2
-    },
-    {
-      "key": "Dunkirk, MD",
-      "count": 1
-    },
-    {
-      "key": "Chesterfield, VA",
-      "count": 1
     }
   ],
   "repLeaderboard": [
     {
-      "repId": "2579a7ea-5098-4b15-a508-6029c189ce96",
-      "repName": "Mattias Kasparian",
-      "count": 149,
-      "conversations": 22,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-26T18:56:17.000Z",
-      "conversionPct": 14.8,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "643cf359-0759-411d-89cc-e1e6990999a0",
-      "repName": "Alyssa Landrum",
+      "repId": "2c7301da-a2f7-4273-9698-327fa42ce737",
+      "repName": "Gabe Robb",
       "count": 89,
       "conversations": 17,
       "inspections": 0,
       "appointments": 0,
-      "lastCreated": "2026-05-26T18:40:23.000Z",
+      "lastCreated": "2026-06-01T20:03:46.000Z",
       "conversionPct": 19.1,
       "appointmentPct": 0
     },
     {
-      "repId": "d5840902-bf9d-4c64-986a-1a01232fbbcd",
-      "repName": "Gabe Long",
-      "count": 29,
-      "conversations": 7,
-      "inspections": 2,
+      "repId": "c937944a-e464-4a0a-bead-f4fe63b0188d",
+      "repName": "Isaac Bogdewic",
+      "count": 88,
+      "conversations": 14,
+      "inspections": 0,
       "appointments": 0,
-      "lastCreated": "2026-05-24T23:28:12.000Z",
-      "conversionPct": 24.1,
+      "lastCreated": "2026-06-01T20:02:13.000Z",
+      "conversionPct": 15.9,
       "appointmentPct": 0
     },
     {
-      "repId": "77760016-3303-4766-a290-bed813c130df",
-      "repName": "Benjamin Salgado",
-      "count": 22,
-      "conversations": 6,
+      "repId": "95152d04-9ad4-42b5-a3a8-9a339c14c5dd",
+      "repName": "Kevin Maloney",
+      "count": 54,
+      "conversations": 4,
       "inspections": 0,
       "appointments": 0,
-      "lastCreated": "2026-05-24T20:42:21.000Z",
-      "conversionPct": 27.3,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "4edce463-e72e-4b0b-bb70-610fd2cd90c6",
-      "repName": "Quran Barnes",
-      "count": 13,
-      "conversations": 0,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-26T18:49:45.000Z",
-      "conversionPct": 0,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "96c6f0f1-e33f-43f7-b588-99754cd29f3c",
-      "repName": "Micah Patterson",
-      "count": 8,
-      "conversations": 3,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-24T23:35:45.000Z",
-      "conversionPct": 37.5,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "d08dc46e-f4b1-4052-908d-0d2989aa23c5",
-      "repName": "Royce Renzi",
-      "count": 2,
-      "conversations": 2,
-      "inspections": 2,
-      "appointments": 1,
-      "lastCreated": "2026-05-25T21:18:55.000Z",
-      "conversionPct": 100,
-      "appointmentPct": 50
-    },
-    {
-      "repId": "1086c285-3dfa-4948-a3dc-3e190902caef",
-      "repName": "Joshua Gill",
-      "count": 1,
-      "conversations": 0,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-26T18:17:41.000Z",
-      "conversionPct": 0,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "e733e855-097f-43b3-8c6c-69d356a6e5b2",
-      "repName": "Xavier  Delgado",
-      "count": 1,
-      "conversations": 0,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-26T18:16:55.000Z",
-      "conversionPct": 0,
+      "lastCreated": "2026-06-01T19:40:00.000Z",
+      "conversionPct": 7.4,
       "appointmentPct": 0
     },
     {
       "repId": "9ece4df3-6874-4264-b82e-a8ba693049cb",
       "repName": "Cameron Harrup",
-      "count": 1,
-      "conversations": 0,
-      "inspections": 0,
+      "count": 48,
+      "conversations": 6,
+      "inspections": 1,
       "appointments": 0,
-      "lastCreated": "2026-05-26T18:16:46.000Z",
-      "conversionPct": 0,
+      "lastCreated": "2026-06-01T20:30:19.000Z",
+      "conversionPct": 12.5,
       "appointmentPct": 0
     },
     {
-      "repId": "8966daaa-0dcd-44c6-b8d2-26345e938ac5",
-      "repName": "Cale Roggie",
-      "count": 1,
-      "conversations": 0,
-      "inspections": 0,
+      "repId": "712c2082-5cc9-40b4-bb09-94d3f4f0cddc",
+      "repName": "Elijah Hicks",
+      "count": 44,
+      "conversations": 11,
+      "inspections": 1,
       "appointments": 0,
-      "lastCreated": "2026-05-26T18:16:45.000Z",
-      "conversionPct": 0,
+      "lastCreated": "2026-06-01T21:25:39.000Z",
+      "conversionPct": 25,
       "appointmentPct": 0
     },
     {
-      "repId": "04f06372-d610-433b-aa45-eb208e4fbe2c",
-      "repName": "Thyrese Ofosu",
-      "count": 1,
-      "conversations": 0,
-      "inspections": 0,
+      "repId": "2579a7ea-5098-4b15-a508-6029c189ce96",
+      "repName": "Mattias Kasparian",
+      "count": 36,
+      "conversations": 8,
+      "inspections": 1,
       "appointments": 0,
-      "lastCreated": "2026-05-26T18:16:45.000Z",
-      "conversionPct": 0,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "b4f74ceb-7adb-4b1f-884d-72e560d1c417",
-      "repName": "Kaia McGee",
-      "count": 1,
-      "conversations": 0,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-25T23:53:09.000Z",
-      "conversionPct": 0,
-      "appointmentPct": 0
-    },
-    {
-      "repId": "b2f415d1-d09c-4b8b-81f6-5e40f067b28f",
-      "repName": "Aaron Ranberger",
-      "count": 1,
-      "conversations": 1,
-      "inspections": 0,
-      "appointments": 0,
-      "lastCreated": "2026-05-25T18:22:40.000Z",
-      "conversionPct": 100,
+      "lastCreated": "2026-06-01T20:33:20.000Z",
+      "conversionPct": 22.2,
       "appointmentPct": 0
     },
     {
       "repId": "314885a0-014f-4e1a-8c54-c36872ae68a8",
       "repName": "Diego Sandoval",
+      "count": 35,
+      "conversations": 16,
+      "inspections": 3,
+      "appointments": 3,
+      "lastCreated": "2026-06-01T21:16:56.000Z",
+      "conversionPct": 45.7,
+      "appointmentPct": 8.6
+    },
+    {
+      "repId": "b627df1f-fbe5-4266-87ac-6e5270b53793",
+      "repName": "Alex Mendoza",
+      "count": 31,
+      "conversations": 18,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T21:32:58.000Z",
+      "conversionPct": 58.1,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "c86507fc-3f50-4b83-a759-1d1ca54fa039",
+      "repName": "Vindra Singh",
+      "count": 27,
+      "conversations": 8,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T15:47:29.000Z",
+      "conversionPct": 29.6,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "7be88ad0-91a4-4570-b81f-70339801c9c2",
+      "repName": "Ethan Ranberger",
+      "count": 23,
+      "conversations": 6,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T20:44:23.000Z",
+      "conversionPct": 26.1,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "94c97621-564d-4bba-a238-d4f90ad78229",
+      "repName": "Christian Bratton",
+      "count": 19,
+      "conversations": 2,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T17:38:23.000Z",
+      "conversionPct": 10.5,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "77760016-3303-4766-a290-bed813c130df",
+      "repName": "Benjamin Salgado",
+      "count": 17,
+      "conversations": 3,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T17:06:52.000Z",
+      "conversionPct": 17.6,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "1d5bfee9-201a-4f9a-8682-67d54c8e9afb",
+      "repName": "Thien Nguyen",
+      "count": 16,
+      "conversations": 0,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T19:48:47.000Z",
+      "conversionPct": 0,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "24569dfe-c2d6-4fab-b07e-24865680f567",
+      "repName": "Arnulfo Reyes",
+      "count": 14,
+      "conversations": 3,
+      "inspections": 1,
+      "appointments": 1,
+      "lastCreated": "2026-05-31T20:48:53.000Z",
+      "conversionPct": 21.4,
+      "appointmentPct": 7.1
+    },
+    {
+      "repId": "96c6f0f1-e33f-43f7-b588-99754cd29f3c",
+      "repName": "Micah Patterson",
+      "count": 10,
+      "conversations": 0,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T21:42:42.000Z",
+      "conversionPct": 0,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "b4e2a8f2-fc8c-431c-a679-bc31253ad991",
+      "repName": "Alante Rodgers",
+      "count": 7,
+      "conversations": 1,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T20:23:12.000Z",
+      "conversionPct": 14.3,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "9cd16b01-beb6-4eda-affd-e44926b8da62",
+      "repName": "Yusuf Ayasou",
+      "count": 4,
+      "conversations": 4,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T21:24:41.000Z",
+      "conversionPct": 100,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "e733e855-097f-43b3-8c6c-69d356a6e5b2",
+      "repName": "Xavier  Delgado",
+      "count": 3,
+      "conversations": 3,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T20:37:01.000Z",
+      "conversionPct": 100,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "150fc644-6bb7-4b56-81f1-27d25ac3354e",
+      "repName": "Gabriel Garcia",
+      "count": 3,
+      "conversations": 1,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T20:23:10.000Z",
+      "conversionPct": 33.3,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "26e31cdf-7a36-4609-be31-513b485d811e",
+      "repName": "Anthony Carter",
+      "count": 3,
+      "conversations": 1,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-05-31T23:50:55.000Z",
+      "conversionPct": 33.3,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "b2f415d1-d09c-4b8b-81f6-5e40f067b28f",
+      "repName": "Aaron Ranberger",
+      "count": 2,
+      "conversations": 2,
+      "inspections": 2,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T21:20:31.000Z",
+      "conversionPct": 100,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "54b3b624-d7b7-49ed-ba7e-ec4368a6249b",
+      "repName": "Nick Bourdin",
+      "count": 2,
+      "conversations": 1,
+      "inspections": 1,
+      "appointments": 1,
+      "lastCreated": "2026-06-01T20:56:24.000Z",
+      "conversionPct": 50,
+      "appointmentPct": 50
+    },
+    {
+      "repId": "04f06372-d610-433b-aa45-eb208e4fbe2c",
+      "repName": "Thyrese Ofosu",
+      "count": 2,
+      "conversations": 0,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T19:47:14.000Z",
+      "conversionPct": 0,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "ed8d23b9-79cc-4553-bd29-ee7e051f7485",
+      "repName": "George Iskrenov",
+      "count": 2,
+      "conversations": 1,
+      "inspections": 0,
+      "appointments": 0,
+      "lastCreated": "2026-05-31T18:01:47.000Z",
+      "conversionPct": 50,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "8308031a-e950-49cd-b4a7-b6c389a70085",
+      "repName": "Eric Rickel",
       "count": 1,
       "conversations": 0,
       "inspections": 0,
       "appointments": 0,
-      "lastCreated": "2026-05-25T17:48:16.000Z",
+      "lastCreated": "2026-06-01T20:16:39.000Z",
       "conversionPct": 0,
       "appointmentPct": 0
+    },
+    {
+      "repId": "72fa049b-3716-4705-b173-8c8b7b3d31eb",
+      "repName": "Nathaniel Adisse",
+      "count": 1,
+      "conversations": 1,
+      "inspections": 1,
+      "appointments": 0,
+      "lastCreated": "2026-06-01T19:42:52.000Z",
+      "conversionPct": 100,
+      "appointmentPct": 0
+    },
+    {
+      "repId": "254a1aaf-9b7e-4546-bc1e-2473a8a7146a",
+      "repName": "Keith Ziemba",
+      "count": 1,
+      "conversations": 1,
+      "inspections": 1,
+      "appointments": 1,
+      "lastCreated": "2026-06-01T13:07:49.000Z",
+      "conversionPct": 100,
+      "appointmentPct": 100
     }
   ],
   "eligibleByRole": [
     {
       "roleId": 700,
-      "total": 142,
-      "usingPortal": 81,
-      "active": 142
+      "total": 137,
+      "usingPortal": 79,
+      "active": 137
     },
     {
       "roleId": 201,
-      "total": 12,
-      "usingPortal": 12,
-      "active": 12
+      "total": 13,
+      "usingPortal": 13,
+      "active": 13
     },
     {
       "roleId": 650,
-      "total": 12,
-      "usingPortal": 12,
-      "active": 12
+      "total": 13,
+      "usingPortal": 13,
+      "active": 13
     },
     {
       "roleId": 600,
@@ -467,2244 +623,4078 @@
   },
   "mapPoints": [
     {
-      "leadID": 390097,
-      "lat": 39.31924627272602,
-      "lng": -76.7277877111768,
+      "leadID": 393085,
+      "lat": 37.63013387740533,
+      "lng": -77.31651574022705,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393084,
+      "lat": 37.6302798923149,
+      "lng": -77.31600825713474,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393083,
+      "lat": 37.63290885076105,
+      "lng": -77.31745886364868,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393082,
+      "lat": 38.9681184478467,
+      "lng": -77.08476042382148,
       "status": "Conversation",
-      "zipCode": "21207"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390096,
-      "lat": 39.31871400900448,
-      "lng": -76.72648829618335,
-      "status": "No answer - material drop",
-      "zipCode": "21207"
-    },
-    {
-      "leadID": 390095,
-      "lat": 39.19762028267664,
-      "lng": -77.28335114093096,
+      "leadID": 393081,
+      "lat": 38.968247373947015,
+      "lng": -77.08414197183752,
       "status": "No answer",
-      "zipCode": "20874"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390094,
-      "lat": 39.197507548929536,
-      "lng": -77.28355715092029,
-      "status": "No answer",
-      "zipCode": "20874"
+      "leadID": 393080,
+      "lat": 38.96824907980763,
+      "lng": -77.08365912556377,
+      "status": "Conversation",
+      "zipCode": "20815"
     },
     {
-      "leadID": 390093,
-      "lat": 39.31985000385047,
-      "lng": -76.72522124729507,
+      "leadID": 393079,
+      "lat": 38.96872194214828,
+      "lng": -77.08254967850351,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393078,
+      "lat": 38.77608949906131,
+      "lng": -77.07358856906197,
+      "status": "Conversation",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393077,
+      "lat": 38.892645081397035,
+      "lng": -77.25370436420579,
+      "status": "Conversation",
+      "zipCode": "22180"
+    },
+    {
+      "leadID": 393076,
+      "lat": 37.63374062316774,
+      "lng": -77.31560128550252,
       "status": "No answer - material drop",
-      "zipCode": "21207"
+      "zipCode": "23111"
     },
     {
-      "leadID": 390092,
-      "lat": 39.196498869218594,
-      "lng": -77.2850483044327,
+      "leadID": 393075,
+      "lat": 37.63376526383444,
+      "lng": -77.3153335361188,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393074,
+      "lat": 38.96857182498925,
+      "lng": -77.08220855340089,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393073,
+      "lat": 38.89327244036788,
+      "lng": -77.2536040804584,
+      "status": "Conversation",
+      "zipCode": "22180"
+    },
+    {
+      "leadID": 393072,
+      "lat": 38.775941594812615,
+      "lng": -77.07412147115681,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393071,
+      "lat": 39.1684147768403,
+      "lng": -78.09510708994114,
+      "status": "Inspection",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 393070,
+      "lat": 37.63188726983302,
+      "lng": -77.31512568563946,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393069,
+      "lat": 38.89433795787335,
+      "lng": -77.25447281210859,
+      "status": "Conversation",
+      "zipCode": "22180"
+    },
+    {
+      "leadID": 393068,
+      "lat": 38.89435654604047,
+      "lng": -77.25453104500404,
+      "status": "Conversation",
+      "zipCode": "22180"
+    },
+    {
+      "leadID": 393066,
+      "lat": 38.776984867496815,
+      "lng": -77.07394113794653,
       "status": "Do Not Knock",
-      "zipCode": "20874"
+      "zipCode": "22306"
     },
     {
-      "leadID": 390091,
-      "lat": 39.321643168679856,
-      "lng": -76.72436356108433,
+      "leadID": 393065,
+      "lat": 37.63162889492145,
+      "lng": -77.31497998272005,
       "status": "No answer - material drop",
-      "zipCode": "21207"
+      "zipCode": "23111"
     },
     {
-      "leadID": 390090,
-      "lat": 39.32198578787574,
-      "lng": -76.72409335751063,
-      "status": "No answer - material drop",
-      "zipCode": "21207"
-    },
-    {
-      "leadID": 390089,
-      "lat": 39.196602698627565,
-      "lng": -77.28236320900619,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390088,
-      "lat": 39.32222766146084,
-      "lng": -76.72380447996656,
-      "status": "No answer - material drop",
-      "zipCode": "21207"
-    },
-    {
-      "leadID": 390087,
-      "lat": 38.77588707833014,
-      "lng": -77.12822714427604,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390086,
-      "lat": 38.77595399208333,
-      "lng": -77.1282521782427,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390085,
-      "lat": 39.322095898532865,
-      "lng": -76.72394051284681,
-      "status": "No answer - material drop",
-      "zipCode": "21207"
-    },
-    {
-      "leadID": 390083,
-      "lat": 39.196732719663224,
-      "lng": -77.28286455358862,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390082,
-      "lat": 39.320013657248516,
-      "lng": -76.73766945271214,
-      "status": "Do Not Knock",
-      "zipCode": "21207"
-    },
-    {
-      "leadID": 390081,
-      "lat": 39.196758645306105,
-      "lng": -77.2828973548068,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390079,
-      "lat": 39.19657285454035,
-      "lng": -77.28330580589729,
-      "status": "Do Not Knock",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390078,
-      "lat": 39.319930903051535,
-      "lng": -76.7572118102895,
+      "leadID": 393064,
+      "lat": 38.969372797116236,
+      "lng": -77.07800879380096,
       "status": "Conversation",
-      "zipCode": "21244"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390077,
-      "lat": 39.19598575732837,
-      "lng": -77.2831276675705,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390076,
-      "lat": 38.77608153995822,
-      "lng": -77.12844688381706,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390075,
-      "lat": 38.77619585060523,
-      "lng": -77.12842632020133,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390074,
-      "lat": 39.196326421193305,
-      "lng": -77.2829067568728,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390073,
-      "lat": 38.77618469835503,
-      "lng": -77.12866146067715,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390072,
-      "lat": 38.77620769986912,
-      "lng": -77.12875176177238,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390071,
-      "lat": 38.776213275992625,
-      "lng": -77.12881971111135,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390070,
-      "lat": 38.77621954913103,
-      "lng": -77.12895650385968,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390069,
-      "lat": 39.195948546615355,
-      "lng": -77.28279040696685,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390068,
-      "lat": 39.195959733152385,
-      "lng": -77.28278102751517,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390067,
-      "lat": 38.776009050184726,
-      "lng": -77.12883669844616,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390066,
-      "lat": 38.77593446928314,
-      "lng": -77.12885189764036,
+      "leadID": 393063,
+      "lat": 38.776754240028545,
+      "lng": -77.07295800124696,
       "status": "Conversation",
-      "zipCode": "22315"
+      "zipCode": "22306"
     },
     {
-      "leadID": 390065,
-      "lat": 38.775922619973834,
-      "lng": -77.12877411352862,
+      "leadID": 393062,
+      "lat": 38.77720697367878,
+      "lng": -77.07337433099966,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393061,
+      "lat": 37.63102720692291,
+      "lng": -77.31546399910685,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393060,
+      "lat": 37.63082792642761,
+      "lng": -77.31488254229845,
+      "status": "No answer - material drop",
+      "zipCode": "23111"
+    },
+    {
+      "leadID": 393059,
+      "lat": 38.968382645434666,
+      "lng": -77.08187067888404,
       "status": "No answer",
-      "zipCode": "22315"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390064,
-      "lat": 38.77580900590827,
-      "lng": -77.12876517282616,
+      "leadID": 393058,
+      "lat": 38.776614427312765,
+      "lng": -77.07319039092883,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393057,
+      "lat": 38.96867969815498,
+      "lng": -77.0820625779418,
       "status": "No answer",
-      "zipCode": "22315"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390063,
-      "lat": 38.77579645955865,
-      "lng": -77.12867844801187,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390062,
-      "lat": 38.77572466651558,
-      "lng": -77.12865162590438,
+      "leadID": 393056,
+      "lat": 38.96859223492347,
+      "lng": -77.0817299467298,
       "status": "Conversation",
-      "zipCode": "22315"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390061,
-      "lat": 39.195952357239776,
-      "lng": -77.28228243826312,
-      "status": "No answer",
-      "zipCode": "20874"
+      "leadID": 393055,
+      "lat": 38.77638644527871,
+      "lng": -77.07367574126225,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
     },
     {
-      "leadID": 390060,
-      "lat": 38.77573536550434,
-      "lng": -77.12864371355352,
+      "leadID": 393054,
+      "lat": 38.96862308314583,
+      "lng": -77.08153972798685,
       "status": "Conversation",
-      "zipCode": "22315"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390059,
-      "lat": 38.77570328140084,
-      "lng": -77.12854798486462,
+      "leadID": 393053,
+      "lat": 38.96844773040424,
+      "lng": -77.08122866234888,
       "status": "No answer",
-      "zipCode": "22315"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390058,
-      "lat": 38.7754963147609,
-      "lng": -77.12884927222122,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390057,
-      "lat": 38.775538163710166,
-      "lng": -77.12890921448427,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390056,
-      "lat": 38.77561697916462,
-      "lng": -77.12897631403256,
+      "leadID": 393051,
+      "lat": 38.96843482151211,
+      "lng": -77.08096653859431,
       "status": "Conversation",
-      "zipCode": "22315"
+      "zipCode": "20815"
     },
     {
-      "leadID": 390055,
-      "lat": 39.32067752338857,
-      "lng": -76.75514583221745,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390054,
-      "lat": 38.91405016041446,
-      "lng": -77.22645160990385,
-      "status": "No answer",
-      "zipCode": "22182"
-    },
-    {
-      "leadID": 390053,
-      "lat": 38.77565324819402,
-      "lng": -77.12902373104664,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390052,
-      "lat": 38.91359839981354,
-      "lng": -77.22602501966912,
-      "status": "No answer",
-      "zipCode": "22182"
-    },
-    {
-      "leadID": 390051,
-      "lat": 38.91384003190813,
-      "lng": -77.22628538553327,
-      "status": "No answer",
-      "zipCode": "22182"
-    },
-    {
-      "leadID": 390049,
-      "lat": 38.91371429956838,
-      "lng": -77.22613891099084,
-      "status": "No answer",
-      "zipCode": "22182"
-    },
-    {
-      "leadID": 390050,
-      "lat": 38.91369212082985,
-      "lng": -77.22596104961127,
-      "status": "No answer",
-      "zipCode": "22182"
-    },
-    {
-      "leadID": 390048,
-      "lat": 38.77570695422294,
-      "lng": -77.12912751168129,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390047,
-      "lat": 39.32035775326889,
-      "lng": -76.75490614993844,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390046,
-      "lat": 38.775512410393226,
-      "lng": -77.1294257630926,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390045,
-      "lat": 38.77549497332772,
-      "lng": -77.1293246664399,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390044,
-      "lat": 38.77549009094863,
-      "lng": -77.129203887253,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390043,
-      "lat": 38.77538947746776,
-      "lng": -77.12931389097479,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390042,
-      "lat": 39.195975332478255,
-      "lng": -77.28190961641295,
-      "status": "No answer",
-      "zipCode": "20874"
-    },
-    {
-      "leadID": 390041,
-      "lat": 38.77537414295014,
-      "lng": -77.12924594163643,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390040,
-      "lat": 38.775313050841795,
-      "lng": -77.1291505679411,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390039,
-      "lat": 38.77511997487733,
-      "lng": -77.12947332729675,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390038,
-      "lat": 38.775161750318276,
-      "lng": -77.12957251990636,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390037,
-      "lat": 38.77523912012651,
-      "lng": -77.1295921894516,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390036,
-      "lat": 39.31965093206899,
-      "lng": -76.75562148273468,
-      "status": "Conversation",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390035,
-      "lat": 38.775278850535976,
-      "lng": -77.12965745657894,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390034,
-      "lat": 38.77534506783591,
-      "lng": -77.12970484230145,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390032,
-      "lat": 38.77505501225953,
-      "lng": -77.1299542470251,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390031,
-      "lat": 39.318587528295126,
-      "lng": -76.75334159464578,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390030,
-      "lat": 38.775159572176364,
-      "lng": -77.13002594142282,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390029,
-      "lat": 38.77512193277814,
-      "lng": -77.12990881822002,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390028,
-      "lat": 38.77503879270173,
-      "lng": -77.12995025007484,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390027,
-      "lat": 38.77500148766212,
-      "lng": -77.1298664714172,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390026,
-      "lat": 38.77493164084306,
-      "lng": -77.12978214574954,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390025,
-      "lat": 38.774716748315846,
-      "lng": -77.13015235176897,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390024,
-      "lat": 38.77481434052979,
-      "lng": -77.1301367950677,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390023,
-      "lat": 38.77487883586156,
-      "lng": -77.13018962391709,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390022,
-      "lat": 38.77488058925922,
-      "lng": -77.13032780527678,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390021,
-      "lat": 38.774963318417754,
-      "lng": -77.1303328827156,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390020,
-      "lat": 38.77500514006252,
-      "lng": -77.13036596331442,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390019,
-      "lat": 38.7750643873506,
-      "lng": -77.13041424310714,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390018,
-      "lat": 38.77511902215192,
-      "lng": -77.13051449575462,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390017,
-      "lat": 38.775352846238505,
-      "lng": -77.13038392310185,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390016,
-      "lat": 38.775396602833624,
-      "lng": -77.13026513745292,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390015,
-      "lat": 38.77543582689696,
-      "lng": -77.13022243714231,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390014,
-      "lat": 38.775471379039736,
-      "lng": -77.13013549394104,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390013,
-      "lat": 38.77550638991002,
-      "lng": -77.13005409910934,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390012,
-      "lat": 38.77554458784848,
-      "lng": -77.12998865638598,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390011,
-      "lat": 38.77560662277399,
-      "lng": -77.12998239789432,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390010,
-      "lat": 38.77566796062481,
-      "lng": -77.12979106686315,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390009,
-      "lat": 38.775707440585045,
-      "lng": -77.12971390574035,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390008,
-      "lat": 39.319356713208265,
-      "lng": -76.75413479591113,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390007,
-      "lat": 38.775759863741584,
-      "lng": -77.12964755894252,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390006,
-      "lat": 38.775800404289555,
-      "lng": -77.12959376424152,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390005,
-      "lat": 38.77583255712154,
-      "lng": -77.12951934823867,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390004,
-      "lat": 38.77588637813398,
-      "lng": -77.12943955276563,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390003,
-      "lat": 39.317572914182065,
-      "lng": -76.75543230657195,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390002,
-      "lat": 38.77593599201614,
-      "lng": -77.12937227865038,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 390001,
-      "lat": 39.317404880330095,
-      "lng": -76.75562565000673,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 390000,
-      "lat": 38.77609780102119,
-      "lng": -77.12926408593266,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389999,
-      "lat": 38.77616750264019,
-      "lng": -77.12930700130404,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389998,
-      "lat": 39.317817775897886,
-      "lng": -76.75581454262776,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 389997,
-      "lat": 39.317338059612965,
-      "lng": -76.75593832351115,
-      "status": "No answer - material drop",
-      "zipCode": "21244"
-    },
-    {
-      "leadID": 389996,
-      "lat": 38.776240586500364,
-      "lng": -77.12931738105515,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389995,
-      "lat": 38.77629368677743,
-      "lng": -77.12928332483985,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389994,
-      "lat": 38.77636076075508,
-      "lng": -77.12930841889325,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389993,
-      "lat": 38.77642713598339,
-      "lng": -77.12932455078476,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389992,
-      "lat": 38.776503935464454,
-      "lng": -77.1293179359171,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389991,
-      "lat": 38.776634785161505,
-      "lng": -77.12935114680202,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389990,
-      "lat": 38.77671494141392,
-      "lng": -77.12935740529367,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389989,
-      "lat": 38.77677279326183,
-      "lng": -77.12939763845444,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389988,
-      "lat": 38.776838758525955,
-      "lng": -77.12934746380958,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389987,
-      "lat": 38.77690358036179,
-      "lng": -77.12937249777676,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389986,
-      "lat": 38.77698164529014,
-      "lng": -77.12936713335522,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389985,
-      "lat": 38.7770506490396,
-      "lng": -77.12936266300389,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389984,
-      "lat": 38.77732287648403,
-      "lng": -77.1293888578042,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389983,
-      "lat": 38.77738760380312,
-      "lng": -77.1293566472821,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389982,
-      "lat": 38.777391812229105,
-      "lng": -77.12924773250072,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389981,
-      "lat": 38.77742108638619,
-      "lng": -77.12913597372106,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389980,
-      "lat": 38.77711628755214,
-      "lng": -77.1289903559372,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389979,
-      "lat": 38.77704453328869,
-      "lng": -77.12891708042183,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389978,
-      "lat": 38.776963025931046,
-      "lng": -77.1289841007103,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389977,
-      "lat": 38.776905901060736,
-      "lng": -77.1289001019488,
-      "status": "Do Not Knock",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389976,
-      "lat": 38.77684389962533,
-      "lng": -77.12898141989882,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389975,
-      "lat": 38.77675681886665,
-      "lng": -77.12891171879878,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389973,
-      "lat": 38.77656298496524,
-      "lng": -77.12902596817807,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389972,
-      "lat": 38.77658197884404,
-      "lng": -77.12891283336396,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389971,
-      "lat": 38.77658530864302,
-      "lng": -77.12882927795754,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389970,
-      "lat": 38.77657275017271,
-      "lng": -77.12874316814404,
-      "status": "Conversation",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389969,
-      "lat": 38.77658389274023,
-      "lng": -77.12864571448434,
-      "status": "No answer",
-      "zipCode": "22315"
-    },
-    {
-      "leadID": 389967,
-      "lat": 38.720637995550184,
-      "lng": -76.65983165372936,
-      "status": "Conversation",
-      "zipCode": "20754"
-    },
-    {
-      "leadID": 389966,
-      "lat": 37.45945431112872,
-      "lng": -77.52044851646865,
-      "status": "No answer",
-      "zipCode": "23832"
-    },
-    {
-      "leadID": 389964,
-      "lat": 38.87313362028169,
-      "lng": -77.28170465017682,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389963,
-      "lat": 38.87292408720993,
-      "lng": -77.28599487667701,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389962,
-      "lat": 38.873187618673285,
-      "lng": -77.28634488291824,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389961,
-      "lat": 38.87302610458565,
-      "lng": -77.28616081968228,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389960,
-      "lat": 38.87318861708858,
-      "lng": -77.28562838570738,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389959,
-      "lat": 38.8708478408185,
-      "lng": -77.28854380307132,
-      "status": "Do Not Knock",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389958,
-      "lat": 38.86993689491595,
-      "lng": -77.28863322510816,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389957,
-      "lat": 38.869716286555686,
-      "lng": -77.28859982651615,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389956,
-      "lat": 38.868558385749274,
-      "lng": -77.2904471000177,
-      "status": "Do Not Knock",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389955,
-      "lat": 38.8692105436123,
-      "lng": -77.288852813067,
-      "status": "Conversation",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389954,
-      "lat": 38.871115347064446,
-      "lng": -77.29023751129093,
-      "status": "No answer",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389953,
-      "lat": 38.87125918096083,
-      "lng": -77.29000604827279,
-      "status": "No answer",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389952,
-      "lat": 38.87089986037021,
-      "lng": -77.28964636961302,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389951,
-      "lat": 38.87078397079792,
-      "lng": -77.28980769881957,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389950,
-      "lat": 38.87061517716139,
-      "lng": -77.28986971212771,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389949,
-      "lat": 38.8709073524367,
-      "lng": -77.2904266916746,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389948,
-      "lat": 38.87025108554598,
-      "lng": -77.28992550014065,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389947,
-      "lat": 38.87013253668243,
-      "lng": -77.29062457979909,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389946,
-      "lat": 38.86992708289779,
-      "lng": -77.2906135955015,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389945,
-      "lat": 38.870242335517744,
-      "lng": -77.28924642854086,
-      "status": "No answer",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389944,
-      "lat": 38.87043287894718,
-      "lng": -77.28914318269251,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389943,
-      "lat": 38.870656499700225,
-      "lng": -77.28864703835066,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389942,
-      "lat": 38.87094787948859,
-      "lng": -77.28927283596192,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389941,
-      "lat": 38.87203190220351,
-      "lng": -77.28905116474577,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389940,
-      "lat": 38.8727183569446,
-      "lng": -77.28811487015268,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389939,
-      "lat": 38.8711683783418,
-      "lng": -77.28711399449551,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389938,
-      "lat": 38.868985600809204,
-      "lng": -77.28771627711359,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389937,
-      "lat": 38.869422949962505,
-      "lng": -77.28826393892814,
-      "status": "Conversation",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389936,
-      "lat": 38.87090905554099,
-      "lng": -77.28781422010505,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389935,
-      "lat": 38.87242036265781,
-      "lng": -77.28706416838735,
-      "status": "Do Not Knock",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389934,
-      "lat": 38.87177754758226,
-      "lng": -77.28677720408828,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389933,
-      "lat": 38.87131850262473,
-      "lng": -77.28599935203184,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389932,
-      "lat": 38.87267852612082,
-      "lng": -77.28248014002227,
-      "status": "Do Not Knock",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389931,
-      "lat": 38.87324389168382,
-      "lng": -77.28254701508601,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389930,
-      "lat": 38.87324702099697,
-      "lng": -77.28256496392632,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389929,
-      "lat": 38.87293244328529,
-      "lng": -77.28308883860039,
-      "status": "Conversation",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389928,
-      "lat": 38.8729443872128,
-      "lng": -77.28344531195862,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389927,
-      "lat": 38.87342647293931,
-      "lng": -77.28334390491523,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389926,
-      "lat": 38.87356355566892,
-      "lng": -77.28248527203341,
-      "status": "Conversation",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389925,
-      "lat": 38.87399992404119,
-      "lng": -77.2840041339076,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389924,
-      "lat": 38.87222549562333,
-      "lng": -77.28341551168343,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389923,
-      "lat": 38.817163830334636,
-      "lng": -77.19701394032873,
+      "leadID": 393050,
+      "lat": 38.96832221623322,
+      "lng": -77.0772329381346,
       "status": "Appointment",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393049,
+      "lat": 38.77662458888806,
+      "lng": -77.0747537458885,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393048,
+      "lat": 38.96865015371265,
+      "lng": -77.08103197933927,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393046,
+      "lat": 38.968681334554184,
+      "lng": -77.08086401231314,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393045,
+      "lat": 38.968690062287564,
+      "lng": -77.08069423682736,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393043,
+      "lat": 38.96793748886154,
+      "lng": -77.0777043866575,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393042,
+      "lat": 38.968527692753824,
+      "lng": -77.07970890711276,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393041,
+      "lat": 38.765117835183396,
+      "lng": -77.56654207060119,
+      "status": "No answer - material drop",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 393040,
+      "lat": 38.96844069918322,
+      "lng": -77.07883248062443,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393038,
+      "lat": 38.76083273599309,
+      "lng": -77.55965475534221,
+      "status": "Appointment",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 393037,
+      "lat": 38.968719340649564,
+      "lng": -77.0790749598197,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393036,
+      "lat": 38.9685744883816,
+      "lng": -77.07945781245026,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393035,
+      "lat": 38.96908967404775,
+      "lng": -77.07958983664648,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393034,
+      "lat": 38.969340539072704,
+      "lng": -77.07977851754947,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393033,
+      "lat": 39.166279116062384,
+      "lng": -78.09709952864257,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 393030,
+      "lat": 38.969098589702334,
+      "lng": -77.0808503404235,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393029,
+      "lat": 40.04870334016176,
+      "lng": -75.4843000111593,
+      "status": "Conversation",
+      "zipCode": "19301"
+    },
+    {
+      "leadID": 393028,
+      "lat": 37.62007242795987,
+      "lng": -77.42625847936489,
+      "status": "No answer - material drop",
+      "zipCode": "23227"
+    },
+    {
+      "leadID": 393027,
+      "lat": 38.969398074914395,
+      "lng": -77.08120929917388,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393026,
+      "lat": 38.96934883747725,
+      "lng": -77.08123712557074,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393025,
+      "lat": 40.04687706204231,
+      "lng": -75.48252948719919,
+      "status": "Conversation",
+      "zipCode": "19301"
+    },
+    {
+      "leadID": 393024,
+      "lat": 38.77466272726761,
+      "lng": -77.0782786902313,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393023,
+      "lat": 38.77467351060667,
+      "lng": -77.07805315306885,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393022,
+      "lat": 38.71191110816049,
+      "lng": -77.12593013596823,
+      "status": "Inspection",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 393021,
+      "lat": 38.96926873832845,
+      "lng": -77.08153473220493,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 393020,
+      "lat": 38.77399885140768,
+      "lng": -77.07772054311023,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393019,
+      "lat": 38.83465272113556,
+      "lng": -77.18969673457445,
+      "status": "No answer - material drop",
       "zipCode": "22003"
     },
     {
-      "leadID": 389922,
-      "lat": 38.82013315778467,
-      "lng": -77.31745262099885,
-      "status": "No answer - material drop",
-      "zipCode": "22032"
-    },
-    {
-      "leadID": 389921,
-      "lat": 38.820052717891166,
-      "lng": -77.31719168725506,
-      "status": "No answer - material drop",
-      "zipCode": "22032"
-    },
-    {
-      "leadID": 389920,
-      "lat": 38.82330120527124,
-      "lng": -77.31086483899753,
-      "status": "No answer - material drop",
-      "zipCode": "22032"
-    },
-    {
-      "leadID": 389919,
-      "lat": 38.82257291462707,
-      "lng": -77.30989321926101,
-      "status": "No answer - material drop",
-      "zipCode": "22032"
-    },
-    {
-      "leadID": 389918,
-      "lat": 38.820670248491936,
-      "lng": -77.30915116048901,
-      "status": "No answer - material drop",
-      "zipCode": "22032"
-    },
-    {
-      "leadID": 389917,
-      "lat": 38.82194592160748,
-      "lng": -77.30813640096218,
-      "status": "No answer - material drop",
-      "zipCode": "22032"
-    },
-    {
-      "leadID": 389916,
-      "lat": 38.8496964697324,
-      "lng": -77.26290204492257,
-      "status": "No answer",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389915,
-      "lat": 38.847104611303195,
-      "lng": -77.26982676349739,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389914,
-      "lat": 38.84553835481611,
-      "lng": -77.26766289136779,
-      "status": "Do Not Knock",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389913,
-      "lat": 38.843677815442284,
-      "lng": -77.26603061723553,
+      "leadID": 393018,
+      "lat": 38.77327510053691,
+      "lng": -77.07744381154919,
       "status": "Conversation",
-      "zipCode": "22031"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389912,
-      "lat": 38.84372119979635,
-      "lng": -77.26579192263627,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389911,
-      "lat": 38.84313375626712,
-      "lng": -77.26482763101335,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389910,
-      "lat": 38.843162129504336,
-      "lng": -77.26457244208473,
+      "leadID": 393017,
+      "lat": 38.717349222912546,
+      "lng": -77.1246469069182,
       "status": "Do Not Knock",
-      "zipCode": "22031"
+      "zipCode": "22309"
     },
     {
-      "leadID": 389909,
-      "lat": 38.84441208317559,
-      "lng": -77.25989380631472,
+      "leadID": 393015,
+      "lat": 38.71811004828727,
+      "lng": -77.12420289226229,
       "status": "No answer - material drop",
-      "zipCode": "22031"
+      "zipCode": "22309"
     },
     {
-      "leadID": 389908,
-      "lat": 38.84243206756317,
-      "lng": -77.25778381483642,
+      "leadID": 393014,
+      "lat": 38.71767137874703,
+      "lng": -77.12404638743762,
       "status": "No answer - material drop",
-      "zipCode": "22031"
+      "zipCode": "22309"
     },
     {
-      "leadID": 389907,
-      "lat": 38.8432188008283,
-      "lng": -77.2589684555297,
+      "leadID": 393012,
+      "lat": 38.772100233514685,
+      "lng": -77.07712327213501,
       "status": "No answer - material drop",
-      "zipCode": "22031"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389906,
-      "lat": 38.843882575075945,
-      "lng": -77.25818019360938,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389905,
-      "lat": 38.84321534518513,
-      "lng": -77.25665506438604,
-      "status": "No answer - material drop",
-      "zipCode": "22031"
-    },
-    {
-      "leadID": 389904,
-      "lat": 39.26838768839212,
-      "lng": -78.08941058814474,
-      "status": "Conversation",
-      "zipCode": "22624"
-    },
-    {
-      "leadID": 389903,
-      "lat": 38.8412772528427,
-      "lng": -77.21477453533917,
+      "leadID": 393011,
+      "lat": 38.265299093707384,
+      "lng": -77.54836342345017,
       "status": "No answer",
+      "zipCode": "22407"
+    },
+    {
+      "leadID": 393010,
+      "lat": 38.77381194833577,
+      "lng": -77.46250667763377,
+      "status": "Conversation",
+      "zipCode": "20110"
+    },
+    {
+      "leadID": 393009,
+      "lat": 38.265504773634525,
+      "lng": -77.54833034288575,
+      "status": "No answer",
+      "zipCode": "22407"
+    },
+    {
+      "leadID": 393008,
+      "lat": 38.77214384599949,
+      "lng": -77.07832365615351,
+      "status": "Do Not Knock",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 393007,
+      "lat": 38.816898334631524,
+      "lng": -77.1875021283062,
+      "status": "Conversation",
       "zipCode": "22003"
     },
     {
-      "leadID": 389901,
-      "lat": 37.6343590944863,
-      "lng": -77.3237524298129,
-      "status": "No answer - material drop",
-      "zipCode": "23111"
-    },
-    {
-      "leadID": 389900,
-      "lat": 37.63176840874001,
-      "lng": -77.3374990875687,
-      "status": "No answer - material drop",
-      "zipCode": "23111"
-    },
-    {
-      "leadID": 389899,
-      "lat": 39.45348636026538,
-      "lng": -77.3015452116425,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389898,
-      "lat": 38.76553065320854,
-      "lng": -77.49472595541201,
+      "leadID": 393006,
+      "lat": 38.77222877651753,
+      "lng": -77.07855395209039,
       "status": "Do Not Knock",
-      "zipCode": "20110"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389897,
-      "lat": 38.76579112680684,
-      "lng": -77.49677979236714,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389896,
-      "lat": 38.765741954967964,
-      "lng": -77.49647242514914,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389895,
-      "lat": 38.76395059197812,
-      "lng": -77.49776687661516,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389894,
-      "lat": 38.76466143861173,
-      "lng": -77.49669945066522,
-      "status": "No answer",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389893,
-      "lat": 38.764054189199754,
-      "lng": -77.4964911903613,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389892,
-      "lat": 39.455011689156436,
-      "lng": -77.30286522472007,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389891,
-      "lat": 39.454335495335876,
-      "lng": -77.30242734769502,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389890,
-      "lat": 39.45437084249163,
-      "lng": -77.30058130885284,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389889,
-      "lat": 39.454311794216395,
-      "lng": -77.30057361865256,
-      "status": "Conversation",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389888,
-      "lat": 38.764722436291954,
-      "lng": -77.49607235432906,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389887,
-      "lat": 38.76457341243079,
-      "lng": -77.49563876649543,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389886,
-      "lat": 38.76490102395655,
-      "lng": -77.49763897259524,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389885,
-      "lat": 37.62378979230858,
-      "lng": -77.42773139185415,
-      "status": "No answer - material drop",
-      "zipCode": "23227"
-    },
-    {
-      "leadID": 389884,
-      "lat": 38.76331814332561,
-      "lng": -77.49850603993903,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389883,
-      "lat": 37.622573746218045,
-      "lng": -77.42684565832143,
-      "status": "Conversation",
-      "zipCode": "23227"
-    },
-    {
-      "leadID": 389882,
-      "lat": 38.76820266843819,
-      "lng": -77.4940635150279,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389881,
-      "lat": 38.76771690335891,
-      "lng": -77.49386270555753,
+      "leadID": 393004,
+      "lat": 38.772355853289035,
+      "lng": -77.07906789206832,
       "status": "Do Not Knock",
-      "zipCode": "20110"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389880,
-      "lat": 37.62050959866085,
-      "lng": -77.42633483355857,
-      "status": "Conversation",
-      "zipCode": "23227"
-    },
-    {
-      "leadID": 389879,
-      "lat": 38.76614380159827,
-      "lng": -77.49388177245991,
+      "leadID": 393003,
+      "lat": 38.71776273817205,
+      "lng": -77.12346952439117,
       "status": "No answer - material drop",
-      "zipCode": "20110"
+      "zipCode": "22309"
     },
     {
-      "leadID": 389878,
-      "lat": 38.76424612000815,
-      "lng": -77.4915681019978,
+      "leadID": 393002,
+      "lat": 38.77248216120361,
+      "lng": -77.07927708945516,
       "status": "No answer - material drop",
-      "zipCode": "20110"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389877,
-      "lat": 38.76415207240193,
-      "lng": -77.49227153657124,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389876,
-      "lat": 38.76351181186872,
-      "lng": -77.49228580274642,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389875,
-      "lat": 38.76384488463491,
-      "lng": -77.49353475435764,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389874,
-      "lat": 37.62050872384331,
-      "lng": -77.4268899573207,
-      "status": "Conversation",
-      "zipCode": "23227"
-    },
-    {
-      "leadID": 389873,
-      "lat": 38.76346137204762,
-      "lng": -77.49300717383947,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389872,
-      "lat": 38.763097045983784,
-      "lng": -77.49340689932001,
-      "status": "Do Not Knock",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389871,
-      "lat": 37.57021937510982,
-      "lng": -77.38661240286602,
-      "status": "No answer - material drop",
-      "zipCode": "23223"
-    },
-    {
-      "leadID": 389870,
-      "lat": 37.57062774366983,
-      "lng": -77.38750049263567,
-      "status": "No answer - material drop",
-      "zipCode": "23223"
-    },
-    {
-      "leadID": 389869,
-      "lat": 38.76374250409732,
-      "lng": -77.49622317995569,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389868,
-      "lat": 38.761759305033934,
-      "lng": -77.49674114385785,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389867,
-      "lat": 38.76184253886111,
-      "lng": -77.49472979340403,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389866,
-      "lat": 38.76168607633207,
-      "lng": -77.49420641136868,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389865,
-      "lat": 38.76121211789832,
-      "lng": -77.49466047393574,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389864,
-      "lat": 38.760651556966586,
-      "lng": -77.49539365093551,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389863,
-      "lat": 38.756678724050424,
-      "lng": -77.49303174144664,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389862,
-      "lat": 38.75600452653343,
-      "lng": -77.4931870285897,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389861,
-      "lat": 38.75682097509272,
-      "lng": -77.49398945296858,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389860,
-      "lat": 38.75836115423806,
-      "lng": -77.493632764532,
+      "leadID": 393001,
+      "lat": 40.046523022569744,
+      "lng": -75.48157602795887,
       "status": "No answer",
-      "zipCode": "20110"
+      "zipCode": "19301"
     },
     {
-      "leadID": 389859,
-      "lat": 38.758271288426506,
-      "lng": -77.49314840606559,
+      "leadID": 393000,
+      "lat": 38.815761225908574,
+      "lng": -77.19056566533072,
       "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389858,
-      "lat": 38.758612903696864,
-      "lng": -77.49298415194696,
-      "status": "Do Not Knock",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389857,
-      "lat": 38.75879182138958,
-      "lng": -77.49356717793285,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389856,
-      "lat": 39.44467824218653,
-      "lng": -77.28197078707277,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389855,
-      "lat": 39.445090207957755,
-      "lng": -77.28181706362973,
-      "status": "Inspection",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389854,
-      "lat": 39.44471916145465,
-      "lng": -77.28245443158943,
-      "status": "Inspection",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389853,
-      "lat": 38.76008294247049,
-      "lng": -77.49351960308468,
-      "status": "Do Not Knock",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389852,
-      "lat": 38.75905326143531,
-      "lng": -77.49287159948773,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389851,
-      "lat": 38.758759023128015,
-      "lng": -77.49222310906318,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389850,
-      "lat": 38.758422559750244,
-      "lng": -77.49270924769164,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389849,
-      "lat": 38.75911233441004,
-      "lng": -77.49223645791265,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389848,
-      "lat": 38.759755621237574,
-      "lng": -77.49225282706276,
-      "status": "Do Not Knock",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389847,
-      "lat": 38.75968377978033,
-      "lng": -77.491998021725,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389846,
-      "lat": 38.7580401672907,
-      "lng": -77.49267253417919,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389845,
-      "lat": 38.75765244132899,
-      "lng": -77.49273645319673,
-      "status": "Conversation",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389844,
-      "lat": 38.757558944951796,
-      "lng": -77.49156072145766,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389843,
-      "lat": 38.75780207650495,
-      "lng": -77.49144806845636,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389842,
-      "lat": 38.757933316257514,
-      "lng": -77.49117877284074,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389841,
-      "lat": 38.7578594332768,
-      "lng": -77.49083225092107,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389840,
-      "lat": 38.756925737567585,
-      "lng": -77.49116992326243,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389839,
-      "lat": 38.75618549053269,
-      "lng": -77.49192734941597,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389838,
-      "lat": 38.756453023815304,
-      "lng": -77.49212261517089,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389837,
-      "lat": 38.74912136504757,
-      "lng": -77.25141818039383,
-      "status": "No answer - material drop",
-      "zipCode": "22153"
-    },
-    {
-      "leadID": 389836,
-      "lat": 38.748726179059915,
-      "lng": -77.2514413763556,
-      "status": "No answer - material drop",
-      "zipCode": "22153"
-    },
-    {
-      "leadID": 389835,
-      "lat": 38.74909556936602,
-      "lng": -77.25112304972292,
-      "status": "No answer - material drop",
-      "zipCode": "22153"
-    },
-    {
-      "leadID": 389834,
-      "lat": 38.74911338942005,
-      "lng": -77.25085507167746,
-      "status": "No answer - material drop",
-      "zipCode": "22153"
-    },
-    {
-      "leadID": 389833,
-      "lat": 38.73388139424004,
-      "lng": -77.27857405511132,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389832,
-      "lat": 38.733468807808705,
-      "lng": -77.27782346115666,
-      "status": "Conversation",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389831,
-      "lat": 38.73196665131462,
-      "lng": -77.27702280342476,
-      "status": "Conversation",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389830,
-      "lat": 38.73185555852022,
-      "lng": -77.2763003099388,
-      "status": "Conversation",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389829,
-      "lat": 38.731744045662545,
-      "lng": -77.27691157102153,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389828,
-      "lat": 38.73212924938473,
-      "lng": -77.27641752033746,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389827,
-      "lat": 38.73107753269082,
-      "lng": -77.27577901321992,
-      "status": "Conversation",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389826,
-      "lat": 38.75549168087311,
-      "lng": -77.48853096053845,
-      "status": "Do Not Knock",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389825,
-      "lat": 38.755271933033335,
-      "lng": -77.48872488741277,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389824,
-      "lat": 38.7551435348957,
-      "lng": -77.4879651812454,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389823,
-      "lat": 38.75497585473111,
-      "lng": -77.4881282456893,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389822,
-      "lat": 38.73014317766692,
-      "lng": -77.27513677420144,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389821,
-      "lat": 38.73049939842602,
-      "lng": -77.27476341852126,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389820,
-      "lat": 39.44975568232,
-      "lng": -77.28742608760793,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389818,
-      "lat": 38.73078169350302,
-      "lng": -77.2753331496467,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389819,
-      "lat": 39.44909875452083,
-      "lng": -77.28720046758667,
-      "status": "Conversation",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389817,
-      "lat": 39.44913528364658,
-      "lng": -77.28687651209148,
-      "status": "Conversation",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389816,
-      "lat": 39.44975715761111,
-      "lng": -77.2870323355592,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389815,
-      "lat": 38.75440491127002,
-      "lng": -77.48870656710871,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389814,
-      "lat": 38.732467594312716,
-      "lng": -77.27489373080508,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389813,
-      "lat": 38.75435993353569,
-      "lng": -77.48899339372191,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389812,
-      "lat": 38.754476932244415,
-      "lng": -77.48982907372732,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389811,
-      "lat": 38.7561019821138,
-      "lng": -77.4888566551056,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389810,
-      "lat": 38.73194235272247,
-      "lng": -77.27495828028437,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389809,
-      "lat": 38.73182585484414,
-      "lng": -77.27558984118721,
-      "status": "Conversation",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389808,
-      "lat": 38.75558029463965,
-      "lng": -77.48783347594774,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389807,
-      "lat": 38.73158318593691,
-      "lng": -77.27543189505832,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389806,
-      "lat": 38.73173433160373,
-      "lng": -77.27485173992535,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389805,
-      "lat": 38.73133359706903,
-      "lng": -77.27522146021566,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389804,
-      "lat": 38.73138256279386,
-      "lng": -77.27457200328324,
-      "status": "No answer - material drop",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389803,
-      "lat": 38.75587747499769,
-      "lng": -77.48836122385133,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389802,
-      "lat": 38.73095195394077,
-      "lng": -77.2747746284988,
-      "status": "Conversation",
-      "zipCode": "22039"
-    },
-    {
-      "leadID": 389801,
-      "lat": 38.75586159904872,
-      "lng": -77.48805007500953,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389800,
-      "lat": 39.44932926701661,
-      "lng": -77.28809934455052,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389799,
-      "lat": 39.44886085929113,
-      "lng": -77.28746732857147,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389798,
-      "lat": 38.75616935895061,
-      "lng": -77.48764890377214,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389797,
-      "lat": 38.7561959793578,
-      "lng": -77.48839898174364,
-      "status": "Do Not Knock",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389796,
-      "lat": 38.75659010718478,
-      "lng": -77.48916573826439,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389795,
-      "lat": 38.83647588642601,
-      "lng": -77.23889200905117,
-      "status": "Inspection",
       "zipCode": "22003"
     },
     {
-      "leadID": 389794,
-      "lat": 38.75741126313614,
-      "lng": -77.49048893107965,
+      "leadID": 392999,
+      "lat": 38.772545380822336,
+      "lng": -77.07951048246647,
       "status": "Conversation",
-      "zipCode": "20110"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389793,
-      "lat": 38.757538826405344,
-      "lng": -77.49012968777036,
+      "leadID": 392998,
+      "lat": 38.96944781933837,
+      "lng": -77.08233061333307,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392997,
+      "lat": 38.96953052211382,
+      "lng": -77.08273343138748,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392996,
+      "lat": 38.969549848568356,
+      "lng": -77.08298230881621,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392995,
+      "lat": 38.96989258215315,
+      "lng": -77.08292881734987,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392994,
+      "lat": 38.77377154218819,
+      "lng": -77.0790631922951,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392993,
+      "lat": 40.048489729184915,
+      "lng": -75.48292537038728,
+      "status": "Conversation",
+      "zipCode": "19301"
+    },
+    {
+      "leadID": 392992,
+      "lat": 38.9701140130006,
+      "lng": -77.083006721294,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392991,
+      "lat": 38.97010745872078,
+      "lng": -77.08296150502849,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392990,
+      "lat": 38.97020570937448,
+      "lng": -77.08304179839519,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392989,
+      "lat": 38.71871996930672,
+      "lng": -77.12305113308119,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392988,
+      "lat": 38.77697378172568,
+      "lng": -77.12477059242362,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392987,
+      "lat": 38.77698692017061,
+      "lng": -77.12454400843237,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392986,
+      "lat": 38.77706373306923,
+      "lng": -77.1246113319273,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392985,
+      "lat": 38.77710937807129,
+      "lng": -77.12455571750851,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392984,
+      "lat": 38.77712019062191,
+      "lng": -77.1245675224851,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392983,
+      "lat": 38.97018117287007,
+      "lng": -77.08261586142787,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392982,
+      "lat": 38.7770125793525,
+      "lng": -77.12445448147976,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392981,
+      "lat": 38.777075709378735,
+      "lng": -77.12431011419372,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392980,
+      "lat": 38.772847941361356,
+      "lng": -77.07883871582919,
       "status": "Do Not Knock",
-      "zipCode": "20110"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389792,
-      "lat": 38.75579775661801,
-      "lng": -77.49045559407531,
+      "leadID": 392979,
+      "lat": 38.77718690180086,
+      "lng": -77.12438966809928,
+      "status": "No answer - material drop",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392978,
+      "lat": 38.970225798311006,
+      "lng": -77.08217459528805,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392977,
+      "lat": 38.80950967227053,
+      "lng": -77.20498380480508,
+      "status": "No answer - material drop",
+      "zipCode": "22151"
+    },
+    {
+      "leadID": 392976,
+      "lat": 38.777267210563394,
+      "lng": -77.12413329843399,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392975,
+      "lat": 38.772732681000136,
+      "lng": -77.07855695783364,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392974,
+      "lat": 38.97010338170031,
+      "lng": -77.08200706160825,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392973,
+      "lat": 38.970233195903646,
+      "lng": -77.08180703116003,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392972,
+      "lat": 38.97040030065201,
+      "lng": -77.0820872668255,
       "status": "Conversation",
-      "zipCode": "20110"
+      "zipCode": "20815"
     },
     {
-      "leadID": 389791,
-      "lat": 38.756466346205926,
-      "lng": -77.48989927927443,
+      "leadID": 392971,
+      "lat": 38.776949238309705,
+      "lng": -77.12473862922124,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392970,
+      "lat": 38.80950870664535,
+      "lng": -77.20612325724275,
       "status": "No answer - material drop",
-      "zipCode": "20110"
+      "zipCode": "22151"
     },
     {
-      "leadID": 389790,
-      "lat": 39.450635220566,
-      "lng": -77.3076914779026,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389789,
-      "lat": 38.75505779147183,
-      "lng": -77.49007404893713,
-      "status": "No answer - material drop",
-      "zipCode": "20110"
-    },
-    {
-      "leadID": 389788,
-      "lat": 39.45064982136614,
-      "lng": -77.30844939426123,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389787,
-      "lat": 39.45033740011174,
-      "lng": -77.3084536532044,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389786,
-      "lat": 39.450060330615884,
-      "lng": -77.30820024608326,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389785,
-      "lat": 39.450156135782045,
-      "lng": -77.3079830972519,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389784,
-      "lat": 39.45171446963928,
-      "lng": -77.30729429213294,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389783,
-      "lat": 39.45214208773826,
-      "lng": -77.30712423833799,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389782,
-      "lat": 39.4523444360529,
-      "lng": -77.3069516829116,
+      "leadID": 392969,
+      "lat": 38.772523215523854,
+      "lng": -77.07807775636542,
       "status": "Conversation",
-      "zipCode": "21701"
+      "zipCode": "22306"
     },
     {
-      "leadID": 389781,
-      "lat": 39.45241851144394,
-      "lng": -77.3078554278927,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389780,
-      "lat": 39.45199157143835,
-      "lng": -77.30786242110297,
+      "leadID": 392968,
+      "lat": 38.97026581246351,
+      "lng": -77.08130004990774,
       "status": "Conversation",
-      "zipCode": "21701"
+      "zipCode": "20815"
     },
     {
-      "leadID": 389779,
-      "lat": 39.45154290833627,
-      "lng": -77.30814224840576,
+      "leadID": 392967,
+      "lat": 38.77626436523471,
+      "lng": -77.12572198159316,
       "status": "No answer",
-      "zipCode": "21701"
+      "zipCode": "22315"
     },
     {
-      "leadID": 389778,
-      "lat": 39.451360543760146,
-      "lng": -77.30740420592096,
+      "leadID": 392966,
+      "lat": 38.970285042820734,
+      "lng": -77.08129774906698,
       "status": "No answer",
-      "zipCode": "21701"
+      "zipCode": "20815"
     },
     {
-      "leadID": 389777,
-      "lat": 39.45131426176524,
-      "lng": -77.30816461332951,
+      "leadID": 392965,
+      "lat": 38.77619291070207,
+      "lng": -77.12565937324251,
       "status": "No answer",
-      "zipCode": "21701"
+      "zipCode": "22315"
     },
     {
-      "leadID": 389776,
-      "lat": 39.45097760918239,
-      "lng": -77.30752478382914,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389775,
-      "lat": 39.450944243033774,
-      "lng": -77.30823862477791,
-      "status": "No answer",
-      "zipCode": "21701"
-    },
-    {
-      "leadID": 389773,
-      "lat": 38.77863590116106,
-      "lng": -77.49262612101279,
-      "status": "No answer - material drop",
-      "zipCode": "20109"
-    },
-    {
-      "leadID": 389772,
-      "lat": 38.7831964515653,
-      "lng": -77.4830603766626,
-      "status": "No answer - material drop",
-      "zipCode": "20109"
-    },
-    {
-      "leadID": 389771,
-      "lat": 38.783875149908276,
-      "lng": -77.4829574723644,
+      "leadID": 392964,
+      "lat": 38.77612449961153,
+      "lng": -77.12549029533187,
       "status": "Conversation",
-      "zipCode": "20109"
+      "zipCode": "22315"
     },
     {
-      "leadID": 389770,
-      "lat": 38.78672208930155,
-      "lng": -77.47654261462452,
+      "leadID": 392963,
+      "lat": 38.265766611036575,
+      "lng": -77.54828921569427,
+      "status": "No answer",
+      "zipCode": "22407"
+    },
+    {
+      "leadID": 392962,
+      "lat": 38.77613292865159,
+      "lng": -77.12555798420372,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392961,
+      "lat": 38.26553980693342,
+      "lng": -77.54890769315847,
+      "status": "No answer",
+      "zipCode": "22407"
+    },
+    {
+      "leadID": 392960,
+      "lat": 38.77581547203921,
+      "lng": -77.12893546319755,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392958,
+      "lat": 38.265830789847406,
+      "lng": -77.54906430811684,
+      "status": "No answer",
+      "zipCode": "22407"
+    },
+    {
+      "leadID": 392959,
+      "lat": 38.776064638310345,
+      "lng": -77.12546926905917,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392957,
+      "lat": 38.757390477540135,
+      "lng": -77.5930004533887,
+      "status": "No answer",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 392956,
+      "lat": 38.77555035818638,
+      "lng": -77.12887136359998,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392955,
+      "lat": 38.775389126771834,
+      "lng": -77.1243403077779,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392954,
+      "lat": 38.77540786897233,
+      "lng": -77.12438566650218,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392952,
+      "lat": 38.77547303393845,
+      "lng": -77.1243939951101,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392953,
+      "lat": 38.772639885987026,
+      "lng": -77.07783238328429,
       "status": "No answer - material drop",
-      "zipCode": "20111"
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392951,
+      "lat": 38.26577724309357,
+      "lng": -77.5487762058311,
+      "status": "Conversation",
+      "zipCode": "22407"
+    },
+    {
+      "leadID": 392950,
+      "lat": 38.77547604445805,
+      "lng": -77.12440052506172,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392949,
+      "lat": 38.77539313867574,
+      "lng": -77.12457303896278,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392948,
+      "lat": 38.775811716856495,
+      "lng": -77.12889843811477,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392947,
+      "lat": 38.76622101677138,
+      "lng": -77.56653582352867,
+      "status": "Inspection",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 392946,
+      "lat": 38.775437099160946,
+      "lng": -77.12462224218892,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392945,
+      "lat": 38.77542018445467,
+      "lng": -77.12457376109955,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392943,
+      "lat": 38.775595659191325,
+      "lng": -77.12458221180513,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392942,
+      "lat": 38.77572676717974,
+      "lng": -77.12463232388335,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392941,
+      "lat": 38.775623815342165,
+      "lng": -77.12458472882864,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392940,
+      "lat": 38.77400019916821,
+      "lng": -77.07884443315602,
+      "status": "Do Not Knock",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392939,
+      "lat": 38.775960782279675,
+      "lng": -77.1289506251456,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392938,
+      "lat": 38.775717279309,
+      "lng": -77.12459262937847,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392937,
+      "lat": 38.77576246778116,
+      "lng": -77.12475986578424,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392936,
+      "lat": 38.776340921897635,
+      "lng": -77.12878109714245,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392935,
+      "lat": 38.77411654061579,
+      "lng": -77.0791531391674,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392934,
+      "lat": 38.77583482555578,
+      "lng": -77.12474830380417,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392933,
+      "lat": 38.77618018395604,
+      "lng": -77.12872829769299,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392932,
+      "lat": 38.77628652060556,
+      "lng": -77.12875570895979,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392931,
+      "lat": 38.775816162155465,
+      "lng": -77.12476981031647,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392930,
+      "lat": 38.775966850753804,
+      "lng": -77.1248146776474,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392929,
+      "lat": 38.774535953583595,
+      "lng": -77.07936636527981,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392928,
+      "lat": 38.77587422384362,
+      "lng": -77.12481611326368,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392927,
+      "lat": 38.776276706070405,
+      "lng": -77.12866831644246,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392926,
+      "lat": 38.785397934424644,
+      "lng": -77.15387486846805,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392925,
+      "lat": 38.775946921967645,
+      "lng": -77.12487225314356,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392924,
+      "lat": 38.774695732796744,
+      "lng": -77.0791456846385,
+      "status": "No answer - material drop",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392923,
+      "lat": 38.77610318176846,
+      "lng": -77.12501946585866,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392922,
+      "lat": 38.971285005136366,
+      "lng": -77.0825621858957,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392921,
+      "lat": 38.77595436647647,
+      "lng": -77.12497908708873,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392920,
+      "lat": 38.77462976451333,
+      "lng": -77.07879284845046,
+      "status": "Conversation",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392919,
+      "lat": 38.776221444176315,
+      "lng": -77.12845008253795,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392918,
+      "lat": 38.77613115755249,
+      "lng": -77.12839002471075,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392917,
+      "lat": 38.77621411573128,
+      "lng": -77.12838649589756,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392916,
+      "lat": 38.77615412698183,
+      "lng": -77.12503620718627,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392915,
+      "lat": 38.78450478792996,
+      "lng": -77.15328294653159,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392914,
+      "lat": 38.77616018606618,
+      "lng": -77.12503222170403,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392913,
+      "lat": 38.77617755131624,
+      "lng": -77.12831688200913,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392912,
+      "lat": 38.776274173505215,
+      "lng": -77.12513294038145,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392911,
+      "lat": 38.77620667885453,
+      "lng": -77.12505377526391,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392910,
+      "lat": 38.77620740853779,
+      "lng": -77.12508816697236,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392909,
+      "lat": 38.77626574922977,
+      "lng": -77.12511932241013,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392907,
+      "lat": 38.776271441330174,
+      "lng": -77.1251338117828,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392908,
+      "lat": 38.784263899339436,
+      "lng": -77.1531888209534,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392906,
+      "lat": 38.971150454241325,
+      "lng": -77.08277372769466,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392905,
+      "lat": 38.77632078349968,
+      "lng": -77.12525576916686,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392904,
+      "lat": 38.77637662956943,
+      "lng": -77.12529565787864,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392903,
+      "lat": 38.784146989768885,
+      "lng": -77.15302740135793,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392902,
+      "lat": 38.77646208661318,
+      "lng": -77.12535007943073,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392901,
+      "lat": 38.77615073673735,
+      "lng": -77.12833530657747,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392900,
+      "lat": 38.776547384622866,
+      "lng": -77.12540574884503,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392899,
+      "lat": 38.77630322861436,
+      "lng": -77.1253258083913,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392898,
+      "lat": 38.77618937355498,
+      "lng": -77.12565906330067,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392897,
+      "lat": 38.776077582253066,
+      "lng": -77.12835991048226,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392896,
+      "lat": 38.7763551139612,
+      "lng": -77.12539697426013,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392895,
+      "lat": 38.77645540192571,
+      "lng": -77.12535759028741,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392894,
+      "lat": 38.77601973347905,
+      "lng": -77.12821648945275,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392893,
+      "lat": 38.775987463923556,
+      "lng": -77.12838155491939,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392892,
+      "lat": 38.77625402722817,
+      "lng": -77.12573759739637,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392891,
+      "lat": 38.775975295198215,
+      "lng": -77.12822655783864,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392890,
+      "lat": 38.776551925990994,
+      "lng": -77.12538562611675,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392889,
+      "lat": 38.776381029783536,
+      "lng": -77.12576670579344,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392888,
+      "lat": 38.77597231881451,
+      "lng": -77.12812823474248,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392887,
+      "lat": 38.77589329135502,
+      "lng": -77.12820921159243,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392885,
+      "lat": 38.776705997596245,
+      "lng": -77.12509222149055,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392884,
+      "lat": 39.14797211962947,
+      "lng": -78.18238014468508,
+      "status": "No answer",
+      "zipCode": "22601"
+    },
+    {
+      "leadID": 392883,
+      "lat": 38.77663924576962,
+      "lng": -77.1250835686985,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392882,
+      "lat": 38.776592355228125,
+      "lng": -77.12497045565058,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392881,
+      "lat": 38.77654799729471,
+      "lng": -77.12480974390834,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392880,
+      "lat": 38.776607872053816,
+      "lng": -77.12495404047272,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392879,
+      "lat": 38.77652709959875,
+      "lng": -77.12490563727896,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392878,
+      "lat": 38.77638738517313,
+      "lng": -77.12470004737851,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392877,
+      "lat": 38.77633599142619,
+      "lng": -77.12467549193214,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392876,
+      "lat": 38.77629281107857,
+      "lng": -77.12467853967826,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392874,
+      "lat": 38.7762763157025,
+      "lng": -77.12463082550897,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392875,
+      "lat": 38.77633377433738,
+      "lng": -77.12443186772408,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392873,
+      "lat": 38.77620272102292,
+      "lng": -77.12453507313946,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392872,
+      "lat": 38.776196577011426,
+      "lng": -77.12456174183103,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392871,
+      "lat": 38.776320422729846,
+      "lng": -77.1241033899498,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392870,
+      "lat": 38.77628940083458,
+      "lng": -77.12413957096615,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392869,
+      "lat": 38.7725358256378,
+      "lng": -77.07536804772114,
+      "status": "Inspection",
+      "zipCode": "22306"
+    },
+    {
+      "leadID": 392868,
+      "lat": 38.776393568753036,
+      "lng": -77.12419076757767,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392867,
+      "lat": 38.77638647940164,
+      "lng": -77.12419135510744,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392866,
+      "lat": 38.776474664604414,
+      "lng": -77.12420892019821,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392864,
+      "lat": 38.77634192583436,
+      "lng": -77.12440437055909,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392863,
+      "lat": 38.77655961260164,
+      "lng": -77.12433425462135,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392862,
+      "lat": 38.77642489522869,
+      "lng": -77.1243448425645,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392861,
+      "lat": 38.77655748137723,
+      "lng": -77.12423952267575,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392860,
+      "lat": 38.776598293355164,
+      "lng": -77.12439311171119,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392859,
+      "lat": 38.77652144627302,
+      "lng": -77.12451486284607,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392858,
+      "lat": 38.77676611113967,
+      "lng": -77.12459234011081,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392857,
+      "lat": 38.77671803578359,
+      "lng": -77.12449718957666,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392856,
+      "lat": 38.77681349697673,
+      "lng": -77.12453889231126,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392854,
+      "lat": 38.77678663337158,
+      "lng": -77.12442076761792,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392855,
+      "lat": 38.776717778945475,
+      "lng": -77.12438823910497,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392853,
+      "lat": 38.776846372595394,
+      "lng": -77.12432709424571,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392852,
+      "lat": 38.776870113833596,
+      "lng": -77.12443716831237,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392851,
+      "lat": 38.777044939223906,
+      "lng": -77.12407456307152,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392850,
+      "lat": 38.77711064769582,
+      "lng": -77.1239893945669,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392849,
+      "lat": 38.77714816914154,
+      "lng": -77.12378318983006,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392848,
+      "lat": 38.76491092885622,
+      "lng": -77.59931925640038,
+      "status": "No answer",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 392847,
+      "lat": 38.7651723484094,
+      "lng": -77.59937738235868,
+      "status": "No answer",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 392846,
+      "lat": 38.777174475288,
+      "lng": -77.12370963998956,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392845,
+      "lat": 38.777444056014424,
+      "lng": -77.12355384529808,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392844,
+      "lat": 38.7775105321423,
+      "lng": -77.1236523536971,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392842,
+      "lat": 38.77757678128207,
+      "lng": -77.12366017996047,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392841,
+      "lat": 38.77765059979488,
+      "lng": -77.12370338090099,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392840,
+      "lat": 38.77763896875307,
+      "lng": -77.1236965996432,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392839,
+      "lat": 38.77757804244017,
+      "lng": -77.12382616665909,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392838,
+      "lat": 38.77768725128048,
+      "lng": -77.12378419474744,
+      "status": "No answer",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392837,
+      "lat": 39.18272939107205,
+      "lng": -78.1038853907892,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392836,
+      "lat": 38.97109829111127,
+      "lng": -77.079622837224,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392835,
+      "lat": 38.971142319995415,
+      "lng": -77.07945610431005,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392834,
+      "lat": 39.14851950754526,
+      "lng": -78.18214144182812,
+      "status": "Inspection",
+      "zipCode": "22601"
+    },
+    {
+      "leadID": 392833,
+      "lat": 38.970861643927904,
+      "lng": -77.079020564531,
+      "status": "Appointment",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392832,
+      "lat": 38.79743507162395,
+      "lng": -77.11984669520245,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392831,
+      "lat": 38.797300360177424,
+      "lng": -77.11955692323286,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392830,
+      "lat": 38.797332459485574,
+      "lng": -77.1197645450842,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392829,
+      "lat": 39.18151305170097,
+      "lng": -78.10387200460949,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392828,
+      "lat": 38.77836723418871,
+      "lng": -77.1168504164084,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392827,
+      "lat": 38.77832321445031,
+      "lng": -77.11674135918732,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392826,
+      "lat": 38.778117355184136,
+      "lng": -77.11684414902311,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392825,
+      "lat": 38.77830274537015,
+      "lng": -77.11666182009537,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392824,
+      "lat": 38.77815000320263,
+      "lng": -77.11679351767238,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392823,
+      "lat": 39.18124171466336,
+      "lng": -78.10141668590552,
+      "status": "Conversation",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392822,
+      "lat": 38.77815779105555,
+      "lng": -77.11684278838182,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392821,
+      "lat": 38.77796100586447,
+      "lng": -77.11676267301327,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392820,
+      "lat": 38.77791265955508,
+      "lng": -77.11683489455196,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392819,
+      "lat": 38.77795857528677,
+      "lng": -77.11685273169425,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392818,
+      "lat": 38.77771049841517,
+      "lng": -77.11669850124066,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392817,
+      "lat": 38.77773426386691,
+      "lng": -77.11674190612476,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392816,
+      "lat": 38.777750674300115,
+      "lng": -77.11662917552313,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392815,
+      "lat": 38.77763999164006,
+      "lng": -77.11645885377854,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392814,
+      "lat": 38.7775469910859,
+      "lng": -77.11665250258645,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392813,
+      "lat": 38.77755465991123,
+      "lng": -77.11662837673897,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392812,
+      "lat": 38.7774656195666,
+      "lng": -77.11636215384686,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392811,
+      "lat": 38.77746652007299,
+      "lng": -77.11645060878702,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392810,
+      "lat": 38.77743251886201,
+      "lng": -77.11651873747385,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392808,
+      "lat": 38.777296142107716,
+      "lng": -77.11628277809608,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392809,
+      "lat": 38.77722972855784,
+      "lng": -77.11628757252069,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392807,
+      "lat": 39.181720665067964,
+      "lng": -78.10109835361473,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392806,
+      "lat": 38.777307483579875,
+      "lng": -77.1162772862599,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392805,
+      "lat": 39.181278520699394,
+      "lng": -78.0991977119673,
+      "status": "Conversation",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392804,
+      "lat": 38.777143875003496,
+      "lng": -77.11663048803443,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392803,
+      "lat": 38.77724775717209,
+      "lng": -77.11658105660185,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392802,
+      "lat": 38.777070585302205,
+      "lng": -77.11685700924849,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392801,
+      "lat": 38.76256917049939,
+      "lng": -77.59866567222238,
+      "status": "No answer",
+      "zipCode": "20136"
+    },
+    {
+      "leadID": 392800,
+      "lat": 39.16952463824746,
+      "lng": -78.09857130414774,
+      "status": "Do Not Knock",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392799,
+      "lat": 39.16933336371499,
+      "lng": -78.09806577595415,
+      "status": "Do Not Knock",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392798,
+      "lat": 38.70816383471067,
+      "lng": -77.11922647185165,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392797,
+      "lat": 39.16391495550141,
+      "lng": -78.1034093522851,
+      "status": "Conversation",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392796,
+      "lat": 38.70909206021712,
+      "lng": -77.11884241709595,
+      "status": "Do Not Knock",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392795,
+      "lat": 38.70891975694617,
+      "lng": -77.11814590906589,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392794,
+      "lat": 38.77714641560358,
+      "lng": -77.11688722125325,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392793,
+      "lat": 38.77669363250506,
+      "lng": -77.14503682390753,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392792,
+      "lat": 38.7770969025716,
+      "lng": -77.11684104212539,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392791,
+      "lat": 38.777051739366875,
+      "lng": -77.11714620431634,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392790,
+      "lat": 38.77705239524904,
+      "lng": -77.11738197726699,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392789,
+      "lat": 38.77530175009975,
+      "lng": -77.14244454500955,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392787,
+      "lat": 38.77706569931945,
+      "lng": -77.11732616781049,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392788,
+      "lat": 38.77711955256658,
+      "lng": -77.1171020170218,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392786,
+      "lat": 38.7770618292613,
+      "lng": -77.1173179717342,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392785,
+      "lat": 38.709399183993284,
+      "lng": -77.11781959080379,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392784,
+      "lat": 38.77713648681331,
+      "lng": -77.11763332383825,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392783,
+      "lat": 38.77709723735882,
+      "lng": -77.11757066491566,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392782,
+      "lat": 38.77703681767961,
+      "lng": -77.11763174942999,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392781,
+      "lat": 38.776515105274115,
+      "lng": -77.1176530362662,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392780,
+      "lat": 38.776542784426226,
+      "lng": -77.11777875818888,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392779,
+      "lat": 38.77654793180366,
+      "lng": -77.11768939154285,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392778,
+      "lat": 38.775100405709104,
+      "lng": -77.14348373011912,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392777,
+      "lat": 38.77665191372114,
+      "lng": -77.11720984258646,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392776,
+      "lat": 38.77527843070976,
+      "lng": -77.14313737249837,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392775,
+      "lat": 38.77651051636946,
+      "lng": -77.11741337719609,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392774,
+      "lat": 38.77651059744857,
+      "lng": -77.11740342645969,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392773,
+      "lat": 38.77500089813562,
+      "lng": -77.14333075862679,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392772,
+      "lat": 38.7766524966215,
+      "lng": -77.11725329168678,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392771,
+      "lat": 38.776703907014166,
+      "lng": -77.1169860107497,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392768,
+      "lat": 38.7766648796514,
+      "lng": -77.11677913707,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392769,
+      "lat": 38.774704798202926,
+      "lng": -77.14270140246144,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392767,
+      "lat": 38.77668274625381,
+      "lng": -77.11695485620685,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392766,
+      "lat": 38.77669415672912,
+      "lng": -77.11697503740858,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392765,
+      "lat": 38.776718167944715,
+      "lng": -77.11673952218636,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392764,
+      "lat": 38.77668230754693,
+      "lng": -77.11677655382827,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392763,
+      "lat": 38.774571426357085,
+      "lng": -77.14291002042359,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392762,
+      "lat": 38.70962494144413,
+      "lng": -77.1184346648971,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392761,
+      "lat": 38.77672248090872,
+      "lng": -77.11651730687643,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392760,
+      "lat": 38.77671227638211,
+      "lng": -77.11650823379206,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392759,
+      "lat": 38.77651905248901,
+      "lng": -77.1161364980673,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392758,
+      "lat": 38.77675184807189,
+      "lng": -77.11651883417025,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392757,
+      "lat": 38.77690110169141,
+      "lng": -77.1160913686996,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392756,
+      "lat": 38.775099021797935,
+      "lng": -77.1444778895439,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392755,
+      "lat": 38.77691114409976,
+      "lng": -77.11611640802465,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392754,
+      "lat": 38.77694352558898,
+      "lng": -77.1160980100028,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392753,
+      "lat": 38.776565768757685,
+      "lng": -77.11610820077613,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392752,
+      "lat": 38.71227365223313,
+      "lng": -77.11687992310158,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392751,
+      "lat": 38.774979463117766,
+      "lng": -77.14423762177444,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392750,
+      "lat": 38.77672330088744,
+      "lng": -77.11608444326558,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392749,
+      "lat": 38.77672954374557,
+      "lng": -77.11614539572206,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392748,
+      "lat": 38.77652113735914,
+      "lng": -77.11618384073967,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392747,
+      "lat": 38.77635250520229,
+      "lng": -77.11605682647998,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392746,
+      "lat": 38.776193124555675,
+      "lng": -77.11596973869854,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392745,
+      "lat": 38.776315518421164,
+      "lng": -77.11608459895022,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392744,
+      "lat": 38.77603261154338,
+      "lng": -77.11587372761609,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392743,
+      "lat": 38.77619214677383,
+      "lng": -77.11598446309058,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392742,
+      "lat": 38.77602207477456,
+      "lng": -77.11587359838887,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392741,
+      "lat": 38.77552627111201,
+      "lng": -77.14346036537125,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392740,
+      "lat": 38.77603128118371,
+      "lng": -77.115891371155,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392739,
+      "lat": 38.71176529938873,
+      "lng": -77.11644937411187,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392738,
+      "lat": 38.77598618258718,
+      "lng": -77.14301677547317,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392737,
+      "lat": 38.77583618273803,
+      "lng": -77.11574728302753,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392736,
+      "lat": 38.77589026952056,
+      "lng": -77.11570056121577,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392735,
+      "lat": 38.7758678752976,
+      "lng": -77.11578915147653,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392734,
+      "lat": 38.77567868984311,
+      "lng": -77.11579612798639,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392733,
+      "lat": 38.71042903585427,
+      "lng": -77.11733053141182,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392732,
+      "lat": 38.77550175119753,
+      "lng": -77.11564308714159,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392731,
+      "lat": 38.77519870160881,
+      "lng": -77.11557207960688,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392730,
+      "lat": 38.775680731823286,
+      "lng": -77.11579525602495,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392729,
+      "lat": 38.77568589873615,
+      "lng": -77.11575078709663,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392728,
+      "lat": 38.77651535011148,
+      "lng": -77.14370097459052,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392727,
+      "lat": 38.71070619666528,
+      "lng": -77.11816191724553,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392726,
+      "lat": 38.71056391794085,
+      "lng": -77.11783438488786,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392725,
+      "lat": 38.77557848367883,
+      "lng": -77.11555593820358,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392724,
+      "lat": 38.77517469495787,
+      "lng": -77.11549033803018,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392723,
+      "lat": 38.77544681515272,
+      "lng": -77.11573793413054,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392722,
+      "lat": 38.77549133516145,
+      "lng": -77.11567099574029,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392721,
+      "lat": 38.775297568598795,
+      "lng": -77.11548650202202,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392720,
+      "lat": 38.777946828797795,
+      "lng": -77.14425043534888,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392719,
+      "lat": 38.77524970691848,
+      "lng": -77.11522159816666,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392718,
+      "lat": 38.775474231457714,
+      "lng": -77.11514911378937,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392716,
+      "lat": 38.77909779904202,
+      "lng": -77.14045669030348,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392715,
+      "lat": 38.711303389948185,
+      "lng": -77.12008441660078,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392714,
+      "lat": 38.775600344803706,
+      "lng": -77.11522710625158,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392713,
+      "lat": 38.77550782449069,
+      "lng": -77.11509344767666,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392712,
+      "lat": 38.775719921376485,
+      "lng": -77.11503506814908,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392711,
+      "lat": 38.77599675803666,
+      "lng": -77.11512409472623,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392710,
+      "lat": 38.77574142613172,
+      "lng": -77.11519883796345,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392709,
+      "lat": 38.775628385659935,
+      "lng": -77.14018751089635,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392708,
+      "lat": 38.77576506588939,
+      "lng": -77.11500795487265,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392707,
+      "lat": 38.775819447957055,
+      "lng": -77.11542231372897,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392706,
+      "lat": 38.77596118140573,
+      "lng": -77.11514821758163,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392705,
+      "lat": 38.77608800353012,
+      "lng": -77.11531517122357,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392704,
+      "lat": 38.77601568177033,
+      "lng": -77.11555701826606,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392703,
+      "lat": 38.77609170985102,
+      "lng": -77.11533749880078,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392702,
+      "lat": 38.79617571796007,
+      "lng": -77.12234673770301,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392701,
+      "lat": 38.776167576892746,
+      "lng": -77.11564072241879,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392700,
+      "lat": 38.77629118485528,
+      "lng": -77.11540567430407,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392699,
+      "lat": 38.79634841792928,
+      "lng": -77.12220264030522,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392698,
+      "lat": 38.77624166801938,
+      "lng": -77.11542702834657,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392697,
+      "lat": 38.776335743833364,
+      "lng": -77.11572286148017,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392696,
+      "lat": 38.77642020514015,
+      "lng": -77.11547880465771,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392695,
+      "lat": 38.71403523478052,
+      "lng": -77.11972070014237,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392694,
+      "lat": 38.7713846254796,
+      "lng": -77.00709896839393,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392693,
+      "lat": 38.77853135005409,
+      "lng": -77.14166097275675,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392692,
+      "lat": 38.77642704594316,
+      "lng": -77.11553834175595,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392691,
+      "lat": 38.7965456557951,
+      "lng": -77.12212729514536,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392690,
+      "lat": 38.776580147757926,
+      "lng": -77.11558089641528,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392689,
+      "lat": 38.79675374931052,
+      "lng": -77.12208096639905,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392688,
+      "lat": 38.77654456071457,
+      "lng": -77.11582417607039,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392687,
+      "lat": 38.77660637803915,
+      "lng": -77.11560012510041,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392686,
+      "lat": 38.7767276328156,
+      "lng": -77.11578062194607,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392685,
+      "lat": 38.776752226161214,
+      "lng": -77.11556342472443,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392684,
+      "lat": 38.776760214860936,
+      "lng": -77.1155544422019,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392683,
+      "lat": 38.78021250389732,
+      "lng": -77.14160085124722,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392682,
+      "lat": 38.92784735980331,
+      "lng": -77.37867997235182,
+      "status": "No answer",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392681,
+      "lat": 38.77698341364303,
+      "lng": -77.11548201817536,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392680,
+      "lat": 38.776912171481854,
+      "lng": -77.11578182627639,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392679,
+      "lat": 38.92953731536619,
+      "lng": -77.38132252116951,
+      "status": "No answer",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392678,
+      "lat": 38.713042181614355,
+      "lng": -77.12027533634358,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392677,
+      "lat": 38.71308465866806,
+      "lng": -77.12027227230733,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392676,
+      "lat": 38.77705836953116,
+      "lng": -77.11578639565582,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392675,
+      "lat": 38.777102870014446,
+      "lng": -77.1155855964739,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392674,
+      "lat": 38.77695289805352,
+      "lng": -77.11558914184381,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392673,
+      "lat": 38.77717355897772,
+      "lng": -77.11553428191702,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392672,
+      "lat": 38.77735629130729,
+      "lng": -77.11567943279779,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392671,
+      "lat": 38.77238326408137,
+      "lng": -77.01037604953422,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392670,
+      "lat": 38.777208307853634,
+      "lng": -77.11583670411946,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392669,
+      "lat": 38.77234354199991,
+      "lng": -77.009940614319,
+      "status": "Conversation",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392668,
+      "lat": 38.77733790919144,
+      "lng": -77.11566914258435,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392667,
+      "lat": 38.7110592654696,
+      "lng": -77.12062636786618,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392666,
+      "lat": 38.781686959811026,
+      "lng": -77.14010725034296,
+      "status": "Conversation",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392665,
+      "lat": 38.777507957780905,
+      "lng": -77.11579566593728,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392664,
+      "lat": 38.7773607666462,
+      "lng": -77.1159323390281,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392663,
+      "lat": 38.77750688539611,
+      "lng": -77.11579717307717,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392662,
+      "lat": 38.77761477046882,
+      "lng": -77.11594908400147,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392661,
+      "lat": 38.77750612805705,
+      "lng": -77.11610213053395,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392660,
+      "lat": 38.77763640264407,
+      "lng": -77.11596615233876,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392659,
+      "lat": 38.77765206817988,
+      "lng": -77.11621394372823,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392658,
+      "lat": 38.78212465741773,
+      "lng": -77.14071178405942,
+      "status": "No answer - material drop",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392657,
+      "lat": 38.77777344471579,
+      "lng": -77.1161144748819,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392656,
+      "lat": 38.77779168376572,
+      "lng": -77.11606181784677,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392655,
+      "lat": 38.71141802454568,
+      "lng": -77.12048306232116,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392654,
+      "lat": 38.77785224362517,
+      "lng": -77.1164732673224,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392653,
+      "lat": 38.77791568089132,
+      "lng": -77.11629710655171,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392652,
+      "lat": 38.777911451933555,
+      "lng": -77.11628086503784,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392651,
+      "lat": 38.7781781442823,
+      "lng": -77.1162567251433,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392650,
+      "lat": 38.778100160228554,
+      "lng": -77.11633423693524,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392649,
+      "lat": 38.778113820626196,
+      "lng": -77.11628023542195,
+      "status": "No answer",
+      "zipCode": "22310"
+    },
+    {
+      "leadID": 392648,
+      "lat": 38.711049187642125,
+      "lng": -77.12145658107822,
+      "status": "Do Not Knock",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392647,
+      "lat": 38.78132423107857,
+      "lng": -77.1364688604829,
+      "status": "No answer - material drop",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392646,
+      "lat": 38.70875474158502,
+      "lng": -77.12208102096098,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392645,
+      "lat": 38.7811771808255,
+      "lng": -77.13875301413125,
+      "status": "No answer - material drop",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392644,
+      "lat": 38.78129778410896,
+      "lng": -77.13873773475389,
+      "status": "Conversation",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392643,
+      "lat": 38.706819664689064,
+      "lng": -77.1216886472248,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392642,
+      "lat": 38.78141250142891,
+      "lng": -77.13874881280354,
+      "status": "No answer - material drop",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392641,
+      "lat": 38.772039887980384,
+      "lng": -77.00927785718169,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392640,
+      "lat": 38.78197127374397,
+      "lng": -77.13812328318409,
+      "status": "No answer - material drop",
+      "zipCode": "22315"
+    },
+    {
+      "leadID": 392639,
+      "lat": 38.77196268049591,
+      "lng": -77.00900804199227,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392638,
+      "lat": 38.772177691085844,
+      "lng": -77.00815902655057,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392637,
+      "lat": 38.70593180660783,
+      "lng": -77.12144513225965,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392636,
+      "lat": 38.77289242570411,
+      "lng": -77.0087480741585,
+      "status": "Conversation",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392635,
+      "lat": 38.705814928682166,
+      "lng": -77.12418941518476,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392634,
+      "lat": 38.70581789763427,
+      "lng": -77.1241879745258,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392633,
+      "lat": 38.772981188677846,
+      "lng": -77.00924163578532,
+      "status": "Do Not Knock",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392632,
+      "lat": 38.7057196869776,
+      "lng": -77.12633180959692,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392631,
+      "lat": 38.77296170464543,
+      "lng": -77.00967625128335,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392630,
+      "lat": 38.70659262214323,
+      "lng": -77.12638965634281,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392629,
+      "lat": 38.70743853575029,
+      "lng": -77.12444310103902,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392628,
+      "lat": 38.70764820046242,
+      "lng": -77.12056103320748,
+      "status": "Do Not Knock",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392627,
+      "lat": 38.87231204039847,
+      "lng": -77.09034927233219,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392626,
+      "lat": 38.70858374978412,
+      "lng": -77.12517636843596,
+      "status": "No answer - material drop",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392625,
+      "lat": 38.77638795677702,
+      "lng": -77.00755915334577,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392624,
+      "lat": 38.871619455125305,
+      "lng": -77.09011297540536,
+      "status": "Conversation",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392623,
+      "lat": 38.87119583172,
+      "lng": -77.0900259034242,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392622,
+      "lat": 38.775568964088805,
+      "lng": -77.00681667422474,
+      "status": "Do Not Knock",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392621,
+      "lat": 38.775998049367864,
+      "lng": -77.00630902082534,
+      "status": "Conversation",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392620,
+      "lat": 38.87133052479258,
+      "lng": -77.08686677576814,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392619,
+      "lat": 38.708742276970156,
+      "lng": -77.1254583972792,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392618,
+      "lat": 38.7082519865292,
+      "lng": -77.1237669470466,
+      "status": "Conversation",
+      "zipCode": "22309"
+    },
+    {
+      "leadID": 392617,
+      "lat": 38.87068626453112,
+      "lng": -77.08633731020869,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392616,
+      "lat": 38.77588457828615,
+      "lng": -77.00820789532544,
+      "status": "Conversation",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392615,
+      "lat": 38.87014310759736,
+      "lng": -77.08688966658475,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392614,
+      "lat": 38.869688244184196,
+      "lng": -77.08689867160311,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392613,
+      "lat": 38.77589159885388,
+      "lng": -77.00846355355809,
+      "status": "No answer",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392612,
+      "lat": 38.77653562992681,
+      "lng": -77.00861391393278,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392611,
+      "lat": 38.86920325094702,
+      "lng": -77.08645336986903,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392610,
+      "lat": 38.87190384223502,
+      "lng": -77.08823841776676,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392609,
+      "lat": 38.871673323553374,
+      "lng": -77.08755351361349,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392608,
+      "lat": 38.87200082467202,
+      "lng": -77.08778634862338,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392607,
+      "lat": 38.87207878535661,
+      "lng": -77.08746001317215,
+      "status": "No answer - material drop",
+      "zipCode": "22204"
+    },
+    {
+      "leadID": 392604,
+      "lat": 38.967767005106204,
+      "lng": -77.08505101297943,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392605,
+      "lat": 38.96781210623925,
+      "lng": -77.0849049714171,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392603,
+      "lat": 38.96764396834598,
+      "lng": -77.08456565370157,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392602,
+      "lat": 38.9676201320805,
+      "lng": -77.08453877483858,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392601,
+      "lat": 38.96766147511896,
+      "lng": -77.08467201911135,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392600,
+      "lat": 38.967573204555855,
+      "lng": -77.08485438571167,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392599,
+      "lat": 38.96757383277583,
+      "lng": -77.0845282379876,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392598,
+      "lat": 38.9676625360157,
+      "lng": -77.08423319404315,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392597,
+      "lat": 38.96750747027764,
+      "lng": -77.08424806003819,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392596,
+      "lat": 38.967521081816464,
+      "lng": -77.08407763250094,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392595,
+      "lat": 38.967547550845005,
+      "lng": -77.0842078776044,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392594,
+      "lat": 38.9675032468181,
+      "lng": -77.0840772845201,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392593,
+      "lat": 38.967520599825626,
+      "lng": -77.08389938583645,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392592,
+      "lat": 38.96741897067246,
+      "lng": -77.08342782375003,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392591,
+      "lat": 38.841749966671756,
+      "lng": -77.14741403918813,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392590,
+      "lat": 38.96738677394312,
+      "lng": -77.08363383452343,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392589,
+      "lat": 38.71013572217912,
+      "lng": -77.12825384069441,
+      "status": "Do Not Knock",
+      "zipCode": "22060"
+    },
+    {
+      "leadID": 392588,
+      "lat": 38.837814941263744,
+      "lng": -77.14573156731404,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392587,
+      "lat": 38.96750158635667,
+      "lng": -77.08329916575387,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392586,
+      "lat": 38.967547238237614,
+      "lng": -77.08339627317065,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392585,
+      "lat": 38.8381168399745,
+      "lng": -77.14626597549912,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392584,
+      "lat": 38.837691574620514,
+      "lng": -77.14594819619553,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392583,
+      "lat": 38.96757649649868,
+      "lng": -77.0831441865792,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392582,
+      "lat": 38.83820928717202,
+      "lng": -77.14595185472143,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392581,
+      "lat": 38.96754585044193,
+      "lng": -77.08265608748505,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392580,
+      "lat": 38.83869700350511,
+      "lng": -77.14683406731966,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392579,
+      "lat": 38.83959437551758,
+      "lng": -77.14833750815762,
+      "status": "Inspection",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392578,
+      "lat": 38.96760273029535,
+      "lng": -77.08194616260876,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392577,
+      "lat": 38.96770483953553,
+      "lng": -77.08183084565748,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392576,
+      "lat": 38.96747838893446,
+      "lng": -77.08159139760906,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392575,
+      "lat": 38.96768138693378,
+      "lng": -77.0815934730532,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392574,
+      "lat": 38.967573200675915,
+      "lng": -77.08154652912644,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392573,
+      "lat": 38.96730512057701,
+      "lng": -77.08063906666632,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392572,
+      "lat": 38.96773351938945,
+      "lng": -77.08043810224702,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392571,
+      "lat": 38.96772417403706,
+      "lng": -77.08040314913593,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392570,
+      "lat": 38.96766122033043,
+      "lng": -77.08005182256886,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392569,
+      "lat": 38.967777452873115,
+      "lng": -77.07998614210624,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392568,
+      "lat": 38.96769598204068,
+      "lng": -77.07966975539881,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392567,
+      "lat": 38.96752879923995,
+      "lng": -77.07977417682775,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392566,
+      "lat": 38.96763102716097,
+      "lng": -77.07905596679326,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392565,
+      "lat": 38.967612717085785,
+      "lng": -77.07879998359778,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392564,
+      "lat": 38.9676639873029,
+      "lng": -77.07887593053033,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392563,
+      "lat": 38.8396313481474,
+      "lng": -77.14834017500704,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392562,
+      "lat": 39.15748678027842,
+      "lng": -78.20125286784868,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392561,
+      "lat": 38.967250099375114,
+      "lng": -77.07882435361532,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392560,
+      "lat": 38.840443202231775,
+      "lng": -77.14723683671437,
+      "status": "Conversation",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392559,
+      "lat": 38.96746544714774,
+      "lng": -77.07929000238833,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392558,
+      "lat": 38.84000028139774,
+      "lng": -77.1473657134504,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392557,
+      "lat": 39.15515303120302,
+      "lng": -78.20065528844881,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392556,
+      "lat": 38.84026060484643,
+      "lng": -77.1474576892533,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392555,
+      "lat": 38.84007100395025,
+      "lng": -77.14680946986107,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392554,
+      "lat": 38.96761999081475,
+      "lng": -77.08025264038044,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392553,
+      "lat": 38.96764277809195,
+      "lng": -77.08032077348832,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392552,
+      "lat": 38.96756551052555,
+      "lng": -77.08047457562482,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392551,
+      "lat": 38.96759376206587,
+      "lng": -77.08035701457756,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392549,
+      "lat": 38.839325902237185,
+      "lng": -77.14609087806159,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392550,
+      "lat": 38.83920759928326,
+      "lng": -77.14671643612283,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392548,
+      "lat": 38.83947632399371,
+      "lng": -77.14625985723045,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392547,
+      "lat": 38.9675194713047,
+      "lng": -77.08162463321699,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392546,
+      "lat": 38.96755830397419,
+      "lng": -77.08159812349547,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392544,
+      "lat": 38.96747563100868,
+      "lng": -77.08190752133675,
+      "status": "Appointment",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392543,
+      "lat": 38.83991616774187,
+      "lng": -77.1461523614543,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392542,
+      "lat": 38.84016025774314,
+      "lng": -77.14552773045767,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392541,
+      "lat": 38.84050030956557,
+      "lng": -77.14611554555802,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392540,
+      "lat": 38.84075755519149,
+      "lng": -77.14749614810638,
+      "status": "No answer - material drop",
+      "zipCode": "22312"
+    },
+    {
+      "leadID": 392537,
+      "lat": 38.84835821549759,
+      "lng": -77.1418021803035,
+      "status": "No answer - material drop",
+      "zipCode": "22041"
+    },
+    {
+      "leadID": 392538,
+      "lat": 38.84810800724815,
+      "lng": -77.14125329527529,
+      "status": "No answer - material drop",
+      "zipCode": "22041"
+    },
+    {
+      "leadID": 392536,
+      "lat": 38.96761797419068,
+      "lng": -77.08195042449954,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392535,
+      "lat": 38.96757604958111,
+      "lng": -77.08211715772875,
+      "status": "Conversation",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392534,
+      "lat": 38.967600065381184,
+      "lng": -77.08218986175736,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392533,
+      "lat": 38.96750715128185,
+      "lng": -77.08231041738271,
+      "status": "No answer",
+      "zipCode": "20815"
+    },
+    {
+      "leadID": 392532,
+      "lat": 38.856040346849404,
+      "lng": -77.14511581892819,
+      "status": "Conversation",
+      "zipCode": "22041"
+    },
+    {
+      "leadID": 392530,
+      "lat": 38.9137307932019,
+      "lng": -77.2259887925961,
+      "status": "Appointment",
+      "zipCode": "22182"
+    },
+    {
+      "leadID": 392527,
+      "lat": 38.72076341115821,
+      "lng": -77.00003996526581,
+      "status": "No answer - material drop",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392525,
+      "lat": 38.72801251242573,
+      "lng": -77.00409311233715,
+      "status": "No answer",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392524,
+      "lat": 38.72821149180673,
+      "lng": -77.00368156474703,
+      "status": "Conversation",
+      "zipCode": "20744"
+    },
+    {
+      "leadID": 392521,
+      "lat": 38.90971052723515,
+      "lng": -77.39934270993814,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392520,
+      "lat": 38.91055304910331,
+      "lng": -77.39894055725705,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392519,
+      "lat": 38.91045771895273,
+      "lng": -77.39920248042041,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392518,
+      "lat": 38.90936993570119,
+      "lng": -77.39787996334397,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392517,
+      "lat": 38.908822821645536,
+      "lng": -77.39793134887698,
+      "status": "Conversation",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392516,
+      "lat": 38.90985535076443,
+      "lng": -77.3969909407396,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392515,
+      "lat": 38.91066134333891,
+      "lng": -77.39496999223454,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392514,
+      "lat": 38.910285904626875,
+      "lng": -77.39536568455851,
+      "status": "Appointment",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392513,
+      "lat": 38.910048332097446,
+      "lng": -77.39560293584145,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392512,
+      "lat": 38.91008940243512,
+      "lng": -77.39593568356452,
+      "status": "Do Not Knock",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392511,
+      "lat": 38.91265454688117,
+      "lng": -77.39779369373656,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392510,
+      "lat": 38.91448669975147,
+      "lng": -77.39142206504565,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392509,
+      "lat": 38.91399406467756,
+      "lng": -77.39180677951435,
+      "status": "Conversation",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392508,
+      "lat": 38.91328122314506,
+      "lng": -77.39226867724109,
+      "status": "No answer - material drop",
+      "zipCode": "20171"
+    },
+    {
+      "leadID": 392507,
+      "lat": 38.31626082859351,
+      "lng": -77.47043282017141,
+      "status": "No answer",
+      "zipCode": "22401"
+    },
+    {
+      "leadID": 392503,
+      "lat": 39.168607417871904,
+      "lng": -78.1312048601234,
+      "status": "Do Not Knock",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392502,
+      "lat": 39.16836134411186,
+      "lng": -78.13123794072223,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392501,
+      "lat": 39.0908116593879,
+      "lng": -77.59622830160697,
+      "status": "Conversation",
+      "zipCode": "20175"
+    },
+    {
+      "leadID": 392500,
+      "lat": 39.17054338977608,
+      "lng": -78.12948318720409,
+      "status": "No answer",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392499,
+      "lat": 38.76172540857098,
+      "lng": -77.60696376363676,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392497,
+      "lat": 38.761982236348956,
+      "lng": -77.60703268358698,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392496,
+      "lat": 38.7616885666241,
+      "lng": -77.60661661477563,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392495,
+      "lat": 38.76210945498669,
+      "lng": -77.60615730230165,
+      "status": "Conversation",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392494,
+      "lat": 38.76188212503024,
+      "lng": -77.60613781524026,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392493,
+      "lat": 38.7616660117103,
+      "lng": -77.60629653120384,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392492,
+      "lat": 38.76206917869684,
+      "lng": -77.6048401485399,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392491,
+      "lat": 38.76180466804275,
+      "lng": -77.60557782775274,
+      "status": "Conversation",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392490,
+      "lat": 39.16528587753505,
+      "lng": -78.11103945962124,
+      "status": "Conversation",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392489,
+      "lat": 38.76202185761327,
+      "lng": -77.60564171298057,
+      "status": "Conversation",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392488,
+      "lat": 38.761601374069436,
+      "lng": -77.60534564889727,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392487,
+      "lat": 39.16530734626846,
+      "lng": -78.11039935552124,
+      "status": "Conversation",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392486,
+      "lat": 38.76148357595496,
+      "lng": -77.60503417316849,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392485,
+      "lat": 39.165653329157735,
+      "lng": -78.11064262730403,
+      "status": "Conversation",
+      "zipCode": "22602"
+    },
+    {
+      "leadID": 392484,
+      "lat": 38.761514030997446,
+      "lng": -77.60477465753735,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392483,
+      "lat": 38.76179562691412,
+      "lng": -77.60459083113231,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392482,
+      "lat": 38.761801501815654,
+      "lng": -77.60433969187328,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392481,
+      "lat": 38.76144106877904,
+      "lng": -77.60451717313543,
+      "status": "No answer - material drop",
+      "zipCode": "20155"
+    },
+    {
+      "leadID": 392480,
+      "lat": 39.08877860752654,
+      "lng": -77.59783722948087,
+      "status": "No answer",
+      "zipCode": "20175"
+    },
+    {
+      "leadID": 392478,
+      "lat": 39.192263545589775,
+      "lng": -78.15162686228363,
+      "status": "No answer",
+      "zipCode": "22601"
+    },
+    {
+      "leadID": 392477,
+      "lat": 39.19339448806147,
+      "lng": -78.15057270441459,
+      "status": "No answer",
+      "zipCode": "22601"
+    },
+    {
+      "leadID": 392476,
+      "lat": 39.19348422353578,
+      "lng": -78.15074430457823,
+      "status": "No answer",
+      "zipCode": "22601"
+    },
+    {
+      "leadID": 392475,
+      "lat": 39.193613244340355,
+      "lng": -78.15095313480153,
+      "status": "No answer",
+      "zipCode": "22601"
+    },
+    {
+      "leadID": 392474,
+      "lat": 39.193621538615865,
+      "lng": -78.15124282208346,
+      "status": "No answer",
+      "zipCode": "22601"
     }
   ]
 }
